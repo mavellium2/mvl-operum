@@ -122,7 +122,7 @@ interface Plano {
 
 /**
  * Decide o arranjo dos filhos de cada nó (ADR-047):
- * - Padrão: filhos lado a lado; se todos os filhos visíveis são folhas, empilhados com a linha à esquerda.
+ * - Padrão: filhos lado a lado em todos os níveis, independente do colapso ou da profundidade.
  * - Esquerda/Direita: fases lado a lado embaixo da raiz; abaixo delas, filhos empilhados à esquerda/direita.
  * - Horizontal: a raiz em pé à esquerda e cada nível numa coluna à direita do anterior.
  * Uma fase com formato próprio (Esquerda/Direita) aplica esse formato a ela e a tudo abaixo dela.
@@ -152,7 +152,7 @@ function planejar(
 
     if (formato === 'HORIZONTAL') arranjo[id] = 'HORIZONTAL'
     else if (formato === 'LADO_A_LADO') {
-      arranjo[id] = ch.length > 0 && ch.every(c => visibleChildren(c, nodes).length === 0) ? 'PILHA_PADRAO' : 'LADO'
+      arranjo[id] = 'LADO'
     } else arranjo[id] = depth === 0 ? 'LADO' : formato
 
     const w = nodeWidths[id] ?? NODE_W

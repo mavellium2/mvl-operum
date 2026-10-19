@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma'
 
 export interface GerenteDoProjeto {
   /** Nome(s) do(s) gerente(s), como sai nos documentos ("Ana e Bruno"). Vazio sem gerente. */
+  userIds?: string[]
   nome: string
   /** Assinatura do primeiro gerente, para documentos aprovados. */
   signatureUrl: string | null
@@ -22,5 +23,5 @@ export async function gerenteDoProjeto(projectId: string): Promise<GerenteDoProj
     where: { id: { in: entradas.map(e => e.userId) } },
     select: { name: true, signatureUrl: true },
   })
-  return { nome: users.map(u => u.name).join(' e '), signatureUrl: users[0]?.signatureUrl ?? null }
+  return { userIds: entradas.map(e => e.userId), nome: users.map(u => u.name).join(' e '), signatureUrl: users[0]?.signatureUrl ?? null }
 }

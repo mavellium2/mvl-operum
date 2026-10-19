@@ -3,10 +3,12 @@
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import { useState, useEffect, useRef, useCallback, useId } from 'react'
+import type { LinhaAtividade } from '@/lib/planilhaCustos'
+import { fmtDataBR } from '@/lib/planilhaCustos'
 import { Card, CardColor, Attachment } from '@/types/kanban'
 import { assignTagToCardAction, removeTagFromCardAction } from '@/app/actions/tags'
 import { addManualTimeAction, getTimeEntriesAction, updateTimeEntryAction, deleteTimeEntryAction } from '@/app/actions/time'
-import { getCardMovementsAction } from '@/app/actions/sprintBoard'
+import { getCardPlanilhaAction, getCardMovementsAction } from '@/app/actions/sprintBoard'
 import CardTimer from './CardTimer'
 import UserAvatar from '@/components/user/UserAvatar'
 import ColorPicker from './ColorPicker'
@@ -163,6 +165,19 @@ export default function CardModal({
   const [priority, setPriority]             = useState(() => initialCard?.priority ?? 'media')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(() => initialCard?.tags?.map(t => t.tagId) ?? [])
   const [selectedResponsibleIds, setSelectedResponsibleIds] = useState<string[]>([])
+  const [linhaPlanilha, setLinhaPlanilha] = useState<LinhaAtividade | null>(null)
+  const [erroPlanilha, setErroPlanilha] = useState('')
+  const canViewSheet = permissions.has('planilha:ver')
+  useEffect(() => {
+    if (!isOpen || !initialCard?.id || !canViewSheet) return
+    let active = true
+    void getCardPlanilhaAction(initialCard.id).then(result => {
+      if (!active) return
+      setLinhaPlanilha('linha' in result ? result.linha ?? null : null)
+      setErroPlanilha(result.error ?? '')
+    }).catch(() => { if (active) setErroPlanilha('Não foi possível carregar os dados da planilha.') })
+    return () => { active = false }
+  }, [isOpen, initialCard?.id, canViewSheet])
   const [error, setError]                   = useState('')
 
   const [savedDescription, setSavedDescription] = useState(() => initialCard?.description ?? '')
@@ -890,6 +905,15 @@ export default function CardModal({
                   )}
                 </div>
 
+                {erroPlanilha && <p role="status" className="text-xs text-slate-500">{erroPlanilha}</p>}
+                {linhaPlanilha && <section className="rounded-lg border border-slate-200 p-3 text-xs text-slate-600" aria-label="Planilha de Custos">
+                  <h3 className="mb-2 font-semibold text-slate-800">Planilha de Custos · {linhaPlanilha.codigo}</h3>
+                  <p>Elaborado por: {linhaPlanilha.elaboradoPor || 'Não definido'}</p>
+                  <p>Orçado: {linhaPlanilha.minOrcado} min · {linhaPlanilha.totalOrcado?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'}</p>
+                  <p>Realizado: {linhaPlanilha.minReal} min · {linhaPlanilha.totalReal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'}</p>
+                  <p>Prevista: {fmtDataBR(linhaPlanilha.dataPrevista) || '—'}</p>
+                  <p>Realização: {fmtDataBR(linhaPlanilha.dataRealizacao) || '—'}</p>
+                </section>}
                 {/* Datas */}
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Datas</p>

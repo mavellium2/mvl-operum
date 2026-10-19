@@ -114,14 +114,14 @@ describe('gerarPlanilhaXlsx — modelo IDÊNTICO', () => {
     expect(ws.getCell('E7').numFmt).toBe('h:mm')
     const dias = ws.getCell('F7').value as { formula: string }
     expect(dias.formula).toBe('D7/60/8') // jornada do elaborador (Maria, 8h/dia)
-    const maoObra = ws.getCell('G7').value as { formula: string }
-    expect(maoObra.formula).toBe('ROUND(D7*0.2777777777777778,2)') // valor/min da Maria = 4000/30/8/60
+    const valorMinuto = ws.getCell('G7').value
+    expect(valorMinuto).toBeCloseTo(0.2777777777777778) // valor/min da Maria = 4000/30/8/60
     expect(ws.getCell('G7').numFmt).toContain('R$')
     const total = ws.getCell('I7').value as { formula: string }
-    expect(total.formula).toBe('G7+H7')
+    expect(total.formula).toBe('ROUND(D7*G7,2)+H7')
     // realizado
     expect((ws.getCell('L7').value as { formula: string }).formula).toBe('K7/1440')
-    expect((ws.getCell('P7').value as { formula: string }).formula).toBe('N7+O7')
+    expect((ws.getCell('P7').value as { formula: string }).formula).toBe('ROUND(K7*N7,2)+O7')
   })
 
   it('linha sem elaborador deixa Dias/R$/Total em branco (nenhum valor)', async () => {
@@ -130,10 +130,10 @@ describe('gerarPlanilhaXlsx — modelo IDÊNTICO', () => {
     // a3 (linha 9) não tem elaborador → células de cálculo vazias
     expect(ws.findCell(9, 6)?.value ?? null).toBe(null) // Dias orçado
     expect(ws.findCell(9, 7)?.value ?? null).toBe(null) // R$ orçado
-    expect(ws.findCell(9, 9)?.value ?? null).toBe(null) // Total orçado
+    expect(ws.findCell(9, 9)?.value).toMatchObject({ formula: 'H9' }) // Total orçado
     expect(ws.findCell(9, 13)?.value ?? null).toBe(null) // Dias realizado
     expect(ws.findCell(9, 14)?.value ?? null).toBe(null) // R$ realizado
-    expect(ws.findCell(9, 16)?.value ?? null).toBe(null) // Total realizado
+    expect(ws.findCell(9, 16)?.value).toMatchObject({ formula: 'O9' }) // Total realizado
     // Somatório do sub-total continua funcionando (linhas calculáveis somadas)
     expect((ws.getCell('I10').value as { formula: string }).formula.startsWith('SUM(')).toBe(true)
   })

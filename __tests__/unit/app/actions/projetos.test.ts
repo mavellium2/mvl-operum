@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/services/projectAccess', () => ({ requireProjectPermission: vi.fn().mockResolvedValue(undefined) }))
 
+vi.mock('@/services/planilhaService', () => ({ planilhaDoProjeto: vi.fn().mockResolvedValue(null) }))
+vi.mock('@/services/documentRevisionService', () => ({ submeterDocumento: vi.fn().mockResolvedValue({ id: 'versao-nova' }) }))
+
 vi.mock('@/services/macroFaseSyncService', () => ({ reconcileMacroFases: vi.fn().mockResolvedValue({ pending: false }) }))
 
 vi.mock('@/lib/dal', () => ({
@@ -29,6 +32,7 @@ vi.mock('next/cache', () => ({
 vi.mock('@/lib/prisma', () => ({
   default: {
     projectDraft: { deleteMany: vi.fn() },
+    documentVersion: { findFirst: vi.fn().mockResolvedValue(null) },
     projetoDepartamento: { findMany: vi.fn().mockResolvedValue([]) },
     userProjectRole: { findFirst: vi.fn().mockResolvedValue(null) },
     wbsNode: { findMany: vi.fn().mockResolvedValue([]) },
@@ -137,11 +141,15 @@ describe('Projeto Actions', () => {
       expect(result).toHaveProperty('projeto')
     })
 
-    it('orienta textos do Termo para o fluxo versionado sem chamar o update genérico', async () => {
+    it('salva os dados complementares como versão do Termo, fora do update genérico', async () => {
       vi.mocked(verifySession).mockResolvedValue(mockSession)
+      vi.mocked(projectsApi.update).mockResolvedValue({ id: 'p1', name: 'Nome' })
+      const { submeterDocumento } = await import('@/services/documentRevisionService')
       const result = await updateProjetoAction({}, 'p1', { name: 'Nome', objetivos: 'Novo objetivo' })
-      expect(result).toHaveProperty('error', 'Altere o Termo de Abertura em Documentação, criando uma versão para aprovação')
-      expect(projectsApi.update).not.toHaveBeenCalled()
+      expect(result).toHaveProperty('projeto')
+      expect(projectsApi.update).toHaveBeenCalledWith('p1', { name: 'Nome' })
+      expect(submeterDocumento).toHaveBeenCalledWith(mockSession, 'p1', 'CHARTER', { objetivos: 'Novo objetivo' }, expect.objectContaining({ commitTitle: 'Dados complementares atualizados na edição do projeto' }))
+      expect(requireProjectPermission).toHaveBeenCalledWith(mockSession, 'p1', 'documentos:aprovar')
     })
 
     it('should return error on update failure', async () => {

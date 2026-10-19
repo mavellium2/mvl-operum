@@ -439,7 +439,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-047 — Organizar define o formato da EAP inteira, com formato próprio por fase
 
 - **Data:** 2026-10-16
-- **Status:** implementada. Substitui a ADR-043 na regra de layout por nó e nos layouts "Horizontal (topo)" e "Horizontal (base)". Os ícones e o select da ADR-043 continuam.
+- **Status:** implementada; regra de folhas no modo Padrão substituída pela ADR-048. Substitui a ADR-043 na regra de layout por nó e nos layouts "Horizontal (topo)" e "Horizontal (base)". Os ícones e o select da ADR-043 continuam.
 - **Contexto:** o documento "08 - Ajustes e melhorias sistema Operum 16-10-26" mostra como cada opção do Organizar deve desenhar a EAP. Os modelos são:
   - Padrão: Churrasco;
   - Esquerda: Projeto Café e Citrolente, com 4 níveis;
@@ -646,3 +646,16 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** sem webhook não há notificações externas; o operador deve configurar canal compatível quando disponível. CI valida ambos os formatos com amtool e mantém ensaio de entrega sintética. Uma URL sintaticamente válida não prova disponibilidade/compatibilidade do receptor real.
 - **Condições de revisão:** destino externo confirmado, política operacional que torne entrega externa mandatória ou suporte a outros receivers.
 - **Referências:** ADR-026, scripts/deploy/configure-observability.py, remote-deploy.sh, scripts/validation/observability-config.mjs, observability.sh, .env.example, relato do usuário após PR #59.
+
+
+## ADR-048 — Planilha como origem dos dados apresentados no card e sincronização de conclusão
+
+- **Data:** 2026-10-19
+- **Status:** implementada. Substitui a escolha de empilhar folhas do modo Padrão da ADR-047; mantém os formatos da EAP e os formatos próprios por fase.
+- **Contexto:** as tarefas de 19/10 registram fases vazias e recolhidas mudando o layout, divergências entre EAP/planilha/cards e Dados Complementares sem edição. A planilha já guarda minutos e valores, enquanto `TimeEntry` representa apontamentos efetivos do timer.
+- **Escolha:** Padrão sempre lado a lado e conectores pelo centro inferior. A planilha fornece os dados detalhados do card; datas e conclusão explícita sincronizam os campos existentes e a coluna da sprint com histórico idempotente. Minutos de planilha não criam apontamento de tempo. Dados Complementares usam o serviço de versões do Termo; o menu de projeto reúne edição e documentos. Aprovado por é o gerente do cadastro; elaborador escolhido fica congelado por versão.
+- **Justificativa:** evita duas contas para os mesmos valores e mantém a distinção entre tempo informado na planilha e tempo efetivamente registrado; libera a edição preservando aprovação, histórico e permissões.
+- **Alternativas consideradas:** duplicar custos e minutos em colunas do Card (mais uma fonte a sincronizar); criar TimeEntry a partir do realizado (fabricaria registros de trabalho); escrever diretrizes pelo update genérico (perderia o histórico documental).
+- **Consequências:** o modal consulta a linha ao abrir, com permissão financeira; concluir exige responsável ativo. Dados anteriores são reconciliados na abertura das telas autorizadas e na edição da planilha. A migração dos dados do projeto Pintar uma Casa deve ser validada no ambiente em que esses dados residem; testes locais não comprovam atualização em produção.
+- **Referências:** `services/planilhaCardSync.ts`, `services/documentRevisionService.ts`, `app/actions/projetos.ts`, `app/actions/sprintBoard.ts`, `lib/wbsLayout.ts`, testes de sincronização, layout e edição do projeto.
+- **Revisar quando:** o produto passar a distinguir uma data de conclusão própria do card ou permitir reabrir automaticamente uma conclusão originada na planilha.

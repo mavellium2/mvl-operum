@@ -13,8 +13,8 @@ const arvore = (serverVersion: number, titulo: string): GetTreeResult => ({
 })
 
 function Versao() {
-  const { state } = useWbs()
-  return <p>{state.sync.serverVersion} {state.nodes.r?.title} {state.sync.status}</p>
+  const { state, dispatch } = useWbs()
+  return <><p>{state.sync.serverVersion} {state.nodes.r?.title} {state.sync.status}</p><button onClick={() => dispatch({ type: 'RENAME_NODE', payload: { nodeId: 'r', title: 'Minha edição' } })}>Editar</button></>
 }
 
 beforeEach(() => { vi.mocked(getWbsTreeAction).mockReset() })
@@ -33,4 +33,13 @@ describe('editor da EAP adota a versão atual do servidor', () => {
     await act(async () => { rerender(<WbsProvider initialTree={arvore(4, 'Depois')}><Versao /></WbsProvider>) })
     expect(screen.getByText('4 Depois IDLE')).toBeInTheDocument()
   })
+  it('resposta de leitura antiga não sobrescreve edição feita durante a busca', async () => {
+    let resolve!: (value: never) => void
+    vi.mocked(getWbsTreeAction).mockReturnValue(new Promise(done => { resolve = done }))
+    render(<WbsProvider initialTree={arvore(3, 'Antes')} projetoId="p1"><Versao /></WbsProvider>)
+    await act(async () => { screen.getByRole('button', { name: 'Editar' }).click() })
+    await act(async () => { resolve({ ok: true, ...arvore(4, 'Servidor') } as never) })
+    expect(screen.getByText('3 Minha edição DIRTY')).toBeInTheDocument()
+  })
+
 })

@@ -1,4 +1,5 @@
 import 'server-only'
+import { sincronizarCardsDaPlanilha } from './planilhaCardSync'
 import prisma from '@/lib/prisma'
 import { computarPlanilhaCustos, type Elaborador, type PlanilhaDeCustos } from '@/lib/planilhaCustos'
 import { round2 } from '@/lib/custosCalc'
@@ -42,5 +43,7 @@ export async function propagarPlanilhaDeCustos(projectId: string, tenantId: stri
     // Fase sem nenhuma atividade com valor calculado mantém o custo informado à mão.
     custo: f.atividades.some(a => a.totalOrcado !== null) ? round2(f.totalOrcado) : null,
   }))
-  return aplicarResumoDaPlanilha(projectId, tenantId, fases, planilha.dataFimProjeto)
+  const resumo = await aplicarResumoDaPlanilha(projectId, tenantId, fases, planilha.dataFimProjeto)
+  await sincronizarCardsDaPlanilha(projectId, tenantId)
+  return resumo
 }

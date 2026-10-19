@@ -7,10 +7,10 @@ import { custoFolhaPrevisto, custoFolhaRealizado, round2 } from '@/lib/custosCal
  * Fonte única: folhas da EAP (`WbsNode.properties`). Custo SEMPRE derivado de
  * quem elaborou a linha (membro do projeto):
  *   jornada         = horasDiarias do elaborador
- *   valorPorMinuto  = remuneracao / 30 / jornada / 60
- *   custo = min × valorPorMinuto + materiais.
- * Sem elaborador (ou sem salário/jornada cadastrados) → valor NENHUM (null):
- * não existe valor padrão (padrão é nenhum).
+ *   valorPorMinuto  = remuneracao / 30 / jornada / 60   (coluna R$)
+ *   Total = (min × R$) + materiais.
+ * Sem elaborador (ou sem salário/jornada cadastrados) → R$ NENHUM (null): não
+ * existe valor padrão. O Total fica só com os materiais (null sem materiais).
  */
 
 export interface PlanilhaConfig {
@@ -32,7 +32,7 @@ export interface LinhaAtividade {
   elaboradoPorUserId: string | null
   /** Elaboradores da linha = responsáveis do card ligado. */
   elaboradoPorUserIds: string[]
-  /** soma do valor por minuto dos elaboradores (todos trabalham o tempo inteiro); null sem nenhum com salário e jornada */
+  /** Coluna R$: soma do valor por minuto dos elaboradores (todos trabalham o tempo inteiro); null sem nenhum com salário e jornada */
   vpm: number | null
   /** menor jornada diária (horas/dia) entre os elaboradores; null quando nenhuma cadastrada */
   jornadaDiaria: number | null
@@ -183,8 +183,11 @@ export function computarPlanilhaCustos(
   config: PlanilhaConfig,
   elaboradores?: Map<string, Elaborador>,
 ): PlanilhaDeCustos {
-  const fatura = (min: number, materiais: number, vpm: number) => custoFolhaPrevisto(min, vpm, materiais)
-  const faturaReal = (min: number, materiais: number, vpm: number) => custoFolhaRealizado(min, vpm, materiais)
+  // Total = (Min × R$) + Materiais; sem R$ (valor/min), só os materiais.
+  const fatura = (min: number, materiais: number, vpm: number | null) =>
+    vpm !== null ? custoFolhaPrevisto(min, vpm, materiais) : materiais ? round2(materiais) : null
+  const faturaReal = (min: number, materiais: number, vpm: number | null) =>
+    vpm !== null ? custoFolhaRealizado(min, vpm, materiais) : materiais ? round2(materiais) : null
 
   const macrofases: LinhaMacrofase[] = []
   if (rootId && nodes[rootId]) {
@@ -223,12 +226,12 @@ export function computarPlanilhaCustos(
           materiaisOrcado,
           dataPrevista: p.dataPrevista ?? null,
           rOrcado: vpm !== null ? round2(minOrcado * vpm) : null,
-          totalOrcado: vpm !== null ? fatura(minOrcado, materiaisOrcado, vpm) : null,
+          totalOrcado: fatura(minOrcado, materiaisOrcado, vpm),
           minReal,
           materiaisReal,
           dataRealizacao: p.dataRealizacao ?? null,
           rReal: vpm !== null ? round2(minReal * vpm) : null,
-          totalReal: vpm !== null ? faturaReal(minReal, materiaisReal, vpm) : null,
+          totalReal: faturaReal(minReal, materiaisReal, vpm),
           situacao: situacaoDe(p.dataPrevista ?? null, p.dataRealizacao ?? null),
         }
       })

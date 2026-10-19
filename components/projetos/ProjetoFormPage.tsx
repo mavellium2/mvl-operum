@@ -3,7 +3,7 @@
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import { useState, useTransition, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { createProjetoAction, updateProjetoAction, getProjetoAction, retryMacroFasesSyncAction } from '@/app/actions/projetos'
 import { listUsersAction } from '@/app/actions/admin'
 import { getDepartmentsAction } from '@/app/actions/departments'
@@ -131,8 +131,9 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const canEditCosts = permissions.has('planilha:orcado') && permissions.has('planilha:realizado-todos')
   const router = useRouter()
   const searchParams = useSearchParams()
-  const editId = searchParams.get('edit')
-  const canEditPublished = !editId && permissions.has('documentos:editar') && permissions.has('documentos:aprovar')
+  const params = useParams<{ projetoId?: string }>()
+  const editId = params.projetoId ?? searchParams.get('edit')
+  const canEditPublished = permissions.has('documentos:editar') && permissions.has('documentos:aprovar')
   const { toast } = useToast()
 
   const [isPending, startTransition] = useTransition()
@@ -300,7 +301,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
       <header className="bg-white/70 backdrop-blur-xl border-b border-slate-200/50 px-6 py-5 sticky top-0 z-40">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/projetos" className="p-2.5 -ml-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">
+            <Link href={editId ? `/projetos/${editId}/dashboard` : "/projetos"} className="p-2.5 -ml-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -311,7 +312,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/projetos" className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200/80 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">
+            <Link href={editId ? `/projetos/${editId}/dashboard` : "/projetos"} className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200/80 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">
               Cancelar
             </Link>
             <button onClick={handleSubmit} disabled={isPending || isLoadingEdit} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 active:scale-95 disabled:opacity-50 disabled:hover:shadow-none transition-all shadow-sm">
@@ -480,7 +481,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
             <div className="bg-white p-8 md:p-10 rounded-[24px] border border-slate-200/60 shadow-sm">
               <div className="mb-8">
                 <h2 className="text-xl font-bold text-slate-900">Diretrizes e Escopo</h2>
-                <p className="text-sm text-slate-500 mt-1.5 font-medium">{editId ? 'Para propor alterações nestes textos, abra Documentação → Termo de Abertura e salve uma versão para aprovação.' : 'Detalhe as justificativas, metodologia e limites para aprovação deste projeto.'}</p>
+                <p className="text-sm text-slate-500 mt-1.5 font-medium">{editId ? 'As alterações serão registradas em uma nova versão do Termo de Abertura.' : 'Detalhe as justificativas, metodologia e limites para aprovação deste projeto.'}</p>
               </div>
 
               <div className="space-y-6">
@@ -538,7 +539,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                     {macroFases.map((fase, idx) => (
                       <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
                         <td className="p-3">
-                          <input type="text" value={fase.fase} onChange={e => updateMacroFase(idx, 'fase', e.target.value)} placeholder={`Ex: Fase ${idx + 1}...`} className="w-full px-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm font-semibold text-slate-800 transition-all outline-none" />
+                          <span className="text-sm text-slate-500">1.{idx + 1}</span><input aria-label={`Fase 1.${idx + 1}`} type="text" value={fase.fase} onChange={e => updateMacroFase(idx, 'fase', e.target.value)} placeholder={`Ex: Fase ${idx + 1}...`} className="w-full px-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm font-semibold text-slate-800 transition-all outline-none" />
                         </td>
                         <td className="p-3">
                           <DateInputBR

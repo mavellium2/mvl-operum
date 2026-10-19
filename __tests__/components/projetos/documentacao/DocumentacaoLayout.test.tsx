@@ -37,34 +37,9 @@ describe('DocumentacaoLayout', () => {
     expect(screen.queryByTestId('stakeholder-doc')).not.toBeInTheDocument()
   })
 
-  it('ao clicar em "Termo de Abertura", chama router.replace com ?doc=charter', async () => {
-    const user = userEvent.setup()
+  it('não cria outro menu dentro da documentação', () => {
     render(<DocumentacaoLayout projetoId="p1" atas={[]} gerente={false} />)
-    await user.click(screen.getByRole('button', { name: /termo de abertura/i }))
-    expect(mockReplace).toHaveBeenCalledWith(
-      expect.stringContaining('doc=charter'),
-    )
-  })
-
-  it('ao clicar em "Formulário de Partes Interessadas" quando charter ativo, chama router.replace com ?doc=stakeholder', async () => {
-    vi.mocked(useSearchParams).mockReturnValue(
-      new URLSearchParams('doc=charter') as ReturnType<typeof useSearchParams>,
-    )
-    const user = userEvent.setup()
-    render(<DocumentacaoLayout projetoId="p1" atas={[]} gerente={false} />)
-    await user.click(screen.getByRole('button', { name: /formulário de partes interessadas/i }))
-    expect(mockReplace).toHaveBeenCalledWith(
-      expect.stringContaining('doc=stakeholder'),
-    )
-  })
-
-  it('item ativo na sidebar tem estilo de destaque', () => {
-    vi.mocked(useSearchParams).mockReturnValue(
-      new URLSearchParams('doc=charter') as ReturnType<typeof useSearchParams>,
-    )
-    render(<DocumentacaoLayout projetoId="p1" atas={[]} gerente={false} />)
-    const charterBtn = screen.getByRole('button', { name: /termo de abertura/i })
-    expect(charterBtn.className).toContain('text-blue-700')
+    expect(screen.queryByRole('navigation', { name: 'Documentos' })).not.toBeInTheDocument()
   })
 
   it('container principal tem overflow-hidden para isolar o scroll global', () => {

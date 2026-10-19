@@ -92,16 +92,16 @@ export function computeFinancialRollups(
       result[id] = {
         budgetHours: (p.tempoMinutos ?? 0) / 60,
         actualHours: (p.tempoRealMinutos ?? 0) / 60,
-        budgetCost: rate == null ? null : custoFolhaPrevisto(p.tempoMinutos ?? 0, rate, p.materiais ?? 0),
-        actualCost: rate == null ? null : custoFolhaRealizado(p.tempoRealMinutos ?? 0, rate, p.materiaisReal ?? 0),
+        budgetCost: rate == null ? (p.materiais ? round2(p.materiais) : null) : custoFolhaPrevisto(p.tempoMinutos ?? 0, rate, p.materiais ?? 0),
+        actualCost: rate == null ? (p.materiaisReal ? round2(p.materiaisReal) : null) : custoFolhaRealizado(p.tempoRealMinutos ?? 0, rate, p.materiaisReal ?? 0),
       }
     } else {
       const rows = children.map(c => result[c]).filter(Boolean)
       result[id] = {
         budgetHours: rows.reduce((sum, r) => sum + r.budgetHours, 0),
         actualHours: rows.reduce((sum, r) => sum + r.actualHours, 0),
-        budgetCost: rows.some(r => r.budgetCost === null) ? null : round2(rows.reduce((sum, r) => sum + (r.budgetCost ?? 0), 0)),
-        actualCost: rows.some(r => r.actualCost === null) ? null : round2(rows.reduce((sum, r) => sum + (r.actualCost ?? 0), 0)),
+        budgetCost: rows.some(r => r.budgetCost !== null) ? round2(rows.reduce((sum, r) => sum + (r.budgetCost ?? 0), 0)) : null,
+        actualCost: rows.some(r => r.actualCost !== null) ? round2(rows.reduce((sum, r) => sum + (r.actualCost ?? 0), 0)) : null,
       }
     }
   }

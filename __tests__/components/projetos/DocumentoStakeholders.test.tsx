@@ -125,7 +125,8 @@ describe('DocumentoStakeholders — carga inicial da versão APPROVED', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Elaborado por')).toHaveValue('ana'),
     )
-    expect(screen.getByLabelText('Aprovado por')).toHaveValue('joao')
+    expect(screen.getByLabelText('Aprovado por')).toHaveValue('João')
+    expect(screen.getByLabelText('Aprovado por')).toHaveAttribute('readonly')
   })
 })
 

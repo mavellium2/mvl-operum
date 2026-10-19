@@ -12,7 +12,7 @@ vi.mock('@/app/actions/time', () => ({
   getCardsTimerAction: vi.fn(pendente), getTimeEntriesAction: vi.fn(pendente),
   addManualTimeAction: vi.fn(), updateTimeEntryAction: vi.fn(), deleteTimeEntryAction: vi.fn(),
 }))
-vi.mock('@/app/actions/sprintBoard', () => ({ getCardMovementsAction: vi.fn(pendente) }))
+vi.mock('@/app/actions/sprintBoard', () => ({ getCardMovementsAction: vi.fn(pendente), getCardPlanilhaAction: vi.fn().mockResolvedValue({ linha: null }) }))
 vi.mock('@/app/actions/cardResponsible', () => ({
   addResponsibleAction: vi.fn(), removeResponsibleAction: vi.fn(), getResponsiblesAction: vi.fn(pendente),
 }))

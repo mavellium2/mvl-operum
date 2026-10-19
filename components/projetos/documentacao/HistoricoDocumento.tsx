@@ -9,6 +9,7 @@ type Version = {
   commitTitle: string
   status: string
   createdAt: string
+  elaboradoPor?: string
   author?: { name: string } | null
   payload: unknown
   resourceId: string
@@ -256,7 +257,7 @@ export default function HistoricoDocumento({
               <strong>{v.commitTitle}</strong>
               {v.versao && <p className="text-sm">Versão {v.versao}</p>}
               <p className="text-sm">
-                {labels[v.status]} · {v.author?.name ?? 'Autor não disponível'}{' '}
+                {labels[v.status]} · {v.elaboradoPor || v.author?.name || 'Autor não disponível'}{' '}
                 · {new Date(v.createdAt).toLocaleString('pt-BR')}
               </p>
               <details className="my-2 text-sm">

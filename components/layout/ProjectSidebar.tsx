@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useId } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { PanelLeftOpen } from 'lucide-react'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import Tooltip from '@/components/ui/Tooltip'
+import DocumentSidebar from '@/components/projetos/documentacao/DocumentSidebar'
 import SidebarLayout from '@/components/layout/SidebarLayout'
 
 interface Props {
@@ -55,6 +56,8 @@ export default function ProjectSidebar({ projetoId, canManageMembers }: Props) {
   const panelId = useId()
   const permissions = useProjectPermissions()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [animated, setAnimated] = useState(false)
 
@@ -81,6 +84,7 @@ export default function ProjectSidebar({ projetoId, canManageMembers }: Props) {
     pathname === href || pathname.startsWith(href + '/')
 
   const navItems = [
+    ...(permissions.has('projeto:editar') ? [{ href: `/projetos/${projetoId}/configuracoes`, label: 'Editar projeto', Icon: DocumentosIcon }] : []),
     { href: `/projetos/${projetoId}/dashboard`, label: 'Dashboard', Icon: DashboardIcon },
     { href: `/projetos/${projetoId}/sprints`, label: 'Sprints', Icon: SprintsIcon },
     { href: `/projetos/${projetoId}/wbs`, label: 'EAP / WBS', Icon: WbsIcon },
@@ -141,6 +145,8 @@ export default function ProjectSidebar({ projetoId, canManageMembers }: Props) {
             <span className="truncate">{label}</span>
           </Link>
         ))}
+        {permissions.has('documentos:ver') && isActive(`/projetos/${projetoId}/documentacao`) && <DocumentSidebar embedded activeDoc={searchParams.get('doc') ?? 'stakeholder'} onSelect={doc => router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)} />}
+        <Link href="/projetos" className="mt-4 block border-t border-gray-200 px-3 py-3 text-sm text-gray-600 hover:text-gray-900">Todos os projetos</Link>
       </SidebarLayout>
 
       {collapsed && (

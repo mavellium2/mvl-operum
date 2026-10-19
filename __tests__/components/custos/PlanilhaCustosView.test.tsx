@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act, within } from '@testing-library/react'
 import { updateNodePropertiesAction } from '@/app/actions/wbs'
-import PlanilhaCustosView from '@/components/custos/PlanilhaCustosView'
+import PlanilhaCustosView, { parseMoeda } from '@/components/custos/PlanilhaCustosView'
 import { ToastProvider } from '@/components/ui/Toast'
 import type { PlanilhaDeCustos, Elaborador } from '@/lib/planilhaCustos'
 
 vi.mock('@/app/actions/wbs', () => ({
   updateNodePropertiesAction: vi.fn().mockResolvedValue({ ok: true }),
+  insertChildAction: vi.fn(),
+  insertSiblingAction: vi.fn(),
+  renameNodeAction: vi.fn(),
+  deleteNodeAction: vi.fn(),
 }))
 vi.mock('@/app/actions/projetos', () => ({
   addMemberAction: vi.fn(),
@@ -18,7 +22,8 @@ beforeEach(() => {
 })
 
 const elaboradores: Elaborador[] = [
-  { userId: 'u1', name: 'Maria', remuneracao: 4000, horasDiarias: 8 },
+  // 14400 / 30 / 8 / 60 = R$ 1,00 por minuto
+  { userId: 'u1', name: 'Maria', remuneracao: 14400, horasDiarias: 8 },
 ]
 
 const planilha: PlanilhaDeCustos = {
@@ -155,7 +160,7 @@ describe('PlanilhaCustosView — edição Min/Horas/Dias', () => {
 
   it('sub-total acompanha a edição ainda não salva (rascunho) em Min/Total', () => {
     renderizar()
-    const sub = screen.getByText('M1 Sub-total Fase 1').closest('tr')!
+    const sub = screen.getByText('Sub-total').closest('tr')!
 
     // estado inicial (vpm=1, jornada 8): min 90 → 1:30h, 0,19d, R$ 90,00
     expect(sub).toHaveTextContent('90')
@@ -180,7 +185,7 @@ describe('PlanilhaCustosView — edição Min/Horas/Dias', () => {
           atividades: [
             {
               ...planilha.macrofases[0].atividades[0],
-              elaboradoPor: '', elaboradoPorUserId: null, vpm: null, jornadaDiaria: null,
+              elaboradoPor: '', elaboradoPorUserId: null, elaboradoPorUserIds: [], vpm: null, jornadaDiaria: null,
               rOrcado: null, totalOrcado: null, rReal: null, totalReal: null,
             },
           ],
@@ -196,11 +201,71 @@ describe('PlanilhaCustosView — edição Min/Horas/Dias', () => {
       </ToastProvider>
     )
 
-    const sub = screen.getByText('M1 Sub-total Fase 1').closest('tr')!
+    const sub = screen.getByText('Sub-total').closest('tr')!
     // dias e R$/Total sem valor → "—" (nenhum), mas Min/Horas continuam somando
     expect(sub).toHaveTextContent('90')
     expect(sub).toHaveTextContent('1:30')
     expect(sub).toHaveTextContent('—')
+  })
+})
+
+describe('PlanilhaCustosView — ajustes de 19/10', () => {
+  it('R$ mostra o valor do minuto do elaborador, não Min × valor', () => {
+    renderizar()
+    const linha = screen.getByText('A1 Atividade 1').closest('tr')!
+    expect(linha).toHaveTextContent('R$ 1,00')
+    expect(linha.querySelector('[title^="Valor do minuto"]')).not.toBeNull()
+  })
+
+  it('Materiais formatado em R$ e Total = (Min × R$) + Materiais, ao vivo', () => {
+    renderizar()
+    const [materiais] = screen.getAllByLabelText('Materiais orçados')
+    const valor = () => (materiais as HTMLInputElement).value.replace(/\s/g, ' ')
+    expect(valor()).toBe('R$ 0,00')
+    fireEvent.focus(materiais)
+    fireEvent.change(materiais, { target: { value: '300,00' } })
+    fireEvent.blur(materiais)
+    expect(valor()).toBe('R$ 300,00')
+    const linha = screen.getByText('A1 Atividade 1').closest('tr')!
+    expect(linha).toHaveTextContent('R$ 390,00') // 90 × 1 + 300
+  })
+
+  it('Sub-total só com o rótulo, à direita, somando Materiais orçado e realizado', () => {
+    renderizar()
+    const rotulo = screen.getByText('Sub-total')
+    expect(rotulo).toHaveClass('text-right')
+    const [materiais] = screen.getAllByLabelText('Materiais orçados')
+    fireEvent.change(materiais, { target: { value: '50' } })
+    const sub = rotulo.closest('tr')!
+    expect(sub).toHaveTextContent('R$ 50,00')
+    expect(sub).toHaveTextContent('R$ 140,00')
+  })
+
+  it('linha de Total do projeto soma os sub-totais', () => {
+    renderizar()
+    const total = screen.getByText('Total do projeto').closest('tr')!
+    expect(total).toHaveTextContent('90')
+    expect(total).toHaveTextContent('R$ 90,00')
+  })
+
+  it('ações de inserir/excluir linha só com permissão de mudar a EAP', () => {
+    const { unmount } = renderizar()
+    expect(screen.queryByLabelText(/Inserir linha abaixo/)).toBeNull()
+    unmount()
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
+    fireEvent.click(screen.getByLabelText('Inserir linha abaixo de A1 Atividade 1'))
+    expect(screen.getByLabelText('Nome da nova atividade')).toBeInTheDocument()
+    expect(screen.getByLabelText('Excluir linha A1 Atividade 1')).toBeInTheDocument()
+  })
+})
+
+describe('parseMoeda', () => {
+  it('aceita R$, milhar com ponto e vírgula decimal', () => {
+    expect(parseMoeda('R$ 1.234,56')).toBe(1234.56)
+    expect(parseMoeda('300')).toBe(300)
+    expect(parseMoeda('12.5')).toBe(12.5)
+    expect(parseMoeda('')).toBe(0)
+    expect(parseMoeda('abc')).toBeNaN()
   })
 })
 
