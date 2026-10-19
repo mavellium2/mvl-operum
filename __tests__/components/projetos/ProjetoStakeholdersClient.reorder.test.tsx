@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { ToastProvider } from '@/components/ui/Toast'
 
 vi.mock('@/app/actions/stakeholders', () => ({
@@ -97,6 +97,7 @@ describe('ProjetoStakeholdersClient — reordenação por drag and drop', () => 
   it('chama reorderStakeholdersAction com IDs na nova ordem ao fazer drop', async () => {
     renderComponent()
 
+    fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
     const items = screen.getAllByRole('listitem')
     // item[0] = Empresa Beta (sk1), item[1] = Empresa Alpha (sk2)
     // drag sk1 → drop na posição de sk2 → nova ordem: [sk2, sk1]
@@ -114,6 +115,7 @@ describe('ProjetoStakeholdersClient — reordenação por drag and drop', () => 
 
     renderComponent()
 
+    fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
     const items = screen.getAllByRole('listitem')
     fireEvent.dragStart(items[0])
     fireEvent.dragOver(items[1])
@@ -129,6 +131,7 @@ describe('ProjetoStakeholdersClient — reordenação por drag and drop', () => 
 
     renderComponent()
 
+    fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
     const items = screen.getAllByRole('listitem')
     fireEvent.dragStart(items[0])
     fireEvent.dragOver(items[1])
@@ -139,5 +142,45 @@ describe('ProjetoStakeholdersClient — reordenação por drag and drop', () => 
       // Após reversão, Beta deve voltar a ser o primeiro
       expect(names[0]).toContain('Empresa Beta')
     })
+  })
+})
+
+
+describe('Stakeholders — filtros e ordenação acessível', () => {
+  it('não permite arrastar fora do modo de ordenação e move por botão quando ativado', async () => {
+    renderComponent()
+    const [first, second] = screen.getAllByRole('listitem')
+    expect(first).toHaveAttribute('draggable', 'false')
+    fireEvent.dragStart(first)
+    fireEvent.drop(second)
+    expect(reorderStakeholdersAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mover Empresa Beta para baixo' }))
+    await waitFor(() => expect(reorderStakeholdersAction).toHaveBeenCalledWith(PROJ_ID, ['sk2', 'sk1']))
+    expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('Empresa Alpha')
+  })
+
+  it('combina busca sem acento, vínculo e empresa e recupera a lista ao limpar', () => {
+    renderComponent([makeSk('sk1', 'Márcio'), { ...makeSk('sk2', 'Ana'), company: 'Outra empresa' }])
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar pessoa' }), { target: { value: 'marcio' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Vínculo' }), { target: { value: 'externo' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Área ou empresa' }), { target: { value: 'Empresa Teste' } })
+    expect(screen.getByRole('status')).toHaveTextContent('1 de 2 pessoas')
+    expect(screen.getByRole('button', { name: 'Reordenar' })).toBeDisabled()
+    expect(within(screen.getByRole('list', { name: 'Pessoas do projeto' })).queryByText('Ana')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }))
+    expect(screen.getByRole('status')).toHaveTextContent('2 de 2 pessoas')
+  })
+
+  it('reverte uma falha de rede lançada e permite tentar novamente', async () => {
+    vi.mocked(reorderStakeholdersAction).mockRejectedValueOnce(new Error('network'))
+    renderComponent()
+    fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mover Empresa Beta para baixo' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('A ordenação foi revertida'))
+    expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('Empresa Beta')
+    fireEvent.click(screen.getByRole('button', { name: 'Mover Empresa Beta para baixo' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('Empresa Alpha')
   })
 })

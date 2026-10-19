@@ -8,6 +8,18 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 funcionalidade depois disso é uma versão MINOR.
 
 
+## [1.33.0] — 2026-10-19
+
+### Adicionado
+- Filtros por vínculo e área/empresa na lista de stakeholders, com busca sem distinção de acentos, contagem de resultados e limpeza dos filtros.
+- Modo explícito de ordenação, com setas acessíveis por teclado e toque, restrito ao mesmo grupo e sem filtros ativos.
+- Estados próprios de carregamento e erro recuperável para a página de stakeholders.
+
+### Melhorado
+- Lista de pessoas com nomes e contatos legíveis, informações alinhadas em telas amplas e blocos responsivos quando a lista fica estreita. Mantida a paleta azul e neutra do Operum.
+- Botão Adicionar pessoa com texto, edição sempre visível e remoção da rolagem interna da lista.
+- Falha de reordenação restaura a ordem anterior à tentativa e permite repetir, inclusive em erro de rede.
+
 ## [1.32.0] — 2026-10-19
 
 ### Adicionado
