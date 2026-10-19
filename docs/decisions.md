@@ -659,3 +659,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** o modal consulta a linha ao abrir, com permissão financeira; concluir exige responsável ativo. Dados anteriores são reconciliados na abertura das telas autorizadas e na edição da planilha. A migração dos dados do projeto Pintar uma Casa deve ser validada no ambiente em que esses dados residem; testes locais não comprovam atualização em produção.
 - **Referências:** `services/planilhaCardSync.ts`, `services/documentRevisionService.ts`, `app/actions/projetos.ts`, `app/actions/sprintBoard.ts`, `lib/wbsLayout.ts`, testes de sincronização, layout e edição do projeto.
 - **Revisar quando:** o produto passar a distinguir uma data de conclusão própria do card ou permitir reabrir automaticamente uma conclusão originada na planilha.
+
+## ADR-049 — Exclusão de sprint refletida na EAP e numeração
+
+- **Data:** 2026-10-19.
+- **Status:** implementada nesta correção; publicação depende da integração da branch.
+- **Contexto:** excluir “1.2 Fase 2” no projeto Operum manteve a fase vazia na EAP/planilha e a próxima sprint como 1.3. O serviço já devolvia os cards ao backlog; o reconciliador não tratava a fase da sprint excluída.
+- **Escolha:** reconciliar após a exclusão no painel e nas leituras autorizadas, removendo somente fases de sprints comprovadamente excluídas no mesmo projeto. Recalcular códigos, descendentes e nomes das sprints na mesma transação de reconciliação. Compartilhar o lock por projeto com a exclusão serializável do sprint-service.
+- **Justificativa:** manter EAP e planilha com a mesma estrutura, preservar cards/tempos do backlog e recuperar divergências anteriores sem recriar sprint excluída.
+- **Alternativas consideradas:** ocultar a fase somente na UI deixaria dados e exportações divergentes; introduzir modelos da EAP no sprint-service ampliaria desnecessariamente sua responsabilidade; manter uma transação aberta através do HTTP criaria acoplamento e bloqueios.
+- **Consequências:** exclusão e reconciliação continuam em transações separadas; falha parcial é informada. Atividades movidas para outra sprint preservam suas propriedades; referência desconhecida não autoriza exclusão. Não há migration.
+- **Referências:** `app/actions/sprints.ts`, `services/wbsService.ts`, `sprint-service/src/sprint/sprint.service.ts` e testes de exclusão/sincronização.
+- **Revisar quando:** EAP ganhar serviço próprio ou for necessário garantir a reconciliação por fila independente de novas leituras.

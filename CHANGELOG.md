@@ -8,6 +8,12 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 funcionalidade depois disso é uma versão MINOR.
 
 
+## [1.32.1] — 2026-10-19
+
+### Corrigido
+- Excluir sprint remove sua fase da EAP e da Planilha de Custos, recompõe os códigos dos irmãos e descendentes e renomeia as sprints restantes (ex.: 1.3 → 1.2). Cards devolvidos ao backlog e seus tempos são preservados; atividades já movidas para uma sprint ativa mantêm as propriedades da planilha.
+- Exclusão e sincronização usam o mesmo lock por projeto. A action atualiza as páginas do projeto real da sprint e informa falha parcial; a sincronização na leitura também reconcilia exclusões anteriores confirmadas.
+
 ## [1.32.0] — 2026-10-19
 
 ### Adicionado
