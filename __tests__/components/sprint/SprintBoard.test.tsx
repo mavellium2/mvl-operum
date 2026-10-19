@@ -34,6 +34,7 @@ vi.mock('@/app/actions/sprintBoard', () => ({
   moveCardToBacklogAction: vi.fn(),
   createBacklogCardAction: vi.fn(),
   getCardMovementsAction: vi.fn().mockResolvedValue({ movements: [] }),
+  getCardPlanilhaAction: vi.fn().mockResolvedValue({ linha: null }),
 }))
 
 vi.mock('@/lib/clientFetch', () => ({ fetchWithSession: vi.fn() }))

@@ -147,7 +147,9 @@ describe.skipIf(!testUrl)('revisões documentais — PostgreSQL real', () => {
     const pending = await submeterDocumento(member, projectId, 'STAKEHOLDER', payload, meta)
     expect(await documentoVigente(member, projectId, 'STAKEHOLDER')).toBeNull()
     await revisarDocumento(manager, projectId, pending.id, 'approve')
-    expect((await documentoVigente(member, projectId, 'STAKEHOLDER'))?.payload).toMatchObject(payload)
+    expect(pending.payload).toMatchObject({ ...payload, header: { ...payload.header, aprovadoPor: 'Gerente' } })
+    expect(pending.aprovadoPor).toBe('Gerente')
+    expect((await documentoVigente(member, projectId, 'STAKEHOLDER'))?.payload).toMatchObject({ ...payload, header: { ...payload.header, aprovadoPor: 'Gerente' } })
   })
 
   it('EAP pendente preserva a árvore vigente e aprovação publica códigos normalizados', async () => {
