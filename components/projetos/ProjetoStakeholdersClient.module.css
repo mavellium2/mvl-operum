@@ -1,0 +1,43 @@
+.listPanel {
+  container-type: inline-size;
+}
+.personRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 20px;
+}
+.identity, .rowActions {
+  grid-column: 1 / -1;
+}
+.fieldLabel {
+  display: block;
+  margin-bottom: 4px;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 500;
+}
+.actionButton {
+  display: inline-flex;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.actionButton:hover { background: #eff6ff; }
+.actionButton:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.actionButton:disabled { opacity: .4; cursor: not-allowed; }
+@container (min-width: 880px) {
+  .personRow {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, .8fr) minmax(0, .7fr) 232px;
+    align-items: center;
+    gap: 16px;
+    padding-block: 16px;
+  }
+  .identity, .rowActions { grid-column: auto; }
+  .rowActions { justify-content: flex-end; }
+}
