@@ -3,7 +3,7 @@
 import { OPCOES_FASE, OPCOES_ORGANIZAR } from './OrganizarIcons'
 import { formatoDaEap, formatoDaFase } from '@/lib/wbsLayout'
 
-import { useEffect, useRef, useState, type Dispatch } from 'react'
+import { useState, type Dispatch } from 'react'
 import { X } from 'lucide-react'
 import type { WbsNodeClient, WbsNodeStyle, WbsLayoutOrientation } from '@/types/wbs'
 import type { WbsAction } from '@/lib/wbsReducer'
@@ -161,28 +161,36 @@ function commonNum(nodes: WbsNodeClient[], selector: (n: WbsNodeClient) => numbe
 
 // ── Painel principal ───────────────────────────────────────────────────────────
 
+const PAINEL = 'absolute right-4 top-4 z-30 w-64 max-h-[calc(100%-2rem)] rounded-xl border border-gray-200 bg-white shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150'
+
+function BotaoFechar({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      onClick={onClose}
+      className="shrink-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded p-1 transition-colors cursor-pointer"
+      aria-label="Fechar painel de estilo"
+    >
+      <X className="w-3.5 h-3.5" />
+    </button>
+  )
+}
+
 export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, dispatch, onClose }: Props) {
-  const panelRef = useRef<HTMLDivElement>(null)
-
-  // Fecha ao clicar fora ou pressionar Escape — é um popover, não faz mais parte do fluxo do canvas.
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose()
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleKey)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleKey)
-    }
-  }, [onClose])
-
+  // Fica aberto (fixo) até o usuário clicar no X ou no botão da barra: clicar no canvas para
+  // trocar a seleção, Esc ou ficar sem seleção não fecham (pedido de 19/10).
   const selectedNodes = selectedNodeIds.map(id => nodes[id]).filter((n): n is WbsNodeClient => Boolean(n))
   const count = selectedNodes.length
-  if (count === 0) return null
+  if (count === 0) {
+    return (
+      <div className={PAINEL}>
+        <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-100 bg-gray-50">
+          <p className="text-xs font-semibold text-gray-800">Estilo e propriedades</p>
+          <BotaoFechar onClose={onClose} />
+        </div>
+        <p className="px-3 py-4 text-xs text-gray-500">Selecione um ou mais elementos para editar o estilo.</p>
+      </div>
+    )
+  }
 
   // ── Valores comuns de estilo ──
   const bgC = commonStr(selectedNodes, n => n.style.backgroundColor)
@@ -211,10 +219,7 @@ export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, di
   }
 
   return (
-    <div
-      ref={panelRef}
-      className="absolute right-4 top-4 z-30 w-64 max-h-[calc(100%-2rem)] rounded-xl border border-gray-200 bg-white shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-    >
+    <div className={PAINEL}>
       {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-2 px-3 py-2.5 border-b border-gray-100 bg-gray-50 shrink-0">
         <div className="min-w-0">
@@ -229,13 +234,7 @@ export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, di
             <p className="text-[10px] text-gray-400 mt-0.5">{selectedNodes[0].code}</p>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="shrink-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded p-1 transition-colors cursor-pointer"
-          aria-label="Fechar painel de estilo"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
+        <BotaoFechar onClose={onClose} />
       </div>
 
       <div className="px-3 pt-2 pb-4 flex-1 overflow-y-auto">

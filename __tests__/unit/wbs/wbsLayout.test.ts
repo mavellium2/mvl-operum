@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   computeLayout, resolveDropPosition, formatoDaEap, formatoDaFase,
-  NODE_W, NODE_H, GAP_X, GAP_Y, GAP_STACK, indentDe, PILL_OVERHANG, PADRAO_INSET, PADRAO_GAP,
+  NODE_W, NODE_H, GAP_X, GAP_Y, GAP_STACK, indentDe, PILL_OVERHANG,
 } from '@/lib/wbsLayout'
 import type { WbsNodeClient, WbsLayoutOrientation, WbsNodeGeometry } from '@/types/wbs'
 
@@ -59,35 +59,48 @@ describe('computeLayout', () => {
     expect(geometry.r).toMatchObject({ x: 0, y: 0, width: NODE_W, height: NODE_H })
   })
 
-  // ── Padrão (modelo do Churrasco) ──────────────────────────────────────────
+  // ── Padrão (modelo "Pintar uma sala", 19/10) ──────────────────────────────
 
   describe('Padrão', () => {
-    // r → Comidas (Carnes → 2 folhas, Pão de alho) e Utensílios (2 folhas)
-    const make = () => arvore({ r: ['com', 'ute'], com: ['car', 'pao'], car: ['lin', 'cor'], ute: ['peg', 'tal'] })
+    // r → 1.1 (4 folhas), 1.2 (2 folhas)
+    const make = () => arvore({ r: ['f1', 'f2'], f1: ['a', 'b', 'c', 'd'], f2: ['e', 'f'] })
 
     it('fases lado a lado embaixo da raiz', () => {
       const { geometry } = computeLayout(make(), 'r')
-      expect(geometry.com.y).toBe(NODE_H + GAP_Y)
-      expect(geometry.ute.y).toBe(geometry.com.y)
-      expect(geometry.ute.x).toBeGreaterThan(geometry.com.x + NODE_W)
+      expect(geometry.f1.y).toBe(NODE_H + GAP_Y)
+      expect(geometry.f2.y).toBe(geometry.f1.y)
+      expect(geometry.f2.x).toBeGreaterThan(geometry.f1.x + NODE_W)
     })
 
-    it('item com filhos que têm filhos: filhos lado a lado (Comidas → Carnes, Pão de alho)', () => {
-      const { geometry } = computeLayout(make(), 'r')
-      expect(geometry.car.y).toBe(geometry.pao.y)
-      expect(geometry.pao.x).toBeGreaterThanOrEqual(geometry.car.x + NODE_W)
+    it('fases ainda sem itens também ficam lado a lado (não empilham)', () => {
+      const { geometry } = computeLayout(arvore({ r: ['f1', 'f2', 'f3', 'f4'] }), 'r')
+      expect(new Set(['f1', 'f2', 'f3', 'f4'].map(id => geometry[id].y)).size).toBe(1)
+      expect(geometry.f2.x).toBe(geometry.f1.x + NODE_W + GAP_X)
     })
 
-    it('item só com folhas: folhas empilhadas, com a linha perto da borda esquerda dele', () => {
+    it('recolher uma fase mantém as fases lado a lado', () => {
+      const nodes = arvore({ r: ['f1', 'f2'], f1: ['a', 'b'] })
+      nodes.f1 = { ...nodes.f1, collapsed: true }
+      const { geometry } = computeLayout(nodes, 'r')
+      expect(geometry.f2.y).toBe(geometry.f1.y)
+      expect(geometry.a).toBeUndefined()
+    })
+
+    it('folhas lado a lado embaixo da fase, com a linha saindo do centro dela', () => {
       const { geometry, connectors } = computeLayout(make(), 'r')
-      const spine = geometry.car.x + PADRAO_INSET
-      expect(geometry.lin.x).toBe(spine + PADRAO_GAP)
-      expect(geometry.cor.x).toBe(geometry.lin.x)
-      expect(geometry.lin.y).toBe(geometry.car.y + NODE_H + GAP_Y / 2)
-      expect(geometry.cor.y).toBe(geometry.lin.y + NODE_H + GAP_STACK)
-      expect(connectors.find(c => c.toId === 'cor')!.path).toBe(`M ${spine} ${geometry.car.y + NODE_H} V ${centroY(geometry.cor)} H ${geometry.cor.x}`)
-      // Fase só com folhas (Utensílios) segue a mesma regra.
-      expect(geometry.peg.x).toBe(geometry.ute.x + PADRAO_INSET + PADRAO_GAP)
+      expect(new Set(['a', 'b', 'c', 'd'].map(id => geometry[id].y)).size).toBe(1)
+      expect(geometry.a.y).toBe(geometry.f1.y + NODE_H + GAP_Y)
+      expect(geometry.b.x).toBe(geometry.a.x + NODE_W + GAP_X)
+      const pCx = geometry.f1.x + NODE_W / 2
+      const midY = geometry.f1.y + NODE_H + GAP_Y / 2
+      expect(connectors.find(c => c.toId === 'b')!.path)
+        .toBe(`M ${pCx} ${geometry.f1.y + NODE_H} V ${midY} H ${geometry.b.x + NODE_W / 2} V ${geometry.b.y}`)
+    })
+
+    it('fase fica centrada sobre as folhas', () => {
+      const { geometry } = computeLayout(make(), 'r')
+      const centro = (geometry.a.x + geometry.d.x + NODE_W) / 2
+      expect(geometry.f1.x + NODE_W / 2).toBe(centro)
     })
 
     it('nada se sobrepõe', () => semSobreposicao(computeLayout(make(), 'r').geometry))

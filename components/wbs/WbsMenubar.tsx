@@ -194,8 +194,8 @@ function ManualContent() {
               terceiro filho do segundo filho do elemento raiz.
             </p>
             <p>
-              O menu <em>Organizar</em> define o formato da EAP inteira. Em <em>Padrão</em>, os itens
-              ficam lado a lado, e os que têm só folhas empilham as folhas na vertical. Em
+              O menu <em>Organizar</em> define o formato da EAP inteira. Em <em>Padrão</em>, os filhos de
+              cada item ficam lado a lado embaixo dele, em todos os níveis. Em
               <em> Esquerda</em> ou <em>Direita</em>, as fases ficam lado a lado e o restante fica
               empilhado à esquerda ou à direita de cada fase, o que economiza espaço em árvores
               profundas. Em <em>Horizontal</em>, a EAP é lida da esquerda para a direita, com a raiz
@@ -412,7 +412,7 @@ export default function WbsMenubar({
     {
       title: 'Outros',
       items: [
-        { label: 'Estilo e propriedades', icon: <Palette className="w-4 h-4" />, onClick: onToggleStylePanel, disabled: !firstSelected, active: showStylePanel },
+        { label: 'Estilo e propriedades', icon: <Palette className="w-4 h-4" />, onClick: onToggleStylePanel, disabled: !firstSelected && !showStylePanel, active: showStylePanel },
         { label: 'Ajustar à tela', icon: <Maximize2 className="w-4 h-4" />, onClick: onFitScreen },
         { label: 'Diminuir zoom', icon: <ZoomOut className="w-4 h-4" />, onClick: () => dispatch({ type: 'SET_VIEWPORT', payload: { zoom: Math.max(0.1, zoom / 1.2), panX, panY } }) },
         { label: `Zoom: ${zoomPercent}% (clique = 100%)`, icon: <Search className="w-4 h-4" />, onClick: () => dispatch({ type: 'SET_VIEWPORT', payload: { zoom: 1, panX, panY } }) },

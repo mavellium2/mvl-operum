@@ -35,7 +35,7 @@ export function WbsProvider({
     clipboard: { nodes: [], copiedStyle: null, actionType: null },
     history: { past: [], future: [] },
     viewport: { zoom: 1, panX: 40, panY: 40 },
-    sync: { status: 'IDLE' as const, lastSavedAt: null, serverVersion: initialTree.serverVersion },
+    sync: { status: 'IDLE' as const, lastSavedAt: null, serverVersion: initialTree.serverVersion, base: initialTree.nodes },
   }))
 
   // A página roda a sincronização EAP ↔ sprint a cada renderização no servidor (ex.: ao

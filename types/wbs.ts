@@ -134,5 +134,7 @@ export interface WbsTreeState {
     status: 'IDLE' | 'DIRTY' | 'SAVING' | 'ERROR' | 'CONFLICT';
     lastSavedAt: number | null;
     serverVersion: number;
+    /** Última árvore que o cliente e o servidor tinham em comum (base da mesclagem em conflito). */
+    base?: Record<string, WbsNodeClient>;
   };
 }

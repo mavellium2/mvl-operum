@@ -61,19 +61,15 @@ interface SubtreeSize {
 export function indentDe(parentWidth: number): number {
   return Math.round((parentWidth * 5) / 12)
 }
-/** Espaço vertical entre filhos empilhados (Direita, Esquerda, Padrão e Horizontal). */
+/** Espaço vertical entre filhos empilhados (Direita, Esquerda e Horizontal). */
 export const GAP_STACK = 24
-/** Padrão, item com filhos só folhas: a linha desce perto da borda esquerda do pai (modelo do Churrasco). */
-export const PADRAO_INSET = 16
-/** Padrão: distância da linha até a borda esquerda dos filhos empilhados. */
-export const PADRAO_GAP = 16
 
 /** Formato da EAP inteira, guardado no layout da raiz (menu Organizar). */
 export type FormatoEap = 'LADO_A_LADO' | 'ESQUERDA' | 'DIREITA' | 'HORIZONTAL'
 /** Formato próprio de uma fase (1º nível), guardado no layout dela. */
 export type FormatoFase = 'ESQUERDA' | 'DIREITA'
 /** Como os filhos de um nó são dispostos. */
-type Arranjo = 'LADO' | 'PILHA_PADRAO' | 'DIREITA' | 'ESQUERDA' | 'HORIZONTAL'
+type Arranjo = 'LADO' | 'DIREITA' | 'ESQUERDA' | 'HORIZONTAL'
 
 /**
  * Formato da EAP a partir do layout da raiz. "Horizontal (topo/base)" foram removidos em
@@ -121,8 +117,8 @@ interface Plano {
 }
 
 /**
- * Decide o arranjo dos filhos de cada nó (ADR-047):
- * - Padrão: filhos lado a lado; se todos os filhos visíveis são folhas, empilhados com a linha à esquerda.
+ * Decide o arranjo dos filhos de cada nó (ADR-047, ADR-048):
+ * - Padrão: filhos lado a lado em todos os níveis, com a linha saindo do centro do pai (modelo "Pintar uma sala" de 19/10).
  * - Esquerda/Direita: fases lado a lado embaixo da raiz; abaixo delas, filhos empilhados à esquerda/direita.
  * - Horizontal: a raiz em pé à esquerda e cada nível numa coluna à direita do anterior.
  * Uma fase com formato próprio (Esquerda/Direita) aplica esse formato a ela e a tudo abaixo dela.
@@ -151,9 +147,8 @@ function planejar(
     const ch = visibleChildren(node, nodes)
 
     if (formato === 'HORIZONTAL') arranjo[id] = 'HORIZONTAL'
-    else if (formato === 'LADO_A_LADO') {
-      arranjo[id] = ch.length > 0 && ch.every(c => visibleChildren(c, nodes).length === 0) ? 'PILHA_PADRAO' : 'LADO'
-    } else arranjo[id] = depth === 0 ? 'LADO' : formato
+    else if (formato === 'LADO_A_LADO' || depth === 0) arranjo[id] = 'LADO'
+    else arranjo[id] = formato
 
     const w = nodeWidths[id] ?? NODE_W
     const emPe = raizEmPe && depth === 0 && eap === 'HORIZONTAL' && ch.length > 0
@@ -190,8 +185,6 @@ function buildSubtreeSizes(nodes: Record<string, WbsNodeClient>, plano: Plano): 
       const totalW = ch.reduce((sum, c) => sum + c.width, 0) + GAP_X * (ch.length - 1)
       const width = Math.max(nw, totalW)
       sizes[id] = { width, rootX: (width - nw) / 2, rootY: 0, height: H + GAP_Y + Math.max(...ch.map(c => c.height)) }
-    } else if (a === 'PILHA_PADRAO') {
-      sizes[id] = { width: Math.max(nw, PADRAO_INSET + PADRAO_GAP + maxChildW), rootX: 0, rootY: 0, height: H + GAP_Y / 2 + stackH }
     } else if (a === 'DIREITA' || a === 'ESQUERDA') {
       // Linha vertical no centro do pai; filhos a indentDe(nw) dela.
       const width = Math.max(nw, nw / 2 + indentDe(nw) + maxChildW)
@@ -267,11 +260,11 @@ export function computeLayout(
         connectors.push({ fromId: id, toId: c.id, path: `M ${pCx} ${y + H} V ${midY} H ${cCx} V ${childTop + cs.rootY}` })
         subtreeLeft += cs.width + GAP_X
       }
-    } else if (a === 'PILHA_PADRAO' || a === 'DIREITA' || a === 'ESQUERDA') {
-      // Linha desce do pai; um ramal entra em cada filho (o último fecha a linha).
-      const direita = a !== 'ESQUERDA'
-      const spineX = a === 'PILHA_PADRAO' ? x + PADRAO_INSET : x + nw / 2
-      const recuo = a === 'PILHA_PADRAO' ? PADRAO_GAP : indentDe(nw)
+    } else if (a === 'DIREITA' || a === 'ESQUERDA') {
+      // Linha desce do centro do pai; um ramal entra em cada filho (o último fecha a linha).
+      const direita = a === 'DIREITA'
+      const spineX = x + nw / 2
+      const recuo = indentDe(nw)
       let childTop = y + H + GAP_Y / 2
 
       for (const c of ch) {

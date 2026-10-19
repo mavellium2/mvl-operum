@@ -12,6 +12,7 @@ import type { WbsNodeClient, WbsTreeState, WbsViewMode } from '@/types/wbs'
 import { useToast } from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { WbsProvider, useWbs, arvoresDoServidor } from './WbsContext'
+import { mesclarArvores } from '@/lib/wbsMerge'
 import WbsMenubar from './WbsMenubar'
 import WbsNodeCard from './WbsNode'
 import WbsContextMenu, { type WbsContextMenuState } from './WbsContextMenu'
@@ -128,12 +129,6 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
   const pendingMarqueeRef = useRef<{ startX: number; startY: number } | null>(null)
   const marqueeRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
 
-  // O painel de estilo só deve aparecer enquanto houver seleção — some junto com ela.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (state.selectedNodeIds.length === 0) setShowStylePanel(false)
-  }, [state.selectedNodeIds])
-
   const [nodeWidths, setNodeWidths] = useState<Record<string, number>>({})
   useIsomorphicLayoutEffect(() => { setNodeWidths(measureNodeWidths(state.nodes)) }, [state.nodes])
   const nodeHeight = viewMode === 'chart' ? NODE_H : 162
@@ -202,15 +197,18 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
       const res = await saveTreeAction({ projetoId, serverVersion: s.sync.serverVersion, rootId: s.rootId, nodes: s.nodes, ...extrasDoSalvamento(s, motivoExclusaoRef.current) })
       if (res.ok) {
         motivoExclusaoRef.current = ''
-        dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'IDLE', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
+        // Edições feitas durante o salvamento continuam pendentes (o efeito agenda outro save).
+        const pendente = stateRef.current.nodes !== s.nodes
+        dispatch({ type: 'SET_SYNC_STATUS', payload: { status: pendente ? 'DIRTY' : 'IDLE', serverVersion: res.serverVersion, lastSavedAt: Date.now(), base: s.nodes } })
       } else if (res.conflict) {
-        // A EAP mudou no servidor (outra pessoa ou a sincronização com as sprints):
-        // carrega a versão atual em vez de deixar o editor travado em conflito.
+        // A EAP mudou no servidor (a sincronização com as sprints grava cardId/sprintId nos
+        // itens novos, ou outra aba): mescla a edição local com a versão atual e salva de novo,
+        // em vez de descartar a última alteração.
         const atual = await getWbsTreeAction(projetoId)
         if (atual.ok) {
-          arvoresDoServidor.add(atual.nodes)
-          dispatch({ type: 'SET_TREE', payload: { nodes: atual.nodes, rootId: atual.rootId, serverVersion: atual.serverVersion } })
-          toast('A EAP foi atualizada no servidor enquanto você editava. Carregamos a versão atual; refaça a última alteração.', 'warning')
+          const local = stateRef.current
+          const nodes = mesclarArvores(local.sync.base ?? {}, local.nodes, atual.nodes)
+          dispatch({ type: 'REBASE', payload: { nodes, base: atual.nodes, serverVersion: atual.serverVersion } })
         } else {
           dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'CONFLICT' } })
           toast('Conflito: esta EAP foi editada por outra pessoa. Recarregue a página.', 'warning')
@@ -236,7 +234,7 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
       saveTreeAction({ projetoId, serverVersion: s.sync.serverVersion, rootId: s.rootId, nodes: s.nodes, ...extrasDoSalvamento(s, motivoExclusaoRef.current) })
         .then(res => {
           if (res.ok) {
-            dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'IDLE', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
+            dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'IDLE', serverVersion: res.serverVersion, lastSavedAt: Date.now(), base: s.nodes } })
           } else if (res.conflict) {
             dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'CONFLICT' } })
           } else {
@@ -263,7 +261,7 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
     dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'SAVING' } })
     const res = await saveTreeAction({ projetoId, serverVersion: s.sync.serverVersion, rootId: s.rootId, nodes: s.nodes, ...extrasDoSalvamento(s, motivoExclusaoRef.current) })
     if (res.ok) {
-      dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'IDLE', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
+      dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'IDLE', serverVersion: res.serverVersion, lastSavedAt: Date.now(), base: s.nodes } })
       toast('EAP salva com sucesso', 'success')
     } else {
       dispatch({ type: 'SET_SYNC_STATUS', payload: { status: res.conflict ? 'CONFLICT' : 'ERROR' } })
@@ -301,7 +299,6 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
 
       if (e.key === 'Escape') {
         if (s.editingNodeId) dispatch({ type: 'SET_EDITING', payload: { nodeId: null } })
-        else if (showStylePanel) setShowStylePanel(false)
         else dispatch({ type: 'SET_SELECTION', payload: { nodeIds: [] } })
         return
       }
@@ -802,8 +799,8 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
           )}
         </div>
 
-        {/* Painel de estilo — popover flutuante, só aparece quando aberto pela toolbar */}
-        {showStylePanel && state.selectedNodeIds.length > 0 && (
+        {/* Painel de estilo — fixo, aberto pela toolbar; só fecha no X ou na toolbar */}
+        {showStylePanel && (
           <WbsPropertiesPanel
             selectedNodeIds={state.selectedNodeIds}
             nodes={state.nodes}

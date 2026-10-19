@@ -436,10 +436,27 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Condições de revisão:** múltiplas réplicas exigem reserva Redis atômica; rate limit por IP real exige proxy explicitamente confiável; importações concorrentes podem exigir lock por projeto.
 - **Referências:** `mcp-server/src/uploadLink.ts`, `uploadRoute.ts`, `migration/importer.ts`, `mcp-server/README.md`, SDD 8.1/8.3.
 
+## ADR-048 — Padrão da EAP lado a lado em todos os níveis e mesclagem no conflito do autosave
+
+- **Data:** 2026-10-19
+- **Status:** implementada. Substitui a ADR-047 só na regra do Padrão (folhas empilhadas, modelo do Churrasco); o restante da ADR-047 continua.
+- **Contexto:** o documento "09 - Ajustes e melhorias sistema Operum 19-10-26" mostra o Padrão no modelo "Pintar uma sala": fases lado a lado embaixo da raiz e, embaixo de cada fase, os itens também lado a lado, com a linha saindo do centro do retângulo. Ele relata três defeitos que vinham da regra das folhas: (1) as fases nasciam empilhadas na vertical enquanto nenhuma tinha itens, porque a raiz só tinha folhas; (2) recolher uma fase ( − ) voltava a EAP para a vertical, pelo mesmo motivo; (3) a linha dos itens saía da borda esquerda do pai. O documento também relata o aviso "a EAP foi atualizada no servidor... refaça a última alteração" ao criar o primeiro item de uma fase. A sincronização EAP ↔ sprint, que roda quando a página é renderizada de novo, grava o `cardId` no item novo e avança a versão da árvore. O editor só adotava essa árvore sem alteração pendente; se o usuário já tinha criado o próximo item, o autosave era recusado e a edição, descartada.
+- **Escolha:**
+  - No Padrão (`LADO_A_LADO`), os filhos ficam sempre lado a lado (`lib/wbsLayout.ts`). O arranjo `PILHA_PADRAO` e as constantes `PADRAO_INSET`/`PADRAO_GAP` foram removidos.
+  - Quando o autosave é recusado por conflito, o editor busca a árvore atual e faz uma mesclagem em 3 vias (`lib/wbsMerge.ts`): a base é a última árvore que cliente e servidor tinham em comum, guardada em `sync.base`. O que o cliente não mudou desde a base recebe o valor do servidor. O que ele mudou prevalece. Nós novos dos dois lados entram, e nós excluídos de um lado saem. A ação `REBASE` troca os nós mantendo seleção e histórico, e o autosave grava em seguida com a versão nova.
+- **Justificativa:** o modelo de 19/10 é o pedido mais recente para o Padrão. Quem quiser itens empilhados tem Esquerda e Direita. A mesclagem resolve qualquer avanço de versão feito pela sincronização (ou por outra aba) sem perder trabalho e sem acoplar o salvamento à sincronização.
+- **Alternativas consideradas:**
+  - rodar a sincronização dentro do `saveTreeAction` e devolver a árvore: não cobre a sincronização disparada por outra tela ou aba, e ainda exigiria mesclar o que o usuário editou durante o salvamento;
+  - travar a sincronização enquanto o editor estiver aberto: os cards dos itens novos só apareceriam na sprint depois.
+  - manter as folhas empilhadas e só mover a linha para o centro: contraria a imagem do documento de 19/10.
+- **Consequências:** EAPs no Padrão com muitas folhas ficam mais largas. Edições simultâneas de duas pessoas no mesmo campo terminam com o valor de quem salvou por último, sem aviso.
+- **Condições de revisão:** pedido de voltar a empilhar folhas no Padrão ou de avisar conflitos de edição entre pessoas.
+- **Referências:** `lib/wbsLayout.ts`, `lib/wbsMerge.ts`, `lib/wbsReducer.ts` (`REBASE`), `components/wbs/WbsCanvas.tsx` (autosave), `components/wbs/WbsContext.tsx`, `types/wbs.ts`.
+
 ## ADR-047 — Organizar define o formato da EAP inteira, com formato próprio por fase
 
 - **Data:** 2026-10-16
-- **Status:** implementada. Substitui a ADR-043 na regra de layout por nó e nos layouts "Horizontal (topo)" e "Horizontal (base)". Os ícones e o select da ADR-043 continuam.
+- **Status:** implementada; a regra do Padrão (folhas empilhadas) foi substituída pela [ADR-048](#adr-048--padrão-da-eap-lado-a-lado-em-todos-os-níveis-e-mesclagem-no-conflito-do-autosave). Substitui a ADR-043 na regra de layout por nó e nos layouts "Horizontal (topo)" e "Horizontal (base)". Os ícones e o select da ADR-043 continuam.
 - **Contexto:** o documento "08 - Ajustes e melhorias sistema Operum 16-10-26" mostra como cada opção do Organizar deve desenhar a EAP. Os modelos são:
   - Padrão: Churrasco;
   - Esquerda: Projeto Café e Citrolente, com 4 níveis;

@@ -8,6 +8,14 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 funcionalidade depois disso é uma versão MINOR.
 
 
+## [1.31.2] — 2026-10-19
+
+### Corrigido
+- **EAP > Organizar > Padrão:** as fases ficam lado a lado embaixo da raiz desde a criação, sem precisar de um item no 3º nível. Os itens de cada fase também ficam lado a lado, com a linha saindo do centro do retângulo, como no modelo "Pintar uma sala" de 19/10. Antes, um item que só tinha folhas as empilhava na vertical.
+- **EAP:** recolher uma fase ( − ) não volta mais a EAP para a vertical.
+- **EAP:** criar o primeiro item de uma fase não mostra mais o aviso "a EAP foi atualizada no servidor... refaça a última alteração". Quando a versão avança no servidor (a sincronização com as sprints grava o card do item novo), o editor mescla a edição com a versão atual e salva de novo, sem perder nada.
+- **EAP > Estilo:** o painel fica aberto até clicar no X (ou no botão da barra). Clicar no canvas, trocar a seleção ou apertar Esc não fecham mais.
+
 ## [1.31.1] — 2026-10-16
 
 ### Corrigido

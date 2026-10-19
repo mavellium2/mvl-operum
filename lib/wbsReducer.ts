@@ -47,6 +47,8 @@ export type WbsAction =
   | { type: 'SET_SYNC_STATUS'; payload: Partial<WbsTreeState['sync']> }
   | { type: 'RESET_TREE'; payload?: { rootTitle?: string } }
   | { type: 'SET_TREE'; payload: { nodes: Record<string, WbsNodeClient>; rootId: string | null; serverVersion: number } }
+  /** Troca os nós pela mesclagem com o servidor, mantendo seleção e histórico; o autosave grava em seguida. */
+  | { type: 'REBASE'; payload: { nodes: Record<string, WbsNodeClient>; base: Record<string, WbsNodeClient>; serverVersion: number } }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -692,7 +694,19 @@ export function wbsReducer(state: WbsTreeState, action: WbsAction): WbsTreeState
         clipboard: { nodes: [], copiedStyle: null, actionType: null },
         history: { past: [], future: [] },
         viewport: state.viewport,
-        sync: { status: 'IDLE', lastSavedAt: Date.now(), serverVersion: action.payload.serverVersion },
+        sync: { status: 'IDLE', lastSavedAt: Date.now(), serverVersion: action.payload.serverVersion, base: action.payload.nodes },
+      }
+    }
+
+    case 'REBASE': {
+      const { nodes, base, serverVersion } = action.payload
+      const existe = (id: string) => !!nodes[id]
+      return {
+        ...state,
+        nodes,
+        selectedNodeIds: state.selectedNodeIds.filter(existe),
+        editingNodeId: state.editingNodeId && existe(state.editingNodeId) ? state.editingNodeId : null,
+        sync: { ...state.sync, status: 'DIRTY', serverVersion, base },
       }
     }
 
