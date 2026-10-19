@@ -42,4 +42,16 @@ describe('formato no painel de propriedades da EAP', () => {
     abrir(['a'])
     expect(screen.queryByText(/Formato da/)).toBeNull()
   })
+  it('fica aberto ao clicar fora e ao limpar a seleção; só o X fecha', async () => {
+    const close = vi.fn()
+    const props = { nodes, canEdit: true, dispatch: vi.fn(), onClose: close }
+    const { rerender } = render(<WbsPropertiesPanel {...props} selectedNodeIds={['f1']} />)
+    await userEvent.click(document.body)
+    expect(close).not.toHaveBeenCalled()
+    rerender(<WbsPropertiesPanel {...props} selectedNodeIds={[]} />)
+    expect(screen.getByText(/Selecione um ou mais elementos/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Fechar estilo' }))
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
 })

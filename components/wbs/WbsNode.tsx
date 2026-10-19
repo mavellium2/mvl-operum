@@ -1,5 +1,7 @@
 'use client'
 
+import { fmtDataBR } from '@/lib/planilhaCustos'
+
 import React, { type Dispatch, useEffect, useRef } from 'react'
 import type { WbsNodeClient, WbsNodeGeometry, WbsViewMode } from '@/types/wbs'
 import type { WbsFinancialSummary } from '@/lib/wbsRollup'
@@ -23,7 +25,7 @@ interface WbsNodeCardProps {
 }
 
 const WbsNodeCard = React.memo(function WbsNodeCard({
-  viewMode = 'chart', canEdit = true, canViewCosts = false, owner, duration, financial,
+  viewMode = 'chart', canEdit = true, canViewCosts = false, owner, financial,
   node, geom, isSelected, isEditing, isDragTarget, editingInitialText, onSelect, dispatch,
 }: WbsNodeCardProps) {
   const isParent = node.childrenIds.length > 0
@@ -171,10 +173,10 @@ const WbsNodeCard = React.memo(function WbsNodeCard({
       {viewMode !== 'chart' && <div style={{ position: 'absolute', top: 38, left: 8, right: 8, fontSize: 11, lineHeight: 1.7 }}>
         {viewMode === 'details' ? <>
           <div>Responsável: {owner ?? 'Não definido'}</div>
-          <div>Duração: {duration ?? 0} dias</div>
-          <div>Prevista: {node.properties.dataPrevista?.slice(0, 10) ?? '—'}</div>
-          <div>Realizada: {node.properties.dataRealizacao?.slice(0, 10) ?? '—'}</div>
-          {canViewCosts && <div>Custo orçado: {formatMoney(financial?.budgetCost)}</div>}
+          <div>Minutos orçados: {formatHours((financial?.budgetHours ?? 0) * 60)}</div><div>Minutos realizados: {formatHours((financial?.actualHours ?? 0) * 60)}</div>
+          <div>Prevista: {fmtDataBR(node.properties.dataPrevista) || '—'}</div>
+          <div>Realizada: {fmtDataBR(node.properties.dataRealizacao) || '—'}</div>
+          {canViewCosts && <><div>Custo orçado: {formatMoney(financial?.budgetCost)}</div><div>Custo real: {formatMoney(financial?.actualCost)}</div></>}
         </> : <>
           <div>Horas orçadas: {formatHours(financial?.budgetHours)}</div>
           <div>Horas reais: {formatHours(financial?.actualHours)}</div>

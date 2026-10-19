@@ -81,6 +81,8 @@ export default async function PlanilhaCustosPage({
       canEditOwnActual={permissoes.has('planilha:realizado-proprio')}
       canEditAllActual={permissoes.has('planilha:realizado-todos')}
       canManageMembers={permissoes.has('projeto:equipe')}
+      // Inserir/excluir linha muda a EAP; excluir exige as mesmas permissões do autosave dela.
+      canEditLinhas={['projeto:editar', 'planilha:orcado', 'planilha:realizado-todos'].every(p => permissoes.has(p as never))}
       planilha={planilha}
       elaboradores={elaboradores}
       usuariosDisponiveis={usuariosDisponiveis}

@@ -8,6 +8,24 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 funcionalidade depois disso é uma versão MINOR.
 
 
+## [1.32.0] — 2026-10-19
+
+### Adicionado
+- Dados da Planilha de Custos no card vinculado e na lista de sprints, respeitando a permissão de leitura financeira. Horas/custos do timer ficam identificados como registrados.
+- Edição do projeto dentro do mesmo menu, com documentos em submenu.
+- Identificação de quem elaborou cada versão no histórico e usuário logado como preenchimento inicial.
+
+### Corrigido
+- Planilha de Custos com valor por minuto, total `(MIN × R$) + Materiais`, moeda brasileira, datas legíveis, subtotais de materiais, Total do projeto, gráficos empilhados e inclusão/exclusão de linhas vinculadas à EAP. Exportação XLSX acompanha a coluna R$ como valor do minuto.
+- EAP Padrão sempre lado a lado, inclusive fases vazias ou recolhidas; conectores saem do centro inferior do pai.
+- Salvamentos da EAP enfileirados para não competir pela mesma versão; leituras atrasadas não substituem edição local.
+- Painel Estilo permanece aberto até fechar pelo X, inclusive ao trocar ou limpar a seleção.
+- EAP detalhada usa os elaboradores e minutos da planilha; custos incluem materiais mesmo sem valor de mão de obra.
+- Aprovado por vem do gerente do projeto e é congelado na versão pelo servidor.
+- Dados Complementares podem ser editados por quem edita e aprova documentos, salvando uma versão do Termo de Abertura.
+- Cronograma exibe códigos e recebe datas e custos calculados da planilha, com moeda brasileira.
+- Data prevista e conclusão da planilha sincronizam o card, com histórico idempotente e sem criar apontamentos de tempo.
+
 ## [1.31.1] — 2026-10-16
 
 ### Corrigido

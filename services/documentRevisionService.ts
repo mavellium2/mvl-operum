@@ -1,3 +1,4 @@
+import { gerenteDoProjeto } from './gerenteProjeto'
 import { charterChanges } from '@/lib/charterChanges'
 import { DocumentRevisionError } from '@/lib/documentRevisionError'
 import 'server-only'
@@ -356,10 +357,18 @@ export async function submeterDocumento(
   validarRecurso(documentType, resourceId, true)
   if (documentType === 'ATA' && !resourceId)
     throw new DocumentRevisionError('Identificação da ata obrigatória')
-  const proposed = JSON.parse(
-    JSON.stringify(validarDocumento(documentType, payload)),
-  ) as Prisma.InputJsonValue
   const metadata = metaDocumento.parse(meta)
+  const [user, gerente] = await Promise.all([
+    prisma.user.findFirst({ where: { id: s.userId, tenantId: s.tenantId }, select: { name: true } }),
+    gerenteDoProjeto(projectId),
+  ])
+  metadata.elaboradoPor = metadata.elaboradoPor.trim() || user?.name || ''
+  metadata.aprovadoPor = gerente.nome
+  const input = validarDocumento(documentType, payload) as unknown as Record<string, unknown>
+  if (documentType === 'EAP') { input.preparedBy = metadata.elaboradoPor; input.approvedBy = gerente.nome; input.approvedByUserId = gerente.userIds?.[0] ?? null }
+  if (documentType === 'STAKEHOLDER') input.header = { ...(input.header as object), elaboradoPor: metadata.elaboradoPor, aprovadoPor: gerente.nome }
+  if (documentType === 'ATA') { input.elaboradoPor = metadata.elaboradoPor; input.aprovadoPor = gerente.nome; input.aprovadoPorUserId = gerente.userIds?.[0] ?? null }
+  const proposed = JSON.parse(JSON.stringify(input)) as Prisma.InputJsonValue
   const approve = await can(s, projectId, 'documentos:aprovar')
   if (documentType === 'EAP') await getOrCreateDocument(projectId, s.tenantId)
   return prisma.$transaction(async (tx) => {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProjectPermissionsProvider } from '@/components/permissoes/ProjectPermissions'
+import { getCardPlanilhaAction } from '@/app/actions/sprintBoard'
 import CardModal from '@/components/card/CardModal'
 
 vi.mock('@/app/actions/tags', () => ({
@@ -23,6 +24,7 @@ vi.mock('@/app/actions/time', () => ({
 
 vi.mock('@/app/actions/sprintBoard', () => ({
   getCardMovementsAction: vi.fn().mockResolvedValue({ movements: [] }),
+  getCardPlanilhaAction: vi.fn().mockResolvedValue({ linha: null }),
 }))
 
 vi.mock('@/app/actions/cardResponsible', () => ({
@@ -381,4 +383,18 @@ describe('permissões do card no projeto', () => {
     expect(screen.getByPlaceholderText('Título da tarefa...')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeInTheDocument()
   })
+})
+
+
+it('mostra os dados vinculados da planilha e respeita a permissão financeira', async () => {
+  vi.mocked(getCardPlanilhaAction).mockResolvedValueOnce({ linha: { codigo: '1.1.1', elaboradoPor: 'Ana', minOrcado: 15, minReal: 10, totalOrcado: 303.38, totalReal: 252.75, dataPrevista: '2026-10-15', dataRealizacao: '2026-10-15' } } as never)
+  const view = render(<CardModal {...defaultProps} />)
+  expect(await screen.findByRole('region', { name: 'Planilha de Custos' })).toHaveTextContent('1.1.1')
+  expect(screen.getByRole('region', { name: 'Planilha de Custos' })).toHaveTextContent('15/10/2026')
+  expect(screen.getByRole('region', { name: 'Planilha de Custos' })).toHaveTextContent('303,38')
+  view.unmount()
+  vi.mocked(getCardPlanilhaAction).mockClear()
+  render(<ProjectPermissionsProvider permissions={['quadro:ver']}><CardModal {...defaultProps} /></ProjectPermissionsProvider>)
+  expect(getCardPlanilhaAction).not.toHaveBeenCalled()
+  expect(screen.queryByRole('region', { name: 'Planilha de Custos' })).not.toBeInTheDocument()
 })

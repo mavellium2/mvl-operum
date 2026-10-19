@@ -3,7 +3,7 @@
 import { OPCOES_FASE, OPCOES_ORGANIZAR } from './OrganizarIcons'
 import { formatoDaEap, formatoDaFase } from '@/lib/wbsLayout'
 
-import { useEffect, useRef, useState, type Dispatch } from 'react'
+import { useRef, useState, type Dispatch } from 'react'
 import { X } from 'lucide-react'
 import type { WbsNodeClient, WbsNodeStyle, WbsLayoutOrientation } from '@/types/wbs'
 import type { WbsAction } from '@/lib/wbsReducer'
@@ -164,25 +164,14 @@ function commonNum(nodes: WbsNodeClient[], selector: (n: WbsNodeClient) => numbe
 export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, dispatch, onClose }: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Fecha ao clicar fora ou pressionar Escape — é um popover, não faz mais parte do fluxo do canvas.
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose()
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleKey)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleKey)
-    }
-  }, [onClose])
-
   const selectedNodes = selectedNodeIds.map(id => nodes[id]).filter((n): n is WbsNodeClient => Boolean(n))
   const count = selectedNodes.length
-  if (count === 0) return null
+  if (count === 0) return (
+    <aside className="absolute right-4 top-4 z-30 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-sm" aria-label="Estilo">
+      <div className="flex items-center justify-between"><strong>Estilo</strong><button type="button" aria-label="Fechar estilo" onClick={onClose}><X size={18} /></button></div>
+      <p className="mt-4 text-sm text-gray-600">Selecione um ou mais elementos para ajustar o estilo.</p>
+    </aside>
+  )
 
   // ── Valores comuns de estilo ──
   const bgC = commonStr(selectedNodes, n => n.style.backgroundColor)

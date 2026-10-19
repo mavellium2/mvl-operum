@@ -1,5 +1,8 @@
 'use server'
 
+import { requireProjectPermission } from '@/services/projectAccess'
+import { getTree } from '@/services/wbsService'
+import { planilhaDoProjeto } from '@/services/planilhaService'
 import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { sprintsApi, cardsApi, tagsApi, filesApi } from '@/lib/api-client'
@@ -425,4 +428,20 @@ export async function updateSprintMetaAction(
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar sprint' }
   }
+}
+
+/** Dados da linha vinculada: a mesma origem dos valores da EAP e da planilha. */
+export async function getCardPlanilhaAction(cardId: string) {
+  try {
+    const session = await verifySession()
+    const card = await prisma.card.findFirst({ where: { id: cardId, deletedAt: null, OR: [{ project: { tenantId: session.tenantId, deletedAt: null } }, { sprint: { project: { tenantId: session.tenantId, deletedAt: null }, deletedAt: null } }] }, select: { projectId: true, sprint: { select: { projectId: true } } } })
+    const projectId = card?.sprint?.projectId ?? card?.projectId
+    if (!projectId) return { linha: null }
+    await requireProjectPermission(session, projectId, 'quadro:ver')
+    await requireProjectPermission(session, projectId, 'planilha:ver')
+    const [tree, planilha] = await Promise.all([getTree(projectId, session.tenantId), planilhaDoProjeto(projectId, session.tenantId)])
+    const linked = new Set(Object.values(tree.nodes).filter(n => n.properties.cardId === cardId).map(n => n.id))
+    const linha = planilha?.macrofases.flatMap(f => f.atividades).find(a => linked.has(a.nodeId)) ?? null
+    return { linha }
+  } catch { return { error: 'Não foi possível carregar os dados da planilha.' } }
 }

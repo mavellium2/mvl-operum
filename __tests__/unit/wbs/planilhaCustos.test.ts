@@ -178,22 +178,33 @@ describe('computarPlanilhaCustos — dataset de exemplo', () => {
     expect(a1.jornadaDiaria).toBe(6)
     expect(a1.vpm).toBeCloseTo(3000 / 30 / 6 / 60, 10)
     expect(a1.totalOrcado).toBeCloseTo(90 * (3000 / 30 / 6 / 60) + 5, 2)
-    // a2 (João) sem cadastro no mapa → nenhum valor (sem padrão)
+    // a2 (João) sem cadastro no mapa → nenhum valor/min (sem padrão); Total = só materiais
     expect(a2.jornadaDiaria).toBeNull()
     expect(a2.vpm).toBeNull()
-    expect(a2.totalOrcado).toBeNull()
+    expect(a2.totalOrcado).toBe(nodes.a2.properties.materiais ? nodes.a2.properties.materiais : null)
   })
 
-  it('sem elaboradores cadastrados, nenhuma linha calcula R$/dias', () => {
-    const p = computarPlanilhaCustos(eapExemplo(), 'r', CONFIG)
-    const a1 = p.macrofases[0].atividades[0]
+  it('sem elaboradores cadastrados, nenhuma linha calcula R$/dias; o Total fica só com os materiais', () => {
+    const nodes = eapExemplo()
+    const p = computarPlanilhaCustos(nodes, 'r', CONFIG)
+    const atividades = p.macrofases[0].atividades
+    const a1 = atividades[0]
     expect(a1.jornadaDiaria).toBeNull()
     expect(a1.vpm).toBeNull()
+    expect(a1.totalOrcado).toBe(nodes.a1.properties.materiais)
+    const materiaisOrcados = atividades.reduce((s, a) => s + a.materiaisOrcado, 0)
+    const materiaisReais = atividades.reduce((s, a) => s + a.materiaisReal, 0)
+    expect(p.macrofases[0].totalOrcado).toBeCloseTo(materiaisOrcados, 2)
+    expect(p.macrofases[0].totalReal).toBeCloseTo(materiaisReais, 2)
+  })
+
+  it('linha sem valor/min e sem materiais: Total é nenhum', () => {
+    const nodes = eapExemplo()
+    nodes.a1.properties.materiais = 0
+    nodes.a1.properties.materiaisReal = 0
+    const a1 = computarPlanilhaCustos(nodes, 'r', CONFIG).macrofases[0].atividades[0]
     expect(a1.totalOrcado).toBeNull()
     expect(a1.totalReal).toBeNull()
-    expect(p.macrofases[0].totalOrcado).toBe(0)
-    expect(p.totalOrcado).toBe(0)
-    expect(p.totalReal).toBe(0)
   })
 
   it('sub-total da macrofase soma linhas (60,00 min orçados)', () => {

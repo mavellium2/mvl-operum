@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 // useLayoutEffect no cliente (mede antes do paint), useEffect no servidor (no-op em SSR)
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 import { computeLayout, resolveDropPosition, NODE_W, NODE_H } from '@/lib/wbsLayout'
+import { elaboradoresDe } from '@/lib/elaboradores'
 import { computeFinancialRollups, computeRollups } from '@/lib/wbsRollup'
 import WbsGantt from './WbsGantt'
 import { useCalendarToday } from '@/hooks/useCalendarToday'
@@ -128,15 +129,9 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
   const pendingMarqueeRef = useRef<{ startX: number; startY: number } | null>(null)
   const marqueeRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
 
-  // O painel de estilo só deve aparecer enquanto houver seleção — some junto com ela.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (state.selectedNodeIds.length === 0) setShowStylePanel(false)
-  }, [state.selectedNodeIds])
-
   const [nodeWidths, setNodeWidths] = useState<Record<string, number>>({})
   useIsomorphicLayoutEffect(() => { setNodeWidths(measureNodeWidths(state.nodes)) }, [state.nodes])
-  const nodeHeight = viewMode === 'chart' ? NODE_H : 162
+  const nodeHeight = viewMode === 'chart' ? NODE_H : 184
   const displayWidths = useMemo(() => viewMode === 'chart' ? nodeWidths : Object.fromEntries(Object.entries(nodeWidths).map(([id, width]) => [id, Math.max(width, 250)])), [nodeWidths, viewMode])
   // A raiz em pé do Horizontal só vale no gráfico: nos cartões detalhados o texto não caberia.
   const layout = useMemo(
@@ -144,7 +139,7 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
     [state.nodes, state.rootId, displayWidths, nodeHeight, viewMode],
   )
   const rollups = useMemo(() => computeRollups(state.nodes, state.rootId), [state.nodes, state.rootId])
-  const finances = useMemo(() => canViewCosts ? computeFinancialRollups(state.nodes, state.rootId, rates) : {}, [state.nodes, state.rootId, rates, canViewCosts])
+  const finances = useMemo(() => computeFinancialRollups(state.nodes, state.rootId, rates), [state.nodes, state.rootId, rates])
 
   // ── Seguir o card recém-criado: centraliza a tela nele ────────────────────
   useEffect(() => {
@@ -188,6 +183,22 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
     }
   }, [dispatch])
 
+  const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve())
+  const savedVersionRef = useRef(state.sync.serverVersion)
+  const saveSnapshot = useCallback((snapshot: WbsTreeState) => {
+    const reason = motivoExclusaoRef.current
+    const operation = saveQueueRef.current.catch(() => {}).then(async () => {
+      const result = await saveTreeAction({
+        projetoId, serverVersion: Math.max(snapshot.sync.serverVersion, savedVersionRef.current),
+        rootId: snapshot.rootId, nodes: snapshot.nodes, ...extrasDoSalvamento(snapshot, reason),
+      }).catch(() => ({ ok: false as const, conflict: false, error: 'Não foi possível salvar a EAP. Tente novamente.' }))
+      if (result.ok) savedVersionRef.current = result.serverVersion
+      return result
+    })
+    saveQueueRef.current = operation
+    return operation
+  }, [projetoId])
+
   // ── Autosave ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (state.nodes === prevNodesRef.current) return
@@ -199,10 +210,10 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
       const s = stateRef.current
       saveTimerRef.current = null
       dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'SAVING' } })
-      const res = await saveTreeAction({ projetoId, serverVersion: s.sync.serverVersion, rootId: s.rootId, nodes: s.nodes, ...extrasDoSalvamento(s, motivoExclusaoRef.current) })
+      const res = await saveSnapshot(s)
       if (res.ok) {
         motivoExclusaoRef.current = ''
-        dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'IDLE', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
+        dispatch({ type: 'SET_SYNC_STATUS', payload: { status: stateRef.current.nodes === s.nodes ? 'IDLE' : 'DIRTY', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
       } else if (res.conflict) {
         // A EAP mudou no servidor (outra pessoa ou a sincronização com as sprints):
         // carrega a versão atual em vez de deixar o editor travado em conflito.
@@ -221,7 +232,7 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
       }
     }, 1500)
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
-  }, [state.nodes, canEdit, projetoId, dispatch, toast])
+  }, [state.nodes, canEdit, projetoId, dispatch, toast, saveSnapshot])
 
   // Flush de alterações pendentes: o debounce de 1500ms cancela o save no cleanup,
   // então navegar antes do tempo (back/SPA) perdia a edição silenciosamente.
@@ -231,12 +242,12 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
   useIsomorphicLayoutEffect(() => {
     flushPendingSaveRef.current = () => {
       const s = stateRef.current
-      if (!canEdit || s.sync.status === 'IDLE') return
+      if (!canEdit || s.sync.status === 'IDLE' || s.sync.status === 'SAVING') return
       if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null }
-      saveTreeAction({ projetoId, serverVersion: s.sync.serverVersion, rootId: s.rootId, nodes: s.nodes, ...extrasDoSalvamento(s, motivoExclusaoRef.current) })
+      saveSnapshot(s)
         .then(res => {
           if (res.ok) {
-            dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'IDLE', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
+            dispatch({ type: 'SET_SYNC_STATUS', payload: { status: stateRef.current.nodes === s.nodes ? 'IDLE' : 'DIRTY', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
           } else if (res.conflict) {
             dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'CONFLICT' } })
           } else {
@@ -261,15 +272,15 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
     const s = stateRef.current
     if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null }
     dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'SAVING' } })
-    const res = await saveTreeAction({ projetoId, serverVersion: s.sync.serverVersion, rootId: s.rootId, nodes: s.nodes, ...extrasDoSalvamento(s, motivoExclusaoRef.current) })
+    const res = await saveSnapshot(s)
     if (res.ok) {
-      dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'IDLE', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
+      dispatch({ type: 'SET_SYNC_STATUS', payload: { status: stateRef.current.nodes === s.nodes ? 'IDLE' : 'DIRTY', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
       toast('EAP salva com sucesso', 'success')
     } else {
       dispatch({ type: 'SET_SYNC_STATUS', payload: { status: res.conflict ? 'CONFLICT' : 'ERROR' } })
       toast(res.error || 'Erro ao salvar', 'error')
     }
-  }, [canEdit, projetoId, dispatch, toast])
+  }, [canEdit, dispatch, toast, saveSnapshot])
 
   // ── Zoom helpers (reutilizados por teclado, menu de contexto e roda) ──────
   const zoomBy = useCallback((factor: number) => {
@@ -301,7 +312,6 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
 
       if (e.key === 'Escape') {
         if (s.editingNodeId) dispatch({ type: 'SET_EDITING', payload: { nodeId: null } })
-        else if (showStylePanel) setShowStylePanel(false)
         else dispatch({ type: 'SET_SELECTION', payload: { nodeIds: [] } })
         return
       }
@@ -690,7 +700,7 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
         onManualSave={handleManualSave}
         onRequestDelete={requestDelete}
         showStylePanel={showStylePanel}
-        onToggleStylePanel={() => setShowStylePanel(v => !v)}
+        onToggleStylePanel={() => setShowStylePanel(true)}
         onPasteStyle={() => {
           const s = stateRef.current
           if (s.clipboard.copiedStyle && s.selectedNodeIds.length > 0) {
@@ -756,7 +766,7 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
                   viewMode={viewMode}
                   canEdit={canEdit}
                   canViewCosts={canViewCosts}
-                  owner={owners[node.properties.ownerUserId ?? '']}
+                  owner={elaboradoresDe(node.properties).map(id => owners[id]).filter(Boolean).join(', ') || node.properties.elaboradoPor || undefined}
                   duration={rollups[node.id]?.durationDays}
                   financial={finances[node.id]}
                   geom={geom}
@@ -803,7 +813,7 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
         </div>
 
         {/* Painel de estilo — popover flutuante, só aparece quando aberto pela toolbar */}
-        {showStylePanel && state.selectedNodeIds.length > 0 && (
+        {showStylePanel && (
           <WbsPropertiesPanel
             selectedNodeIds={state.selectedNodeIds}
             nodes={state.nodes}

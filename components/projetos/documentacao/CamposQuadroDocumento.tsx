@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
+import { fetchWithSession } from '@/lib/clientFetch'
 import DateInput from '@/components/ui/DateInput'
 import MembroEquipeSelect, { type MembroEquipeOption } from './MembroEquipeSelect'
 
@@ -57,10 +59,22 @@ export interface CamposQuadroDocumentoProps {
 
 export default function CamposQuadroDocumento({
   idPrefix, projetoId, membros, onCriarMembro,
-  elaboradoPorUserId, onElaboradoPor, aprovadoPorUserId, onAprovadoPor,
+  elaboradoPorUserId, onElaboradoPor, aprovadoPorUserId,
   versao, onVersao, dataAprovacao, onDataAprovacao,
   gerenteProjeto, disabled, labelClass = LABEL, inputClass = INPUT,
 }: CamposQuadroDocumentoProps) {
+  const [usuarioAtual, setUsuarioAtual] = useState<MembroEquipeOption | null>(null)
+  const defaults = useRef({ elaboradoPorUserId, onElaboradoPor })
+  useEffect(() => {
+    let active = true
+    void fetchWithSession('/api/me').then(r => r.ok ? r.json() : null).then(data => {
+      if (active && data?.user?.id && data.user.name) setUsuarioAtual({ id: data.user.id, name: data.user.name, setor: null })
+      if (active && !defaults.current.elaboradoPorUserId && data?.user?.id && data.user.name) {
+        defaults.current.onElaboradoPor({ id: data.user.id, name: data.user.name, setor: null })
+      }
+    }).catch(() => {})
+    return () => { active = false }
+  }, [projetoId])
   return (
     <>
       {gerenteProjeto !== undefined && (
@@ -70,7 +84,7 @@ export default function CamposQuadroDocumento({
         <label className={labelClass} htmlFor={`${idPrefix}-elaborado-por`}>Elaborado por</label>
         <MembroEquipeSelect
           id={`${idPrefix}-elaborado-por`}
-          membros={membros}
+          membros={usuarioAtual && !membros.some(m => m.id === usuarioAtual.id) ? [...membros, usuarioAtual] : membros}
           projetoId={projetoId}
           value={elaboradoPorUserId}
           onChange={onElaboradoPor}
@@ -82,17 +96,7 @@ export default function CamposQuadroDocumento({
       </div>
       <div>
         <label className={labelClass} htmlFor={`${idPrefix}-aprovado-por`}>Aprovado por</label>
-        <MembroEquipeSelect
-          id={`${idPrefix}-aprovado-por`}
-          membros={membros}
-          projetoId={projetoId}
-          value={aprovadoPorUserId}
-          onChange={onAprovadoPor}
-          onCriarMembro={onCriarMembro}
-          placeholder="Selecionar membro da equipe"
-          className={inputClass}
-          disabled={disabled}
-        />
+        <input id={`${idPrefix}-aprovado-por`} className={inputClass} value={gerenteProjeto ?? membros.find(m => m.id === aprovadoPorUserId)?.name ?? ''} readOnly placeholder="Nenhum gerente definido no projeto" title="Preenchido automaticamente com o gerente do projeto" />
       </div>
       <div>
         <label className={labelClass} htmlFor={`${idPrefix}-versao`}>Versão</label>

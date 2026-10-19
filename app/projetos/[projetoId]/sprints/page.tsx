@@ -3,6 +3,8 @@ import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import { canProjectPermission } from '@/services/projectAccess'
 import { findAllByProjeto } from '@/services/sprintService'
+import { planilhaDoProjeto } from '@/services/planilhaService'
+import { getTree } from '@/services/wbsService'
 import { getSprintMetrics } from '@/services/dashboardService'
 import EmptyState from '@/components/ui/EmptyState'
 import DeleteSprintButton from '@/components/sprint/DeleteSprintButton'
@@ -72,8 +74,14 @@ export default async function ProjetoSprintsPage({
 
   if (!projeto) notFound()
 
+  const canViewSheet = await canProjectPermission({ tenantId, role, userId }, projetoId, 'planilha:ver')
+  const [planilha, tree] = canViewSheet ? await Promise.all([planilhaDoProjeto(projetoId, tenantId), getTree(projetoId, tenantId)]) : [null, null]
+  const porSprint = new Map(planilha?.macrofases.flatMap(f => {
+    const id = tree?.nodes[f.nodeId]?.properties.sprintId
+    return id ? [[id, f] as const] : []
+  }) ?? [])
   const sprintsWithMetrics = await Promise.all(
-    sprints.map(async s => ({ sprint: s, metrics: await getSprintMetrics(s.id) }))
+    sprints.map(async s => ({ sprint: s, metrics: await getSprintMetrics(s.id), linhaPlanilha: porSprint.get(s.id) }))
   )
 
   return (
@@ -113,7 +121,7 @@ export default async function ProjetoSprintsPage({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {sprintsWithMetrics.map(({ sprint, metrics }) => {
+            {sprintsWithMetrics.map(({ sprint, metrics, linhaPlanilha }) => {
               const sc = SPRINT_STATUS[sprint.status] ?? SPRINT_STATUS.PLANNED
               const pct = metrics.cardsTotal > 0
                 ? Math.round((metrics.cardsConcluidos / metrics.cardsTotal) * 100)
@@ -168,14 +176,20 @@ export default async function ProjetoSprintsPage({
                       <p className="text-sm font-semibold text-gray-800">{pct}%</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Horas</p>
+                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Horas registradas</p>
                       <p className="text-sm font-semibold text-gray-800">{formatHours(metrics.horasTotais)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Custo</p>
+                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Custo registrado</p>
                       <p className="text-sm font-semibold text-gray-800">{formatCurrency(metrics.custoTotal)}</p>
                     </div>
                   </div>
+
+                  {linhaPlanilha && <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-600">
+                    <p className="mb-1 font-semibold text-gray-800">Planilha de Custos</p>
+                    <p>Orçado: {formatHours(linhaPlanilha.minOrcado / 60)} · {formatCurrency(linhaPlanilha.totalOrcado)}</p>
+                    <p>Realizado: {formatHours(linhaPlanilha.minReal / 60)} · {formatCurrency(linhaPlanilha.totalReal)}</p>
+                  </div>}
 
                   {/* Rodapé: Qualidade, Dificuldade e Alertas de Atraso */}
                   {('qualidade' in sprint || 'dificuldade' in sprint || metrics.cardsAtrasados > 0) && (

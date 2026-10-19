@@ -2,16 +2,17 @@
 
 import Dica from '@/components/ui/Tooltip'
 import ElaboradoresSelect from './ElaboradoresSelect'
-import { menorJornada } from '@/lib/elaboradores'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { menorJornada, somaValoresPorMinuto } from '@/lib/elaboradores'
 
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw, Download, UserPlus, Undo2 } from 'lucide-react'
+import { RefreshCw, Download, UserPlus, Undo2, Plus, Trash2 } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
-import { updateNodePropertiesAction } from '@/app/actions/wbs'
+import { updateNodePropertiesAction, insertChildAction, insertSiblingAction, renameNodeAction, deleteNodeAction } from '@/app/actions/wbs'
 import { addMemberAction } from '@/app/actions/projetos'
-import { fmtDataBR, maiorData, situacaoDe, type PlanilhaDeCustos, type SituacaoAtividade, type Elaborador } from '@/lib/planilhaCustos'
+import { fmtDataBR, maiorData, situacaoDe, valorPorMinutoDoElaborador, type PlanilhaDeCustos, type SituacaoAtividade, type Elaborador } from '@/lib/planilhaCustos'
 import { minutosDeHoras, minutosDeDias, round2 } from '@/lib/custosCalc'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 
@@ -25,6 +26,8 @@ interface Props {
   canEditOwnActual?: boolean
   canEditAllActual?: boolean
   canManageMembers?: boolean
+  /** Pode inserir e excluir linhas (muda a estrutura da EAP). */
+  canEditLinhas?: boolean
   planilha: PlanilhaDeCustos
   elaboradores: Elaborador[]
   usuariosDisponiveis: { id: string; name: string; email: string }[]
@@ -72,10 +75,68 @@ const hhmm = (min: number): string => {
 }
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+/** Valor do minuto: centavos não bastam (ex.: R$ 0,3472). */
+const brlMinuto = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 })
 const dois = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+/** "R$ 1.234,56", "1234,56" ou "1234.56" → "1234.56"; NaN quando não é número. */
+export function parseMoeda(texto: string): number {
+  let t = texto.replace(/R\$|\s/g, '')
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
+  if (t === '') return 0
+  const n = Number(t)
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN
+}
+
+/** Elaboradores da linha, com o rascunho (escolha ainda não salva) por cima. */
+const idsAtuais = (a: { nodeId: string; elaboradoPorUserIds?: string[]; elaboradoPorUserId: string | null }, rascunho: Record<string, CampoLinha>): string[] => {
+  const r = rascunho[a.nodeId]?.elaboradoPorUserIds
+  return r !== undefined ? lista(r) : idsDaLinha(a)
+}
+
+/** Coluna R$: valor do minuto dos elaboradores (salário ÷ 30 ÷ jornada ÷ 60; com vários, a soma). */
+const vpmDaLinha = (userIds: string[], elaboradores: Elaborador[]): number | null =>
+  somaValoresPorMinuto(userIds.map(id => {
+    const e = elaboradores.find(x => x.userId === id)
+    return e ? valorPorMinutoDoElaborador(e) : null
+  }))
+
+/** Total = (Min × R$) + Materiais; sem R$, só os materiais; nenhum sem os dois. */
+const totalDaLinha = (min: number, vpm: number | null, materiais: number): number | null =>
+  vpm !== null ? round2(min * vpm + materiais) : materiais ? round2(materiais) : null
+
+interface Soma { min: number; dias: number; materiais: number; total: number; temTotal: boolean }
+const SOMA_VAZIA: Soma = { min: 0, dias: 0, materiais: 0, total: 0, temTotal: false }
+const somar = (a: Soma, b: Soma): Soma => ({
+  min: a.min + b.min, dias: a.dias + b.dias, materiais: a.materiais + b.materiais, total: a.total + b.total, temTotal: a.temTotal || b.temTotal,
+})
+
+/**
+ * Sub-total de uma fase (orçado ou realizado): soma os MESMOS valores exibidos nas linhas,
+ * rascunho incluso, cada célula arredondada como na linha, para bater com a soma visível.
+ */
+function somaDaFase(
+  fase: PlanilhaDeCustos['macrofases'][number],
+  lado: 'orcado' | 'real',
+  rascunho: Record<string, CampoLinha>,
+  elaboradores: Elaborador[],
+  horasPorDiaPadrao: number,
+): Soma {
+  let soma = SOMA_VAZIA
+  for (const a of fase.atividades) {
+    const r = rascunho[a.nodeId]
+    const min = lado === 'orcado' ? num(r?.minOrcado, a.minOrcado) : num(r?.minReal, a.minReal)
+    const materiais = lado === 'orcado' ? num(r?.materiaisOrcado, a.materiaisOrcado) : num(r?.materiaisReal, a.materiaisReal)
+    const ids = idsAtuais(a, rascunho)
+    const horas = menorJornada(ids.map(id => elaboradores.find(x => x.userId === id)?.horasDiarias)) ?? horasPorDiaPadrao
+    const total = totalDaLinha(min, vpmDaLinha(ids, elaboradores), materiais)
+    soma = somar(soma, { min, dias: round2(min / 60 / horas), materiais, total: total ?? 0, temTotal: total !== null })
+  }
+  return soma
+}
+
 export default function PlanilhaCustosView({
-  projetoId, nomeProjeto, inicioProjeto, fimProjeto, canEdit, currentUserId, canEditOwnActual = false, canEditAllActual = false, canManageMembers = false, planilha, elaboradores, usuariosDisponiveis, exportUrl,
+  projetoId, nomeProjeto, inicioProjeto, fimProjeto, canEdit, currentUserId, canEditOwnActual = false, canEditAllActual = false, canManageMembers = false, canEditLinhas = false, planilha, elaboradores, usuariosDisponiveis, exportUrl,
 }: Props) {
   const router = useRouter()
   const { toast } = useToast()
@@ -160,6 +221,39 @@ export default function PlanilhaCustosView({
   }, [rascunho])
 
   const semAtividades = planilha.macrofases.length === 0
+
+  // ── Inserir / excluir linhas (como no Excel) ────────────────────────────────
+  // Cada linha é uma atividade (folha) da EAP: inserir cria o item na EAP e excluir
+  // remove o item e o card dele na sprint, como na aba EAP/WBS.
+  const [novaLinha, setNovaLinha] = useState<{ tipo: 'irmao' | 'filho'; refId: string } | null>(null)
+  const [excluindo, setExcluindo] = useState<{ nodeId: string; nome: string } | null>(null)
+  const acoes = useMemoAcoes(canEditLinhas, setNovaLinha, setExcluindo)
+  const confirmarNovaLinha = useCallback(async (titulo: string) => {
+    if (!novaLinha) return
+    const criado = novaLinha.tipo === 'irmao'
+      ? await insertSiblingAction(projetoId, novaLinha.refId)
+      : await insertChildAction(projetoId, novaLinha.refId)
+    if (!criado.ok) { toast(criado.error, 'error'); return }
+    const nomeado = await renameNodeAction(projetoId, criado.nodeId, titulo)
+    if (!nomeado.ok) toast(nomeado.error, 'error')
+    setNovaLinha(null)
+    router.refresh()
+  }, [novaLinha, projetoId, router, toast])
+  const cancelarNovaLinha = useCallback(() => setNovaLinha(null), [])
+  async function confirmarExclusao() {
+    if (!excluindo) return
+    const res = await deleteNodeAction(projetoId, excluindo.nodeId)
+    setExcluindo(null)
+    if (!res.ok) { toast(res.error, 'error'); return }
+    setRascunho(r => { const { [excluindo.nodeId]: _, ...resto } = r; return resto })
+    toast('Linha excluída', 'success')
+    router.refresh()
+  }
+
+  // Total do projeto: soma dos sub-totais, ao vivo.
+  const somaFases = (lado: 'orcado' | 'real') =>
+    planilha.macrofases.reduce((acc, f) => somar(acc, somaDaFase(f, lado, rascunho, elaboradores, planilha.config.horasPorDia)), SOMA_VAZIA)
+  const dataFimProjeto = fmtDataBR(maiorData(planilha.macrofases.flatMap(f => f.atividades.map(a => rascunho[a.nodeId]?.dataPrevista ?? a.dataPrevista))))
 
   async function salvarManual() {
     await salvarRef.current()
@@ -280,29 +374,99 @@ export default function PlanilhaCustosView({
                   elaboradores={elaboradores}
                   onCampoChange={setCampo}
                   horasPorDiaPadrao={planilha.config.horasPorDia}
+                  acoes={acoes}
+                  novaLinha={novaLinha && (novaLinha.refId === fase.nodeId || fase.atividades.some(a => a.nodeId === novaLinha.refId)) ? novaLinha : null}
+                  onConfirmarNovaLinha={confirmarNovaLinha}
+                  onCancelarNovaLinha={cancelarNovaLinha}
                 />
               ))}
+              <LinhaSoma rotulo="Total do projeto" orcado={somaFases('orcado')} real={somaFases('real')} dataFim={dataFimProjeto} destaque />
             </tbody>
           </table>
         </div>
       )}
 
-      {/* ── Quadros-resumo (F.4) ────────────────────────────────────────── */}
+      {/* ── Quadros-resumo (F.4) e gráficos, maiores e um embaixo do outro ── */}
       {!semAtividades && (
-        <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <QuadroValor planilha={planilha} />
-          <QuadroTempo planilha={planilha} />
-          <QuadroElaborador planilha={planilha} />
-          <GraficoValor planilha={planilha} />
-        </div>
+        <>
+          <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <QuadroValor planilha={planilha} />
+            <QuadroTempo planilha={planilha} />
+            <QuadroElaborador planilha={planilha} />
+          </div>
+          <Graficos planilha={planilha} />
+        </>
       )}
+
+      <ConfirmDialog
+        isOpen={!!excluindo}
+        onClose={() => setExcluindo(null)}
+        onConfirm={() => void confirmarExclusao()}
+        title="Excluir linha"
+        message={`Excluir "${excluindo?.nome ?? ''}"? O item sai da EAP e o card dele na sprint também é excluído.`}
+      />
     </div>
   )
 }
 
 
+/** Ações estáveis (o FaseFragment é memo); undefined sem permissão. */
+function useMemoAcoes(
+  pode: boolean,
+  setNovaLinha: (v: { tipo: 'irmao' | 'filho'; refId: string } | null) => void,
+  setExcluindo: (v: { nodeId: string; nome: string } | null) => void,
+): AcoesLinha | undefined {
+  return useMemo(() => pode ? {
+    onInserir: (tipo, refId) => setNovaLinha({ tipo, refId }),
+    onExcluir: (nodeId, nome) => setExcluindo({ nodeId, nome }),
+  } : undefined, [pode, setNovaLinha, setExcluindo])
+}
+
+/** Ações de linha (inserir/excluir), como no Excel. */
+interface AcoesLinha {
+  /** Abre a linha de digitação abaixo de `refId` (irmão) ou no fim da fase (filho). */
+  onInserir: (tipo: 'irmao' | 'filho', refId: string) => void
+  onExcluir: (nodeId: string, nome: string) => void
+}
+
+/** Linha de digitação do nome de uma atividade nova. */
+function NovaLinha({ onConfirmar, onCancelar }: { onConfirmar: (titulo: string) => Promise<void>; onCancelar: () => void }) {
+  const [titulo, setTitulo] = useState('')
+  const [busy, setBusy] = useState(false)
+  const confirmar = async () => {
+    if (!titulo.trim() || busy) return
+    setBusy(true)
+    await onConfirmar(titulo.trim())
+    setBusy(false)
+  }
+  return (
+    <tr className="bg-blue-50">
+      <td className="border border-gray-100 px-2 py-1"></td>
+      <td colSpan={17} className="border border-gray-100 px-2 py-1">
+        <div className="flex items-center gap-2">
+          <input
+            autoFocus
+            value={titulo}
+            onChange={e => setTitulo(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') void confirmar(); if (e.key === 'Escape') onCancelar() }}
+            placeholder="Nome da nova atividade"
+            aria-label="Nome da nova atividade"
+            maxLength={500}
+            className="w-80 rounded border border-blue-300 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+          />
+          <button type="button" onClick={() => void confirmar()} disabled={busy || !titulo.trim()} className="rounded bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+            {busy ? 'Inserindo…' : 'Inserir'}
+          </button>
+          <button type="button" onClick={onCancelar} className="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50">Cancelar</button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 const FaseFragment = memo(function FaseFragment({
   fase, rascunho, canEdit, currentUserId, canEditOwnActual, canEditAllActual, elaboradores, onCampoChange, horasPorDiaPadrao,
+  acoes, novaLinha, onConfirmarNovaLinha, onCancelarNovaLinha,
 }: {
   fase: PlanilhaDeCustos['macrofases'][number]
   rascunho: Record<string, CampoLinha>
@@ -314,10 +478,15 @@ const FaseFragment = memo(function FaseFragment({
   onCampoChange: (nodeId: string, campo: keyof CampoLinha, valor: string) => void
   /** jornada padrão do projeto (config.horasPorDia) usada quando a linha não tem elaborador com jornada */
   horasPorDiaPadrao: number
+  /** Sem permissão para mudar a estrutura da EAP, não há ações de linha. */
+  acoes?: AcoesLinha
+  novaLinha: { tipo: 'irmao' | 'filho'; refId: string } | null
+  onConfirmarNovaLinha: (titulo: string) => Promise<void>
+  onCancelarNovaLinha: () => void
 }) {
-  // Draft local de digitação para Horas/Dias: enquanto o usuário edita, o campo mostra
-  // o texto bruto (em vez de reconverter cada tecla para hh:mm — o que "cortava" a
-  // digitação, inclusive no re-render do auto-save). No blur/Enter normaliza.
+  // Draft local de digitação para Horas/Dias/Materiais: enquanto o usuário edita, o campo
+  // mostra o texto bruto (em vez de reformatar cada tecla, o que "cortava" a digitação,
+  // inclusive no re-render do auto-save). No blur/Enter normaliza.
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const pintaDraft = (key: string, texto: string) =>
     setDrafts(d => (d[key] === texto ? d : { ...d, [key]: texto }))
@@ -341,60 +510,20 @@ const FaseFragment = memo(function FaseFragment({
     const realizacao = valorDe(nodeId, 'dataRealizacao', real).slice(0, 10) || null
     return situacaoDe(prevista, realizacao)
   }
-  const esborcoPorCurrent = (nodeId: string, originais: string[]): string[] => {
-    const r = rascunho[nodeId]?.elaboradoPorUserIds
-    return r !== undefined ? lista(r) : originais
-  }
   // Jornada diária da linha: a menor jornada entre os elaboradores (todos trabalham
   // em paralelo); sem elaborador ou sem jornada cadastrada, a padrão do projeto.
   const horasDe = (userIds: string[]): number =>
     menorJornada(userIds.map(id => elaboradores.find(x => x.userId === id)?.horasDiarias)) ?? horasPorDiaPadrao
-  // Sub-total da fase (orçado/realizado): soma os MESMOS valores exibidos nas
-  // linhas (rascunho incluso), cada célula derivada da jornada/salário de quem
-  // elaborou a linha e arredondada como na célula da linha — o sub-total bate
-  // exato com a soma das células visíveis. Linha sem elaborador (ou sem
-  // salário/jornada) é "nenhum" (—) e não contribui; se NENHUMA linha da fase
-  // tiver valor, o sub-total também é "—" (padrão é nenhum).
-  const totalDeFase = (campo: 'minOrcado' | 'minReal'): {
-    min: number
-    dias: number
-    total: number
-    temDias: boolean
-    temR: boolean
-  } => {
-    let min = 0
-    let dias = 0
-    let total = 0
-    let temDias = false
-    let temR = false
-    for (const a of fase.atividades) {
-      const m = num(rascunho[a.nodeId]?.[campo], campo === 'minOrcado' ? a.minOrcado : a.minReal)
-      const mt = num(
-        rascunho[a.nodeId]?.[campo === 'minOrcado' ? 'materiaisOrcado' : 'materiaisReal'],
-        campo === 'minOrcado' ? a.materiaisOrcado : a.materiaisReal
-      )
-      min += m
-      const horas = horasDe(esborcoPorCurrent(a.nodeId, idsDaLinha(a)))
-      if (horas !== null) {
-        temDias = true
-        dias += round2(m / 60 / horas)
-      }
-      if (a.vpm !== null) {
-        temR = true
-        total += round2(m * a.vpm + mt)
-      }
-    }
-    return { min, dias, total, temDias, temR }
-  }
-  const texto = (v: string) => <span title="🔒 Campo calculado ou sem permissão de edição" className="block rounded bg-gray-100 px-1 text-xs tabular-nums text-gray-700">{v}</span>
+  const texto = (v: string, title = '🔒 Campo calculado ou sem permissão de edição') => <span title={title} className="block rounded bg-gray-100 px-1 text-xs tabular-nums text-gray-700">{v}</span>
   const clsCampo = 'w-full min-w-[64px] rounded border border-blue-200 bg-white px-1.5 py-0.5 text-right text-xs focus:border-blue-500 focus:outline-none'
+  const clsData = 'w-full min-w-[124px] rounded border border-blue-200 bg-white px-1.5 py-0.5 text-right text-xs focus:border-blue-500 focus:outline-none'
   const campoInput = (nodeId: string, campo: keyof CampoLinha, original: string | number | null | undefined) => {
     if (campo === 'dataPrevista' || campo === 'dataRealizacao') {
       return (
         <DateInput
           value={valorDe(nodeId, campo, original)}
           onChange={v => onCampoChange(nodeId, campo, v)}
-          className={clsCampo}
+          className={clsData}
         />
       )
     }
@@ -405,6 +534,28 @@ const FaseFragment = memo(function FaseFragment({
         value={valorDe(nodeId, campo, original)}
         onChange={e => onCampoChange(nodeId, campo, e.target.value)}
         onFocus={e => e.target.select()}
+        className={clsCampo}
+      />
+    )
+  }
+  // Materiais em moeda (R$ 300,00); ao focar, o número puro para digitar.
+  const campoMoeda = (nodeId: string, campo: 'materiaisOrcado' | 'materiaisReal', valor: number) => {
+    const key = `${nodeId}:${campo}`
+    return (
+      <input
+        type="text"
+        inputMode="decimal"
+        aria-label={campo === 'materiaisOrcado' ? 'Materiais orçados' : 'Materiais realizados'}
+        value={drafts[key] ?? brl(valor)}
+        onChange={e => {
+          const t = e.target.value
+          pintaDraft(key, t)
+          const n = parseMoeda(t)
+          if (!Number.isNaN(n)) onCampoChange(nodeId, campo, String(n))
+        }}
+        onFocus={e => { pintaDraft(key, valor ? dois(valor) : ''); const el = e.target; requestAnimationFrame(() => el.select()) }}
+        onBlur={() => limparDraft(key)}
+        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
         className={clsCampo}
       />
     )
@@ -452,12 +603,24 @@ const FaseFragment = memo(function FaseFragment({
       />
     )
   }
-  const subO = totalDeFase('minOrcado')
-  const subR = totalDeFase('minReal')
+  const TITULO_R = 'Valor do minuto do elaborador: salário ÷ 30 ÷ jornada diária ÷ 60, do cadastro do membro em Stakeholders. Com vários elaboradores, a soma.'
+  const celulaR = (vpm: number | null) => texto(vpm === null ? '—' : brlMinuto(vpm), vpm === null ? 'Sem valor do minuto: o elaborador não tem salário e jornada cadastrados em Stakeholders.' : TITULO_R)
+  const subO = somaDaFase(fase, 'orcado', rascunho, elaboradores, horasPorDiaPadrao)
+  const subR = somaDaFase(fase, 'real', rascunho, elaboradores, horasPorDiaPadrao)
+  const linhaNova = novaLinha ? <NovaLinha onConfirmar={onConfirmarNovaLinha} onCancelar={onCancelarNovaLinha} /> : null
   return (
     <>
       <tr className="bg-gray-100 font-semibold text-gray-800">
-        <td colSpan={18} className="border border-gray-200 px-3 py-1.5 text-sm">{fase.codigo} {fase.titulo}</td>
+        <td colSpan={18} className="border border-gray-200 px-3 py-1.5 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span>{fase.codigo} {fase.titulo}</span>
+            {acoes && (
+              <button type="button" onClick={() => acoes.onInserir('filho', fase.nodeId)} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100" title="Adicionar atividade no fim desta fase">
+                <Plus className="h-3.5 w-3.5" /> Atividade
+              </button>
+            )}
+          </div>
+        </td>
       </tr>
       {fase.atividades.map(a => {
         const canReal = canEditAllActual || (canEditOwnActual && !!currentUserId && idsDaLinha(a).includes(currentUserId))
@@ -465,23 +628,36 @@ const FaseFragment = memo(function FaseFragment({
         const matO = num(rascunho[a.nodeId]?.materiaisOrcado, a.materiaisOrcado)
         const minR = num(rascunho[a.nodeId]?.minReal, a.minReal)
         const matR = num(rascunho[a.nodeId]?.materiaisReal, a.materiaisReal)
-        const vpm = a.vpm
-        const brutoO = vpm !== null ? minO * vpm : null
-        const brutoR = vpm !== null ? minR * vpm : null
-        const userIds = esborcoPorCurrent(a.nodeId, idsDaLinha(a))
+        const userIds = idsAtuais(a, rascunho)
+        const vpm = vpmDaLinha(userIds, elaboradores)
+        const totalO = totalDaLinha(minO, vpm, matO)
+        const totalR = totalDaLinha(minR, vpm, matR)
         const horasLinha = horasDe(userIds)
+        const nome = `${a.codigo} ${a.titulo}`
         return (
-          <tr key={a.nodeId} className="bg-white align-top hover:bg-blue-50/30">
-            <td className="border border-gray-100 px-2 py-1"></td>
+          <Fragment key={a.nodeId}>
+          <tr className="group bg-white align-top hover:bg-blue-50/30">
+            <td className="border border-gray-100 px-1 py-1">
+              {acoes && (
+                <div className="flex items-center justify-center gap-0.5 opacity-40 group-hover:opacity-100 focus-within:opacity-100">
+                  <button type="button" onClick={() => acoes.onInserir('irmao', a.nodeId)} className="rounded p-0.5 text-gray-600 hover:bg-blue-100 hover:text-blue-700" aria-label={`Inserir linha abaixo de ${nome}`} title="Inserir linha abaixo">
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => acoes.onExcluir(a.nodeId, nome)} className="rounded p-0.5 text-gray-600 hover:bg-red-100 hover:text-red-700" aria-label={`Excluir linha ${nome}`} title="Excluir linha">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </td>
             <td className="border border-gray-100 px-2 py-1 text-xs whitespace-nowrap font-medium text-gray-800">
               {a.descricao ? (
                 <Dica label={a.descricao} multiline>
                   <span tabIndex={0} className="cursor-help underline decoration-dotted decoration-gray-300 underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-sm">
-                    {a.codigo} {a.titulo}
+                    {nome}
                   </span>
                 </Dica>
               ) : (
-                <>{a.codigo} {a.titulo}</>
+                <>{nome}</>
               )}
             </td>
             <td className="border border-gray-100 px-1 py-1">
@@ -503,12 +679,12 @@ const FaseFragment = memo(function FaseFragment({
             <td className="border border-gray-100 px-2 py-1 text-right">
               {canEdit ? campoDias(a.nodeId, 'minOrcado', minO, horasLinha) : texto(dois(minO / 60 / horasLinha))}
             </td>
-            <td className="border border-gray-100 px-2 py-1 text-right">{texto(brutoO === null ? '—' : brl(brutoO))}</td>
+            <td className="border border-gray-100 px-2 py-1 text-right">{celulaR(vpm)}</td>
             <td className="border border-gray-100 px-1 py-1 text-right">
-              {canEdit ? campoInput(a.nodeId, 'materiaisOrcado', a.materiaisOrcado) : texto(dois(matO))}
+              {canEdit ? campoMoeda(a.nodeId, 'materiaisOrcado', matO) : texto(brl(matO))}
             </td>
-            <td className="border border-gray-100 px-2 py-1 text-right font-semibold text-gray-900">{texto(brutoO === null ? '—' : brl(brutoO + matO))}</td>
-            <td className="border border-gray-100 px-1 py-1">
+            <td className="border border-gray-100 px-2 py-1 text-right font-semibold text-gray-900">{texto(totalO === null ? '—' : brl(totalO), 'Total = (Min × R$) + Materiais')}</td>
+            <td className="border border-gray-100 px-1 py-1 min-w-[132px]">
               {canEdit ? campoInput(a.nodeId, 'dataPrevista', a.dataPrevista) : texto(fmtDataBR(a.dataPrevista))}
             </td>
             <td className="border border-gray-100 px-1 py-1 text-right">
@@ -520,12 +696,12 @@ const FaseFragment = memo(function FaseFragment({
             <td className="border border-gray-100 px-2 py-1 text-right">
               {canReal ? campoDias(a.nodeId, 'minReal', minR, horasLinha) : texto(dois(minR / 60 / horasLinha))}
             </td>
-            <td className="border border-gray-100 px-2 py-1 text-right">{texto(brutoR === null ? '—' : brl(brutoR))}</td>
+            <td className="border border-gray-100 px-2 py-1 text-right">{celulaR(vpm)}</td>
             <td className="border border-gray-100 px-1 py-1 text-right">
-              {canReal ? campoInput(a.nodeId, 'materiaisReal', a.materiaisReal) : texto(dois(matR))}
+              {canReal ? campoMoeda(a.nodeId, 'materiaisReal', matR) : texto(brl(matR))}
             </td>
-            <td className="border border-gray-100 px-2 py-1 text-right font-semibold text-gray-900">{texto(brutoR === null ? '—' : brl(brutoR + matR))}</td>
-            <td className="border border-gray-100 px-1 py-1">
+            <td className="border border-gray-100 px-2 py-1 text-right font-semibold text-gray-900">{texto(totalR === null ? '—' : brl(totalR), 'Total = (Min × R$) + Materiais')}</td>
+            <td className="border border-gray-100 px-1 py-1 min-w-[132px]">
               {canReal ? campoInput(a.nodeId, 'dataRealizacao', a.dataRealizacao) : texto(fmtDataBR(a.dataRealizacao))}
             </td>
             <td className="border border-gray-100 px-1 py-1 text-center">
@@ -534,27 +710,46 @@ const FaseFragment = memo(function FaseFragment({
               </span>
             </td>
           </tr>
+          {novaLinha?.tipo === 'irmao' && novaLinha.refId === a.nodeId && linhaNova}
+          </Fragment>
         )
       })}
-      <tr className="bg-gray-200/70 font-semibold text-gray-700">
-        <td colSpan={3} className="border border-gray-200 px-3 py-1 text-xs italic">{fase.codigo} Sub-total {fase.titulo}</td>
-        <td className="border border-gray-200 px-2 py-1 text-right">{texto(String(subO.min))}</td>
-        <td className="border border-gray-200 px-2 py-1 text-right">{texto(hhmm(subO.min))}</td>
-        <td className="border border-gray-200 px-2 py-1 text-right">{texto(subO.temDias ? dois(subO.dias) : '—')}</td>
-        <td colSpan={3} className="border border-gray-200 px-2 py-1 text-right">{texto(subO.temR ? brl(subO.total) : '—')}</td>
-        {/* Data fim da fase (sprint): a maior data prevista das atividades, ao vivo. */}
-        <td className="border border-gray-200 px-2 py-1 text-center" title="Data fim da fase: maior data prevista">
-          {texto(fmtDataBR(maiorData(fase.atividades.map(a => valorDe(a.nodeId, 'dataPrevista', a.dataPrevista)))))}
-        </td>
-        <td className="border border-gray-200 px-2 py-1 text-right">{texto(String(subR.min))}</td>
-        <td className="border border-gray-200 px-2 py-1 text-right">{texto(hhmm(subR.min))}</td>
-        <td className="border border-gray-200 px-2 py-1 text-right">{texto(subR.temDias ? dois(subR.dias) : '—')}</td>
-        <td colSpan={3} className="border border-gray-200 px-2 py-1 text-right">{texto(subR.temR ? brl(subR.total) : '—')}</td>
-        <td colSpan={2} className="border border-gray-200"></td>
-      </tr>
+      {novaLinha?.tipo === 'filho' && novaLinha.refId === fase.nodeId && linhaNova}
+      <LinhaSoma
+        rotulo="Sub-total"
+        orcado={subO}
+        real={subR}
+        dataFim={fmtDataBR(maiorData(fase.atividades.map(a => valorDe(a.nodeId, 'dataPrevista', a.dataPrevista))))}
+      />
     </>
   )
 })
+
+/** Linha de soma (Sub-total da fase ou Total do projeto): Min, Horas, Dias, Materiais e Total. */
+function LinhaSoma({ rotulo, orcado, real, dataFim, destaque = false }: { rotulo: string; orcado: Soma; real: Soma; dataFim: string; destaque?: boolean }) {
+  const cel = (v: string) => <span className="block px-1 text-xs tabular-nums">{v}</span>
+  const borda = destaque ? 'border border-blue-300' : 'border border-gray-200'
+  const lado = (s: Soma) => (
+    <>
+      <td className={`${borda} px-2 py-1 text-right`}>{cel(String(s.min))}</td>
+      <td className={`${borda} px-2 py-1 text-right`}>{cel(hhmm(s.min))}</td>
+      <td className={`${borda} px-2 py-1 text-right`}>{cel(dois(s.dias))}</td>
+      <td className={`${borda} px-2 py-1`}></td>
+      <td className={`${borda} px-2 py-1 text-right`}>{cel(brl(s.materiais))}</td>
+      <td className={`${borda} px-2 py-1 text-right`}>{cel(s.temTotal ? brl(s.total) : '—')}</td>
+    </>
+  )
+  return (
+    <tr className={destaque ? 'bg-blue-100 font-bold text-blue-950' : 'bg-gray-200/70 font-semibold text-gray-700'}>
+      <td colSpan={3} className={`${borda} px-3 py-1 text-right text-xs ${destaque ? 'uppercase tracking-wide' : 'italic'}`}>{rotulo}</td>
+      {lado(orcado)}
+      {/* Data fim (fase ou projeto): a maior data prevista das atividades, ao vivo. */}
+      <td className={`${borda} px-2 py-1 text-center`} title="Data fim: maior data prevista">{cel(dataFim)}</td>
+      {lado(real)}
+      <td colSpan={2} className={borda}></td>
+    </tr>
+  )
+}
 
 function AdicionarElaborador({
   projetoId, elaboradores, usuariosDisponiveis, onFechar,
@@ -716,42 +911,63 @@ const QuadroElaborador = memo(function QuadroElaborador({ planilha }: { planilha
   )
 })
 
-const GraficoValor = memo(function GraficoValor({ planilha }: { planilha: PlanilhaDeCustos }) {
+const ALTURA_GRAFICO = 360
+
+/** Gráficos dos três quadros-resumo, largos e um embaixo do outro. */
+const Graficos = memo(function Graficos({ planilha }: { planilha: PlanilhaDeCustos }) {
   if (planilha.quadros.valor.length === 0) return null
-  const data = planilha.quadros.valor.map(v => ({
-    fase: v.fase.split(' ')[0],
-    'Valor Orçado': Math.round(v.orcado * 100) / 100,
-    'Valor Real': Math.round(v.realizado * 100) / 100,
+  const valor = planilha.quadros.valor.map(v => ({
+    fase: v.fase,
+    'Valor Orçado': round2(v.orcado),
+    'Valor Real': round2(v.realizado),
   }))
+  const tempo = planilha.quadros.tempo.map(t => ({ fase: t.fase, 'Tempo Orçado (Min.)': t.minOrcado, 'Tempo Real (Min.)': t.minReal }))
   const pieData = planilha.quadros.elaboradores.map(e => ({ name: e.elaborador, value: e.qtdeAtividades }))
+  const eixoFase = <XAxis dataKey="fase" tick={{ fontSize: 12 }} interval={0} height={56} angle={-15} textAnchor="end" />
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-bold text-gray-800">Gráficos (Recharts)</h3>
-      <div className="mb-2 text-xs font-semibold text-gray-500">Valor por fase (R$)</div>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="fase" tick={{ fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11 }} />
-          <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? brl(v) : String(v))} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey="Valor Orçado" fill="#2563eb" />
-          <Bar dataKey="Valor Real" fill="#16a34a" />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="mt-6 flex flex-col gap-6">
+      <section className="rounded-xl border border-gray-200 bg-white p-5">
+        <h3 className="mb-4 text-sm font-bold text-gray-800">Valor por Fase do Projeto (R$)</h3>
+        <ResponsiveContainer width="100%" height={ALTURA_GRAFICO}>
+          <BarChart data={valor} margin={{ top: 8, right: 16, left: 16, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            {eixoFase}
+            <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => brl(v)} width={96} />
+            <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? brl(v) : String(v))} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Bar dataKey="Valor Orçado" fill="#2563eb" />
+            <Bar dataKey="Valor Real" fill="#16a34a" />
+          </BarChart>
+        </ResponsiveContainer>
+      </section>
+      <section className="rounded-xl border border-gray-200 bg-white p-5">
+        <h3 className="mb-4 text-sm font-bold text-gray-800">Tempo por Fase do Projeto (min)</h3>
+        <ResponsiveContainer width="100%" height={ALTURA_GRAFICO}>
+          <BarChart data={tempo} margin={{ top: 8, right: 16, left: 16, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            {eixoFase}
+            <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => v.toLocaleString('pt-BR')} width={72} />
+            <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v.toLocaleString('pt-BR')} min` : String(v))} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Bar dataKey="Tempo Orçado (Min.)" fill="#2563eb" />
+            <Bar dataKey="Tempo Real (Min.)" fill="#16a34a" />
+          </BarChart>
+        </ResponsiveContainer>
+      </section>
       {pieData.length > 0 && (
-        <>
-          <div className="mt-4 mb-2 text-xs font-semibold text-gray-500">Atividades por elaborador</div>
-          <ResponsiveContainer width="100%" height={180}>
+        <section className="rounded-xl border border-gray-200 bg-white p-5">
+          <h3 className="mb-4 text-sm font-bold text-gray-800">Distribuição de Atividades por Elaborador</h3>
+          <ResponsiveContainer width="100%" height={ALTURA_GRAFICO}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={130}
+                label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''}: ${((percent ?? 0) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}>
                 {pieData.map((_, i) => <Cell key={i} fill={CORES_PIE[i % CORES_PIE.length]} />)}
               </Pie>
               <Tooltip />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
-        </>
+        </section>
       )}
     </div>
   )

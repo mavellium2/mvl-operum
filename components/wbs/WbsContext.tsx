@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useReducer, useRef, type Dispatch } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useReducer, useRef, type Dispatch } from 'react'
 import { getWbsTreeAction } from '@/app/actions/wbs'
 import { wbsReducer, type WbsAction } from '@/lib/wbsReducer'
 import type { WbsTreeState } from '@/types/wbs'
@@ -53,11 +53,12 @@ export function WbsProvider({
   // aba (quadro, planilha, documento rodam a sincronização). Sem alteração pendente,
   // busca a árvore atual ao abrir e ao voltar para a aba.
   const syncRef = useRef(state.sync)
-  useEffect(() => { syncRef.current = state.sync }, [state.sync])
+  useLayoutEffect(() => { syncRef.current = state.sync }, [state.sync])
   const atualizar = useCallback(async () => {
     if (!projetoId || syncRef.current.status !== 'IDLE') return
+    const before = syncRef.current
     const res = await getWbsTreeAction(projetoId)
-    if (!res.ok || res.serverVersion <= syncRef.current.serverVersion || syncRef.current.status !== 'IDLE') return
+    if (syncRef.current !== before || !res.ok || res.serverVersion <= syncRef.current.serverVersion || syncRef.current.status !== 'IDLE') return
     arvoresDoServidor.add(res.nodes)
     dispatch({ type: 'SET_TREE', payload: { nodes: res.nodes, rootId: res.rootId, serverVersion: res.serverVersion } })
   }, [projetoId])

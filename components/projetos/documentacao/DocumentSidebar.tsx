@@ -16,6 +16,7 @@ type DocId = (typeof DOCUMENTS)[number]['id']
 const STORAGE_KEY = 'wbs-document-sidebar-order'
 
 interface Props {
+  embedded?: boolean
   activeDoc: string
   onSelect: (id: string) => void
 }
@@ -35,7 +36,7 @@ function loadOrder(): DocId[] {
   }
 }
 
-export default function DocumentSidebar({ activeDoc, onSelect }: Props) {
+export default function DocumentSidebar({ activeDoc, onSelect, embedded = false }: Props) {
   const [order, setOrder] = useState<DocId[]>(DOCUMENTS.map(d => d.id))
 
   // Lido do localStorage só no client, depois do primeiro paint, para não gerar
@@ -61,7 +62,7 @@ export default function DocumentSidebar({ activeDoc, onSelect }: Props) {
     .filter((d): d is (typeof DOCUMENTS)[number] => Boolean(d))
 
   return (
-    <nav className="w-full lg:w-56 max-h-48 lg:max-h-none overflow-y-auto shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col py-4 gap-1 px-2">
+    <nav aria-label="Documentos" className={embedded ? "ml-3 border-l border-slate-200 py-2 pl-2" : "w-full lg:w-56 max-h-48 lg:max-h-none overflow-y-auto shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col py-4 gap-1 px-2"}>
       <p className="px-2 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
         Documentos
       </p>

@@ -1,3 +1,4 @@
+import { computarPlanilhaCustos, valorPorMinutoDoElaborador } from '@/lib/planilhaCustos'
 import { describe, it, expect } from 'vitest'
 import { computeRollups, computeFinancialRollups } from '@/lib/wbsRollup'
 import type { WbsNodeClient } from '@/types/wbs'
@@ -100,5 +101,24 @@ describe('financial rollups', () => {
     const r = node('r', null, ['a']), a = node('a', 'r', [])
     a.properties = { tempoMinutos: 60, tempoRealMinutos: 120, elaboradoPorUserId: 'missing' }
     expect(computeFinancialRollups({ r, a }, 'r', {}).r).toEqual({ budgetHours: 1, actualHours: 2, budgetCost: null, actualCost: null })
+  })
+})
+
+
+describe('EAP e Planilha de Custos usam os mesmos valores', () => {
+  it('subtotal e total preservam materiais sem mão de obra e somam só os valores calculados', () => {
+    const r = node('r', null, ['f']), f = node('f', 'r', ['a', 'b', 'c'])
+    const a = node('a', 'f', []), b = node('b', 'f', []), c = node('c', 'f', [])
+    a.properties = { elaboradoPorUserId: 'u', tempoMinutos: 95, tempoRealMinutos: 70, materiais: 25.3, materiaisReal: 18.2 }
+    b.properties = { tempoMinutos: 10, materiais: 300, materiaisReal: 100 }
+    const nodes = { r, f, a, b, c }
+    const member = { userId: 'u', name: 'Ana', remuneracao: 1621, horasDiarias: 8 }
+    const sheet = computarPlanilhaCustos(nodes, 'r', { valorReferencia: 0, horasPorDia: 8 }, new Map([['u', member]]))
+    const finances = computeFinancialRollups(nodes, 'r', { u: valorPorMinutoDoElaborador(member) })
+    expect(finances.r.budgetCost).toBe(sheet.totalOrcado)
+    expect(finances.r.actualCost).toBe(sheet.totalReal)
+    expect(finances.r.budgetHours * 60).toBeCloseTo(sheet.tempoOrcadoTotal)
+    expect(finances.b.budgetCost).toBe(300)
+    expect(finances.c.budgetCost).toBeNull()
   })
 })

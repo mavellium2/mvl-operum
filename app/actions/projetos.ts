@@ -1,5 +1,7 @@
 'use server'
 
+import { submeterDocumento } from '@/services/documentRevisionService'
+import { planilhaDoProjeto } from '@/services/planilhaService'
 import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { projectsApi } from '@/lib/api-client'
@@ -135,7 +137,9 @@ export async function getProjetosAction(): Promise<{ id: string; name: string }[
 
 export async function getProjetoAction(id: string) {
   try {
-    const { tenantId } = await verifySession()
+    const session = await verifySession()
+    const { tenantId } = session
+    await requireProjectPermission(session, id, 'projeto:ver')
     const projeto = await projectsApi.get(id)
     if (!projeto) return { error: 'Projeto não encontrado' }
     const associados = await prisma.projetoDepartamento.findMany({
@@ -157,6 +161,8 @@ export async function getProjetoAction(id: string) {
     // Fallback: ProjectMacroFase (projetos legados sem árvore).
     let macroFasesFromTree: Array<{ fase: string; dataLimite: string; custo: string }> | null = null
     const tree = await getTree(id, tenantId)
+    const planilha = await planilhaDoProjeto(id, tenantId)
+    const fasesCalculadas = new Map(planilha?.macrofases.map(f => [f.nodeId, f]) ?? [])
     if (tree.rootId && tree.nodes[tree.rootId]) {
       const topLevelIds = tree.nodes[tree.rootId].childrenIds
       if (topLevelIds.length > 0) {
@@ -165,8 +171,8 @@ export async function getProjetoAction(id: string) {
           const props = (fase?.properties as Record<string, unknown>) ?? {}
           return {
             fase: fase?.title ?? '',
-            dataLimite: typeof props.dataLimite === 'string' ? props.dataLimite : '',
-            custo: props.custo != null ? String(props.custo) : '',
+            dataLimite: fasesCalculadas.get(faseId)?.dataFim ?? (typeof props.dataLimite === 'string' ? props.dataLimite : ''),
+            custo: (fasesCalculadas.get(faseId)?.atividades.some(a => a.totalOrcado !== null) ? fasesCalculadas.get(faseId)!.totalOrcado : typeof props.custo === 'number' ? props.custo : null)?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? (typeof props.custo === 'string' ? props.custo : ''),
           }
         }).filter(f => f.fase)
       }
@@ -175,6 +181,7 @@ export async function getProjetoAction(id: string) {
     return {
       projeto: {
         ...projeto,
+        endDate: planilha?.dataFimProjeto ?? projeto.endDate,
         macroFases: macroFasesSyncPending ? projeto.macroFases ?? [] : macroFasesFromTree ?? projeto.macroFases ?? [],
         macroFasesSyncPending,
       },
@@ -196,7 +203,12 @@ export async function updateProjetoAction(
     const session = await verifySession()
     const { tenantId } = session
     await requireProjectPermission(session, id, 'projeto:editar')
-    if (['justificativa', 'objetivos', 'metodologia', 'descricaoProduto', 'premissas', 'restricoes', 'limitesAutoridade'].some(key => key in data)) throw new Error('Altere o Termo de Abertura em Documentação, criando uma versão para aprovação')
+    const complementares = Object.fromEntries(['justificativa', 'objetivos', 'metodologia', 'descricaoProduto', 'premissas', 'restricoes', 'limitesAutoridade'].filter(key => key in data).map(key => [key, data[key]]))
+    if (Object.keys(complementares).length) {
+      await requireProjectPermission(session, id, 'documentos:editar')
+      await requireProjectPermission(session, id, 'documentos:aprovar')
+      for (const key of Object.keys(complementares)) delete data[key]
+    }
     if (data.initialMemberId !== undefined && session.role !== 'admin') {
       const current = await prisma.userProjectRole.findFirst({ where: { projectId: id, deletedAt: null, role: { is: { nameKey: 'gerente', scope: 'PROJETO' } } }, select: { userId: true } })
       if ((data.initialMemberId || '') !== (current?.userId || '')) throw new Error('Só o administrador atribui o papel de gerente')
@@ -250,6 +262,10 @@ export async function updateProjetoAction(
       }
     }
 
+    if (Object.keys(complementares).length) {
+      const previous = await prisma.documentVersion.findFirst({ where: { projectId: id, documentType: 'CHARTER', status: 'APPROVED' }, orderBy: [{ approvedAt: 'desc' }, { sequence: 'desc' }] })
+      await submeterDocumento(session, id, 'CHARTER', { ...((previous?.payload as object) ?? {}), ...complementares }, { commitTitle: 'Dados complementares atualizados na edição do projeto', versao: previous?.versao ?? '1.0', elaboradoPor: '', aprovadoPor: '', dataAprovacao: '' })
+    }
     revalidatePath('/projetos')
     revalidatePath(`/projetos/${id}`)
     revalidatePath(`/projetos/${id}/wbs`)

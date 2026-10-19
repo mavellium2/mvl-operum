@@ -78,16 +78,23 @@ describe('computeLayout', () => {
       expect(geometry.pao.x).toBeGreaterThanOrEqual(geometry.car.x + NODE_W)
     })
 
-    it('item só com folhas: folhas empilhadas, com a linha perto da borda esquerda dele', () => {
-      const { geometry, connectors } = computeLayout(make(), 'r')
-      const spine = geometry.car.x + PADRAO_INSET
-      expect(geometry.lin.x).toBe(spine + PADRAO_GAP)
-      expect(geometry.cor.x).toBe(geometry.lin.x)
-      expect(geometry.lin.y).toBe(geometry.car.y + NODE_H + GAP_Y / 2)
-      expect(geometry.cor.y).toBe(geometry.lin.y + NODE_H + GAP_STACK)
-      expect(connectors.find(c => c.toId === 'cor')!.path).toBe(`M ${spine} ${geometry.car.y + NODE_H} V ${centroY(geometry.cor)} H ${geometry.cor.x}`)
-      // Fase só com folhas (Utensílios) segue a mesma regra.
-      expect(geometry.peg.x).toBe(geometry.ute.x + PADRAO_INSET + PADRAO_GAP)
+    it('mantém filhos folhas lado a lado e liga pelo centro inferior do pai', () => {
+      const { geometry: g, connectors } = computeLayout(make(), 'r')
+      expect(g.lin.y).toBe(g.cor.y)
+      expect(g.cor.x).toBeGreaterThanOrEqual(g.lin.x + NODE_W)
+      const parent = g.car, child = g.cor
+      expect(connectors.find(c => c.toId === 'cor')!.path).toBe(`M ${parent.x + parent.width / 2} ${parent.y + parent.height} V ${parent.y + parent.height + GAP_Y / 2} H ${child.x + child.width / 2} V ${child.y}`)
+    })
+
+    it('fases sem itens já nascem horizontais e recolher não muda o formato', () => {
+      const nodes = arvore({ r: ['f1', 'f2'], f1: ['a'], f2: [] })
+      nodes.f1.collapsed = true
+      const { geometry: g } = computeLayout(nodes, 'r')
+      expect(g.f1.y).toBe(g.f2.y)
+      expect(g.f2.x).toBeGreaterThan(g.f1.x)
+      expect(g.a).toBeUndefined()
+      const folhas = computeLayout(arvore({ r: ['f1', 'f2'] }), 'r').geometry
+      expect(folhas.f1.y).toBe(folhas.f2.y)
     })
 
     it('nada se sobrepõe', () => semSobreposicao(computeLayout(make(), 'r').geometry))

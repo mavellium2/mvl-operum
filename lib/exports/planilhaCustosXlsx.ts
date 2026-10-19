@@ -7,8 +7,8 @@ import { fmtDataBR } from '@/lib/planilhaCustos'
  * - Cabeçalho: projeto, início/fim.
  * - Colunas/agrupamentos, sub-totais cinza por macrofase, TOTAL GERAL.
  * - Fórmulas nativas: Horas (Min/1440, h:mm), Dias (Min/60/jornada do elaborador),
- *   R$ (Min × valor/min do elaborador), Total (R$ + Materiais), somatórios, quadros-resumo.
- * - Linha sem elaborador (ou sem salário/jornada) → células de Dias/R$/Total vazias (nenhum valor).
+ *   R$ (valor do minuto do elaborador), Total ((Min × R$) + Materiais), somatórios, quadros-resumo.
+ * - Linha sem elaborador (ou sem salário/jornada) → Dias e R$ vazios (nenhum valor); Total = só os materiais.
  * - 3 quadros-resumo (fase×valor, fase×tempo, elaborador×qtde/%).
  * - Formatação h:mm, moeda R$, datas dd/mm/aaaa, status colorido.
  */
@@ -20,6 +20,8 @@ export interface PlanilhaXlsxMeta {
 }
 
 const RESPALDO = '"R$" #,##0.00'
+/** Valor do minuto: centavos não bastam (ex.: R$ 0,3472). */
+const VALOR_MINUTO = '"R$" #,##0.00##'
 const DURACAO = 'h:mm'
 const DIAS = '0.00" d"'
 const DATA_BR = 'dd/mm/aaaa'
@@ -137,8 +139,8 @@ export async function gerarPlanilhaXlsx(
     ws.getCell(r, base + 1).numFmt = DURACAO
     // Dias
     ws.getCell(r, base + 2).numFmt = DIAS
-    // R$
-    ws.getCell(r, base + 3).numFmt = RESPALDO
+    // R$ (valor do minuto)
+    ws.getCell(r, base + 3).numFmt = VALOR_MINUTO
     // Materiais
     ws.getCell(r, base + 4).numFmt = RESPALDO
     // Total
@@ -171,9 +173,12 @@ export async function gerarPlanilhaXlsx(
       ws.getCell(r, 4).value = a.minOrcado
       ws.getCell(r, 5).value = { formula: `D${r}/1440` }
       if (a.jornadaDiaria !== null) ws.getCell(r, 6).value = { formula: `D${r}/60/${a.jornadaDiaria}` }
+      // R$ = valor do minuto; Total = (Min × R$) + Materiais (sem R$, só os materiais).
       if (a.vpm !== null) {
-        ws.getCell(r, 7).value = { formula: `ROUND(D${r}*${a.vpm},2)` }
-        ws.getCell(r, 9).value = { formula: `G${r}+H${r}` }
+        ws.getCell(r, 7).value = a.vpm
+        ws.getCell(r, 9).value = { formula: `ROUND(D${r}*G${r},2)+H${r}` }
+      } else if (a.materiaisOrcado) {
+        ws.getCell(r, 9).value = { formula: `H${r}` }
       }
       ws.getCell(r, 8).value = a.materiaisOrcado
       ws.getCell(r, 10).value = dataCelula(a.dataPrevista)
@@ -184,8 +189,10 @@ export async function gerarPlanilhaXlsx(
       ws.getCell(r, 12).value = { formula: `K${r}/1440` }
       if (a.jornadaDiaria !== null) ws.getCell(r, 13).value = { formula: `K${r}/60/${a.jornadaDiaria}` }
       if (a.vpm !== null) {
-        ws.getCell(r, 14).value = { formula: `ROUND(K${r}*${a.vpm},2)` }
-        ws.getCell(r, 16).value = { formula: `N${r}+O${r}` }
+        ws.getCell(r, 14).value = a.vpm
+        ws.getCell(r, 16).value = { formula: `ROUND(K${r}*N${r},2)+O${r}` }
+      } else if (a.materiaisReal) {
+        ws.getCell(r, 16).value = { formula: `O${r}` }
       }
       ws.getCell(r, 15).value = a.materiaisReal
       ws.getCell(r, 17).value = dataCelula(a.dataRealizacao)
@@ -208,11 +215,12 @@ export async function gerarPlanilhaXlsx(
       const s = nextRow
       nextRow++
       ws.mergeCells(`A${s}:C${s}`)
-      ws.getCell(s, 1).value = `Sub-total ${fase.codigo} ${fase.titulo}`
+      ws.getCell(s, 1).value = 'Sub-total'
       ws.getCell(s, 1).font = { bold: true, italic: true }
       // Rótulo encostado nos valores (SDD 4.7), no modelo do Prof. Fábio.
       ws.getCell(s, 1).alignment = { horizontal: 'right', vertical: 'middle' }
-      const cols = [4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16]
+      // R$ (valor do minuto) não se soma.
+      const cols = [4, 5, 6, 8, 9, 11, 12, 13, 15, 16]
       for (const c of cols) {
         const letter = ws.getColumn(c).letter
         ws.getCell(s, c).value = { formula: `SUM(${letter}${linhaFase + 1}:${letter}${s - 1})` }
@@ -224,7 +232,7 @@ export async function gerarPlanilhaXlsx(
       }
       for (const c of [5, 12]) ws.getCell(s, c).numFmt = DURACAO
       for (const c of [6, 13]) ws.getCell(s, c).numFmt = DIAS
-      for (const c of [7, 8, 9, 14, 15, 16]) ws.getCell(s, c).numFmt = RESPALDO
+      for (const c of [8, 9, 15, 16]) ws.getCell(s, c).numFmt = RESPALDO
       borda(ws, ws.getRow(s))
       subTotalRows.push(s)
     }
@@ -239,7 +247,8 @@ export async function gerarPlanilhaXlsx(
     ws.getCell(t, 1).font = { bold: true, size: 12 }
     ws.getCell(t, 1).alignment = { horizontal: 'right', vertical: 'middle' }
     const lista = subTotalRows.join(',')
-    const cols = [4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16]
+    // R$ (valor do minuto) não se soma.
+      const cols = [4, 5, 6, 8, 9, 11, 12, 13, 15, 16]
     for (const c of cols) {
       const letter = ws.getColumn(c).letter
       ws.getCell(t, c).value = { formula: `SUM(${lista.split(',').map(i => `${letter}${i}`).join(',')})` }
@@ -252,7 +261,7 @@ export async function gerarPlanilhaXlsx(
     }
     for (const c of [5, 12]) ws.getCell(t, c).numFmt = DURACAO
     for (const c of [6, 13]) ws.getCell(t, c).numFmt = DIAS
-    for (const c of [7, 8, 9, 14, 15, 16]) ws.getCell(t, c).numFmt = RESPALDO
+    for (const c of [8, 9, 15, 16]) ws.getCell(t, c).numFmt = RESPALDO
   }
 
   // ── Quadros-resumo ───────────────────────────────────────────────────────────
