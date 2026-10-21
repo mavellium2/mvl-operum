@@ -42,6 +42,8 @@ Por projeto (`.mcp.json` versionado, tokens via variável de ambiente, nunca com
 }
 ```
 
+Sessões do Claude Code na nuvem (aba Code do app Claude, claude.ai/code) usam o servidor `operum-nuvem` do `.mcp.json` da raiz, que não tem token: o PAT fica num segredo de rede do ambiente (host `api.operum.adm.br`), injetado pelo proxy da Anthropic. Passo a passo no [tutorial](../docs/tutoriais/integracao-mcp-claude.md#pelo-celular-claude-code-na-nuvem).
+
 Escritas exigem tokens com escopo `write`. Um token revogado deixa de funcionar imediatamente (o gateway introspecta cada chamada).
 
 Cópias de projetos grandes podem levar alguns minutos (o servidor respeita o limite de 20 req/s por token do gateway). Se o cliente MCP cortar a chamada, aumente o timeout de tools (no Claude Code: `MCP_TOOL_TIMEOUT`, em ms).
