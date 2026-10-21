@@ -106,4 +106,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async deleteApiTokenCache(tokenHash: string): Promise<void> {
     await this.cacheClient.del(`pat:${tokenHash}`).catch(() => undefined)
   }
+
+  /** Apaga a introspecção em cache no gateway (`oat:{hash}`) dos access tokens OAuth. */
+  async deleteOAuthCache(tokenHashes: string[]): Promise<void> {
+    if (tokenHashes.length === 0) return
+    await this.cacheClient.del(...tokenHashes.map(h => `oat:${h}`)).catch(() => undefined)
+  }
 }
