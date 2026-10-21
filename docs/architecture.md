@@ -564,6 +564,9 @@ Gerenciamento de workspaces (multi-tenant): listar tenants, entrar em um, trocar
 
 ### `/admin/cadastros`
 Cadastro de departamentos e funções globais reutilizáveis pelos projetos (`ProjetoDepartamento`/`ProjetoFuncao` — legado, direto no Prisma do monolito).
+O menu lateral do projeto oferece atalhos para Departamentos e Funções a
+administradores (papel obtido da sessão no layout servidor). Esses atalhos abrem
+o catálogo global existente; o layout administrativo mantém sua autorização.
 
 ### `/no-project`
 Tela exibida quando o usuário autenticado não está vinculado a nenhum projeto ativo.

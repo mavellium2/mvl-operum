@@ -531,7 +531,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                     <tr>
                       <th className="py-4 px-5 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Descrição da Fase</th>
                       <th className="py-4 px-5 text-[11px] font-bold text-slate-500 uppercase tracking-widest w-40">Data Limite</th>
-                      <th className="py-4 px-5 text-[11px] font-bold text-slate-500 uppercase tracking-widest w-48 text-right">Custo Previsto</th>
+                      <th className="py-4 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-widest w-48 text-right">Custo Previsto</th>
                       <th className="py-4 px-4 w-14"></th>
                     </tr>
                   </thead>
@@ -539,7 +539,10 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                     {macroFases.map((fase, idx) => (
                       <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
                         <td className="p-3">
-                          <span className="text-sm text-slate-500">1.{idx + 1}</span><input aria-label={`Fase 1.${idx + 1}`} type="text" value={fase.fase} onChange={e => updateMacroFase(idx, 'fase', e.target.value)} placeholder={`Ex: Fase ${idx + 1}...`} className="w-full px-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm font-semibold text-slate-800 transition-all outline-none" />
+                          <div className="flex items-start gap-2">
+                            <span className="shrink-0 py-2.5 text-sm text-slate-500">1.{idx + 1}</span>
+                            <textarea aria-label={`Fase 1.${idx + 1}`} rows={1} value={fase.fase} onChange={e => updateMacroFase(idx, 'fase', e.target.value)} placeholder={`Ex: Fase ${idx + 1}...`} className="min-w-0 flex-1 resize-y px-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm font-semibold text-slate-800 transition-all outline-none" />
+                          </div>
                         </td>
                         <td className="p-3">
                           <DateInputBR
@@ -572,7 +575,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                   <tfoot className="bg-slate-50 border-t border-slate-200/80">
                     <tr>
                       <td colSpan={2} className="py-5 px-5 text-xs font-bold text-slate-500 text-right uppercase tracking-widest">Orçamento Total</td>
-                      <td className="py-5 px-5 text-xl font-black text-slate-900 text-right tracking-tight">{calculateTotal()}</td>
+                      <td className="py-5 px-6 text-xl font-black text-slate-900 text-right tracking-tight">{calculateTotal()}</td>
                       <td></td>
                     </tr>
                   </tfoot>

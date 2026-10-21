@@ -14,6 +14,9 @@ funcionalidade depois disso é uma versão MINOR.
 - Atualiza Vite para 8.3.3 no workspace e nos serviços isolados, eliminando o bloqueio de auditoria nos testes e serviços sem desativar os checks de segurança.
 
 ### Corrigido
+- Menu do projeto inclui os atalhos de Departamentos e Funções para administradores, abrindo o catálogo global já existente.
+- Cronograma Financeiro mantém código e descrição da fase lado a lado; descrições longas aceitam quebra de linha em campo redimensionável.
+- Cabeçalho e total do custo das macrofases seguem o mesmo alinhamento dos valores editáveis.
 - Lint da raiz ignora a saída compilada do MCP, permitindo validar o projeto após construir os serviços sem tratar JavaScript gerado como código-fonte.
 
 ## [1.33.0] — 2026-10-19
