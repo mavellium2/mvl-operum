@@ -5,6 +5,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common'
 vi.mock('../prisma', () => ({
   prisma: {
     $transaction: vi.fn(),
+    $executeRaw: vi.fn(),
     sprint: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
     sprintColumn: { createMany: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
     card: { updateMany: vi.fn() },

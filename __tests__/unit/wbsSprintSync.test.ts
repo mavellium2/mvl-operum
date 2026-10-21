@@ -15,11 +15,84 @@ vi.mock('@/lib/prisma', () => ({ default: { $transaction: (fn: (t: typeof tx) =>
 vi.mock('@/services/auditoriaService', () => ({ registrarAcao: vi.fn() }))
 
 import { sincronizarEapComSprint } from '@/services/wbsService'
+import { computarPlanilhaCustos } from '@/lib/planilhaCustos'
+import type { WbsNodeClient } from '@/types/wbs'
 
 const node = (id: string, parentId: string | null, title: string, props: object = {}, updatedAt = new Date('2026-10-01')) =>
   ({ id, parentId, title, order: 0, code: '', properties: props, updatedAt })
 const sprint = (id: string, name: string, updatedAt = new Date('2026-09-01')) => ({ id, name, updatedAt })
 const ZERO = { cardsCriados: 0, nosCriados: 0, nosMovidos: 0, nosRemovidos: 0, sprintsCriadas: 0, cardsMovidos: 0, titulosAtualizados: 0, elaboradoresSincronizados: 0 }
+
+function arvoreMutavel(iniciais: ReturnType<typeof node>[]) {
+  let rows = iniciais.map(n => ({ ...n, version: 0 }))
+  tx.wbsNode.findMany.mockImplementation(async ({ where = {} } = {}) => structuredClone(rows.filter(n => !('parentId' in where) || n.parentId === where.parentId).sort((a, b) => a.order - b.order)))
+  tx.wbsNode.findFirst.mockImplementation(async () => structuredClone(rows.find(n => n.parentId === null)))
+  tx.wbsNode.update.mockImplementation(async ({ where, data }) => {
+    const n = rows.find(n => n.id === where.id)!
+    Object.assign(n, data)
+    return structuredClone(n)
+  })
+  tx.wbsNode.delete.mockImplementation(async ({ where }) => {
+    const ids = new Set([where.id])
+    for (let i = 0; i < 20; i++) for (const n of rows) if (n.parentId && ids.has(n.parentId)) ids.add(n.id)
+    rows = rows.filter(n => !ids.has(n.id))
+  })
+  return () => structuredClone(rows)
+}
+
+describe('exclusão de sprint refletida na EAP e planilha', () => {
+  it('remove a fase excluída, preserva os cards do backlog e renumera 1.3 e filhos para 1.2', async () => {
+    const rows = arvoreMutavel([
+      { ...node('r', null, 'Projeto'), code: '1' },
+      { ...node('a', 'r', 'Primeira', { sprintId: 's1' }), code: '1.1' },
+      { ...node('b', 'r', 'Excluída', { sprintId: 's2' }), order: 1, code: '1.2' },
+      node('backlog', 'b', 'Voltou ao backlog', { cardId: 'c2' }),
+      node('extra', 'b', 'Linha sem card', { materiaisOrcado: 500 }),
+      { ...node('c', 'r', 'Terceira', { sprintId: 's3' }), order: 2, code: '1.3' },
+      { ...node('atividade', 'c', 'Atividade', { cardId: 'c3' }), code: '1.3.1' },
+    ])
+    // deletedAt:null is the live query, {not:null} is confirmation of the deleted sprint.
+    tx.sprint.findMany.mockImplementation(async ({ where }) => where.deletedAt?.not === null ? [{ id: 's2' }] : [sprint('s1', '1.1 Primeira'), sprint('s3', '1.3 Terceira')])
+    const cards = [
+      { id: 'c2', title: 'Voltou ao backlog', description: '', deletedAt: null, updatedAt: new Date('2026-10-01'), sprintId: null },
+      { id: 'c3', title: 'Atividade', description: '', deletedAt: null, updatedAt: new Date('2026-10-01'), sprintId: 's3' },
+    ]
+    tx.card.findMany.mockResolvedValue(cards)
+    const result = await sincronizarEapComSprint('p1', 't1')
+    expect(result.nosRemovidos).toBe(3)
+    expect(rows().map(n => n.id)).not.toEqual(expect.arrayContaining(['b', 'backlog', 'extra']))
+    expect(rows().find(n => n.id === 'c')).toMatchObject({ code: '1.2', order: 1 })
+    expect(rows().find(n => n.id === 'atividade')?.code).toBe('1.2.1')
+    expect(tx.sprint.update).toHaveBeenCalledWith({ where: { id: 's3' }, data: { name: '1.2 Terceira' } })
+    expect(tx.card.create).not.toHaveBeenCalled()
+    expect(tx.card.update).not.toHaveBeenCalled()
+    expect(tx.sprint.create).not.toHaveBeenCalled()
+    const tree = Object.fromEntries(rows().map(n => [n.id, { ...n, childrenIds: rows().filter(c => c.parentId === n.id).map(c => c.id) }])) as unknown as Record<string, WbsNodeClient>
+    const sheet = computarPlanilhaCustos(tree, 'r', { valorReferencia: 4000, horasPorDia: 8 }, new Map())
+    expect(sheet.macrofases.map(f => f.nodeId)).toEqual(['a', 'c'])
+    expect(sheet.macrofases.some(f => f.nodeId === 'b')).toBe(false)
+    expect(await sincronizarEapComSprint('p1', 't1')).toMatchObject({ nosRemovidos: 0, cardsCriados: 0, sprintsCriadas: 0 })
+  })
+
+  it('não remove fase com referência desconhecida ou de outro projeto', async () => {
+    const rows = arvoreMutavel([node('r', null, 'Projeto'), node('b', 'r', 'Desconhecida', { sprintId: 'outro' })])
+    tx.sprint.findMany.mockResolvedValue([])
+    tx.card.findMany.mockResolvedValue([])
+    await sincronizarEapComSprint('p1', 't1')
+    expect(rows().map(n => n.id)).toContain('b')
+    expect(tx.wbsNode.delete).not.toHaveBeenCalled()
+    expect(tx.sprint.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'p1', deletedAt: { not: null }, id: { in: ['outro'] } } }))
+  })
+
+  it('move atividade da fase excluída para sua sprint viva antes de remover a fase', async () => {
+    const rows = arvoreMutavel([node('r', null, 'Projeto'), node('b', 'r', 'Excluída', { sprintId: 's2' }), node('c', 'r', 'Viva', { sprintId: 's3' }), node('n', 'b', 'Atividade', { cardId: 'c3', materiaisOrcado: 250 })])
+    tx.sprint.findMany.mockImplementation(async ({ where }) => where.deletedAt?.not === null ? [{ id: 's2' }] : [sprint('s3', 'Viva')])
+    tx.card.findMany.mockResolvedValue([{ id: 'c3', title: 'Atividade', description: '', deletedAt: null, updatedAt: new Date('2026-10-01'), sprintId: 's3' }])
+    await sincronizarEapComSprint('p1', 't1')
+    expect(rows().find(n => n.id === 'n')).toMatchObject({ parentId: 'c', properties: { cardId: 'c3', materiaisOrcado: 250 } })
+    expect(rows().map(n => n.id)).not.toContain('b')
+  })
+})
 
 beforeEach(() => {
   vi.resetAllMocks()

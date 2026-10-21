@@ -3,6 +3,7 @@
 import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { sprintsApi } from '@/lib/api-client'
+import { sincronizarEapComSprint } from '@/services/wbsService'
 import {
   MOTIVO_MINIMO, camposDaSprint, diferencasSprint, registrarHistoricoSprint, resumoDaSprint, sprintTemDados,
 } from '@/services/sprintHistoricoService'
@@ -73,7 +74,7 @@ export async function getSprintExclusaoInfoAction(id: string) {
   }
 }
 
-export async function deleteSprintAction(id: string, projectId?: string, motivo?: string) {
+export async function deleteSprintAction(id: string, _projectId?: string, motivo?: string) {
   try {
     const { userId, tenantId } = await verifySession()
     const resumo = await resumoDaSprint(id)
@@ -88,10 +89,22 @@ export async function deleteSprintAction(id: string, projectId?: string, motivo?
         motivo: justificativa || null, resumo: { cards: resumo.cards, segundosRegistrados: resumo.segundosRegistrados, status: resumo.status },
       }).catch(error => console.error('[sprint] falha ao gravar histórico', error))
     }
-    revalidatePath('/sprints')
-    if (projectId) {
-      revalidatePath(`/projetos/${projectId}/sprints`)
+    // O projeto vem da sprint lida no servidor, não do parâmetro opcional da tela.
+    // A exclusão no serviço e a reconciliação no monólito são operações distintas;
+    // a leitura das telas também reconcilia fases excluídas se esta etapa falhar.
+    const projetoDaSprint = resumo?.projectId
+    let falhouSincronizacao = false
+    if (projetoDaSprint) {
+      try { await sincronizarEapComSprint(projetoDaSprint, tenantId) }
+      catch (error) {
+        falhouSincronizacao = true
+        console.error('[sprint] excluída, mas a reconciliação da EAP falhou', error)
+      }
     }
+    revalidatePath('/sprints')
+    revalidatePath(`/sprints/${id}`)
+    if (projetoDaSprint) revalidatePath(`/projetos/${projetoDaSprint}`, 'layout')
+    if (falhouSincronizacao) return { error: 'A sprint foi excluída, mas a EAP e a planilha ainda precisam ser atualizadas. Reabra o projeto para tentar a atualização novamente.' }
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao deletar sprint' }

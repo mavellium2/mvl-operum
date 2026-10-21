@@ -860,6 +860,7 @@ const texto = (v: unknown): string | undefined => (typeof v === 'string' ? v : u
  *  - card no backlog não aparece na EAP/planilha: o nó dele no nível 2 ou dentro de uma sprint é
  *    removido; se a fase acabou de virar sprint, o card vai para "A Fazer" dela.
  * Card excluído não é recriado: o nó mantém o vínculo. Card do backlog sem nó não entra na EAP.
+ * Sprint confirmada como excluída perde sua fase; códigos e nomes das restantes são recalculados.
  */
 export async function sincronizarEapComSprint(projectId: string, tenantId: string): Promise<SyncEapSprintResult> {
   return prisma.$transaction(async tx => {
@@ -1071,6 +1072,48 @@ export async function sincronizarEapComSprint(projectId: string, tenantId: strin
       result.nosRemovidos++
     }
     for (const pai of paisAntigos) await recompactChildren(tx, pai, projectId, tenantId)
+
+    // 4c) excluir sprint devolve seus cards ao backlog, mas a fase não pode continuar
+    // na EAP/planilha. Só remover com exclusão confirmada neste projeto; vínculo
+    // desconhecido não é prova de exclusão. Cards que mudaram de sprint já tiveram
+    // seus nós movidos no passo 4, preservando as propriedades de custo.
+    const fasesAusentes = nivel2.filter(n => {
+      const sid = sprintIdDe(n.id)
+      return sid && !sprintViva.has(sid)
+    })
+    if (fasesAusentes.length) {
+      const excluidas = await tx.sprint.findMany({
+        where: { projectId, deletedAt: { not: null }, id: { in: fasesAusentes.map(n => sprintIdDe(n.id)!) } },
+        select: { id: true },
+      })
+      const idsExcluidos = new Set(excluidas.map(s => s.id))
+      for (const fase of fasesAusentes) {
+        const sprintExcluidaId = sprintIdDe(fase.id)!
+        if (!idsExcluidos.has(sprintExcluidaId)) continue
+        const remover = new Set([fase.id])
+        for (let depth = 0; depth <= WBS_LIMITS.MAX_DEPTH; depth++) {
+          const antes = remover.size
+          for (const [id, pai] of paiDe) if (pai && remover.has(pai)) remover.add(id)
+          if (remover.size === antes) break
+        }
+        for (const id of remover) {
+          const cardId = cardIdDe(id)
+          const card = cardId ? cardPorId.get(cardId) : undefined
+          if (card && !card.deletedAt && card.sprintId && sprintViva.has(card.sprintId)) {
+            throw new WbsValidationError('Há uma atividade de sprint ativa dentro da fase excluída. Confira o vínculo antes de removê-la.')
+          }
+        }
+        await tx.wbsNode.delete({ where: { id: fase.id } }) // filhos removidos pelo FK em cascata
+        for (const id of remover) {
+          paiDe.delete(id)
+          propsDe.delete(id)
+          mudou.delete(id)
+        }
+        noDaSprint.delete(sprintExcluidaId)
+        result.nosRemovidos += remover.size
+      }
+      if (idsExcluidos.size) await recompactChildren(tx, root.id, projectId, tenantId)
+    }
 
     // 5) folhas do nível 3+ sem card → cards em "A Fazer" da sprint do nível 2
     filhos = comFilhos()

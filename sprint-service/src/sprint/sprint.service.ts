@@ -97,6 +97,7 @@ export class SprintService {
           })
           if (!sprint) throw new NotFoundException('Sprint não encontrada')
           if (!sprint.projectId) throw new ConflictException('Sprint sem projeto: corrija o vínculo antes de excluir')
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'eap-sprint:' + sprint.projectId}))`
           const cards = await tx.card.findMany({
             where: { sprintId: id, deletedAt: null },
             select: { id: true, projectId: true },
