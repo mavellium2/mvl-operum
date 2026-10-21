@@ -40,10 +40,11 @@ async function loadProject(tenantId: string, projetoId: string) {
 }
 
 /** Árvore da aba EAP/WBS no formato do documento; `null` quando a WBS ainda não existe. */
-async function nodesDaWbs(projetoId: string, tenantId: string): Promise<EapNode[] | null> {
+async function nodesDaWbs(projetoId: string, tenantId: string): Promise<{ nodes: EapNode[]; arvore: { rootId: string | null; nodes: Awaited<ReturnType<typeof getTree>>['nodes'] } } | null> {
   const tree = await getTree(projetoId, tenantId)
   const nodes = eapNodesFromWbs(tree.nodes, tree.rootId)
-  return nodes.length > 0 ? nodes : null
+  // A árvore da aba vai junto para o documento desenhar a EAP gráfica igual à aba.
+  return nodes.length > 0 ? { nodes, arvore: { rootId: tree.rootId, nodes: tree.nodes } } : null
 }
 
 /**
@@ -96,13 +97,14 @@ export async function GET(_: Request, { params }: RouteCtx) {
       projectName: salvo.projectName || project.name,
       // Gerente do projeto é sempre o do cadastro, nunca digitado.
       projectManager: gerente.nome,
-      ...(wbs ? { nodes: wbs } : {}),
+      ...(wbs ? { nodes: wbs.nodes } : {}),
     }
     return NextResponse.json({
       document,
       instituicao: formatInstitucionalInfo(project),
       logoUrl: project.logoUrl ?? null,
       origemWbs: Boolean(wbs),
+      arvore: wbs?.arvore ?? null,
       // Assinatura do gerente só em documento com versão aprovada (mesma regra do Termo).
       assinaturaUrl: vigente ? gerente.signatureUrl : null,
     })
@@ -133,7 +135,7 @@ export async function PUT(request: Request, { params }: RouteCtx) {
 
     // Com a aba EAP/WBS montada, a versão salva guarda a estrutura dela (não a do cliente).
     const wbs = await nodesDaWbs(projetoId, tenantId)
-    if (wbs) parsed.data.nodes = wbs as unknown as typeof parsed.data.nodes
+    if (wbs) parsed.data.nodes = wbs.nodes as unknown as typeof parsed.data.nodes
     parsed.data.projectManager = (await gerenteDoProjeto(projetoId)).nome
     const nodes = parsed.data.nodes as unknown as EapNode[]
     if (!validateEapDepth(nodes)) {

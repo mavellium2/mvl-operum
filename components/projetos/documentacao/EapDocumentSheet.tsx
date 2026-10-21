@@ -5,6 +5,7 @@ import type { EapNode, EapDocumentMetadata } from '@/types/eap'
 import { computeEapColumnLayout, eapBoxLabel, eapWrapLines, fitScale, EAP_COL_LINE_H, EAP_COL_PAD_Y } from '@/lib/eapLayout'
 import { flattenTree } from '@/lib/eapCode'
 import { formatDateBR } from '@/lib/date'
+import EapGraficaDaAba, { type ArvoreDaAba } from './EapGraficaDaAba'
 
 /**
  * Documento EAP no layout do modelo do professor ("04 Aula GP - Modelo de
@@ -25,6 +26,8 @@ export interface EapDocumentSheetProps {
   logoUrl?: string | null
   /** Assinatura do gerente (documento com versão aprovada). */
   assinaturaUrl?: string | null
+  /** Árvore da aba EAP/WBS: a EAP gráfica é desenhada igual à aba. Sem ela, layout em colunas. */
+  arvore?: ArvoreDaAba | null
   /** Habilita interação (clique nos blocos) — usado pelo editor. */
   interactive?: boolean
   selectedId?: string | null
@@ -106,7 +109,7 @@ function Cabecalho({ titulo, metadata, instituicao, logoUrl, assinaturaUrl }: { 
 }
 
 const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
-  function EapDocumentSheet({ metadata, nodes, instituicao, logoUrl, assinaturaUrl, interactive, selectedId, onSelectBlock }, ref) {
+  function EapDocumentSheet({ metadata, nodes, instituicao, logoUrl, assinaturaUrl, arvore, interactive, selectedId, onSelectBlock }, ref) {
     const layout = useMemo(() => computeEapColumnLayout(nodes), [nodes])
     const flat = useMemo(() => flattenTree(nodes), [nodes])
 
@@ -123,6 +126,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
           </div>
         )
       }
+      if (arvore?.rootId) return <EapGraficaDaAba arvore={arvore} larguraMax={availW} alturaMax={availH} />
       return (
         <svg
           viewBox={`0 0 ${layout.bounds.width} ${layout.bounds.height}`}
