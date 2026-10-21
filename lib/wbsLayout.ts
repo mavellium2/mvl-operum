@@ -162,6 +162,14 @@ function planejar(
 
     ch.forEach(c => q.push({ id: c.id, depth: depth + 1, formato }))
   }
+
+  // Horizontal: blocos e fases com o mesmo tamanho (a largura do maior texto),
+  // para as colunas de cada nível ficarem alinhadas. A raiz mantém o próprio tamanho.
+  if (eap === 'HORIZONTAL') {
+    const demais = preOrder.filter(id => id !== rootId)
+    const largura = Math.max(0, ...demais.map(id => card[id].w))
+    for (const id of demais) card[id] = { ...card[id], w: largura }
+  }
   return { preOrder, arranjo, card }
 }
 

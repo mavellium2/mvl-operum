@@ -179,6 +179,22 @@ describe('computeLayout', () => {
       expect(centroY(geometry.f1)).toBe(centroY(geometry.r))
     })
 
+    it('blocos e fases com o mesmo tamanho: todos usam a largura do maior texto', () => {
+      const { geometry, connectors } = computeLayout(make(), 'r', { r: 200, f1: 120, a: 260, g2: 90 })
+      const abaixoDaRaiz = ['f1', 'f2', 'f3', 'a', 'b', 'g', 'g1', 'g2']
+      for (const id of abaixoDaRaiz) expect(geometry[id].width).toBe(260)
+      // colunas alinhadas: cada nível começa na mesma posição
+      expect(geometry.a.x).toBe(geometry.f1.x + 260 + GAP_X)
+      expect(geometry.g.x).toBe(geometry.a.x)
+      expect(geometry.g1.x).toBe(geometry.g.x + 260 + GAP_X)
+      // conectores entram na borda esquerda dos filhos já com a nova largura
+      const spine = geometry.f1.x + 260 + GAP_X / 2
+      expect(connectors.find(c => c.toId === 'a')!.path).toBe(
+        `M ${geometry.f1.x + 260} ${centroY(geometry.f1)} H ${spine} V ${centroY(geometry.a)} H ${geometry.a.x}`,
+      )
+      semSobreposicao(geometry)
+    })
+
     it('raizEmPe: false (cartões detalhados) mantém a raiz deitada', () => {
       const { geometry } = computeLayout(make(), 'r', {}, 162, { raizEmPe: false })
       expect(geometry.r).toMatchObject({ width: NODE_W, height: 162 })
