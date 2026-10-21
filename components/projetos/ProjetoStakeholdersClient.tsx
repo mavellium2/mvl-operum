@@ -17,8 +17,8 @@ import {
   BookUser,
   ChevronDown,
   Users,
-  Briefcase,
-  DollarSign,
+  ArrowUp,
+  ArrowDown,
   GripVertical,
   Power,
 } from 'lucide-react'
@@ -42,6 +42,7 @@ import { parseHoras, formatHoras } from '@/lib/validation/horas'
 import PasswordInput from '@/components/ui/PasswordInput'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
+import styles from './ProjetoStakeholdersClient.module.css'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -231,12 +232,6 @@ function Avatar({ name, url, size = 'md' }: { name: string; url: string | null; 
       {getInitials(name)}
     </div>
   )
-}
-
-function TipoBadge({ tipo }: { tipo: 'interno' | 'externo' }) {
-  return tipo === 'interno'
-    ? <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100">Equipe</span>
-    : <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200">Externo</span>
 }
 
 function Spinner() {
@@ -455,6 +450,9 @@ export default function ProjetoStakeholdersClient({
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
   const [searchProjeto, setSearchProjeto] = useState('')
+  const [vinculo, setVinculo] = useState('')
+  const [area, setArea] = useState('')
+  const [reorderMode, setReorderMode] = useState(false)
   const [searchDir, setSearchDir] = useState('')
   /** Criação/vínculo rápida a partir das buscas (Col 1 projeto / Col 2 diretório externo) */
   const [quickLoading, setQuickLoading] = useState<null | 'col1' | 'dir'>(null)
@@ -481,18 +479,26 @@ export default function ProjetoStakeholdersClient({
   // ── Layout
   const showCol3 = selected !== null || isCreating
   const col2Active = addMode !== null && canManage
-  const col1Width = col2Active || showCol3 ? 'lg:w-1/3' : 'w-full'
-  const col3Width = col2Active ? 'lg:w-1/3' : 'lg:flex-1'
+  const col1Width = col2Active || showCol3 ? 'xl:w-1/3' : 'w-full'
+  const col3Width = col2Active ? 'xl:w-1/3' : 'xl:flex-1'
 
   // ── Filtered lists
+  const normalizarBusca = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  const areas = [...new Set(projeto.flatMap(s => s.tipo === 'interno' ? s.departamento ?? [] : s.company ? [s.company] : []))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const hasFilters = Boolean(searchProjeto.trim() || vinculo || area)
+  const canReorder = canManage && reorderMode && !hasFilters && !isReordering
   const filteredProjeto = projeto.filter(s => {
-    const q = searchProjeto.toLowerCase()
-    return (
-      s.name.toLowerCase().includes(q) ||
-      (s.email ?? '').toLowerCase().includes(q) ||
-      (s.company ?? '').toLowerCase().includes(q)
-    )
+    const q = normalizarBusca(searchProjeto)
+    return (!vinculo || s.tipo === vinculo)
+      && (!area || (s.tipo === 'interno' ? s.departamento?.includes(area) : s.company === area))
+      && [s.name, s.email ?? '', s.company ?? ''].some(value => normalizarBusca(value).includes(q))
   })
+
+  function clearFilters() {
+    setSearchProjeto('')
+    setVinculo('')
+    setArea('')
+  }
 
   // Equipe primeiro, externos depois, cada grupo com o seu cabeçalho. A ordem de cada
   // grupo é salva separadamente (reorderMembers / reorderStakeholders), então misturar
@@ -977,59 +983,45 @@ export default function ProjetoStakeholdersClient({
     else handleUnbindExterno(s)
   }
 
-  // ── Drag and Drop
+  // A ordem é independente por vínculo. Filtros não podem salvar uma ordem parcial.
+  function movePerson(from: number, to: number) {
+    if (!canReorder || from === to || !projeto[from] || projeto[from].tipo !== projeto[to]?.tipo) return
+    const previous = projeto
+    const newOrder = [...projeto]
+    const [moved] = newOrder.splice(from, 1)
+    newOrder.splice(to, 0, moved)
+    setProjeto(newOrder)
+    setIsReordering(true)
+    setReorderError(null)
+    startTransition(async () => {
+      try {
+        const group = newOrder.filter(s => s.tipo === moved.tipo)
+        const result = moved.tipo === 'interno'
+          ? await reorderMembersAction(projetoId, group.map(s => s.userId!))
+          : await reorderStakeholdersAction(projetoId, group.map(s => s.stakeholderId!))
+        if ('error' in result) throw new Error('reorder failed')
+      } catch {
+        setProjeto(previous)
+        setReorderError('Falha ao salvar a nova ordem. A ordenação foi revertida. Tente mover a pessoa novamente.')
+      } finally {
+        setIsReordering(false)
+      }
+    })
+  }
+
   function handleDragStart(index: number) {
-    if (!canManage) return
-    setDraggedIndex(index)
+    if (canReorder) setDraggedIndex(index)
   }
 
   function handleDragOver(e: React.DragEvent, index: number) {
     e.preventDefault()
-    if (!canManage || draggedIndex === null || draggedIndex === index) return
-    setDragOverIndex(index)
+    if (canReorder && draggedIndex !== null && projeto[draggedIndex]?.tipo === projeto[index]?.tipo) setDragOverIndex(index)
   }
 
   function handleDrop(e: React.DragEvent, dropIndex: number) {
     e.preventDefault()
-    if (!canManage || draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null)
-      setDragOverIndex(null)
-      return
-    }
-
-    const newOrder = [...projeto]
-    const [movedItem] = newOrder.splice(draggedIndex, 1)
-    newOrder.splice(dropIndex, 0, movedItem)
-
-    setProjeto(newOrder)
-    setDraggedIndex(null)
-    setDragOverIndex(null)
-
-    // Salvar nova ordem no backend
-    setIsReordering(true)
-    startTransition(async () => {
-      const internalIds = newOrder
-        .filter(s => s.tipo === 'interno')
-        .map(s => s.userId!)
-        .filter(Boolean)
-      const externalIds = newOrder
-        .filter(s => s.tipo === 'externo')
-        .map(s => s.stakeholderId!)
-        .filter(Boolean)
-
-      const results = await Promise.all([
-        internalIds.length ? reorderMembersAction(projetoId, internalIds) : Promise.resolve({ success: true }),
-        externalIds.length ? reorderStakeholdersAction(projetoId, externalIds) : Promise.resolve({ success: true }),
-      ])
-      setIsReordering(false)
-      const failed = results.find(r => 'error' in r)
-      if (failed) {
-        setProjeto(initialStakeholders)
-        setReorderError('Falha ao salvar a nova ordem. A ordenação foi revertida.')
-      } else {
-        setReorderError(null)
-      }
-    })
+    if (draggedIndex !== null) movePerson(draggedIndex, dropIndex)
+    handleDragEnd()
   }
 
   function handleDragEnd() {
@@ -1328,7 +1320,7 @@ export default function ProjetoStakeholdersClient({
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 items-start">
+    <div className="flex flex-col xl:flex-row gap-6 items-start">
       <Modal isOpen={inativando !== null} onClose={() => setInativando(null)} title="Inativar stakeholder">
         <p className="text-sm text-gray-600 mb-3">
           {inativando ? <>Informe por que <strong>{inativando.name}</strong> foi inativado. O motivo fica registrado e aparece no cadastro.</> : null}
@@ -1357,12 +1349,12 @@ export default function ProjetoStakeholdersClient({
       </Modal>
 
       {/* ── COLUMN 1 — Lista Unificada ── */}
-      <div className={`${col1Width} w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300`}>
+      <div className={`${col1Width} w-full min-w-0 bg-white rounded-2xl border border-gray-200 ${styles.listPanel}`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5 border-b border-gray-100">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Stakeholders do Projeto</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h1 className="text-2xl font-semibold text-gray-900">Stakeholders do Projeto</h1>
+            <p className="text-sm text-gray-600 mt-1">
               {projeto.length} pessoa{projeto.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -1371,13 +1363,17 @@ export default function ProjetoStakeholdersClient({
               <button
                 onClick={() => setShowAddMenu(v => !v)}
                 title="Adicionar"
-                className="flex items-center gap-1 p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                aria-expanded={showAddMenu}
+                aria-controls="stakeholder-add-menu"
+                onKeyDown={e => { if (e.key === 'Escape') setShowAddMenu(false) }}
+                className="inline-flex min-h-11 items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                Adicionar pessoa
                 <ChevronDown className="w-3 h-3" />
               </button>
               {showAddMenu && (
-                <div className="absolute right-0 top-full mt-1 w-60 bg-white rounded-xl border border-gray-100 shadow-xl z-50 py-1 animate-in fade-in duration-150">
+                <div id="stakeholder-add-menu" onKeyDown={e => { if (e.key === 'Escape') { setShowAddMenu(false); (addMenuRef.current?.querySelector('button') as HTMLButtonElement | null)?.focus() } }} className="absolute right-0 top-full mt-1 w-60 bg-white rounded-xl border border-gray-100 shadow-xl z-50 py-1 animate-in fade-in duration-150">
                   <button
                     onClick={() => handleOpenAddMode('interno')}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
@@ -1398,22 +1394,42 @@ export default function ProjetoStakeholdersClient({
           )}
         </div>
 
-        {/* Search */}
-        <div className="px-4 py-3 border-b border-gray-100">
-  <input 
-    type="search" 
-    placeholder="Buscar por nome, e-mail ou empresa…" 
-    value={searchProjeto} 
-    onChange={e => setSearchProjeto(e.target.value)} 
-    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150" 
-    autoFocus 
-  />
-</div>
-
+        <div className="flex flex-wrap gap-4 px-5 py-4 border-b border-gray-100">
+          <label className="flex-1 min-w-0 basis-56 text-sm font-medium text-gray-700">
+            Buscar pessoa
+            <input
+              type="search"
+              placeholder="Buscar por nome, e-mail ou empresa…"
+              value={searchProjeto}
+              onChange={e => { setSearchProjeto(e.target.value); setReorderMode(false) }}
+              className={`${inputCls} mt-2 text-base sm:text-sm`}
+            />
+          </label>
+          <label className="flex-1 basis-28 min-w-0 text-sm font-medium text-gray-700">
+            Vínculo
+            <select value={vinculo} onChange={e => { setVinculo(e.target.value); setReorderMode(false) }} className={`${inputCls} mt-2 text-base sm:text-sm`}>
+              <option value="">Todos os vínculos</option><option value="interno">Equipe</option><option value="externo">Externos</option>
+            </select>
+          </label>
+          <label className="flex-1 basis-28 min-w-0 text-sm font-medium text-gray-700">
+            Área ou empresa
+            <select value={area} onChange={e => { setArea(e.target.value); setReorderMode(false) }} className={`${inputCls} mt-2 text-base sm:text-sm`}>
+              <option value="">Todas as áreas e empresas</option>{areas.map(value => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+          <p role="status" className="text-sm text-gray-600">{isReordering ? 'Salvando ordem…' : `${filteredProjeto.length} de ${projeto.length} pessoas`}</p>
+          <div className="flex flex-wrap gap-2">
+            {hasFilters && <Button variant="secondary" onClick={clearFilters}>Limpar filtros</Button>}
+            {canManage && projeto.length > 1 && <Button variant="secondary" disabled={hasFilters || isReordering} aria-pressed={reorderMode} onClick={() => setReorderMode(v => !v)}>{reorderMode ? 'Finalizar ordenação' : 'Reordenar'}</Button>}
+          </div>
+        </div>
+        {reorderMode && <p className="px-5 pb-3 text-sm text-gray-600">Arraste ou use as setas para mover pessoas dentro do mesmo grupo. Cada movimento é salvo automaticamente.</p>}
 
         {/* Reorder error feedback */}
         {reorderError && (
-          <p className="mx-4 mt-3 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{reorderError}</p>
+          <p role="alert" className="mx-4 mt-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{reorderError}</p>
         )}
 
         {/* List */}
@@ -1422,16 +1438,12 @@ export default function ProjetoStakeholdersClient({
             <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
               <BookUser className="w-5 h-5 text-gray-300" />
             </div>
-            <p className="text-sm text-gray-400">
-              {projeto.length === 0
-                ? isAdmin
-                  ? 'Nenhuma pessoa. Clique em + para adicionar.'
-                  : 'Nenhum stakeholder no projeto.'
-                : 'Nenhum resultado para a busca.'}
-            </p>
+            <p className="text-base font-medium text-gray-900">{projeto.length === 0 ? 'Este projeto ainda não tem pessoas' : 'Nenhuma pessoa encontrada'}</p>
+            <p className="text-sm text-gray-600 mt-2">{projeto.length === 0 ? canManage ? 'Use Adicionar pessoa para vincular alguém da equipe ou um stakeholder externo.' : 'Peça ao gerente para vincular as pessoas do projeto.' : 'Tente outro termo ou limpe os filtros para ver todas as pessoas.'}</p>
+            {hasFilters && <Button variant="secondary" className="mt-4" onClick={clearFilters}>Limpar filtros</Button>}
           </div>
         ) : (
-          <ul className={`space-y-2 overflow-y-auto max-h-[600px] px-2 py-2${isReordering ? ' opacity-70' : ''}`}>
+          <ul aria-label="Pessoas do projeto" aria-busy={isReordering} className={isReordering ? 'opacity-70' : undefined}>
             {exibidos.map((s, posicao) => {
               // Índice real em `projeto`: o arrastar reordena essa lista, não a filtrada/agrupada.
               const index = projeto.indexOf(s)
@@ -1442,105 +1454,41 @@ export default function ProjetoStakeholdersClient({
                 <li
                   role="presentation"
                   data-testid={`grupo-${s.tipo}`}
-                  className="flex items-center justify-between px-1 pt-2 pb-0.5 text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                  className="flex items-center justify-between px-5 py-3 text-sm font-semibold text-gray-700 bg-gray-50 border-y border-gray-100"
                 >
                   <span>{s.tipo === 'interno' ? 'Membros da equipe' : 'Stakeholders externos'}</span>
-                  <span className="font-semibold text-slate-400">{s.tipo === 'interno' ? totalEquipe : totalExternos}</span>
+                  <span className="font-medium text-gray-600">{s.tipo === 'interno' ? totalEquipe : totalExternos}</span>
                 </li>
               )}
               <li
-                draggable={canManage}
+                draggable={canReorder}
                 onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={(e) => handleDrop(e, index)}
+                onDragOver={e => handleDragOver(e, index)}
+                onDrop={e => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
-                className={`group flex items-center justify-between gap-3 p-3 rounded-xl bg-white border shadow-sm hover:shadow-md transition-all duration-200${
-                  draggedIndex === index ? ' opacity-50 border-dashed border-blue-400' : ''
-                }${
-                  dragOverIndex === index && draggedIndex !== index ? ' border-blue-400 border-t-4' : ' border-slate-200 hover:border-slate-300'
-                }${canManage ? ' cursor-move' : ''}`}
+                className={`${styles.personRow} border-b border-gray-100 ${selected?.id === s.id ? 'bg-blue-50' : 'bg-white'} ${draggedIndex === index ? 'opacity-50' : ''} ${dragOverIndex === index && draggedIndex !== index ? 'ring-2 ring-inset ring-blue-500' : ''}`}
               >
-                {isAdmin && (
-                  <div className="text-slate-300 hover:text-slate-500 transition-colors" title="Arrastar para reordenar">
-                    <GripVertical className="w-4 h-4" />
-                  </div>
-                )}
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <Avatar name={s.name} url={s.avatarUrl} size="lg" />
-                  <div className="flex flex-col min-w-0 gap-0.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-[15px] font-bold leading-tight truncate ${s.isActive === false ? 'text-red-700' : 'text-slate-800'}`}>{s.name}</span>
-                      <TipoBadge tipo={s.tipo} />
-                      {s.isActive === false && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200">Inativo</span>
-                      )}
-                    </div>
-                    {s.isActive === false && s.inactiveReason && (
-                      <span className="text-[11px] text-red-600 break-words">Motivo: {s.inactiveReason}</span>
-                    )}
-                    {s.tipo === 'externo' && s.company && (
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400 font-medium truncate">
-                        <Building2 className="w-3 h-3 shrink-0" />
-                        {s.company}
-                      </span>
-                    )}
-                    {s.tipo === 'externo' && s.competence && (
-                      <span className="text-[11px] text-indigo-500 font-medium truncate">{s.competence}</span>
-                    )}
-                    {s.tipo === 'interno' && s.cargos && s.cargos.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-0.5">
-                        {s.cargos.map(c => (
-                          <span key={c} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                            <Briefcase className="w-2.5 h-2.5 shrink-0" />{c}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {s.tipo === 'interno' && s.departamento && s.departamento.length > 0 && (
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400 font-medium truncate">
-                        <Building2 className="w-3 h-3 shrink-0" />{s.departamento.join(', ')}
-                      </span>
-                    )}
-                    {s.tipo === 'interno' && (s.remuneracao ?? s.hourlyRate) != null && (s.remuneracao ?? s.hourlyRate)! > 0 && (
-                      <span className="flex items-center gap-1 text-[11px] text-emerald-600 font-semibold">
-                        <DollarSign className="w-3 h-3 shrink-0" />
-                        {(s.remuneracao ?? s.hourlyRate)!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}{s.remuneracao ? '/mês' : '/h'}
-                      </span>
-                    )}
-                    {s.email && (
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400 truncate">
-                        <Mail className="w-3 h-3 shrink-0" />
-                        {s.email}
-                      </span>
-                    )}
+                <div className={`${styles.identity} flex items-center gap-3 min-w-0`}>
+                  {reorderMode && <GripVertical className="w-4 h-4 shrink-0 text-gray-500" aria-hidden="true" />}
+                  <Avatar name={s.name} url={s.avatarUrl} />
+                  <div className="min-w-0">
+                    <p className={`text-base font-semibold break-words ${s.isActive === false ? 'text-red-700' : 'text-gray-900'}`}>{s.name}</p>
+                    {s.email && <p className="text-sm text-gray-600 break-all mt-1">{s.email}</p>}
+                    {s.isActive === false && <><p className="text-sm font-medium text-red-700 mt-1">Inativo</p>{s.inactiveReason && <p className="text-sm text-red-700 break-words mt-1">Motivo: {s.inactiveReason}</p>}</>}
                   </div>
                 </div>
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
-                  <button
-                    onClick={() => handleOpenEdit(s)}
-                    title="Editar"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  {podeAlterarSituacao(s) && (
-                    <SituacaoButton
-                      ativo={s.isActive !== false}
-                      nome={s.name}
-                      disabled={loadingId === s.id}
-                      onClick={() => (s.isActive === false ? reativar(s) : abrirInativacao(s))}
-                    />
-                  )}
-                  {canManage && (
-                    <button
-                      onClick={() => handleUnlink(s)}
-                      disabled={loadingId === s.id}
-                      title="Desvincular do projeto"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-40"
-                    >
-                      {loadingId === s.id ? <Spinner /> : <UserMinus className="w-4 h-4" />}
-                    </button>
-                  )}
+                <div className="min-w-0"><span className={styles.fieldLabel}>Função</span><p className="text-sm text-gray-700 break-words">{s.tipo === 'interno' ? s.cargos?.join(', ') || 'Não informada' : s.competence || 'Não informada'}</p></div>
+                <div className="min-w-0"><span className={styles.fieldLabel}>Área / empresa</span><p className="text-sm text-gray-600 break-words">{s.tipo === 'interno' ? s.departamento?.join(', ') || 'Não informada' : s.company || 'Não informada'}</p></div>
+                <div className="text-sm text-gray-700 tabular-nums"><span className={styles.fieldLabel}>Remuneração</span>{s.tipo === 'interno' && (s.remuneracao ?? s.hourlyRate) != null ? <>{(s.remuneracao ?? s.hourlyRate)!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<span className="block text-sm text-gray-600">{s.remuneracao != null ? 'por mês' : 'por hora'}</span></> : <span aria-label="Não informada">—</span>}</div>
+                <div className={`${styles.rowActions} flex flex-wrap items-center gap-1`}>
+                  {reorderMode ? <>
+                    <button type="button" disabled={!canReorder || posicao === 0 || exibidos[posicao - 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao - 1]))} aria-label={`Mover ${s.name} para cima`} className={styles.actionButton}><ArrowUp className="w-4 h-4" aria-hidden="true" /></button>
+                    <button type="button" disabled={!canReorder || exibidos[posicao + 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao + 1]))} aria-label={`Mover ${s.name} para baixo`} className={styles.actionButton}><ArrowDown className="w-4 h-4" aria-hidden="true" /></button>
+                  </> : <>
+                    <button type="button" onClick={() => handleOpenEdit(s)} title="Editar" aria-label={`Editar ${s.name}`} className={`${styles.actionButton} text-blue-700`}><Pencil className="w-4 h-4" aria-hidden="true" /><span>Editar</span></button>
+                    {podeAlterarSituacao(s) && <SituacaoButton ativo={s.isActive !== false} nome={s.name} disabled={loadingId === s.id} onClick={() => (s.isActive === false ? reativar(s) : abrirInativacao(s))} />}
+                    {canManage && <button type="button" onClick={() => handleUnlink(s)} disabled={loadingId === s.id} title="Desvincular do projeto" aria-label={`Desvincular ${s.name} do projeto`} className={`${styles.actionButton} text-gray-600 hover:text-red-700`}>{loadingId === s.id ? <Spinner /> : <UserMinus className="w-4 h-4" aria-hidden="true" />}</button>}
+                  </>}
                 </div>
               </li>
               </Fragment>
@@ -1595,7 +1543,7 @@ export default function ProjetoStakeholdersClient({
                         onClick={() => { handleAddInterno(u); setSearchProjeto('') }}
                         disabled={loadingId === u.id}
                         aria-label={`Adicionar "${u.name}" ao projeto`}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 disabled:opacity-50"
                       >
                         {loadingId === u.id ? <Spinner /> : <UserPlus className="w-3.5 h-3.5" />}
                         Adicionar
@@ -1611,7 +1559,7 @@ export default function ProjetoStakeholdersClient({
               <div className="flex flex-col gap-2 items-stretch">
                 <button
                   onClick={handleCreateMembroDaBusca}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors"
                 >
                   <Users className="w-4 h-4" />
                   Criar &quot;{searchProjeto.trim()}&quot; como membro da equipe
@@ -1632,7 +1580,7 @@ export default function ProjetoStakeholdersClient({
 
       {/* ── COLUMN 2 — Diretório (addMode) ── */}
       {col2Active && (
-        <div className="lg:w-1/3 w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in slide-in-from-left-4 duration-300">
+        <div className="xl:w-1/3 w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in slide-in-from-left-4 duration-300">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">
@@ -1705,7 +1653,7 @@ export default function ProjetoStakeholdersClient({
                     </button>
                     <button
                       onClick={handleCreateMembroDoDiretorio}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors"
                     >
                       <Users className="w-4 h-4" />
                       Criar &quot;{searchDir.trim()}&quot; como membro da equipe
@@ -2183,7 +2131,7 @@ function SituacaoButton({ ativo, nome, disabled, onClick }: { ativo: boolean; no
       disabled={disabled}
       aria-label={ativo ? `Inativar ${nome}` : `Reativar ${nome}`}
       title={ativo ? 'Inativar (com motivo)' : 'Reativar'}
-      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border transition-colors disabled:opacity-40 shrink-0 ${ativo
+      className={`inline-flex min-h-11 items-center gap-1 px-2 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-40 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${ativo
         ? 'text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100'
         : 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100'}`}
     >
