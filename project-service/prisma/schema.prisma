@@ -77,6 +77,8 @@ model Project {
   limitesAutoridade  String?  @db.Text
 
   semestre           String?
+  termo              String?
+  turno              String?
   ano                Int?
   departamentos      String[]
 

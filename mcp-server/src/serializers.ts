@@ -78,6 +78,8 @@ export function serializeProject(p: Raw) {
     start_date: str(p.startDate),
     end_date: str(p.endDate),
     semestre: str(p.semestre),
+    termo: str(p.termo),
+    turno: str(p.turno),
     ano: num(p.ano),
     departamentos: Array.isArray(p.departamentos) ? (p.departamentos as unknown[]).map(str) : [],
     charter: {

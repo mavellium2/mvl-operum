@@ -38,6 +38,9 @@ export const CreateProjectSchema = z.object({
   restricoes: z.string().optional(),
   limitesAutoridade: z.string().optional(),
   semestre: z.string().optional(),
+  /** Termo do curso (ex.: "5") e turno — usados quando o período não é anual. */
+  termo: z.string().max(20).optional(),
+  turno: z.string().max(30).optional(),
   ano: z.number().int().optional(),
   departamentos: z.array(z.string()).optional(),
 })

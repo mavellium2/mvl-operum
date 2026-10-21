@@ -79,6 +79,8 @@ export async function createProjetoAction(
     restricoes?: string
     limitesAutoridade?: string
     semestre?: string
+    termo?: string
+    turno?: string
     ano?: string
     departamentos?: string[]
     macroFases?: Array<{ fase: string; dataLimite: string; custo: string }>

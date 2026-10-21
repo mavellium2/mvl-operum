@@ -22,6 +22,8 @@ const tapFields = {
   restricoes:        z.string().optional(),
   limitesAutoridade: z.string().optional(),
   semestre:          z.string().optional(),
+  termo:             z.string().max(20).optional(),
+  turno:             z.string().max(30).optional(),
   ano:               z.number().int().optional(),
   departamentos:     z.array(z.string()).optional(),
 }

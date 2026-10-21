@@ -12,6 +12,7 @@ import AvatarUpload from '@/components/profile/AvatarUpload'
 import MultiCreatableSelect from '@/components/ui/MultiCreatableSelect'
 import Link from 'next/link'
 import ExpandableTextarea from '@/components/ui/ExpandableTextarea'
+import { periodoEhSemestral, termoTurno, TURNOS } from '@/lib/linhaInstitucional'
 
 interface Usuario {
   id: string
@@ -155,7 +156,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     logoUrl: '', initialMemberId: '',
     justificativa: '', objetivos: '', metodologia: '', descricaoProduto: '',
     premissas: '', restricoes: '', limitesAutoridade: '',
-    semestre: '', ano: '',
+    semestre: '', termo: '', turno: '', ano: '',
     departamentos: [] as string[],
   })
 
@@ -201,6 +202,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         restricoes: p.restricoes ?? '',
         limitesAutoridade: p.limitesAutoridade ?? '',
         semestre: p.semestre ?? '',
+        termo: p.termo ?? '',
+        turno: p.turno ?? '',
         ano: p.ano ? String(p.ano) : '',
         // Fonte da verdade: associações reais (ProjetoDepartamento). Fallback para
         // as strings legadas de projetos anteriores à sincronização.
@@ -256,6 +259,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
 
     startTransition(async () => {
       const update: Record<string, unknown> = { ...form }
+      // Termo/turno só valem para período semestral; ao mudar para anual, limpa.
+      if (!periodoEhSemestral(form.semestre)) { update.termo = ''; update.turno = '' }
       if (!canAssignRoles) delete update.initialMemberId
       if (!permissions.has('cadastros:gerenciar')) delete update.departamentos
       if (canEditCosts) update.macroFases = macroFases
@@ -460,6 +465,38 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                       </datalist>
                     </div>
                   </div>
+
+                  {periodoEhSemestral(form.semestre) && (
+                    <div className="grid grid-cols-2 gap-5">
+                      <div>
+                        <label htmlFor="projeto-termo" className={labelClass}>Termo</label>
+                        <input
+                          id="projeto-termo"
+                          name="termo"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={20}
+                          value={form.termo}
+                          onChange={handleChange}
+                          placeholder="Ex.: 5"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="projeto-turno" className={labelClass}>Turno</label>
+                        <div className="relative">
+                          <select id="projeto-turno" name="turno" value={form.turno} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer pr-10`}>
+                            <option value="">Selecione</option>
+                            {[...new Set([...TURNOS, ...(form.turno ? [form.turno] : [])])].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                          <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                      </div>
+                      <p className="col-span-2 -mt-3 text-xs text-slate-500">
+                        Aparece nos documentos como “{termoTurno(form.termo, form.turno) || '5° termo Noturno'}”.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="pt-5 border-t border-slate-100">
                     <label className={labelClass}>Gerente do Projeto (Responsável)</label>

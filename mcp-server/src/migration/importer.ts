@@ -270,6 +270,8 @@ export async function importProject(
       startDate: p.start_date,
       endDate: p.end_date,
       semestre: p.semestre,
+      termo: p.termo,
+      turno: p.turno,
       ano: p.ano,
       departamentos: p.departamentos?.length ? p.departamentos : undefined,
       ...stripCharter(p),
