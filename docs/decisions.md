@@ -671,3 +671,49 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** exclusão e reconciliação continuam em transações separadas; falha parcial é informada. Atividades movidas para outra sprint preservam suas propriedades; referência desconhecida não autoriza exclusão. Não há migration.
 - **Referências:** `app/actions/sprints.ts`, `services/wbsService.ts`, `sprint-service/src/sprint/sprint.service.ts` e testes de exclusão/sincronização.
 - **Revisar quando:** EAP ganhar serviço próprio ou for necessário garantir a reconciliação por fila independente de novas leituras.
+
+## ADR-050 — Data de início do projeto derivada da primeira tarefa
+
+- **Data:** 2026-10-21.
+- **Status:** implementada nesta entrega (1.34.0); publicação depende da integração da branch.
+- **Contexto:** card de 19/10 pede que o início do projeto corresponda à primeira tarefa, atualizado quando a tarefa muda e sem inventar data quando nenhuma tarefa tiver data.
+- **Escolha:** `Project.startDate` continua gravado, mas é sincronizado com a menor `Card.startDate` ativa do projeto após criar, editar ou excluir cards pelas actions do quadro e após a Planilha sincronizar os cards (`services/inicioDoProjeto.ts`). `getProjetoAction` devolve a data derivada e `inicioPelaPrimeiraTarefa`; Editar projeto trava o campo quando a data vem de uma tarefa. Sem tarefa com data, vale a data informada.
+- **Justificativa:** documentos, Gantt e cronograma já leem `Project.startDate`; manter a coluna gravada evita mudar cada leitor.
+- **Alternativas consideradas:** calcular só na leitura (cada leitor precisaria repetir a consulta); gatilho no banco (regra de negócio escondida fora do código).
+- **Consequências:** alterações de card feitas diretamente no sprint-service (ex.: MCP) só refletem na próxima alteração pelo painel ou sincronização da Planilha.
+- **Referências:** `services/inicioDoProjeto.ts`, `app/actions/sprintBoard.ts`, `app/actions/projetos.ts`, `services/planilhaService.ts`, card `cmvfuzrnf004h01qnk6k3z77l`.
+- **Revisar quando:** o sprint-service publicar eventos de alteração de card.
+
+## ADR-051 — Exclusão de projeto bloqueada por dependências
+
+- **Data:** 2026-10-21.
+- **Status:** implementada nesta entrega (1.34.0).
+- **Contexto:** card de 19/10 pede permitir excluir um projeto só sem dependências, explicando o impedimento; a regra exata ficou para a implementação.
+- **Escolha:** contam como dependência sprints e cards ativos, lançamentos de tempo ativos, atas ativas, versões de documentos e outros membros ativos além de quem exclui (`services/projetoDependencias.ts`). A interface verifica antes de confirmar e a action valida de novo no servidor.
+- **Justificativa:** o soft delete do projeto deixava esses dados órfãos e invisíveis.
+- **Alternativas consideradas:** excluir em cascata (perderia histórico e apontamentos); bloquear só por cards (deixaria atas e documentos órfãos).
+- **Consequências:** a exclusão pelo MCP (`operum_delete_project`, que chama o project-service) não passa por essa verificação.
+- **Referências:** `services/projetoDependencias.ts`, `app/actions/projetos.ts`, `components/projetos/DeleteProjectButton.tsx`, card `cmvfuz2vj003901qnhtbvvke7`.
+- **Revisar quando:** a regra for levada ao project-service para valer também no MCP.
+
+## ADR-052 — Imagens do Word exportado pelo servidor só do storage do Operum
+
+- **Data:** 2026-10-21.
+- **Status:** implementada nesta entrega (1.34.0).
+- **Contexto:** o `.docx` da ata gerado no servidor não trazia a logo (só o Word montado no navegador tinha), e nenhuma exportação trazia as assinaturas dos presentes.
+- **Escolha:** a rota de exportação baixa logo e assinaturas no servidor, apenas de URLs do host de `MINIO_PUBLIC_URL` (`isSafeStorageUrl`), sem seguir redirecionamentos, com 5 s de limite e 5 MB por imagem; tipo e dimensões são lidos dos bytes (PNG, JPEG, GIF). Falha vira documento sem a imagem.
+- **Justificativa:** busca no servidor a partir de URL vinda do banco é vetor de SSRF; restringir ao storage mantém o recurso sem abrir a rede interna.
+- **Alternativas consideradas:** gerar todo Word no navegador (o link "Exportar .docx" da lista não tem os dados da ata); embutir imagens em base64 no banco.
+- **Consequências:** logos hospedadas fora do storage não aparecem no Word do servidor.
+- **Referências:** `lib/exports/imagemDocx.ts`, `lib/exports/imagemServidor.ts`, `app/api/atas/[ataId]/export/route.ts`, `lib/storageUrl.ts`, cards `cmvfuz3lp003n01qna2hmswsq`, `cmvfuzka6004501qny5syk1e5`.
+
+## ADR-053 — Documento EAP desenhado com o layout da aba EAP
+
+- **Data:** 2026-10-21.
+- **Status:** implementada nesta entrega (1.34.0); complementa a ADR-035 (estrutura da aba) passando a usar também o desenho da aba.
+- **Contexto:** o documento lia a estrutura da aba, mas desenhava com layout próprio em colunas e cor única, ignorando o formato do menu Organizar, as cores e os conectores.
+- **Escolha:** `GET /api/projects/:id/eap` devolve também a árvore `WbsNode` (`arvore`); o documento atual desenha a EAP gráfica com `computeLayout` e a mesma medição de larguras da aba (`lib/wbsMedidas.ts`), com nós recolhidos expandidos. Versões antigas e projetos sem WBS mantêm o layout em colunas.
+- **Justificativa:** um só motor de layout garante que documento e aba não divirjam.
+- **Alternativas consideradas:** capturar imagem da aba (dependeria da tela aberta e do zoom); manter o layout do modelo do professor (contraria o pedido de cópia fiel).
+- **Consequências:** o documento escala a árvore para caber na página A4; árvores muito largas ficam com texto menor.
+- **Referências:** `components/projetos/documentacao/EapGraficaDaAba.tsx`, `components/projetos/documentacao/EapDocumentSheet.tsx`, `lib/wbsLayout.ts`, card `cmvfuznz0004b01qnstet076j`.

@@ -7,10 +7,29 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
-## [1.33.2] — 2026-10-21
+## [1.34.0] — 2026-10-21
+
+Correções relatadas em 19/10 (sprint 1.8).
+
+### Adicionado
+- Sprint: cada coluna pode ter uma cor própria, escolhida no cabeçalho e salva por coluna.
+- Lista de sprints indica o progresso por cor (degradê verde que avança com os cards concluídos) e a sprint concluída fica verde-clara.
+- Editar projeto: campos Termo e Turno quando o período é semestral; os documentos passam a mostrar "5° termo Noturno" no lugar do aviso "A definir".
+- Data de início do projeto segue a primeira tarefa com data; sem nenhuma, vale a data informada.
+- Prévia dos documentos (Termo de Abertura, Ata, Stakeholders) separada por páginas, com "Página X de Y" em cada folha.
+- Ata: lista de presentes com contagem, remoção pelo nome e "Incluir toda a equipe"; e-mails cadastrados dos stakeholders oferecidos em "Enviar cópias para"; botão para enviar o arquivo de um anexo.
+- Documento EAP reproduz a aba EAP: mesmo formato do menu Organizar, blocos, cores e conectores.
 
 ### Corrigido
-- Ícones de Departamentos e Funções no menu do projeto passam a ter o mesmo tamanho (16px) dos demais itens.
+- Menu do projeto: ícones de Departamentos e Funções no mesmo tamanho dos demais.
+- Minicards mostram as horas orçadas e realizadas da Planilha de Custos, as datas prevista e realizada, o valor orçado (em aberto) e o realizado (concluídos).
+- EAP Detalhes e Horas e Custos: as etapas usam o Sub-total da Planilha de Custos (etapa sem atividades fica zerada, como na planilha).
+- EAP no formato Horizontal: blocos e fases com o mesmo tamanho.
+- Documentos refletem o nome atual do departamento após renomeá-lo no cadastro.
+- PDF de stakeholders não sai mais com uma segunda página em branco; linhas de tabela não são cortadas entre páginas.
+- Ata exportada (.docx) traz a logo do projeto, o número centralizado, só uma linha vazia em presentes e ações, espaçamento menor e as assinaturas cadastradas dos presentes; a prévia segue o mesmo layout.
+- Termo de Abertura aprovado mostra a assinatura atual do gerente quando a versão não a registrou.
+- Exclusão de projeto é bloqueada, com a explicação, enquanto houver sprints, cards, lançamentos de tempo, atas, documentos ou outros membros ativos.
 
 ## [1.33.1] — 2026-10-20
 
