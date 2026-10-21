@@ -25,6 +25,7 @@ import {
   moveNodeRelative, updateTitle, listCandidateParents,
 } from '@/lib/eapTree'
 import EapDocumentSheet from './EapDocumentSheet'
+import type { ArvoreDaAba } from './EapGraficaDaAba'
 
 // ── UI constants (padrão do app) ─────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   /** Estrutura vinda da aba EAP/WBS: no documento, só leitura. */
   const [origemWbs, setOrigemWbs] = useState(false)
+  const [arvore, setArvore] = useState<ArvoreDaAba | null>(null)
   /** Assinatura do gerente (só com versão aprovada). */
   const [assinaturaUrl, setAssinaturaUrl] = useState<string | null>(null)
   const { todos: todosMembros, registrarCriado } = useMembrosEquipe(membros)
@@ -120,6 +122,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
       setInstituicao(data.instituicao ?? '')
       setLogoUrl(data.logoUrl ?? null)
       setOrigemWbs(Boolean(data.origemWbs))
+      setArvore(data.arvore ?? null)
       setAssinaturaUrl(data.assinaturaUrl ?? null)
       setMetadata({
         projectName: data.document.projectName ?? '',
@@ -502,6 +505,8 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
             instituicao={instituicao}
             logoUrl={logoUrl}
             assinaturaUrl={assinaturaUrl}
+            // Documento atual: EAP gráfica igual à aba. Versões antigas usam a estrutura salva nelas.
+            arvore={!viewing && origemWbs ? arvore : null}
             interactive={!viewing && !origemWbs}
             selectedId={selectedId}
             onSelectBlock={id => !viewing && openBlock(id)}

@@ -12,6 +12,7 @@ import Modal from '@/components/ui/Modal'
 import { CsvImportModal } from '@/components/csv/CsvImportModal'
 import { TagManager } from '@/components/tag/TagManager'
 import { sprintPath } from '@/lib/sprintPath'
+import { progressoSprint } from '@/lib/sprintProgresso'
 
 interface Sprint {
   id: string
@@ -71,15 +72,11 @@ function formatCurrency(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function ProgressBar({ value, total }: { value: number; total: number }) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0
+function ProgressBar({ pct, barStyle }: { pct: number; barStyle: { width: string; background: string } }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-        <div
-          className="h-full bg-blue-500 rounded-full transition-all"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Cards concluídos">
+        <div className="h-full rounded-full transition-all" style={barStyle} />
       </div>
       <span className="text-xs font-semibold text-gray-700 w-9 text-right">{pct}%</span>
     </div>
@@ -232,15 +229,15 @@ export default function SprintListPage({
         ) : (
           <div className="flex flex-col gap-3">
             {sprintsWithMetrics.map(({ sprint, metrics }) => {
-              const pct = metrics.cardsTotal > 0
-                ? Math.round((metrics.cardsConcluidos / metrics.cardsTotal) * 100)
-                : 0
+              const progresso = progressoSprint(sprint.status, metrics.cardsConcluidos, metrics.cardsTotal)
+              const pct = progresso.pct
 
               return (
                 <Link
                   key={sprint.id}
                   href={sprintPath(sprint.id, sprint.projectId)}
-                  className="block bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-blue-200 transition-all group"
+                  className={`block rounded-xl shadow-sm border p-5 hover:shadow-md transition-all group ${progresso.concluida ? 'hover:border-green-300' : 'border-gray-100 hover:border-blue-200'}`}
+                  style={progresso.cardStyle}
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">
@@ -263,7 +260,7 @@ export default function SprintListPage({
 
                   {metrics.cardsTotal > 0 && (
                     <div className="mb-3">
-                      <ProgressBar value={metrics.cardsConcluidos} total={metrics.cardsTotal} />
+                      <ProgressBar pct={pct} barStyle={progresso.barStyle} />
                     </div>
                   )}
 

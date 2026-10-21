@@ -5,8 +5,8 @@ interface SprintBadgeProps {
 
 const statusColors = {
   PLANNED: 'bg-gray-100 text-gray-700',
-  ACTIVE: 'bg-green-100 text-green-700',
-  COMPLETED: 'bg-blue-100 text-blue-700',
+  ACTIVE: 'bg-blue-100 text-blue-700',
+  COMPLETED: 'bg-green-100 text-green-800',
 }
 
 export function SprintBadge({ name, status }: SprintBadgeProps) {

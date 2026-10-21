@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma'
 import { canProjectPermission as can } from '@/services/projectAccess'
 import { documentoVigente } from '@/services/documentRevisionService'
 import type { ProjetoHeader, Stakeholder } from '@/components/projetos/StakeholderDocument'
+import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
 
 function buildAddress(e: {
   logradouro?: string | null
@@ -85,7 +86,7 @@ export async function GET(
     const gerenteProjeto = gerente.nome
     const signatureUrl = gerente.signatureUrl
 
-    const dept = project.departamentos?.[0] ?? ''
+    const dept = (await departamentosDoProjeto(projetoId, tenantId, project.departamentos))[0] ?? ''
     const semestreLabel =
       project.semestre === '1' ? '1º Semestre' :
       project.semestre === '2' ? '2º Semestre' :

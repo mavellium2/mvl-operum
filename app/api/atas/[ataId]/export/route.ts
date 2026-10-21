@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server'
 import { verifySession } from '@/lib/dal'
 import { canProjectPermission } from '@/services/projectAccess'
 import { buscarAta, cabecalhoDaAta, funcoesNoProjeto } from '@/services/ataService'
-import { gerarAtaDocx, type AtaExportData } from '@/lib/exports/ataDocx'
+import { Packer } from 'docx'
+import { ataAssinantes, buildAtaDocx, type AtaExportData } from '@/lib/exports/ataDocx'
+import { imagemDoStorage } from '@/lib/exports/imagemServidor'
+import { CAIXA_ASSINATURA, CAIXA_LOGO_ATA } from '@/lib/exports/imagemDocx'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,8 +28,9 @@ export async function GET(
       cabecalhoDaAta(session.tenantId, ata.projetoId),
       funcoesNoProjeto(ata.projetoId, [ata.elaboradoPorUserId, ata.aprovadoPorUserId]),
     ])
-    // Layout do modelo; a logo só entra no Word gerado pelo navegador (botão "Baixar Word" da ata).
+    // Layout do modelo, com a logo do projeto e as assinaturas cadastradas dos presentes.
     const data: AtaExportData = {
+      logoUrl: cabecalho.logoUrl,
       instituicao: cabecalho.instituicao || ata.instituicao,
       elaboradoPorFuncao: ata.elaboradoPorUserId ? funcoes.get(ata.elaboradoPorUserId) ?? null : null,
       aprovadoPorFuncao: ata.aprovadoPorUserId ? funcoes.get(ata.aprovadoPorUserId) ?? null : null,
@@ -40,12 +44,16 @@ export async function GET(
       decisoesTomadas: ata.decisoesTomadas,
       observacoes: ata.observacoes,
       copiasPara: ata.copiasPara,
-      presentes: ata.presentes.map(p => ({ nome: p.nome, setorEmpresa: p.setorEmpresa })),
+      presentes: ata.presentes.map(p => ({ nome: p.nome, setorEmpresa: p.setorEmpresa, assinaturaUrl: p.user?.signatureUrl ?? null })),
       acoes: ata.acoes.map(a => ({ acao: a.acao, prazo: a.prazo, responsavel: a.responsavel })),
       anexos: ata.anexos.map(a => ({ nome: a.nome, url: a.url })),
     }
 
-    const buffer = await gerarAtaDocx(data)
+    const [logo, ...assinaturas] = await Promise.all([
+      imagemDoStorage(data.logoUrl, CAIXA_LOGO_ATA),
+      ...ataAssinantes(data.presentes).map(p => imagemDoStorage(p.assinaturaUrl, CAIXA_ASSINATURA)),
+    ])
+    const buffer = await Packer.toBuffer(buildAtaDocx(data, logo, assinaturas))
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,

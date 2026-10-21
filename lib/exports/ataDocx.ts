@@ -1,9 +1,10 @@
 import {
-  AlignmentType, BorderStyle, Document, Footer, HeightRule, Packer, Paragraph, ShadingType,
+  AlignmentType, BorderStyle, Document, Footer, HeightRule, Paragraph, ShadingType,
   Table, TableCell, TableRow, TextRun, VerticalAlign, WidthType,
 } from 'docx'
 
-type Presente = { nome: string; setorEmpresa: string | null }
+/** assinaturaUrl: assinatura cadastrada no perfil do presente (membro), quando houver. */
+type Presente = { nome: string; setorEmpresa: string | null; assinaturaUrl?: string | null }
 type Acao = { acao: string; prazo: Date | null; responsavel: string | null }
 type Anexo = { nome: string; url: string | null }
 
@@ -33,9 +34,20 @@ export interface AtaExportData {
 
 export const ATA_RODAPE = '© 01_Form Ata de Reunião'
 export const ATA_PLANO_DO_PROJETO = 'Plano do Projeto'
-/** Linhas mínimas das tabelas do modelo (presentes e ações). */
-export const ATA_MIN_PRESENTES = 7
-export const ATA_MIN_ACOES = 6
+/**
+ * Linhas das tabelas de presentes e ações: as preenchidas e só UMA vazia no fim
+ * (card "Exportar ata": reduzir linhas vazias extras). Antes eram 7 e 6 fixas.
+ */
+export const ATA_MIN_PRESENTES = 1
+export const ATA_MIN_ACOES = 1
+/** Espaço entre os blocos da ata (prévia, em mm; Word, em twips). */
+export const ATA_ESPACO_MM = 3
+const ATA_ESPACO_TWIPS = 170
+/** Largura da coluna da logo; a coluna da direita tem a mesma largura para o nº ficar no centro da página. */
+export const ATA_LOGO_MM = 33
+/** Assinaturas: presentes com nome, em grade de 3 por linha. */
+export const ATA_ASSINATURAS_POR_LINHA = 3
+export const ataAssinantes = (presentes: Presente[]) => presentes.filter(p => p.nome?.trim())
 
 export const ataNumero = (n: number | null | undefined) => (n ? String(n).padStart(2, '0') : '__')
 export const ataData = (d: Date | null | undefined) => (d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '__/__/____')
@@ -45,6 +57,10 @@ export const ataPessoa = (nome: string | null | undefined, funcao?: string | nul
 /** Completa a lista com linhas vazias até o mínimo do modelo. */
 export function ataPreencher<T>(itens: T[], minimo: number, vazio: T): T[] {
   return itens.length >= minimo ? itens : [...itens, ...Array.from({ length: minimo - itens.length }, () => vazio)]
+}
+/** Linhas preenchidas + uma linha vazia no fim (para completar à mão). */
+export function ataComUmaLinhaVazia<T>(itens: T[], preenchido: (item: T) => boolean, vazio: T): T[] {
+  return [...itens.filter(preenchido), vazio]
 }
 /**
  * Caixas de "Enviar cópias para", como no modelo: grade de 4 colunas em que a 1ª célula
@@ -108,26 +124,33 @@ function tabela(larguras: number[], linhas: Array<{ cells: TableCell[]; altura?:
   })
 }
 
-const espaco = () => new Paragraph({ spacing: { after: 160 }, children: [] })
+const espaco = () => new Paragraph({ spacing: { before: 0, after: 0, line: ATA_ESPACO_TWIPS, lineRule: 'exact' }, children: [] })
 
-/** Ata no layout do modelo "01_Form Ata de Reunião". `logo`: parágrafo com a imagem (gerado no navegador). */
-export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = []): Document {
+/**
+ * Ata no layout do modelo "01_Form Ata de Reunião". `logo`: parágrafo com a imagem;
+ * `assinaturas`: imagem da assinatura de cada assinante (mesma ordem de `ataAssinantes`).
+ * As imagens são carregadas por quem chama (navegador ou servidor).
+ */
+export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinaturas: Paragraph[][] = []): Document {
   const W1 = 7654, W2 = LARGURA - W1
   const A1 = 4592, A2 = 1531, A3 = LARGURA - A1 - A2
-  const presentes = ataPreencher(d.presentes, ATA_MIN_PRESENTES, { nome: '', setorEmpresa: null })
-  const acoes = ataPreencher(d.acoes, ATA_MIN_ACOES, { acao: '', prazo: null, responsavel: null })
+  const presentes = ataComUmaLinhaVazia(d.presentes, p => !!p.nome?.trim(), { nome: '', setorEmpresa: null })
+  const acoes = ataComUmaLinhaVazia(d.acoes, a => !!a.acao?.trim(), { acao: '', prazo: null, responsavel: null })
   const caixas = ataCopias(d.copiasPara)
   const C = LARGURA / 4
 
+  // Logo | título | coluna vazia da mesma largura da logo: o nº fica no centro da página.
+  const LOGO = 1871 // 33 mm
   const cabecalho = new Table({
     width: { size: LARGURA, type: WidthType.DXA },
-    columnWidths: [2200, LARGURA - 2200],
+    columnWidths: [LOGO, LARGURA - 2 * LOGO, LOGO],
     rows: [new TableRow({ children: [
-      celula(logo.length ? logo : texto([{ t: 'Logo do Projeto' }], 20), 2200, { semBorda: true }),
+      celula(logo.length ? logo : texto([{ t: 'Logo do Projeto' }], 20), LOGO, { semBorda: true }),
       new TableCell({
-        width: { size: LARGURA - 2200, type: WidthType.DXA }, borders: semBordas, verticalAlign: VerticalAlign.CENTER,
+        width: { size: LARGURA - 2 * LOGO, type: WidthType.DXA }, borders: semBordas, verticalAlign: VerticalAlign.CENTER,
         children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Ata de Reunião Nº ${ataNumero(d.numero)}`, bold: true, size: 28 })] })],
       }),
+      celula([new Paragraph({ children: [] })], LOGO, { semBorda: true }),
     ] })],
   })
 
@@ -170,9 +193,31 @@ export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = []): Document
     children: [new Table({ width: { size: LARGURA - 200, type: WidthType.DXA }, columnWidths: [C, C, C, C].map(w => w - 50), rows: linhasCopias }), new Paragraph({ children: [] })],
   })] }])
 
-  const assinaturas = tabela([LARGURA], [
+  // Grade de assinaturas: imagem cadastrada (ou espaço para assinar), linha e nome.
+  const assinantes = ataAssinantes(d.presentes)
+  const A = Math.floor((LARGURA - 200) / ATA_ASSINATURAS_POR_LINHA)
+  const centro = (t: string) => new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: t, size: 18 })] })
+  const celulaAssinatura = (i: number) => {
+    const p = assinantes[i]
+    if (!p) return celula([new Paragraph({ children: [] })], A, { semBorda: true })
+    const imagem = assinaturas[i]?.length ? assinaturas[i].map(par => par) : [new Paragraph({ spacing: { before: 480 }, children: [] })]
+    return new TableCell({
+      width: { size: A, type: WidthType.DXA }, borders: semBordas, verticalAlign: VerticalAlign.BOTTOM,
+      margins: { left: 80, right: 80, top: 60, bottom: 60 },
+      children: [...imagem, centro('_______________________________'), centro(p.nome)],
+    })
+  }
+  const linhasAssinatura: TableRow[] = []
+  for (let i = 0; i < Math.max(1, assinantes.length); i += ATA_ASSINATURAS_POR_LINHA) {
+    linhasAssinatura.push(new TableRow({ children: Array.from({ length: ATA_ASSINATURAS_POR_LINHA }, (_, k) => celulaAssinatura(i + k)) }))
+  }
+  const assinaturasTabela = tabela([LARGURA], [
     { cells: [celula(titulo('Assinaturas', ' <principais envolvidos>'), LARGURA, { cinza: CINZA })] },
-    { cells: [celula(texto([{ t: d.presentes.map(p => `\n_______________________________\n${p.nome}`).join('\n') }]), LARGURA, { cinza: CINZA_CLARO })], altura: 1600 },
+    { cells: [new TableCell({
+      width: { size: LARGURA, type: WidthType.DXA }, borders: bordas,
+      shading: { type: ShadingType.CLEAR, fill: CINZA_CLARO, color: 'auto' },
+      children: [new Table({ width: { size: LARGURA - 200, type: WidthType.DXA }, columnWidths: Array.from({ length: ATA_ASSINATURAS_POR_LINHA }, () => A), rows: linhasAssinatura }), new Paragraph({ children: [] })],
+    })], altura: 1200 },
     { cells: [celula([...titulo('Obs:'), ...texto([{ t: d.observacoes ?? '' }])], LARGURA)], altura: 900 },
   ])
 
@@ -183,9 +228,8 @@ export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = []): Document
     sections: [{
       properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 850, right: 850, bottom: 850, left: 850 } } },
       footers: { default: new Footer({ children: [new Paragraph({ children: [new TextRun({ text: ATA_RODAPE, size: 14 })] })] }) },
-      children: [cabecalho, espaco(), quadro, tabelaAcoes, espaco(), anexos, espaco(), copias, espaco(), assinaturas],
+      children: [cabecalho, espaco(), quadro, tabelaAcoes, espaco(), anexos, espaco(), copias, espaco(), assinaturasTabela],
     }],
   })
 }
 
-export async function gerarAtaDocx(d: AtaExportData): Promise<Buffer> { return Packer.toBuffer(buildAtaDocx(d)) }

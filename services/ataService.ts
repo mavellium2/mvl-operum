@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma'
 import { linhaInstitucional } from '@/lib/linhaInstitucional'
+import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
 import { CriarAtaSchema, AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
 import type { CriarAtaInput, AtualizarAtaInput } from '@/lib/validation/ataSchemas'
 import { NotFoundError, ConflictError } from '@/services/projetoCadastroService'
@@ -169,9 +170,11 @@ export async function removerAta(tenantId: string, ataId: string) {
 export async function cabecalhoDaAta(tenantId: string, projectId: string): Promise<{ instituicao: string; logoUrl: string | null }> {
   const p = await prisma.project.findFirst({
     where: { id: projectId, tenantId, deletedAt: null },
-    select: { location: true, departamentos: true, semestre: true, ano: true, logoUrl: true },
+    select: { location: true, departamentos: true, semestre: true, termo: true, turno: true, ano: true, logoUrl: true },
   })
-  return { instituicao: p ? linhaInstitucional(p) : '', logoUrl: p?.logoUrl ?? null }
+  if (!p) return { instituicao: '', logoUrl: null }
+  const departamentos = await departamentosDoProjeto(projectId, tenantId, p.departamentos)
+  return { instituicao: linhaInstitucional({ ...p, departamentos }), logoUrl: p.logoUrl ?? null }
 }
 
 /** Função (primeiro cargo do cadastro no projeto, ou departamento) de cada membro, para "nome e função". */
@@ -186,4 +189,38 @@ export async function funcoesNoProjeto(projectId: string, userIds: Array<string 
     const funcao = up.role?.split(',').map(s => s.trim()).find(Boolean) ?? up.department?.name ?? ''
     return funcao ? [[up.userId, funcao] as const] : []
   }))
+}
+
+/** E-mail oferecido no campo "Enviar cópias para" da ata. */
+export interface EmailParaCopia { email: string; nome: string }
+
+/**
+ * E-mails cadastrados dos stakeholders do projeto (membros da equipe e partes
+ * interessadas externas ativas), sem repetição, para o envio de cópias da ata.
+ */
+export async function emailsParaCopia(tenantId: string, projectId: string): Promise<EmailParaCopia[]> {
+  const [membros, externos] = await Promise.all([
+    prisma.userProject.findMany({
+      where: { projectId, active: true, user: { tenantId, deletedAt: null, isActive: true } },
+      select: { user: { select: { name: true, email: true } } },
+      orderBy: { order: 'asc' },
+    }),
+    prisma.projectStakeholder.findMany({
+      where: { projectId, stakeholder: { tenantId, isActive: true } },
+      select: { stakeholder: { select: { name: true, email: true } } },
+      orderBy: { order: 'asc' },
+    }),
+  ])
+  const vistos = new Set<string>()
+  const lista: EmailParaCopia[] = []
+  for (const { nome, email } of [
+    ...membros.map(m => ({ nome: m.user.name, email: m.user.email })),
+    ...externos.map(e => ({ nome: e.stakeholder.name, email: e.stakeholder.email })),
+  ]) {
+    const limpo = email?.trim()
+    if (!limpo || vistos.has(limpo.toLowerCase())) continue
+    vistos.add(limpo.toLowerCase())
+    lista.push({ email: limpo, nome })
+  }
+  return lista
 }

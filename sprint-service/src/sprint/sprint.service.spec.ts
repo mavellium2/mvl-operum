@@ -19,7 +19,7 @@ vi.mock('../common/tenant-scope', async (importOriginal) => {
 
 import { prisma } from '../prisma'
 import * as scope from '../common/tenant-scope'
-import { SprintService } from './sprint.service'
+import { SprintService, CreateColumnSchema } from './sprint.service'
 
 const db = prisma as unknown as Record<string, Record<string, ReturnType<typeof vi.fn>>>
 const assert = scope as unknown as Record<string, ReturnType<typeof vi.fn>>
@@ -103,5 +103,18 @@ describe('SprintService — conflitos da exclusão', () => {
     transaction.mockRejectedValue(failure)
     await expect(service.remove('t1', 's1')).rejects.toBe(failure)
     expect(transaction).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('CreateColumnSchema — cor da coluna', () => {
+  it('aceita hex de 6 dígitos e null (volta ao padrão)', () => {
+    expect(CreateColumnSchema.partial().safeParse({ color: '#22c55e' }).success).toBe(true)
+    expect(CreateColumnSchema.partial().safeParse({ color: null }).success).toBe(true)
+  })
+
+  it('rejeita cor fora do formato #rrggbb', () => {
+    for (const color of ['red', '#fff', 'url(x)', '#22c55e; background:red']) {
+      expect(CreateColumnSchema.partial().safeParse({ color }).success).toBe(false)
+    }
   })
 })

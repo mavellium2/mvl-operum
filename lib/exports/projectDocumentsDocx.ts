@@ -50,8 +50,22 @@ export async function buildCharterDocx(p: CharterDocumentProps) {
 }
 export async function downloadStakeholderDocx(h: ProjetoHeader, rows: Stakeholder[]) { await save(await buildStakeholderDocx(h, rows), 'partes-interessadas.docx') }
 export async function downloadCharterDocx(p: CharterDocumentProps) { await save(await buildCharterDocx(p), 'termo-de-abertura.docx') }
-/** Ata no layout do modelo, gerada no navegador para incluir a logo do projeto. */
+/** Imagem para o Word gerado no navegador; indisponível vira "sem imagem" (não impede o download). */
+async function imagemNoNavegador(url: string | null | undefined, caixa: { maxW: number; maxH: number; centro?: boolean }): Promise<Paragraph[]> {
+  const safe = safeAvatarUrl(url)
+  if (!safe) return []
+  const { baixarImagem, paragrafoDaImagem } = await import('./imagemDocx')
+  const bytes = await baixarImagem(safe, { credentials: 'same-origin' })
+  return bytes ? paragrafoDaImagem(bytes, caixa) : []
+}
+
+/** Ata no layout do modelo, gerada no navegador com a logo do projeto e as assinaturas dos presentes. */
 export async function downloadAtaDocx(d: import('./ataDocx').AtaExportData) {
-  const { buildAtaDocx, ataNumero } = await import('./ataDocx')
-  await save(buildAtaDocx(d, await image(d.logoUrl)), `ata-${ataNumero(d.numero)}.docx`)
+  const { buildAtaDocx, ataNumero, ataAssinantes } = await import('./ataDocx')
+  const { CAIXA_LOGO_ATA, CAIXA_ASSINATURA } = await import('./imagemDocx')
+  const [logo, ...assinaturas] = await Promise.all([
+    imagemNoNavegador(d.logoUrl, CAIXA_LOGO_ATA),
+    ...ataAssinantes(d.presentes).map(p => imagemNoNavegador(p.assinaturaUrl, CAIXA_ASSINATURA)),
+  ])
+  await save(buildAtaDocx(d, logo, assinaturas), `ata-${ataNumero(d.numero)}.docx`)
 }

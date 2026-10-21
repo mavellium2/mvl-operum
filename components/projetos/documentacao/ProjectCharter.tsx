@@ -22,6 +22,7 @@ import {
   type MembroEquipeOption,
   useMembrosEquipe,
 } from './MembroEquipeSelect'
+import PaginasDaPrevia from './PaginasDaPrevia'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -471,7 +472,9 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
   const documentProps: CharterDocumentProps = {
     nomeProjeto: context?.nomeProjeto ?? 'Nome não registrado nesta versão',
     logoUrl: context?.logoUrl, gerenteProjeto: context?.gerenteProjeto ?? '',
-    gerenteSignatureUrl: selectedVersion?.status === 'APPROVED' ? context?.gerenteSignatureUrl : null,
+    // Assinatura só em versão aprovada. Versões aprovadas antes de o gerente cadastrar a
+    // assinatura não a guardaram: usa a assinatura atual do gerente (card "assinatura ausente").
+    gerenteSignatureUrl: selectedVersion?.status === 'APPROVED' ? (context?.gerenteSignatureUrl || data?.gerente?.signatureUrl || null) : null,
     membros: context?.membros ?? [], fases: selectedVersion ? selectedVersion.payload?.macroFases ?? [] : fases,
     elaboradoPor: selectedVersion?.elaboradoPor ?? versionMeta.elaboradoPor,
     aprovadoPor: selectedVersion?.aprovadoPor ?? versionMeta.aprovadoPor,
@@ -559,7 +562,9 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
         <p role="status">{selectedVersion ? `Versão ${selectedVersion.versao} · ${STATUS_LABEL[selectedVersion.status]}` : 'Prévia do rascunho — ainda não publicada'}</p>
         {selectedVersion && !context && <p role="alert">Esta versão antiga não registrou cabeçalho e equipe. Os dados atuais não substituem o histórico.</p>}
         <div role="region" aria-label="Prévia A4 do Termo de Abertura" tabIndex={0} className="w-full max-w-[210mm] overflow-x-auto shadow-2xl">
-          <ProjectCharterDocument ref={printRef} {...documentProps} />
+          <PaginasDaPrevia marginTopMm={15}>
+            <ProjectCharterDocument ref={printRef} {...documentProps} />
+          </PaginasDaPrevia>
         </div>
       </>}
 

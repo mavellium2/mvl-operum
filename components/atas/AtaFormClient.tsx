@@ -7,13 +7,15 @@ import HistoricoDocumento from '@/components/projetos/documentacao/HistoricoDocu
 import { useState, useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
 import AtaDocument from './AtaDocument'
-import type { AtaExportData } from '@/lib/exports/ataDocx'
+import { ATA_PLANO_DO_PROJETO, type AtaExportData } from '@/lib/exports/ataDocx'
 import { useRouter } from 'next/navigation'
-import { criarAtaAction, atualizarAtaAction } from '@/app/actions/atas'
+import { criarAtaAction, atualizarAtaAction, enviarAnexoAtaAction } from '@/app/actions/atas'
 import { type MemberOption } from '@/components/atas/MemberSelect'
 import MembroEquipeSelect, { useMembrosEquipe } from '@/components/projetos/documentacao/MembroEquipeSelect'
 import DateInput from '@/components/ui/DateInput'
 import { toDateInputValue } from '@/lib/date'
+import PaginasDaPrevia from '@/components/projetos/documentacao/PaginasDaPrevia'
+import MultiCreatableSelect from '@/components/ui/MultiCreatableSelect'
 
 interface Presente { nome: string; setorEmpresa: string; userId: string }
 interface Acao { acao: string; prazo: string; responsavel: string; responsavelUserId: string }
@@ -29,6 +31,8 @@ interface Props {
   ataId?: string
   mode: 'create' | 'edit'
   members: MemberOption[]
+  /** E-mails cadastrados dos stakeholders, oferecidos em "Enviar cópias para". */
+  emailsSugeridos?: { email: string; nome: string }[]
   initial?: {
     instituicao?: string | null
     local?: string | null
@@ -49,10 +53,21 @@ interface Props {
 
 function toDateOnly(iso: string): string { return toDateInputValue(iso) }
 
+/** Remove vazios e repetidos (sem diferenciar maiúsculas), mantendo a ordem. */
+export function semRepetir(lista: string[]): string[] {
+  const vistos = new Set<string>()
+  return lista.map(x => x.trim()).filter(x => {
+    const k = x.toLowerCase()
+    if (!x || vistos.has(k)) return false
+    vistos.add(k)
+    return true
+  })
+}
+
 const inputCls =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
-export default function AtaFormClient({ projetoId, ataId, mode, members, initial, nomeProjeto = '', numero, instituicaoProjeto, logoUrl = null }: Props) {
+export default function AtaFormClient({ projetoId, ataId, mode, members, emailsSugeridos = [], initial, nomeProjeto = '', numero, instituicaoProjeto, logoUrl = null }: Props) {
   const permissions = useProjectPermissions()
   const canEdit = permissions.has('documentos:editar')
   // Pessoas da ata: membros da equipe, com "+" para criar membro (padrão dos documentos).
@@ -73,7 +88,10 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
   const [assuntos, setAssuntos] = useState(initial?.assuntosTratados ?? '')
   const [decisoes, setDecisoes] = useState(initial?.decisoesTomadas ?? '')
   const [observacoes, setObservacoes] = useState(initial?.observacoes ?? '')
-  const [copias, setCopias] = useState(initial?.copiasPara.join(', ') ?? '')
+  const [copias, setCopias] = useState<string[]>(semRepetir(initial?.copiasPara ?? []))
+  const [avisoPresente, setAvisoPresente] = useState<string | null>(null)
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false)
+  const arquivoAnexo = useRef<HTMLInputElement>(null)
   const [presentes, setPresentes] = useState<Presente[]>(
     initial?.presentes ?? [{ nome: '', setorEmpresa: '', userId: '' }],
   )
@@ -92,8 +110,9 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
     elaboradoPor, elaboradoPorFuncao: funcaoDe(elaboradoPorUserId),
     aprovadoPor, aprovadoPorFuncao: funcaoDe(aprovadoPorUserId),
     assuntosTratados: assuntos, decisoesTomadas: decisoes, observacoes,
-    copiasPara: copias.split(',').map(x => x.trim()).filter(Boolean),
-    presentes, acoes: acoes.map(a => ({ ...a, prazo: a.prazo ? new Date(`${a.prazo}T12:00:00`) : null })), anexos,
+    copiasPara: copias,
+    presentes: presentes.map(p => ({ ...p, assinaturaUrl: members.find(m => m.id === p.userId)?.signatureUrl ?? null })),
+    acoes: acoes.map(a => ({ ...a, prazo: a.prazo ? new Date(`${a.prazo}T12:00:00`) : null })), anexos,
   }
   async function baixarWord() {
     try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadAtaDocx(dadosDocumento) }
@@ -111,12 +130,40 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
   }
 
   function pickPresente(i: number, member: MemberOption | null) {
+    if (member && presentes.some((p, j) => j !== i && p.userId === member.id)) {
+      setAvisoPresente(`${member.name} já está na lista de presentes.`)
+      return
+    }
+    setAvisoPresente(null)
     const next = [...presentes]
-    next[i].nome = member?.name ?? ''
-    // Setor auto-preenchido pela função do membro
-    next[i].setorEmpresa = member?.setor ?? ''
-    next[i].userId = member?.id ?? ''
+    next[i] = {
+      nome: member?.name ?? '',
+      // Setor auto-preenchido pela função do membro
+      setorEmpresa: member?.setor ?? '',
+      userId: member?.id ?? '',
+    }
     setPresentes(next)
+  }
+
+  /** Inclui de uma vez os membros da equipe que ainda não estão na lista. */
+  function adicionarEquipe() {
+    const naLista = new Set(presentes.map(p => p.userId).filter(Boolean))
+    const novos = todosMembros.filter(m => !naLista.has(m.id)).map(m => ({ nome: m.name, setorEmpresa: m.setor ?? '', userId: m.id }))
+    setAvisoPresente(null)
+    setPresentes([...presentes.filter(p => p.nome.trim() || p.userId), ...novos])
+  }
+
+  async function enviarAnexo(file: File | undefined) {
+    if (!file) return
+    setEnviandoAnexo(true)
+    setError(null)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await enviarAnexoAtaAction(projetoId, fd)
+    setEnviandoAnexo(false)
+    if (arquivoAnexo.current) arquivoAnexo.current.value = ''
+    if ('error' in res) { setError(res.error); return }
+    setAnexos(prev => [...prev.filter(a => a.nome.trim() || a.url.trim()), { nome: res.anexo.nome, url: res.anexo.url }])
   }
 
   function pickResponsavel(i: number, member: MemberOption | null) {
@@ -149,7 +196,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
       assuntosTratados: assuntos || null,
       decisoesTomadas: decisoes || null,
       observacoes: observacoes || null,
-      copiasPara: copias.split(',').map(s => s.trim()).filter(Boolean),
+      copiasPara: semRepetir(copias),
       presentes: presentes
         .map(p => ({
           nome: p.nome.trim(),
@@ -193,7 +240,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
         {preview && <button type="button" className="rounded bg-blue-600 px-3 py-2 text-white" onClick={() => print()}>Baixar PDF</button>}
         {preview && <button type="button" className="rounded bg-gray-800 px-3 py-2 text-white" onClick={baixarWord}>Baixar Word</button>}
       </div>
-      {preview && <><p className="mb-2 text-sm">Prévia do rascunho — ainda não publicada</p><div role="region" aria-label="Prévia da ata" tabIndex={0} className="max-w-full overflow-x-auto mb-4"><AtaDocument ref={documentRef} data={dadosDocumento} /></div></>}
+      {preview && <><p className="mb-2 text-sm">Prévia do rascunho — ainda não publicada</p><div role="region" aria-label="Prévia da ata" tabIndex={0} className="max-w-full overflow-x-auto mb-4"><PaginasDaPrevia><AtaDocument ref={documentRef} data={dadosDocumento} /></PaginasDaPrevia></div></>}
     <fieldset hidden={preview} disabled={!canEdit} className="space-y-6 min-w-0">
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
@@ -224,50 +271,72 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">I. Relação dos presentes</label>
-        {presentes.map((p, i) => (
-          <div key={i} className="flex flex-col sm:flex-row gap-2 mb-2">
-            {/* Nome com 2/3 da linha: o setor (w-full) espremia o seletor até ficar ilegível. */}
-            <div className="min-w-0 sm:flex-[2]">
-              <MembroEquipeSelect
-                membros={todosMembros}
-                projetoId={projetoId}
-                onCriarMembro={registrarCriado}
-                value={p.userId}
-                onChange={m => pickPresente(i, m)}
-                placeholder="Selecionar presente"
-              />
-            </div>
-            <div className="min-w-0 sm:flex-1">
-              <input
-                type="text"
-                value={p.setorEmpresa}
-                onChange={e => {
-                  const next = [...presentes]; next[i].setorEmpresa = e.target.value; setPresentes(next)
-                }}
-                placeholder="Setor (auto pela função)"
-                aria-label="Setor/Empresa"
-                className={inputCls}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => setPresentes(presentes.filter((_, j) => j !== i))}
-              className="px-3 text-red-500 hover:bg-red-50 rounded-lg"
-            >
-              ×
-            </button>
-          </div>
-        ))}
+      <section aria-labelledby="ata-presentes">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h2 id="ata-presentes" className="text-sm font-medium text-gray-700">
+            I. Relação dos presentes <span className="font-normal text-gray-500">({presentes.filter(p => p.nome.trim()).length} incluído{presentes.filter(p => p.nome.trim()).length === 1 ? '' : 's'})</span>
+          </h2>
+          <button
+            type="button"
+            onClick={adicionarEquipe}
+            disabled={todosMembros.every(m => presentes.some(p => p.userId === m.id))}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
+          >
+            Incluir toda a equipe
+          </button>
+        </div>
+        {presentes.length === 0 && (
+          <p className="mb-2 rounded-lg border border-dashed border-gray-300 px-3 py-3 text-sm text-gray-500">Nenhum presente incluído ainda.</p>
+        )}
+        <ol className="space-y-2 mb-2">
+          {presentes.map((p, i) => (
+            <li key={i} className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border border-gray-200 bg-white p-2">
+              <span className="hidden sm:block w-6 shrink-0 text-right text-xs font-semibold text-gray-400" aria-hidden="true">{i + 1}.</span>
+              {/* Nome com 2/3 da linha: o setor (w-full) espremia o seletor até ficar ilegível. */}
+              <div className="min-w-0 sm:flex-[2]">
+                <MembroEquipeSelect
+                  membros={todosMembros.filter(m => m.id === p.userId || !presentes.some(x => x.userId === m.id))}
+                  projetoId={projetoId}
+                  onCriarMembro={registrarCriado}
+                  value={p.userId}
+                  onChange={m => pickPresente(i, m)}
+                  placeholder="Selecionar presente"
+                />
+              </div>
+              <div className="min-w-0 sm:flex-1">
+                <input
+                  type="text"
+                  value={p.setorEmpresa}
+                  onChange={e => {
+                    const next = [...presentes]; next[i] = { ...next[i], setorEmpresa: e.target.value }; setPresentes(next)
+                  }}
+                  placeholder="Setor (auto pela função)"
+                  aria-label={`Setor/Empresa de ${p.nome || `presente ${i + 1}`}`}
+                  className={inputCls}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => { setAvisoPresente(null); setPresentes(presentes.filter((_, j) => j !== i)) }}
+                aria-label={`Remover ${p.nome || `presente ${i + 1}`}`}
+                title="Remover da lista"
+                className="self-end sm:self-auto inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-red-600 hover:bg-red-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                <span className="sm:hidden">Remover</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        {avisoPresente && <p role="alert" className="mb-2 text-sm text-amber-700">{avisoPresente}</p>}
         <button
           type="button"
           onClick={() => setPresentes([...presentes, { nome: '', setorEmpresa: '', userId: '' }])}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
         >
           + Adicionar presente
         </button>
-      </div>
+      </section>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">II. Assuntos tratados</label>
@@ -333,7 +402,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Documentos anexos (nome, URL)</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Documentos anexos</label>
         {anexos.map((a, i) => (
           <div key={i} className="flex gap-2 mb-2">
             <input
@@ -354,6 +423,9 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
               placeholder="URL (opcional)"
               className={inputCls}
             />
+            {a.url && /^https?:\/\//i.test(a.url) && (
+              <a href={a.url} target="_blank" rel="noopener noreferrer" className="self-center whitespace-nowrap text-sm text-blue-600 hover:underline">Abrir</a>
+            )}
             <button
               type="button"
               onClick={() => setAnexos(anexos.filter((_, j) => j !== i))}
@@ -363,20 +435,50 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
             </button>
           </div>
         ))}
-        <button
-          type="button"
-          onClick={() => setAnexos([...anexos, { nome: '', url: '' }])}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-        >
-          + Adicionar anexo
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            ref={arquivoAnexo}
+            type="file"
+            className="sr-only"
+            aria-label="Arquivo do anexo"
+            accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx"
+            onChange={e => void enviarAnexo(e.target.files?.[0])}
+          />
+          <button
+            type="button"
+            onClick={() => arquivoAnexo.current?.click()}
+            disabled={enviandoAnexo}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+            {enviandoAnexo ? 'Enviando...' : 'Enviar arquivo'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setAnexos([...anexos, { nome: '', url: '' }])}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            + Adicionar link
+          </button>
+          <span className="text-xs text-gray-500">PDF, imagem, Word ou Excel até 10 MB.</span>
+        </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Enviar cópias para (e-mails separados por vírgula)
-        </label>
-        <input type="text" value={copias} onChange={e => setCopias(e.target.value)} className={inputCls} />
+        <label className="block text-sm font-medium text-gray-700 mb-1">Enviar cópias para</label>
+        <p className="mb-2 text-xs text-gray-500">Escolha os e-mails cadastrados dos stakeholders ou digite outro e tecle Enter. Revise a lista antes de salvar.</p>
+        <MultiCreatableSelect
+          values={copias}
+          onChange={v => setCopias(semRepetir(v))}
+          options={[...emailsSugeridos.map(e => e.email), ATA_PLANO_DO_PROJETO]}
+          placeholder="Adicionar destinatário..."
+          ariaLabel="Adicionar destinatário da cópia"
+        />
+        {copias.length > 0 && (
+          <p className="mt-1 text-xs text-gray-500" data-testid="ata-copias-resumo">
+            {copias.length} destinatário{copias.length === 1 ? '' : 's'}: {copias.map(c => emailsSugeridos.find(e => e.email.toLowerCase() === c.toLowerCase())?.nome ? `${emailsSugeridos.find(e => e.email.toLowerCase() === c.toLowerCase())!.nome} <${c}>` : c).join(', ')}
+          </p>
+        )}
       </div>
 
       <div>

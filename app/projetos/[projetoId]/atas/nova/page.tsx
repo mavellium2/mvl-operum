@@ -5,7 +5,7 @@ import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import prisma from '@/lib/prisma'
 import AtaFormClient from '@/components/atas/AtaFormClient'
-import { cabecalhoDaAta } from '@/services/ataService'
+import { cabecalhoDaAta, emailsParaCopia } from '@/services/ataService'
 import type { MemberOption } from '@/components/atas/MemberSelect'
 import type { Metadata } from 'next'
 
@@ -23,7 +23,7 @@ export default async function NovaAtaPage({ params }: { params: Promise<{ projet
 
   if (!(await canProjectPermission({ tenantId, role, userId }, projetoId, 'documentos:ver'))) notFound()
 
-  const cabecalho = await cabecalhoDaAta(tenantId, projetoId)
+  const [cabecalho, emailsSugeridos] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId)])
   const members: MemberOption[] = (
     await prisma.userProject.findMany({
       where: { projectId: projetoId, active: true },
@@ -51,7 +51,7 @@ export default async function NovaAtaPage({ params }: { params: Promise<{ projet
         </Link>
         <h1 className="text-xl font-bold text-gray-900 mt-3 mb-1">Nova Ata de Reunião</h1>
         <p className="text-sm text-gray-500 mb-6">Projeto: {project.name}</p>
-        <AtaFormClient projetoId={projetoId} mode="create" nomeProjeto={project.name} members={members} instituicaoProjeto={cabecalho.instituicao} logoUrl={cabecalho.logoUrl} />
+        <AtaFormClient projetoId={projetoId} mode="create" nomeProjeto={project.name} members={members} emailsSugeridos={emailsSugeridos} instituicaoProjeto={cabecalho.instituicao} logoUrl={cabecalho.logoUrl} />
       </main>
     </div>
   )

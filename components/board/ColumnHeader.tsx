@@ -4,23 +4,30 @@ import { useState } from 'react'
 import InlineEdit from '@/components/ui/InlineEdit'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { ColumnSearchButton } from './ColumnSearch'
+import ColumnColorButton from './ColumnColorButton'
 
 interface ColumnHeaderProps {
   title: string
   /** Número exibido no selo; durante a busca, "encontrados/total". */
   cardCount: number | string
   onRename?: (title: string) => void
+  /** Cor da coluna; null = aparência padrão. */
+  color?: string | null
+  onChangeColor?: (color: string | null) => void
   onDelete?: () => void
   searchOpen?: boolean
   onToggleSearch?: () => void
 }
 
-export default function ColumnHeader({ title, cardCount, onRename, onDelete, searchOpen = false, onToggleSearch }: ColumnHeaderProps) {
+export default function ColumnHeader({ title, cardCount, onRename, color = null, onChangeColor, onDelete, searchOpen = false, onToggleSearch }: ColumnHeaderProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   return (
     <>
-      <div className="flex items-center justify-between px-4 py-3 cursor-grab active:cursor-grabbing border-b border-black/5 group">
+      <div
+        className="flex items-center justify-between px-4 py-3 cursor-grab active:cursor-grabbing border-b border-black/5 group"
+        style={color ? { backgroundColor: `${color}26`, boxShadow: `inset 0 4px 0 ${color}` } : undefined}
+      >
 
         {/* Lado Esquerdo: Título e Contador */}
         <div className="flex items-center gap-2.5 min-w-0">
@@ -43,6 +50,9 @@ export default function ColumnHeader({ title, cardCount, onRename, onDelete, sea
         <div className="flex items-center gap-0.5 shrink-0">
         {onToggleSearch && (
           <ColumnSearchButton columnTitle={title} open={searchOpen} onToggle={onToggleSearch} />
+        )}
+        {onChangeColor && (
+          <ColumnColorButton columnTitle={title} value={color} onChange={onChangeColor} />
         )}
         {onDelete && (
           <button

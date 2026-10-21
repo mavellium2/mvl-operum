@@ -2,7 +2,9 @@
 
 import { requireProjectPermission } from '@/services/projectAccess'
 import { getTree } from '@/services/wbsService'
-import { planilhaDoProjeto } from '@/services/planilhaService'
+import { planilhaDoProjeto, resumoDaPlanilhaPorCard, type ResumoCardPlanilha } from '@/services/planilhaService'
+import { canProjectPermission } from '@/services/projectAccess'
+import { sincronizarInicioPeloCard } from '@/services/inicioDoProjeto'
 import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { sprintsApi, cardsApi, tagsApi, filesApi } from '@/lib/api-client'
@@ -27,7 +29,12 @@ type BoardCard = {
   endDate?: string | Date | null
   /** Código do nó vinculado na EAP (ex.: "1.2.3"), exibido antes do título. */
   eapCode?: string
+  /** Linha da Planilha de Custos da atividade ligada (minicard). */
+  planilha?: MinicardPlanilha
 }
+
+/** Dados da planilha no minicard; valores em R$ só para quem vê a planilha. */
+export type MinicardPlanilha = Omit<ResumoCardPlanilha, 'totalOrcado' | 'totalReal'> & { totalOrcado?: number | null; totalReal?: number | null }
 
 type BacklogCard = BoardCard
 
@@ -81,7 +88,7 @@ async function codigosEapDosCards(projectId: string, tenantId: string): Promise<
 
 export async function getSprintBoardAction(sprintId: string, projectId?: string): Promise<SprintBoardData | { error: string }> {
   try {
-    const { tenantId } = await verifySession()
+    const { tenantId, userId, role } = await verifySession()
     const sprint = await sprintsApi.get(sprintId)
     const resolvedProjectId = projectId ?? (sprint as { projectId?: string }).projectId ?? ''
 
@@ -177,6 +184,27 @@ export async function getSprintBoardAction(sprintId: string, projectId?: string)
       finalBacklog = finalBacklog.map(comCodigo)
     }
 
+    // Horas, datas e valores da linha da planilha de cada card (minicard).
+    if (resolvedProjectId) {
+      try {
+        const [porCard, veValores] = await Promise.all([
+          resumoDaPlanilhaPorCard(resolvedProjectId, tenantId),
+          canProjectPermission({ tenantId, userId, role }, resolvedProjectId, 'planilha:ver'),
+        ])
+        if (porCard.size) {
+          const comPlanilha = <T extends { id: string }>(card: T) => {
+            const linha = porCard.get(card.id)
+            if (!linha) return card
+            const { totalOrcado, totalReal, ...resto } = linha
+            const planilha: MinicardPlanilha = veValores ? { ...resto, totalOrcado, totalReal } : resto
+            return { ...card, planilha }
+          }
+          finalColumns = finalColumns.map(col => ({ ...col, cards: (col.cards ?? []).map(comPlanilha) }))
+          finalBacklog = finalBacklog.map(comPlanilha)
+        }
+      } catch { /* sem EAP/planilha o quadro carrega sem esses dados */ }
+    }
+
     return { sprint, columns: finalColumns, backlogCards: finalBacklog, users, tags, inactiveUserIds } as unknown as SprintBoardData
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao carregar sprint board' }
@@ -241,7 +269,7 @@ export async function createCardInSprintAction(input: {
   endDate?: string | null
 }) {
   try {
-    await verifySession()
+    const { tenantId } = await verifySession()
     const card = await cardsApi.create({
       title: input.title,
       description: input.description ?? '',
@@ -252,6 +280,7 @@ export async function createCardInSprintAction(input: {
       ...datasDoCard(input),
     })
     revalidatePath(`/sprints/${input.sprintId}`)
+    await sincronizarInicioPeloCard((card as { id: string }).id, tenantId)
     return { card }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao criar card' }
@@ -266,6 +295,18 @@ export async function renameSprintColumnAction(sprintId: string, columnId: strin
     return { column }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao renomear coluna' }
+  }
+}
+
+export async function setSprintColumnColorAction(sprintId: string, columnId: string, color: string | null) {
+  try {
+    await verifySession()
+    if (color !== null && !/^#[0-9a-fA-F]{6}$/.test(color)) return { error: 'Cor inválida' }
+    const column = await sprintsApi.updateColumn(sprintId, columnId, { color })
+    revalidatePath(`/sprints/${sprintId}`)
+    return { column }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erro ao alterar a cor da coluna' }
   }
 }
 
@@ -296,9 +337,10 @@ export async function updateCardInSprintAction(
   data: { title: string; description: string; color: string; priority?: string },
 ) {
   try {
-    await verifySession()
+    const { tenantId } = await verifySession()
     const card = await cardsApi.update(cardId, data as Record<string, unknown>)
     revalidatePath(`/sprints/${sprintId}`)
+    await sincronizarInicioPeloCard((card as { id: string }).id, tenantId)
     return { card }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar card' }
@@ -321,11 +363,12 @@ export type PatchCardInput = z.infer<typeof PatchCardSchema>
  */
 export async function patchCardAction(sprintId: string, cardId: string, patch: PatchCardInput) {
   try {
-    await verifySession()
+    const { tenantId } = await verifySession()
     const parsed = PatchCardSchema.safeParse(patch)
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }
     const card = await cardsApi.update(cardId, parsed.data as Record<string, unknown>)
     revalidatePath(`/sprints/${sprintId}`)
+    await sincronizarInicioPeloCard((card as { id: string }).id, tenantId)
     return { card }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar card' }
@@ -334,9 +377,10 @@ export async function patchCardAction(sprintId: string, cardId: string, patch: P
 
 export async function deleteCardInSprintAction(sprintId: string, cardId: string) {
   try {
-    await verifySession()
+    const { tenantId } = await verifySession()
     await cardsApi.delete(cardId)
     revalidatePath(`/sprints/${sprintId}`)
+    await sincronizarInicioPeloCard(cardId, tenantId)
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao excluir card' }
@@ -394,7 +438,7 @@ export async function createBacklogCardAction(
   data: { title: string; description?: string; color?: string; priority?: string; startDate?: string | null; endDate?: string | null },
 ) {
   try {
-    await verifySession()
+    const { tenantId } = await verifySession()
     const card = await cardsApi.create({
       projectId,
       title: data.title,
@@ -403,6 +447,7 @@ export async function createBacklogCardAction(
       priority: data.priority,
       ...datasDoCard(data),
     })
+    await sincronizarInicioPeloCard((card as { id: string }).id, tenantId)
     return { card }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao criar card no backlog' }

@@ -19,11 +19,14 @@ vi.mock('@/lib/api-client', () => ({
 vi.mock('@/lib/prisma', () => ({
   default: {
     projetoDepartamento: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    department: { findFirst: vi.fn().mockResolvedValue(null) },
+    project: { findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
   },
 }))
 
 import { verifySession } from '@/lib/dal'
 import { departmentsApi } from '@/lib/api-client'
+import prisma from '@/lib/prisma'
 import {
   createDepartmentAction,
   getDepartmentsAction,
@@ -184,5 +187,31 @@ describe('Department Actions', () => {
       const result = await deleteDepartmentAction('nonexistent')
       expect(result).toHaveProperty('error')
     })
+  })
+})
+
+describe('renomear departamento atualiza a lista gravada nos projetos', () => {
+  it('troca o nome antigo pelo novo só nos projetos do tenant que o usavam', async () => {
+    vi.mocked(verifySession).mockResolvedValue({ userId: 'u1', tenantId: 't1', role: 'admin' })
+    vi.mocked(departmentsApi.update).mockResolvedValue({ id: 'd1', name: 'ADS' })
+    vi.mocked(prisma.department.findFirst).mockResolvedValue({ name: 'ADS - AMS' } as never)
+    vi.mocked(prisma.project.findMany).mockResolvedValue([{ id: 'p1', departamentos: ['ADS - AMS', 'Gestão'] }] as never)
+
+    const result = await updateDepartmentNameAction('d1', ' ADS ')
+
+    expect(result).toHaveProperty('department')
+    expect(prisma.department.findFirst).toHaveBeenCalledWith({ where: { id: 'd1', tenantId: 't1' }, select: { name: true } })
+    expect(prisma.project.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ tenantId: 't1', departamentos: { has: 'ADS - AMS' } }) }))
+    expect(prisma.project.update).toHaveBeenCalledWith({ where: { id: 'p1' }, data: { departamentos: ['ADS', 'Gestão'] } })
+  })
+
+  it('atualizar sem mudar o nome não mexe nos projetos', async () => {
+    vi.mocked(verifySession).mockResolvedValue({ userId: 'u1', tenantId: 't1', role: 'admin' })
+    vi.mocked(departmentsApi.update).mockResolvedValue({ id: 'd1' })
+
+    await updateDepartmentAction({}, 'd1', { hourlyRate: 10 })
+
+    expect(prisma.department.findFirst).not.toHaveBeenCalled()
+    expect(prisma.project.findMany).not.toHaveBeenCalled()
   })
 })

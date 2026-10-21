@@ -16,6 +16,7 @@ import {
   moveCardInSprintAction,
   addSprintColumnAction,
   renameSprintColumnAction,
+  setSprintColumnColorAction,
   deleteSprintColumnAction,
   reorderSprintColumnsAction,
   createCardInSprintAction,
@@ -53,6 +54,8 @@ interface SprintCard {
   startDate?: string | Date | null
   endDate?: string | Date | null
   eapCode?: string
+  /** Linha da Planilha de Custos da atividade ligada; totais só para quem vê a planilha. */
+  planilha?: { minOrcado: number; minReal: number; dataPrevista: string | null; dataRealizacao: string | null; totalOrcado?: number | null; totalReal?: number | null }
 }
 
 type NewCardData = {
@@ -70,6 +73,7 @@ interface SprintColumnData {
   id: string
   title: string
   position: number
+  color?: string | null
   cards: SprintCard[]
 }
 
@@ -98,7 +102,7 @@ interface SprintBoardProps {
 }
 
 function toColumnType(col: SprintColumnData): ColumnType {
-  return { id: col.id, title: col.title, cardIds: col.cards.map(c => c.id) }
+  return { id: col.id, title: col.title, cardIds: col.cards.map(c => c.id), color: col.color ?? null }
 }
 
 function toCardType(card: SprintCard, sprintId: string, inativos?: ReadonlySet<string>): CardType {
@@ -106,6 +110,14 @@ function toCardType(card: SprintCard, sprintId: string, inativos?: ReadonlySet<s
     id: card.id,
     title: card.title,
     eapCode: card.eapCode,
+    ...(card.planilha ? {
+      orcado_min: card.planilha.minOrcado,
+      realizado_min: card.planilha.minReal,
+      orcado_total: card.planilha.totalOrcado ?? null,
+      realizado_total: card.planilha.totalReal ?? null,
+      data_prevista: card.planilha.dataPrevista,
+      data_realizacao: card.planilha.dataRealizacao,
+    } : {}),
     precisaResponsavel: inativos ? precisaDeOutroResponsavel((card.responsibles ?? []).map(r => r.user.id), inativos) : false,
     description: card.description ?? '',
     color: (card.color ?? '#6b7280') as CardColor,
@@ -392,6 +404,10 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
     if (!permissions.has('quadro:sprints')) return
     await confirmed(`column:${columnId}`, () => renameSprintColumnAction(sprint.id, columnId, title), () => setColumns(cols => cols.map(c => c.id === columnId ? { ...c, title } : c)))
   }
+  async function handleChangeColumnColor(columnId: string, color: string | null) {
+    if (!permissions.has('quadro:sprints')) return
+    await confirmed(`column:${columnId}`, () => setSprintColumnColorAction(sprint.id, columnId, color), () => setColumns(cols => cols.map(c => c.id === columnId ? { ...c, color } : c)))
+  }
   async function handleDeleteColumn(columnId: string) {
     if (!permissions.has('quadro:sprints')) return
     await confirmed(`column:${columnId}`, () => deleteSprintColumnAction(sprint.id, columnId), () => setColumns(cols => cols.filter(c => c.id !== columnId)))
@@ -600,6 +616,7 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
                           dragDisabled={filtering}
                           index={index}
                           onRenameColumn={handleRenameColumn}
+                          onChangeColumnColor={handleChangeColumnColor}
                           onDeleteColumn={handleDeleteColumn}
                           onAddCard={(colId) => setAddingCardToColumn(colId)}
                           onUpdateCard={handleUpdateCard}

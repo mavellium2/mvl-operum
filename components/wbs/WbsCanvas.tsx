@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 // useLayoutEffect no cliente (mede antes do paint), useEffect no servidor (no-op em SSR)
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 import { computeLayout, resolveDropPosition, NODE_W, NODE_H } from '@/lib/wbsLayout'
+import { measureNodeWidths } from '@/lib/wbsMedidas'
 import { elaboradoresDe } from '@/lib/elaboradores'
 import { computeFinancialRollups, computeRollups } from '@/lib/wbsRollup'
 import WbsGantt from './WbsGantt'
@@ -23,23 +24,6 @@ import type { GetTreeResult } from '@/services/wbsService'
 import type { DropPosition } from '@/types/wbs'
 
 const SCROLL_SPEED = 1.0
-
-/** Mede a largura do texto de cada nó via Canvas API (browser-only, sem DOM manipulation). */
-function measureNodeWidths(nodes: Record<string, WbsNodeClient>): Record<string, number> {
-  if (typeof document === 'undefined') return {}
-  const PADDING_H = 32
-  const MIN_W = 120
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')!
-  const fontFamily = getComputedStyle(document.body).fontFamily
-  const widths: Record<string, number> = {}
-  for (const node of Object.values(nodes)) {
-    ctx.font = `500 ${node.style.fontSize}px ${fontFamily}`
-    const textW = ctx.measureText(`${node.code} ${node.title}`).width
-    widths[node.id] = Math.max(MIN_W, textW + PADDING_H)
-  }
-  return widths
-}
 
 export interface WbsCanvasProps {
   projetoId: string
