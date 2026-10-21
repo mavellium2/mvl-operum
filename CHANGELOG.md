@@ -7,6 +7,19 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.35.0] — 2026-10-21
+
+Sincronização EAP ↔ planilha ↔ sprints (sprint 1.3).
+
+### Adicionado
+- EAP e Planilha mostram o estado da sincronização (sincronizado, com pendências ou com falha), a última conclusão, as pendências em linguagem clara e o botão "Sincronizar agora"/"Tentar novamente".
+- EAP: em conflito ou falha de salvamento, suas alterações ficam guardadas no navegador e podem ser revisadas e reaplicadas sobre a versão atual, sem sobrescrever o que outra pessoa mudou.
+
+### Corrigido
+- Retirar a conclusão na Planilha reabre o card que ela concluiu; card reaberto à mão não volta sozinho para Concluído.
+- A coluna de conclusão é reconhecida mesmo renomeada (Done, Entregue…; sem nenhuma, a última coluna).
+- Sincronização dos cards com a planilha faz uma consulta só para todos os cards ligados.
+
 ## [1.34.0] — 2026-10-21
 
 Correções relatadas em 19/10 (sprint 1.8).
