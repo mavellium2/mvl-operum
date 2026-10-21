@@ -3,7 +3,9 @@ import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import { permissoesNoProjeto } from '@/services/authz'
 import { getTree } from '@/services/wbsService'
-import { sincronizarEapSprintSePermitido } from '@/services/eapSprintSyncService'
+import { podeSincronizar, sincronizarEapSprintSePermitido } from '@/services/eapSprintSyncService'
+import { statusDaSincronizacao } from '@/services/sincronizacaoStatus'
+import StatusSincronizacao from '@/components/sincronizacao/StatusSincronizacao'
 import { computarPlanilhaCustos, fmtDataBR, aplicarDescricoesDosCards, cardsDasAtividades, type Elaborador } from '@/lib/planilhaCustos'
 import prisma from '@/lib/prisma'
 import PlanilhaCustosView from '@/components/custos/PlanilhaCustosView'
@@ -61,6 +63,7 @@ export default async function PlanilhaCustosPage({
   const usuariosDisponiveis = allUsers.map(u => ({ id: u.id, name: u.name, email: u.email }))
 
   await sincronizarEapSprintSePermitido({ userId, tenantId, role }, projetoId)
+  const [statusSync, sincroniza] = await Promise.all([statusDaSincronizacao(projetoId, tenantId), podeSincronizar({ userId, tenantId, role }, projetoId)])
   const tree = await getTree(projetoId, tenantId)
   const calculada = computarPlanilhaCustos(tree.nodes, tree.rootId, { valorReferencia, horasPorDia }, elaboradoresPorId)
   // Descrição mostrada ao passar o mouse na tarefa: a atual do card ligado, quando houver.
@@ -71,6 +74,10 @@ export default async function PlanilhaCustosPage({
   const planilha = aplicarDescricoesDosCards(calculada, tree.nodes, new Map(cards.map(c => [c.id, c.description ?? ''])))
 
   return (
+    <>
+    <div className="px-4 pt-4">
+      <StatusSincronizacao projectId={projetoId} inicial={statusSync} podeSincronizar={sincroniza} />
+    </div>
     <PlanilhaCustosView
       projetoId={projetoId}
       nomeProjeto={project.name}
@@ -88,5 +95,6 @@ export default async function PlanilhaCustosPage({
       usuariosDisponiveis={usuariosDisponiveis}
       exportUrl={`/api/projetos/${projetoId}/planilha-custos/export`}
     />
+    </>
   )
 }

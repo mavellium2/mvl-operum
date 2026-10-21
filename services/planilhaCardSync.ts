@@ -82,11 +82,17 @@ export async function sincronizarCardsDaPlanilha(projectId: string, tenantId: st
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'eap-sprint:' + projectId}))`
     const nodes = await tx.wbsNode.findMany({ where: { projectId, tenantId, project: { deletedAt: null } }, select: { properties: true } })
     const colunasPorSprint = new Map<string, { id: string; title: string; position: number }[]>()
-    const resultado = { updated: 0, reabertos: 0, mantidosManual: 0, semColunaDeConclusao: 0 }
+    const resultado = { updated: 0, reabertos: 0, mantidosManual: 0, semColunaDeConclusao: 0, semResponsavel: 0 }
+    // Uma consulta para todos os cards ligados (antes era uma por nó).
+    const ligados = nodes.map(n => ((n.properties ?? {}) as WbsNodeProperties).cardId).filter((id): id is string => typeof id === 'string')
+    const cards = ligados.length
+      ? await tx.card.findMany({ where: { id: { in: ligados }, deletedAt: null, sprint: { projectId, project: { tenantId }, deletedAt: null } }, select: { id: true, endDate: true, sprintId: true, sprintColumnId: true, sprintColumn: { select: { title: true } }, responsibles: { where: { user: { tenantId, deletedAt: null, isActive: true, projects: { some: { projectId, active: true } } } }, select: { userId: true } } } })
+      : []
+    const cardPorId = new Map(cards.map(c => [c.id, c]))
     for (const node of nodes) {
       const p = (node.properties ?? {}) as WbsNodeProperties
       if (typeof p.cardId !== 'string') continue
-      const card = await tx.card.findFirst({ where: { id: p.cardId, deletedAt: null, sprint: { projectId, project: { tenantId }, deletedAt: null } }, select: { id: true, endDate: true, sprintId: true, sprintColumnId: true, sprintColumn: { select: { title: true } }, responsibles: { where: { user: { tenantId, deletedAt: null, isActive: true, projects: { some: { projectId, active: true } } } }, select: { userId: true } } } })
+      const card = cardPorId.get(p.cardId)
       if (!card?.sprintId) continue
       const data: { endDate?: Date | null; sprintColumnId?: string; sprintPosition?: number } = {}
       if ('dataPrevista' in p) {
@@ -109,6 +115,7 @@ export async function sincronizarCardsDaPlanilha(projectId: string, tenantId: st
         const proximaPosicao = async (colunaId: string) => ((await tx.card.aggregate({ where: { sprintColumnId: colunaId, deletedAt: null }, _max: { sprintPosition: true } }))._max.sprintPosition ?? -1) + 1
 
         // Concluído exige responsável, como a movimentação manual.
+        if (decisao.acao === 'concluir' && !card.responsibles.length) resultado.semResponsavel++
         if (decisao.acao === 'concluir' && card.responsibles.length) {
           data.sprintColumnId = conclusao.id
           data.sprintPosition = await proximaPosicao(conclusao.id)

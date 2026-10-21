@@ -728,3 +728,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Alternativas consideradas:** campo `concluidoPelaPlanilha` no Card (migration e mais um estado a sincronizar); planilha sempre prevalecer (desfaria decisões manuais a cada leitura).
 - **Consequências:** movimentos antigos sem chave são tratados como chave "legado": um card antigo reaberto à mão pode ser concluído de novo uma vez. Sprint sem colunas é contada como pendência e não é alterada.
 - **Referências:** `services/planilhaCardSync.ts`, `lib/cardUtils.ts`, `__tests__/unit/planilhaCardSync.test.ts`, card `cmvfctig2003d01qwbf79ccvv`.
+
+## ADR-055 — Estado da sincronização gravado e repetição sob demanda
+
+- **Data:** 2026-10-21.
+- **Status:** implementada; processamento em fila avaliado e não adotado nesta entrega.
+- **Contexto:** a reconciliação EAP ↔ planilha ↔ sprints roda ao abrir as telas e as falhas ficavam só no log do servidor; o usuário não sabia se os dados estavam coerentes.
+- **Escolha:** tabela `ProjetoSincronizacao` (uma linha por projeto) com situação (`OK`, `PENDENCIAS`, `FALHA`), última tentativa, última conclusão, erro legível e pendências. Cada sincronização grava o estado; `OK` só sem pendências. EAP e Planilha mostram o estado e "Sincronizar agora"/"Tentar novamente" (`repetirSincronizacaoAction`), com as mesmas permissões da abertura (`projeto:editar` + `quadro:cards`). Repetir é seguro: a sincronização é idempotente e serializada por projeto (advisory lock). A sincronização dos cards passou a buscar os cards ligados numa única consulta.
+- **Justificativa:** o estado persistido sobrevive a navegação e reinício e deixa a pendência recuperável sem infraestrutura nova.
+- **Alternativas consideradas:** fila/worker independente da abertura de telas (exige processo e monitoramento novos; fica para quando projetos grandes tornarem a abertura lenta); mostrar o estado só em memória (perderia a pendência ao navegar).
+- **Consequências:** falha registra o motivo sem apagar a última conclusão nem as pendências conhecidas. Edição da planilha que dispara a propagação (`updateNodePropertiesAction`) ainda não atualiza o estado.
+- **Referências:** `services/sincronizacaoStatus.ts`, `services/eapSprintSyncService.ts`, `app/actions/sincronizacao.ts`, `components/sincronizacao/StatusSincronizacao.tsx`, migration `20261021020000_projeto_sincronizacao`, card `cmvfctk30003f01qwqnaj9z2e`.
+- **Revisar quando:** a abertura da EAP/Planilha ficar lenta em projetos grandes ou surgir worker para tarefas em segundo plano.

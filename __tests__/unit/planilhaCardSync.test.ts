@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const tx = vi.hoisted(() => ({
   $executeRaw: vi.fn(),
   wbsNode: { findMany: vi.fn() },
-  card: { findFirst: vi.fn(), update: vi.fn(), aggregate: vi.fn() },
+  card: { findMany: vi.fn(), update: vi.fn(), aggregate: vi.fn() },
   sprintColumn: { findMany: vi.fn() },
   cardMovement: { create: vi.fn(), findMany: vi.fn() },
 }))
@@ -28,7 +28,7 @@ const cardEm = (coluna: string, extra: Record<string, unknown> = {}) => ({
 beforeEach(() => {
   vi.clearAllMocks()
   tx.wbsNode.findMany.mockResolvedValue([{ properties: { cardId: 'c', dataPrevista: '2026-10-20', dataRealizacao: '2026-10-19' } }])
-  tx.card.findFirst.mockResolvedValue({ ...cardEm('todo'), endDate: null })
+  tx.card.findMany.mockResolvedValue([{ ...cardEm('todo'), endDate: null }])
   tx.sprintColumn.findMany.mockResolvedValue(COLUNAS)
   tx.cardMovement.findMany.mockResolvedValue([])
   tx.card.aggregate.mockResolvedValue({ _max: { sprintPosition: 4 } })
@@ -48,25 +48,26 @@ describe('Planilha de Custos → cards', () => {
     expect(await sincronizarCardsDaPlanilha('p', 't')).toMatchObject({ updated: 1 })
     expect(tx.card.update).toHaveBeenCalledWith({ where: { id: 'c' }, data: { endDate: new Date('2026-10-20T00:00:00-03:00'), sprintColumnId: 'done', sprintPosition: 5 } })
     expect(tx.cardMovement.create).toHaveBeenCalledWith({ data: expect.objectContaining({ fromColumnId: 'todo', toColumnId: 'done', reason: `${MOTIVO_CONCLUSAO} [data:2026-10-19]` }) })
-    expect(tx.card.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ sprint: expect.objectContaining({ projectId: 'p', project: { tenantId: 't' } }) }) }))
+    expect(tx.card.findMany).toHaveBeenCalledTimes(1)
+    expect(tx.card.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: { in: ['c'] }, sprint: expect.objectContaining({ projectId: 'p', project: { tenantId: 't' } }) }) }))
   })
 
   it('repetir a leitura de um card já sincronizado não grava nem duplica histórico', async () => {
-    tx.card.findFirst.mockResolvedValue(cardEm('done'))
+    tx.card.findMany.mockResolvedValue([cardEm('done')])
     expect(await sincronizarCardsDaPlanilha('p', 't')).toMatchObject({ updated: 0 })
     expect(tx.cardMovement.create).not.toHaveBeenCalled()
     expect(tx.card.update).not.toHaveBeenCalled()
   })
 
   it('vínculo inexistente ou de outro tenant não altera nenhum card', async () => {
-    tx.card.findFirst.mockResolvedValue(null)
+    tx.card.findMany.mockResolvedValue([])
     expect(await sincronizarCardsDaPlanilha('p', 't')).toMatchObject({ updated: 0 })
     expect(tx.card.update).not.toHaveBeenCalled()
   })
 
   it('sem responsável ativo só sincroniza o prazo, preservando a regra do quadro', async () => {
-    tx.card.findFirst.mockResolvedValue({ ...cardEm('todo'), endDate: null, responsibles: [] })
-    await sincronizarCardsDaPlanilha('p', 't')
+    tx.card.findMany.mockResolvedValue([{ ...cardEm('todo'), endDate: null, responsibles: [] }])
+    expect(await sincronizarCardsDaPlanilha('p', 't')).toMatchObject({ semResponsavel: 1 })
     expect(tx.card.update).toHaveBeenCalledWith({ where: { id: 'c' }, data: { endDate: new Date('2026-10-20T00:00:00-03:00') } })
     expect(tx.cardMovement.create).not.toHaveBeenCalled()
   })
@@ -98,7 +99,7 @@ describe('reabertura e origem da conclusão', () => {
 
   it('retirar a conclusão na planilha reabre o card concluído por ela, de volta à coluna de origem', async () => {
     tx.wbsNode.findMany.mockResolvedValue([{ properties: { cardId: 'c', dataPrevista: '2026-10-20', dataRealizacao: null } }])
-    tx.card.findFirst.mockResolvedValue(cardEm('done'))
+    tx.card.findMany.mockResolvedValue([cardEm('done')])
     tx.cardMovement.findMany.mockResolvedValue([conclusaoDaPlanilha('data:2026-10-19', 'test')])
     expect(await sincronizarCardsDaPlanilha('p', 't')).toMatchObject({ reabertos: 1, updated: 1 })
     expect(tx.card.update).toHaveBeenCalledWith({ where: { id: 'c' }, data: { sprintColumnId: 'test', sprintPosition: 5 } })
@@ -111,7 +112,7 @@ describe('reabertura e origem da conclusão', () => {
   })
 
   it('card reaberto à mão com a mesma conclusão na planilha não volta para Concluído', async () => {
-    tx.card.findFirst.mockResolvedValue(cardEm('doing'))
+    tx.card.findMany.mockResolvedValue([cardEm('doing')])
     tx.cardMovement.findMany.mockResolvedValue([manual('doing', 'done'), conclusaoDaPlanilha('data:2026-10-19')])
     expect(await sincronizarCardsDaPlanilha('p', 't')).toMatchObject({ mantidosManual: 1, updated: 0 })
     expect(tx.cardMovement.create).not.toHaveBeenCalled()
@@ -127,7 +128,7 @@ describe('reabertura e origem da conclusão', () => {
 
   it('coluna de origem excluída: reabre na coluna anterior à de conclusão', async () => {
     tx.wbsNode.findMany.mockResolvedValue([{ properties: { cardId: 'c', percentualConclusao: 50 } }])
-    tx.card.findFirst.mockResolvedValue(cardEm('done'))
+    tx.card.findMany.mockResolvedValue([cardEm('done')])
     tx.cardMovement.findMany.mockResolvedValue([conclusaoDaPlanilha('pct:100', 'coluna-apagada')])
     await sincronizarCardsDaPlanilha('p', 't')
     expect(tx.card.update).toHaveBeenCalledWith({ where: { id: 'c' }, data: { sprintColumnId: 'test', sprintPosition: 5 } })
@@ -135,7 +136,7 @@ describe('reabertura e origem da conclusão', () => {
 
   it('reabrir não mexe em responsáveis e repetir não duplica', async () => {
     tx.wbsNode.findMany.mockResolvedValue([{ properties: { cardId: 'c' } }])
-    tx.card.findFirst.mockResolvedValue(cardEm('test'))
+    tx.card.findMany.mockResolvedValue([cardEm('test')])
     tx.cardMovement.findMany.mockResolvedValue([{ reason: MOTIVO_REABERTURA, toColumnId: 'test', fromColumnId: 'done' }, conclusaoDaPlanilha('pct:100')])
     expect(await sincronizarCardsDaPlanilha('p', 't')).toMatchObject({ updated: 0, reabertos: 0 })
     expect(tx.card.update).not.toHaveBeenCalled()

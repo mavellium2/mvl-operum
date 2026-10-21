@@ -107,6 +107,7 @@ model Project {
   projetoDepartamentos ProjetoDepartamento[]
   projetoFuncoes       ProjetoFuncao[]
   atas                 Ata[]
+  sincronizacao        ProjetoSincronizacao?
   eapDocument          EapDocument?
 
   @@unique([name, tenantId])
@@ -885,4 +886,26 @@ model DocumentDraft {
 
   @@unique([projectId, userId, documentType, resourceId])
   @@index([tenantId, projectId])
+}
+
+/// Estado da última sincronização EAP ↔ planilha ↔ sprints do projeto (card
+/// "Exibir status, pendências e opção de repetir a sincronização"). Uma linha por
+/// projeto, sobrescrita a cada tentativa; sobrevive a navegação e reinício.
+model ProjetoSincronizacao {
+  projectId         String    @id
+  tenantId          String
+  /// OK | PENDENCIAS | FALHA
+  situacao          String
+  ultimaTentativaEm DateTime
+  /// Última vez que terminou sem erro (com ou sem pendências).
+  ultimaConclusaoEm DateTime?
+  erro              String?   @db.Text
+  /// [{ tipo, quantidade, mensagem }]
+  pendencias        Json      @default("[]")
+  resumo            Json?
+  updatedAt         DateTime  @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }
