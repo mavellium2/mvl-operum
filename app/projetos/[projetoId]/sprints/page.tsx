@@ -13,16 +13,13 @@ import { historicoDasSprints } from '@/services/sprintHistoricoService'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { sprintPath } from '@/lib/sprintPath'
+import { progressoSprint, SPRINT_STATUS_LABEL } from '@/lib/sprintProgresso'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = { title: 'Sprints' }
 
-const SPRINT_STATUS: Record<string, { label: string; cls: string }> = {
-  PLANNED:   { label: 'Planejada',  cls: 'bg-gray-100 text-gray-600 border-gray-200' },
-  ACTIVE:    { label: 'Ativa',      cls: 'bg-green-50 text-green-700 border-green-200' },
-  COMPLETED: { label: 'Concluída',  cls: 'bg-blue-50 text-blue-700 border-blue-200' },
-}
+const SPRINT_STATUS: Record<string, { label: string; cls: string }> = SPRINT_STATUS_LABEL
 
 // Funções utilitárias de formatação importadas do seu design favorito
 function formatDate(date: Date | string | null | undefined) {
@@ -40,16 +37,12 @@ function formatCurrency(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-// Barra de progresso atualizada com o design premium
-function ProgressBar({ value, total }: { value: number; total: number }) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0
+// Barra de progresso: azul → verde conforme avança; verde quando concluída.
+function ProgressBar({ pct, barStyle }: { pct: number; barStyle: { width: string; background: string } }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-        <div
-          className="h-full bg-blue-500 rounded-full transition-all"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Cards concluídos">
+        <div className="h-full rounded-full transition-all" style={barStyle} />
       </div>
       <span className="text-xs font-semibold text-gray-700 w-9 text-right">{pct}%</span>
     </div>
@@ -123,14 +116,14 @@ export default async function ProjetoSprintsPage({
           <div className="flex flex-col gap-3">
             {sprintsWithMetrics.map(({ sprint, metrics, linhaPlanilha }) => {
               const sc = SPRINT_STATUS[sprint.status] ?? SPRINT_STATUS.PLANNED
-              const pct = metrics.cardsTotal > 0
-                ? Math.round((metrics.cardsConcluidos / metrics.cardsTotal) * 100)
-                : 0
+              const progresso = progressoSprint(sprint.status, metrics.cardsConcluidos, metrics.cardsTotal)
+              const pct = progresso.pct
 
               return (
                 <div
                   key={sprint.id}
-                  className="group/sprint relative bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all"
+                  className={`group/sprint relative rounded-xl shadow-sm border hover:shadow-md transition-all ${progresso.concluida ? 'hover:border-green-300' : 'border-gray-100 hover:border-blue-200'}`}
+                  style={progresso.cardStyle}
                 >
                   <Link href={sprintPath(sprint.id, projetoId)} className="block p-5">
                   {/* Topo do Card: Título, Status e Datas */}
@@ -159,7 +152,7 @@ export default async function ProjetoSprintsPage({
                   {/* Barra de Progresso */}
                   {metrics.cardsTotal > 0 && (
                     <div className="mb-3">
-                      <ProgressBar value={metrics.cardsConcluidos} total={metrics.cardsTotal} />
+                      <ProgressBar pct={pct} barStyle={progresso.barStyle} />
                     </div>
                   )}
 
