@@ -740,3 +740,14 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** falha registra o motivo sem apagar a última conclusão nem as pendências conhecidas. Edição da planilha que dispara a propagação (`updateNodePropertiesAction`) ainda não atualiza o estado.
 - **Referências:** `services/sincronizacaoStatus.ts`, `services/eapSprintSyncService.ts`, `app/actions/sincronizacao.ts`, `components/sincronizacao/StatusSincronizacao.tsx`, migration `20261021020000_projeto_sincronizacao`, card `cmvfctk30003f01qwqnaj9z2e`.
 - **Revisar quando:** a abertura da EAP/Planilha ficar lenta em projetos grandes ou surgir worker para tarefas em segundo plano.
+
+## ADR-056 — Rascunho local e mesclagem em três vias nos conflitos da EAP
+
+- **Data:** 2026-10-21.
+- **Status:** implementada.
+- **Contexto:** num conflito de salvamento, o editor carregava a árvore do servidor e pedia para refazer a alteração; a edição local se perdia. Falha de rede também perdia a edição ao fechar a aba.
+- **Escolha:** antes de substituir a árvore (conflito) ou quando o salvamento falha, a edição local e a versão do servidor em que ela se baseou ficam em `localStorage`, na chave `operum:eap-rascunho:{tenant}:{usuário}:{projeto}`, por até 30 dias. Um painel no editor mostra o que ficou pendente, o que pode ser reaplicado e o que conflita. Reaplicar mescla em três vias (`lib/wbsMerge.ts`): só o que a pessoa mudou é aplicado; o que os dois mudaram fica com o servidor e é listado. Aplicar ou descartar apaga o rascunho; o rascunho de falha de rede some quando o próximo salvamento dá certo.
+- **Justificativa:** guardar no navegador funciona mesmo sem rede e não grava no servidor nada que a pessoa não confirmou.
+- **Alternativas consideradas:** rascunho no servidor (não funciona na falha de rede que se quer cobrir); mesclagem automática sem revisão (aplicaria mudanças sem a pessoa ver os conflitos).
+- **Consequências:** o rascunho fica só no navegador onde a edição foi feita. Duas abas do mesmo usuário compartilham a chave: a mais recente prevalece.
+- **Referências:** `lib/wbsMerge.ts`, `lib/wbsRascunho.ts`, `components/wbs/RecuperarRascunhoEap.tsx`, `components/wbs/WbsCanvas.tsx`, card `cmvfctgt0003b01qwh2g6ah3r`.
