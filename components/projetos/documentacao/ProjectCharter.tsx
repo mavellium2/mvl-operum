@@ -472,7 +472,9 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
   const documentProps: CharterDocumentProps = {
     nomeProjeto: context?.nomeProjeto ?? 'Nome não registrado nesta versão',
     logoUrl: context?.logoUrl, gerenteProjeto: context?.gerenteProjeto ?? '',
-    gerenteSignatureUrl: selectedVersion?.status === 'APPROVED' ? context?.gerenteSignatureUrl : null,
+    // Assinatura só em versão aprovada. Versões aprovadas antes de o gerente cadastrar a
+    // assinatura não a guardaram: usa a assinatura atual do gerente (card "assinatura ausente").
+    gerenteSignatureUrl: selectedVersion?.status === 'APPROVED' ? (context?.gerenteSignatureUrl || data?.gerente?.signatureUrl || null) : null,
     membros: context?.membros ?? [], fases: selectedVersion ? selectedVersion.payload?.macroFases ?? [] : fases,
     elaboradoPor: selectedVersion?.elaboradoPor ?? versionMeta.elaboradoPor,
     aprovadoPor: selectedVersion?.aprovadoPor ?? versionMeta.aprovadoPor,
