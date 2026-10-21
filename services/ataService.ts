@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma'
 import { linhaInstitucional } from '@/lib/linhaInstitucional'
+import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
 import { CriarAtaSchema, AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
 import type { CriarAtaInput, AtualizarAtaInput } from '@/lib/validation/ataSchemas'
 import { NotFoundError, ConflictError } from '@/services/projetoCadastroService'
@@ -169,9 +170,11 @@ export async function removerAta(tenantId: string, ataId: string) {
 export async function cabecalhoDaAta(tenantId: string, projectId: string): Promise<{ instituicao: string; logoUrl: string | null }> {
   const p = await prisma.project.findFirst({
     where: { id: projectId, tenantId, deletedAt: null },
-    select: { location: true, departamentos: true, semestre: true, ano: true, logoUrl: true },
+    select: { location: true, departamentos: true, semestre: true, termo: true, turno: true, ano: true, logoUrl: true },
   })
-  return { instituicao: p ? linhaInstitucional(p) : '', logoUrl: p?.logoUrl ?? null }
+  if (!p) return { instituicao: '', logoUrl: null }
+  const departamentos = await departamentosDoProjeto(projectId, tenantId, p.departamentos)
+  return { instituicao: linhaInstitucional({ ...p, departamentos }), logoUrl: p.logoUrl ?? null }
 }
 
 /** Função (primeiro cargo do cadastro no projeto, ou departamento) de cada membro, para "nome e função". */

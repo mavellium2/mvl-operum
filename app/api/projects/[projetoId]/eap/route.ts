@@ -19,6 +19,7 @@ import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 import { sincronizarEapSprintSePermitido } from '@/services/eapSprintSyncService'
 import { ZodError } from 'zod'
 import { DocumentRevisionError } from '@/lib/documentRevisionError'
+import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
 
 type RouteCtx = { params: Promise<{ projetoId: string }> }
 
@@ -29,10 +30,13 @@ async function requireProjectAccess(userId: string, role: string, tenantId: stri
 }
 
 async function loadProject(tenantId: string, projetoId: string) {
-  return prisma.project.findFirst({
+  const project = await prisma.project.findFirst({
     where: { id: projetoId, tenantId, deletedAt: null },
-    select: { id: true, name: true, location: true, departamentos: true, semestre: true, ano: true, logoUrl: true },
+    select: { id: true, name: true, location: true, departamentos: true, semestre: true, termo: true, turno: true, ano: true, logoUrl: true },
   })
+  if (!project) return null
+  // Nome atual do cadastro (a lista gravada fica desatualizada ao renomear).
+  return { ...project, departamentos: await departamentosDoProjeto(projetoId, tenantId, project.departamentos) }
 }
 
 /** Árvore da aba EAP/WBS no formato do documento; `null` quando a WBS ainda não existe. */

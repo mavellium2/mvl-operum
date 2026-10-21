@@ -4,6 +4,20 @@ import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { departmentsApi } from '@/lib/api-client'
 import prisma from '@/lib/prisma'
+import { renomearDepartamentoNosProjetos } from '@/services/departamentosDoProjeto'
+
+/** Renomear no cadastro também atualiza a lista de nomes gravada nos projetos. */
+async function comRenomeacao<T>(tenantId: string, id: string, novoNome: unknown, atualizar: () => Promise<T>): Promise<T> {
+  const antes = typeof novoNome === 'string'
+    ? await prisma.department.findFirst({ where: { id, tenantId }, select: { name: true } })
+    : null
+  const resultado = await atualizar()
+  if (antes && typeof novoNome === 'string') {
+    try { await renomearDepartamentoNosProjetos(tenantId, antes.name, novoNome) } catch { /* documentos já leem o nome atual pela associação */ }
+    revalidatePath('/projetos')
+  }
+  return resultado
+}
 
 export async function createDepartmentAction(
   _prevState: unknown,
@@ -29,8 +43,8 @@ export async function getDepartmentsAction() {
 
 export async function updateDepartmentAction(_prevState: unknown, id: string, data: Record<string, unknown>) {
   try {
-    await verifySession()
-    const department = await departmentsApi.update(id, data)
+    const { tenantId } = await verifySession()
+    const department = await comRenomeacao(tenantId, id, data.name, () => departmentsApi.update(id, data))
     return { department }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar departamento' }
@@ -63,8 +77,8 @@ export async function getOrCreateDepartmentAction(name: string) {
 
 export async function updateDepartmentNameAction(id: string, name: string) {
   try {
-    await verifySession()
-    const department = await departmentsApi.update(id, { name: name.trim() })
+    const { tenantId } = await verifySession()
+    const department = await comRenomeacao(tenantId, id, name.trim(), () => departmentsApi.update(id, { name: name.trim() }))
     return { department }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar departamento' }
