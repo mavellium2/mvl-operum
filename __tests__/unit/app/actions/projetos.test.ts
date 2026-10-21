@@ -34,7 +34,7 @@ vi.mock('@/lib/prisma', () => ({
     projectDraft: { deleteMany: vi.fn() },
     documentVersion: { findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0) },
     sprint: { count: vi.fn().mockResolvedValue(0) },
-    card: { count: vi.fn().mockResolvedValue(0) },
+    card: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue(null) },
     timeEntry: { count: vi.fn().mockResolvedValue(0) },
     ata: { count: vi.fn().mockResolvedValue(0) },
     projetoDepartamento: { findMany: vi.fn().mockResolvedValue([]) },
@@ -126,6 +126,17 @@ describe('Projeto Actions', () => {
       const result = await getProjetoAction('p1')
       expect(result).toHaveProperty('projeto')
       expect(result.projeto?.id).toBe('p1')
+    })
+
+    it('data de início vem da primeira tarefa; sem tarefa com data, a informada', async () => {
+      vi.mocked(verifySession).mockResolvedValue(mockSession)
+      vi.mocked(projectsApi.get).mockResolvedValue({ id: 'p1', name: 'P', startDate: '2026-02-10T00:00:00.000Z' })
+      vi.mocked(prisma.card.findFirst).mockResolvedValueOnce({ startDate: new Date('2026-03-02T00:00:00Z') } as never)
+      let result = await getProjetoAction('p1')
+      expect(result.projeto).toMatchObject({ startDate: '2026-03-02T00:00:00.000Z', inicioPelaPrimeiraTarefa: true })
+
+      result = await getProjetoAction('p1')
+      expect(result.projeto).toMatchObject({ startDate: '2026-02-10T00:00:00.000Z', inicioPelaPrimeiraTarefa: false })
     })
 
     it('should return error if project not found', async () => {

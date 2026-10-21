@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma'
 import { computarPlanilhaCustos, type Elaborador, type PlanilhaDeCustos } from '@/lib/planilhaCustos'
 import { round2 } from '@/lib/custosCalc'
 import { aplicarResumoDaPlanilha, getTree } from './wbsService'
+import { sincronizarInicioDoProjeto } from './inicioDoProjeto'
 
 /** Membros internos ativos do projeto, com salário e jornada (elaboradores da planilha). */
 export async function elaboradoresDoProjeto(projectId: string): Promise<Elaborador[]> {
@@ -83,5 +84,7 @@ export async function propagarPlanilhaDeCustos(projectId: string, tenantId: stri
   }))
   const resumo = await aplicarResumoDaPlanilha(projectId, tenantId, fases, planilha.dataFimProjeto)
   await sincronizarCardsDaPlanilha(projectId, tenantId)
+  // Datas dos cards podem ter mudado: o início do projeto segue a primeira tarefa.
+  await sincronizarInicioDoProjeto(projectId, tenantId).catch(() => null)
   return resumo
 }

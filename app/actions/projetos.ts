@@ -14,6 +14,7 @@ import { requireProjectPermission } from '@/services/projectAccess'
 import { reconcileMacroFases } from '@/services/macroFaseSyncService'
 import { parseHoras } from '@/lib/validation/horas'
 import { dependenciasDoProjeto, mensagemDeBloqueio, type DependenciaProjeto } from '@/services/projetoDependencias'
+import { primeiraDataDeTarefa } from '@/services/inicioDoProjeto'
 
 /**
  * Garante que o catálogo (Department) tenha os departamentos escolhidos e
@@ -181,9 +182,14 @@ export async function getProjetoAction(id: string) {
       }
     }
 
+    // Início = primeira tarefa com data; sem nenhuma, vale a data informada no projeto.
+    const primeiraTarefa = await primeiraDataDeTarefa(id, tenantId)
+
     return {
       projeto: {
         ...projeto,
+        startDate: primeiraTarefa ? primeiraTarefa.toISOString() : projeto.startDate,
+        inicioPelaPrimeiraTarefa: primeiraTarefa !== null,
         endDate: planilha?.dataFimProjeto ?? projeto.endDate,
         macroFases: macroFasesSyncPending ? projeto.macroFases ?? [] : macroFasesFromTree ?? projeto.macroFases ?? [],
         macroFasesSyncPending,

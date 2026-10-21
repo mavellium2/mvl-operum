@@ -91,10 +91,12 @@ function DateInputBR({
   value,
   onChange,
   className,
+  disabled = false,
 }: {
   value: string
   onChange: (iso: string) => void
   className?: string
+  disabled?: boolean
 }) {
   const [display, setDisplay] = useState(isoToBR(value))
   const [focused, setFocused] = useState(false)
@@ -114,6 +116,8 @@ function DateInputBR({
       autoComplete="off"
       placeholder="dd/mm/aaaa"
       maxLength={10}
+      disabled={disabled}
+      aria-label={disabled ? 'Data de início (definida pela primeira tarefa)' : undefined}
       value={display}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
@@ -160,6 +164,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     departamentos: [] as string[],
   })
 
+  const [inicioPelaTarefa, setInicioPelaTarefa] = useState(false)
   const [macroFases, setMacroFases] = useState<MacroFase[]>([{ fase: '', dataLimite: '', custo: '' }])
 
   useEffect(() => {
@@ -184,6 +189,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
       }
       const p = result.projeto
       setSyncPending(p.macroFasesSyncPending)
+      setInicioPelaTarefa(Boolean((p as { inicioPelaPrimeiraTarefa?: boolean }).inicioPelaPrimeiraTarefa))
       const associados = (result as { departamentosAssociados?: { id: string; name: string }[] }).departamentosAssociados
       const gerenteId = (result as { gerenteId?: string }).gerenteId ?? ''
       const publishedForm = {
@@ -408,7 +414,17 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                   <div className="grid grid-cols-2 gap-5">
                     <div>
                       <label className={labelClass}>Data de Início</label>
-                      <DateInputBR value={form.startDate} onChange={(iso) => setForm(prev => ({ ...prev, startDate: iso }))} className={inputClass} />
+                      {inicioPelaTarefa ? (
+                        <>
+                          <DateInputBR value={form.startDate} onChange={() => {}} disabled className={`${inputClass} bg-slate-100 cursor-not-allowed`} />
+                          <p className="mt-1.5 text-xs text-slate-500" data-testid="inicio-pela-tarefa">Definida pela primeira tarefa do projeto; muda quando as datas das tarefas mudam.</p>
+                        </>
+                      ) : (
+                        <>
+                          <DateInputBR value={form.startDate} onChange={(iso) => setForm(prev => ({ ...prev, startDate: iso }))} className={inputClass} />
+                          {editId && <p className="mt-1.5 text-xs text-slate-500">Nenhuma tarefa com data ainda: vale a data informada aqui.</p>}
+                        </>
+                      )}
                     </div>
                     <div>
                       <label className={labelClass}>Data Prevista (Fim)</label>
