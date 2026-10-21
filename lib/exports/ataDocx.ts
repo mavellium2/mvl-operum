@@ -1,5 +1,5 @@
 import {
-  AlignmentType, BorderStyle, Document, Footer, HeightRule, Packer, Paragraph, ShadingType,
+  AlignmentType, BorderStyle, Document, Footer, HeightRule, Paragraph, ShadingType,
   Table, TableCell, TableRow, TextRun, VerticalAlign, WidthType,
 } from 'docx'
 
