@@ -174,8 +174,8 @@ const WbsNodeCard = React.memo(function WbsNodeCard({
         {viewMode === 'details' ? <>
           <div>Responsável: {owner ?? 'Não definido'}</div>
           <div>Minutos orçados: {formatHours((financial?.budgetHours ?? 0) * 60)}</div><div>Minutos realizados: {formatHours((financial?.actualHours ?? 0) * 60)}</div>
-          <div>Prevista: {fmtDataBR(node.properties.dataPrevista) || '—'}</div>
-          <div>Realizada: {fmtDataBR(node.properties.dataRealizacao) || '—'}</div>
+          <div>Prevista: {fmtDataBR(financial ? financial.dataPrevista : node.properties.dataPrevista) || '—'}</div>
+          <div>Realizada: {fmtDataBR(financial ? financial.dataRealizacao : node.properties.dataRealizacao) || '—'}</div>
           {canViewCosts && <><div>Custo orçado: {formatMoney(financial?.budgetCost)}</div><div>Custo real: {formatMoney(financial?.actualCost)}</div></>}
         </> : <>
           <div>Horas orçadas: {formatHours(financial?.budgetHours)}</div>

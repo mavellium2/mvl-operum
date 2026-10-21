@@ -1,6 +1,7 @@
 import { elaboradoresDe, somaValoresPorMinuto } from './elaboradores'
 import type { WbsNodeClient, WbsRollup } from '@/types/wbs'
 import { custoFolhaPrevisto, custoFolhaRealizado, round2 } from './custosCalc'
+import { maiorData } from './planilhaCustos'
 
 /**
  * Calcula rollup de custo e durationDays para cada nó.
@@ -68,6 +69,10 @@ export interface WbsFinancialSummary {
   actualHours: number
   budgetCost: number | null
   actualCost: number | null
+  /** Folha: a data da linha. Com filhos: a maior data prevista das atividades (Data fim do Sub-total). */
+  dataPrevista: string | null
+  /** Folha: a data da linha. Com filhos: a maior, só quando todas as atividades foram realizadas. */
+  dataRealizacao: string | null
 }
 
 /** Financial view uses the same leaf calculations/rates as the cost sheet. */
@@ -84,8 +89,16 @@ export function computeFinancialRollups(
     stack.push(...nodes[id].childrenIds)
   }
   const result: Record<string, WbsFinancialSummary> = {}
+  const folhas: Record<string, WbsFinancialSummary[]> = {}
   for (const id of order.reverse()) {
     const n = nodes[id], children = n.childrenIds.filter(c => nodes[c])
+    // Etapa (filha da raiz) sem atividades: a planilha não tem linha para ela e o
+    // Sub-total fica zerado — valores antigos gravados na própria etapa não contam.
+    if (!children.length && n.parentId === rootId && id !== rootId) {
+      result[id] = { budgetHours: 0, actualHours: 0, budgetCost: null, actualCost: null, dataPrevista: null, dataRealizacao: null }
+      folhas[id] = []
+      continue
+    }
     if (!children.length) {
       // Vários elaboradores trabalham o tempo inteiro: soma o valor/minuto de cada um.
       const p = n.properties, rate = somaValoresPorMinuto(elaboradoresDe(p).map(id => rates[id]))
@@ -94,14 +107,22 @@ export function computeFinancialRollups(
         actualHours: (p.tempoRealMinutos ?? 0) / 60,
         budgetCost: rate == null ? (p.materiais ? round2(p.materiais) : null) : custoFolhaPrevisto(p.tempoMinutos ?? 0, rate, p.materiais ?? 0),
         actualCost: rate == null ? (p.materiaisReal ? round2(p.materiaisReal) : null) : custoFolhaRealizado(p.tempoRealMinutos ?? 0, rate, p.materiaisReal ?? 0),
+        dataPrevista: p.dataPrevista ?? null,
+        dataRealizacao: p.dataRealizacao ?? null,
       }
+      folhas[id] = [result[id]]
     } else {
-      const rows = children.map(c => result[c]).filter(Boolean)
+      // Soma as atividades (folhas), como o Sub-total da planilha.
+      const rows = children.flatMap(c => folhas[c] ?? [])
+      folhas[id] = rows
+      const todasRealizadas = rows.length > 0 && rows.every(r => r.dataRealizacao)
       result[id] = {
         budgetHours: rows.reduce((sum, r) => sum + r.budgetHours, 0),
         actualHours: rows.reduce((sum, r) => sum + r.actualHours, 0),
         budgetCost: rows.some(r => r.budgetCost !== null) ? round2(rows.reduce((sum, r) => sum + (r.budgetCost ?? 0), 0)) : null,
         actualCost: rows.some(r => r.actualCost !== null) ? round2(rows.reduce((sum, r) => sum + (r.actualCost ?? 0), 0)) : null,
+        dataPrevista: maiorData(rows.map(r => r.dataPrevista)),
+        dataRealizacao: todasRealizadas ? maiorData(rows.map(r => r.dataRealizacao)) : null,
       }
     }
   }
