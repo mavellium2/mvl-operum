@@ -14,6 +14,7 @@ import { type MemberOption } from '@/components/atas/MemberSelect'
 import MembroEquipeSelect, { useMembrosEquipe } from '@/components/projetos/documentacao/MembroEquipeSelect'
 import DateInput from '@/components/ui/DateInput'
 import { toDateInputValue } from '@/lib/date'
+import PaginasDaPrevia from '@/components/projetos/documentacao/PaginasDaPrevia'
 
 interface Presente { nome: string; setorEmpresa: string; userId: string }
 interface Acao { acao: string; prazo: string; responsavel: string; responsavelUserId: string }
@@ -193,7 +194,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, initial
         {preview && <button type="button" className="rounded bg-blue-600 px-3 py-2 text-white" onClick={() => print()}>Baixar PDF</button>}
         {preview && <button type="button" className="rounded bg-gray-800 px-3 py-2 text-white" onClick={baixarWord}>Baixar Word</button>}
       </div>
-      {preview && <><p className="mb-2 text-sm">Prévia do rascunho — ainda não publicada</p><div role="region" aria-label="Prévia da ata" tabIndex={0} className="max-w-full overflow-x-auto mb-4"><AtaDocument ref={documentRef} data={dadosDocumento} /></div></>}
+      {preview && <><p className="mb-2 text-sm">Prévia do rascunho — ainda não publicada</p><div role="region" aria-label="Prévia da ata" tabIndex={0} className="max-w-full overflow-x-auto mb-4"><PaginasDaPrevia><AtaDocument ref={documentRef} data={dadosDocumento} /></PaginasDaPrevia></div></>}
     <fieldset hidden={preview} disabled={!canEdit} className="space-y-6 min-w-0">
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">

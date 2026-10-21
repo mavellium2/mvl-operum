@@ -21,6 +21,7 @@ import CamposQuadroDocumento from './documentacao/CamposQuadroDocumento'
 import { useToast } from '@/components/ui/Toast'
 import { fetchWithSession } from '@/lib/clientFetch'
 import { formatDateBR, toDateInputValue } from '@/lib/date'
+import PaginasDaPrevia from '@/components/projetos/documentacao/PaginasDaPrevia'
 
 type DocumentData = { header: ProjetoHeader; stakeholders: Stakeholder[] }
 
@@ -436,7 +437,9 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
       )}
       {mergedHeader && !loading && (
         <div role="region" aria-label="Prévia em paisagem das partes interessadas" tabIndex={0} className="w-full max-w-[297mm] overflow-x-auto shadow-2xl">
-          <StakeholderDocument ref={documentRef} header={mergedHeader} stakeholders={data!.stakeholders} />
+          <PaginasDaPrevia landscape>
+            <StakeholderDocument ref={documentRef} header={mergedHeader} stakeholders={data!.stakeholders} />
+          </PaginasDaPrevia>
         </div>
       )}
 
