@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { printPageStyle, PAGE_NUMBER_MARGIN_MM } from '@/lib/printPageStyle'
+import { printPageStyle, alturaUtilDaPaginaMm, PAGE_NUMBER_MARGIN_MM } from '@/lib/printPageStyle'
 
 describe('printPageStyle', () => {
   it('numera as páginas no rodapé e reserva a faixa na margem inferior', () => {
@@ -14,6 +14,17 @@ describe('printPageStyle', () => {
     const css = printPageStyle({ landscape: true })
     expect(css).toContain('A4 landscape')
     expect(css).toContain(`min-height: ${210 - PAGE_NUMBER_MARGIN_MM}mm`)
+  })
+
+  it('tira o padding inferior da folha e não corta linhas de tabela', () => {
+    const css = printPageStyle({ landscape: true })
+    expect(css).toMatch(/\[data-print-sheet\] \{[^}]*padding-bottom: 0 !important/)
+    expect(css).toContain('[data-print-sheet] tr { break-inside: avoid; }')
+  })
+
+  it('a prévia usa a mesma altura útil da impressão', () => {
+    expect(alturaUtilDaPaginaMm({ landscape: true })).toBe(210 - PAGE_NUMBER_MARGIN_MM)
+    expect(alturaUtilDaPaginaMm({ marginTopMm: 15 })).toBe(297 - 15 - PAGE_NUMBER_MARGIN_MM)
   })
 
   it('desconta margem superior e mantém laterais', () => {
