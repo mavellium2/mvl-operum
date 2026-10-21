@@ -71,13 +71,24 @@ export function prazoStatus(
   return 'ok'
 }
 
-const COLUNAS_CONCLUSAO = new Set(['concluido', 'concluida', 'done', 'finalizado', 'finalizada'])
+const COLUNAS_CONCLUSAO = new Set(['concluido', 'concluida', 'concluidos', 'concluidas', 'done', 'finalizado', 'finalizada', 'entregue', 'feito'])
 
 /** Coluna que representa trabalho terminado ("Concluído", "Done"…). */
 export function isColunaConcluida(title: string | null | undefined): boolean {
   if (!title) return false
   const key = title.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase()
   return COLUNAS_CONCLUSAO.has(key)
+}
+
+/**
+ * Coluna de conclusão da sprint, mesmo renomeada: a de nome de conclusão
+ * ("Concluído", "Done", "Entregue"…) mais à direita; sem nenhuma, a última coluna.
+ * null quando a sprint não tem colunas.
+ */
+export function colunaDeConclusao<T extends { title: string; position: number }>(colunas: T[]): T | null {
+  const ordenadas = [...colunas].sort((a, b) => a.position - b.position)
+  const porNome = ordenadas.filter(c => isColunaConcluida(c.title))
+  return porNome.at(-1) ?? ordenadas.at(-1) ?? null
 }
 
 /** "30/09", ou "30/09/27" quando o prazo não é do ano corrente. */

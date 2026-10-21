@@ -717,3 +717,14 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Alternativas consideradas:** capturar imagem da aba (dependeria da tela aberta e do zoom); manter o layout do modelo do professor (contraria o pedido de cópia fiel).
 - **Consequências:** o documento escala a árvore para caber na página A4; árvores muito largas ficam com texto menor.
 - **Referências:** `components/projetos/documentacao/EapGraficaDaAba.tsx`, `components/projetos/documentacao/EapDocumentSheet.tsx`, `lib/wbsLayout.ts`, card `cmvfuznz0004b01qnstet076j`.
+
+## ADR-054 — Conclusão e reabertura entre Planilha e quadro
+
+- **Data:** 2026-10-21.
+- **Status:** implementada; complementa a ADR-048 (sincronização de conclusão).
+- **Contexto:** a sincronização só concluía cards, não tratava a retirada da conclusão na planilha e procurava uma coluna chamada exatamente "Concluído"; um card reaberto à mão voltava para Concluído a cada leitura.
+- **Escolha:** o movimento de conclusão da planilha grava no motivo a chave da conclusão (`data:aaaa-mm-dd` ou `pct:100`). Movimentação manual prevalece: com a mesma chave, um card reaberto à mão não é concluído de novo; uma chave diferente vale. Retirar a conclusão reabre o card só quando o último movimento para a coluna de conclusão foi da planilha, voltando para a coluna de origem (ou a anterior à de conclusão). A coluna de conclusão é reconhecida pelo nome (lista em `isColunaConcluida`) e, sem nenhuma, é a última coluna da sprint (`colunaDeConclusao`). Responsáveis e histórico são preservados.
+- **Justificativa:** o histórico de movimentos já distingue origem e momento, sem nova coluna no banco.
+- **Alternativas consideradas:** campo `concluidoPelaPlanilha` no Card (migration e mais um estado a sincronizar); planilha sempre prevalecer (desfaria decisões manuais a cada leitura).
+- **Consequências:** movimentos antigos sem chave são tratados como chave "legado": um card antigo reaberto à mão pode ser concluído de novo uma vez. Sprint sem colunas é contada como pendência e não é alterada.
+- **Referências:** `services/planilhaCardSync.ts`, `lib/cardUtils.ts`, `__tests__/unit/planilhaCardSync.test.ts`, card `cmvfctig2003d01qwbf79ccvv`.
