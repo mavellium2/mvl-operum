@@ -8,6 +8,8 @@ interface MultiCreatableSelectProps {
   options: string[]
   placeholder?: string
   disabled?: boolean
+  /** Rótulo acessível do campo de digitação. */
+  ariaLabel?: string
 }
 
 export default function MultiCreatableSelect({
@@ -16,6 +18,7 @@ export default function MultiCreatableSelect({
   options,
   placeholder = 'Adicionar...',
   disabled = false,
+  ariaLabel,
 }: MultiCreatableSelectProps) {
   const [inputValue, setInputValue] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -94,6 +97,7 @@ export default function MultiCreatableSelect({
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); removeValue(val) }}
+                aria-label={`Remover ${val}`}
                 className="text-blue-500 hover:text-blue-800 transition-colors leading-none"
                 tabIndex={-1}
               >
@@ -113,6 +117,7 @@ export default function MultiCreatableSelect({
           onKeyDown={handleKeyDown}
           onFocus={() => setIsOpen(true)}
           placeholder={values.length === 0 ? placeholder : ''}
+          aria-label={ariaLabel}
           disabled={disabled}
           className="flex-1 min-w-[120px] bg-transparent outline-none text-sm text-slate-800 font-medium"
         />

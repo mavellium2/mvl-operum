@@ -2,7 +2,7 @@ import { canProjectPermission } from '@/services/projectAccess'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/dal'
-import { buscarAta, cabecalhoDaAta } from '@/services/ataService'
+import { buscarAta, cabecalhoDaAta, emailsParaCopia } from '@/services/ataService'
 import prisma from '@/lib/prisma'
 import AtaFormClient from '@/components/atas/AtaFormClient'
 import type { MemberOption } from '@/components/atas/MemberSelect'
@@ -25,7 +25,7 @@ export default async function EditarAtaPage({
   const ata = await buscarAta(tenantId, ataId)
   if (!ata || ata.projetoId !== projetoId) notFound()
 
-  const cabecalho = await cabecalhoDaAta(tenantId, projetoId)
+  const [cabecalho, emailsSugeridos] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId)])
   const members: MemberOption[] = (
     await prisma.userProject.findMany({
       where: { projectId: projetoId, active: true },
@@ -73,6 +73,7 @@ export default async function EditarAtaPage({
           numero={ata.numero}
           mode="edit"
           members={members}
+          emailsSugeridos={emailsSugeridos}
           initial={{
             instituicao: ata.instituicao,
             local: ata.local,
