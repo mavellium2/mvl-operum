@@ -13,6 +13,7 @@ import { validateAvatarUrl } from '@/lib/validation/avatarUrl'
 import { requireProjectPermission } from '@/services/projectAccess'
 import { reconcileMacroFases } from '@/services/macroFaseSyncService'
 import { parseHoras } from '@/lib/validation/horas'
+import { dependenciasDoProjeto, mensagemDeBloqueio, type DependenciaProjeto } from '@/services/projetoDependencias'
 
 /**
  * Garante que o catálogo (Department) tenha os departamentos escolhidos e
@@ -278,9 +279,26 @@ export async function updateProjetoAction(
   }
 }
 
+/** Verifica, antes de confirmar, se o projeto pode ser excluído. */
+export async function verificarExclusaoProjetoAction(id: string): Promise<{ podeExcluir: boolean; motivo?: string; dependencias?: DependenciaProjeto[] } | { error: string }> {
+  try {
+    const { tenantId, userId } = await verifySession()
+    const dependencias = await dependenciasDoProjeto(id, tenantId, userId)
+    return dependencias.length
+      ? { podeExcluir: false, motivo: mensagemDeBloqueio(dependencias), dependencias }
+      : { podeExcluir: true }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erro ao verificar o projeto' }
+  }
+}
+
 export async function deleteProjetoAction(id: string) {
   try {
-    const { tenantId } = await verifySession()
+    const { tenantId, userId } = await verifySession()
+
+    // Só exclui quando nada ficaria órfão (sprints, cards, tempo, atas, documentos, membros).
+    const dependencias = await dependenciasDoProjeto(id, tenantId, userId)
+    if (dependencias.length) return { error: mensagemDeBloqueio(dependencias), dependencias }
 
     // projectsApi.delete chama o project-service, que escopa por x-tenant-id
     // (project.service.ts remove -> findOne) e lança NotFoundException se o

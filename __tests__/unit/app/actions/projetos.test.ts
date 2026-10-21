@@ -32,12 +32,16 @@ vi.mock('next/cache', () => ({
 vi.mock('@/lib/prisma', () => ({
   default: {
     projectDraft: { deleteMany: vi.fn() },
-    documentVersion: { findFirst: vi.fn().mockResolvedValue(null) },
+    documentVersion: { findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0) },
+    sprint: { count: vi.fn().mockResolvedValue(0) },
+    card: { count: vi.fn().mockResolvedValue(0) },
+    timeEntry: { count: vi.fn().mockResolvedValue(0) },
+    ata: { count: vi.fn().mockResolvedValue(0) },
     projetoDepartamento: { findMany: vi.fn().mockResolvedValue([]) },
     userProjectRole: { findFirst: vi.fn().mockResolvedValue(null) },
     wbsNode: { findMany: vi.fn().mockResolvedValue([]) },
     user: { update: vi.fn() },
-    userProject: { findFirst: vi.fn().mockResolvedValue({ role: '' }) },
+    userProject: { findFirst: vi.fn().mockResolvedValue({ role: '' }), count: vi.fn().mockResolvedValue(0) },
   },
 }))
 
@@ -50,6 +54,7 @@ import {
   getProjetoAction,
   updateProjetoAction,
   deleteProjetoAction,
+  verificarExclusaoProjetoAction,
   updateProjetoMemberAction,
   retryMacroFasesSyncAction,
 } from '@/app/actions/projetos'
@@ -174,6 +179,34 @@ describe('Projeto Actions', () => {
       expect(prisma.projectDraft.deleteMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { projectId: 'p1', tenantId: mockSession.tenantId } }),
       )
+    })
+
+    it('bloqueia e explica quando o projeto tem dependências', async () => {
+      vi.mocked(verifySession).mockResolvedValue(mockSession)
+      vi.mocked(prisma.sprint.count).mockResolvedValueOnce(2)
+      vi.mocked(prisma.card.count).mockResolvedValueOnce(1)
+
+      const result = await deleteProjetoAction('p1')
+
+      expect(result).toMatchObject({ error: 'O projeto ainda tem 2 sprints e 1 card. Exclua, mova ou desvincule esses itens antes de excluir o projeto.' })
+      expect(projectsApi.delete).not.toHaveBeenCalled()
+      expect(prisma.projectDraft.deleteMany).not.toHaveBeenCalled()
+    })
+
+    it('outros membros ativos contam como dependência; o próprio usuário não', async () => {
+      vi.mocked(verifySession).mockResolvedValue(mockSession)
+      vi.mocked(prisma.userProject.count).mockResolvedValueOnce(1)
+
+      const result = await verificarExclusaoProjetoAction('p1')
+
+      expect(result).toMatchObject({ podeExcluir: false, dependencias: [{ tipo: 'membros', quantidade: 1 }] })
+      expect(prisma.userProject.count).toHaveBeenCalledWith({ where: expect.objectContaining({ projectId: 'p1', active: true, userId: { not: 'u1' } }) })
+    })
+
+    it('a verificação escopa as contagens ao tenant', async () => {
+      vi.mocked(verifySession).mockResolvedValue(mockSession)
+      expect(await verificarExclusaoProjetoAction('p1')).toEqual({ podeExcluir: true })
+      expect(prisma.card.count).toHaveBeenCalledWith({ where: expect.objectContaining({ projectId: 'p1', deletedAt: null, project: { id: 'p1', tenantId: 't1' } }) })
     })
 
     it('should return error on delete failure', async () => {
