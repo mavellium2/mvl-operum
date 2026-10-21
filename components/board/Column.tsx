@@ -21,6 +21,7 @@ interface ColumnProps {
   isBacklog?: boolean
   isVirtual?: boolean
   onRenameColumn?: (columnId: string, title: string) => void
+  onChangeColumnColor?: (columnId: string, color: string | null) => void
   onDeleteColumn?: (columnId: string) => void
   onAddCard: (columnId: string) => void
   onUpdateCard: (cardId: string, data: { title: string; description: string; color: CardColor }) => void
@@ -36,7 +37,7 @@ interface ColumnProps {
 export default function Column({
   column, cards, index,
   isBacklog = false, isVirtual = false,
-  onRenameColumn, onDeleteColumn,
+  onRenameColumn, onChangeColumnColor, onDeleteColumn,
   onAddCard, onUpdateCard, onDeleteCard,
   users, boardTags, onCardClick, onTimerStarted, dragDisabled = false,
 }: ColumnProps) {
@@ -85,6 +86,8 @@ export default function Column({
                 searchOpen={searchOpen}
                 onToggleSearch={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
                 onRename={permissions.has('quadro:sprints') && onRenameColumn ? (title) => onRenameColumn(column.id, title) : undefined}
+                color={column.color ?? null}
+                onChangeColor={permissions.has('quadro:sprints') && onChangeColumnColor ? (color) => onChangeColumnColor(column.id, color) : undefined}
                 onDelete={permissions.has('quadro:sprints') && onDeleteColumn ? () => onDeleteColumn(column.id) : undefined}
               />
             )}

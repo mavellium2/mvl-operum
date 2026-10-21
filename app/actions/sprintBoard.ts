@@ -269,6 +269,18 @@ export async function renameSprintColumnAction(sprintId: string, columnId: strin
   }
 }
 
+export async function setSprintColumnColorAction(sprintId: string, columnId: string, color: string | null) {
+  try {
+    await verifySession()
+    if (color !== null && !/^#[0-9a-fA-F]{6}$/.test(color)) return { error: 'Cor inválida' }
+    const column = await sprintsApi.updateColumn(sprintId, columnId, { color })
+    revalidatePath(`/sprints/${sprintId}`)
+    return { column }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erro ao alterar a cor da coluna' }
+  }
+}
+
 export async function deleteSprintColumnAction(sprintId: string, columnId: string) {
   try {
     await verifySession()

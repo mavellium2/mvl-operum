@@ -402,6 +402,7 @@ model SprintColumn {
   id        String    @id @default(cuid())
   title     String
   position  Int
+  color     String?
   sprintId  String
   sprint    Sprint    @relation(fields: [sprintId], references: [id], onDelete: Cascade)
   cards     Card[]    @relation("SprintColumnCards")

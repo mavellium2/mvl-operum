@@ -16,6 +16,7 @@ import {
   moveCardInSprintAction,
   addSprintColumnAction,
   renameSprintColumnAction,
+  setSprintColumnColorAction,
   deleteSprintColumnAction,
   reorderSprintColumnsAction,
   createCardInSprintAction,
@@ -70,6 +71,7 @@ interface SprintColumnData {
   id: string
   title: string
   position: number
+  color?: string | null
   cards: SprintCard[]
 }
 
@@ -98,7 +100,7 @@ interface SprintBoardProps {
 }
 
 function toColumnType(col: SprintColumnData): ColumnType {
-  return { id: col.id, title: col.title, cardIds: col.cards.map(c => c.id) }
+  return { id: col.id, title: col.title, cardIds: col.cards.map(c => c.id), color: col.color ?? null }
 }
 
 function toCardType(card: SprintCard, sprintId: string, inativos?: ReadonlySet<string>): CardType {
@@ -392,6 +394,10 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
     if (!permissions.has('quadro:sprints')) return
     await confirmed(`column:${columnId}`, () => renameSprintColumnAction(sprint.id, columnId, title), () => setColumns(cols => cols.map(c => c.id === columnId ? { ...c, title } : c)))
   }
+  async function handleChangeColumnColor(columnId: string, color: string | null) {
+    if (!permissions.has('quadro:sprints')) return
+    await confirmed(`column:${columnId}`, () => setSprintColumnColorAction(sprint.id, columnId, color), () => setColumns(cols => cols.map(c => c.id === columnId ? { ...c, color } : c)))
+  }
   async function handleDeleteColumn(columnId: string) {
     if (!permissions.has('quadro:sprints')) return
     await confirmed(`column:${columnId}`, () => deleteSprintColumnAction(sprint.id, columnId), () => setColumns(cols => cols.filter(c => c.id !== columnId)))
@@ -600,6 +606,7 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
                           dragDisabled={filtering}
                           index={index}
                           onRenameColumn={handleRenameColumn}
+                          onChangeColumnColor={handleChangeColumnColor}
                           onDeleteColumn={handleDeleteColumn}
                           onAddCard={(colId) => setAddingCardToColumn(colId)}
                           onUpdateCard={handleUpdateCard}

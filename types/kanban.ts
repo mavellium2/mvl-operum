@@ -82,6 +82,8 @@ export interface Column {
   id: string
   title: string
   cardIds: string[]
+  /** Cor escolhida para a coluna (#rrggbb); null/ausente = padrão. */
+  color?: string | null
 }
 
 export interface BoardState {

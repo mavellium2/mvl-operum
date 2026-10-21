@@ -22,6 +22,8 @@ export const UpdateSprintSchema = CreateSprintSchema.partial().extend({
 export const CreateColumnSchema = z.object({
   title: z.string().min(1),
   position: z.number().int(),
+  /** Cor da coluna em hex (#rrggbb); null volta para a aparência padrão. */
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Cor inválida').nullable().optional(),
 })
 
 export type CreateSprintDto = z.infer<typeof CreateSprintSchema>
