@@ -2,7 +2,8 @@
 
 import { requireProjectPermission } from '@/services/projectAccess'
 import { getTree } from '@/services/wbsService'
-import { planilhaDoProjeto } from '@/services/planilhaService'
+import { planilhaDoProjeto, resumoDaPlanilhaPorCard, type ResumoCardPlanilha } from '@/services/planilhaService'
+import { canProjectPermission } from '@/services/projectAccess'
 import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { sprintsApi, cardsApi, tagsApi, filesApi } from '@/lib/api-client'
@@ -27,7 +28,12 @@ type BoardCard = {
   endDate?: string | Date | null
   /** Código do nó vinculado na EAP (ex.: "1.2.3"), exibido antes do título. */
   eapCode?: string
+  /** Linha da Planilha de Custos da atividade ligada (minicard). */
+  planilha?: MinicardPlanilha
 }
+
+/** Dados da planilha no minicard; valores em R$ só para quem vê a planilha. */
+export type MinicardPlanilha = Omit<ResumoCardPlanilha, 'totalOrcado' | 'totalReal'> & { totalOrcado?: number | null; totalReal?: number | null }
 
 type BacklogCard = BoardCard
 
@@ -81,7 +87,7 @@ async function codigosEapDosCards(projectId: string, tenantId: string): Promise<
 
 export async function getSprintBoardAction(sprintId: string, projectId?: string): Promise<SprintBoardData | { error: string }> {
   try {
-    const { tenantId } = await verifySession()
+    const { tenantId, userId, role } = await verifySession()
     const sprint = await sprintsApi.get(sprintId)
     const resolvedProjectId = projectId ?? (sprint as { projectId?: string }).projectId ?? ''
 
@@ -175,6 +181,27 @@ export async function getSprintBoardAction(sprintId: string, projectId?: string)
       }
       finalColumns = finalColumns.map(col => ({ ...col, cards: (col.cards ?? []).map(comCodigo) }))
       finalBacklog = finalBacklog.map(comCodigo)
+    }
+
+    // Horas, datas e valores da linha da planilha de cada card (minicard).
+    if (resolvedProjectId) {
+      try {
+        const [porCard, veValores] = await Promise.all([
+          resumoDaPlanilhaPorCard(resolvedProjectId, tenantId),
+          canProjectPermission({ tenantId, userId, role }, resolvedProjectId, 'planilha:ver'),
+        ])
+        if (porCard.size) {
+          const comPlanilha = <T extends { id: string }>(card: T) => {
+            const linha = porCard.get(card.id)
+            if (!linha) return card
+            const { totalOrcado, totalReal, ...resto } = linha
+            const planilha: MinicardPlanilha = veValores ? { ...resto, totalOrcado, totalReal } : resto
+            return { ...card, planilha }
+          }
+          finalColumns = finalColumns.map(col => ({ ...col, cards: (col.cards ?? []).map(comPlanilha) }))
+          finalBacklog = finalBacklog.map(comPlanilha)
+        }
+      } catch { /* sem EAP/planilha o quadro carrega sem esses dados */ }
     }
 
     return { sprint, columns: finalColumns, backlogCards: finalBacklog, users, tags, inactiveUserIds } as unknown as SprintBoardData

@@ -54,6 +54,8 @@ interface SprintCard {
   startDate?: string | Date | null
   endDate?: string | Date | null
   eapCode?: string
+  /** Linha da Planilha de Custos da atividade ligada; totais só para quem vê a planilha. */
+  planilha?: { minOrcado: number; minReal: number; dataPrevista: string | null; dataRealizacao: string | null; totalOrcado?: number | null; totalReal?: number | null }
 }
 
 type NewCardData = {
@@ -108,6 +110,14 @@ function toCardType(card: SprintCard, sprintId: string, inativos?: ReadonlySet<s
     id: card.id,
     title: card.title,
     eapCode: card.eapCode,
+    ...(card.planilha ? {
+      orcado_min: card.planilha.minOrcado,
+      realizado_min: card.planilha.minReal,
+      orcado_total: card.planilha.totalOrcado ?? null,
+      realizado_total: card.planilha.totalReal ?? null,
+      data_prevista: card.planilha.dataPrevista,
+      data_realizacao: card.planilha.dataRealizacao,
+    } : {}),
     precisaResponsavel: inativos ? precisaDeOutroResponsavel((card.responsibles ?? []).map(r => r.user.id), inativos) : false,
     description: card.description ?? '',
     color: (card.color ?? '#6b7280') as CardColor,

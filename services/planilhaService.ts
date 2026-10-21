@@ -17,16 +17,54 @@ export async function elaboradoresDoProjeto(projectId: string): Promise<Elaborad
     .map(up => ({ userId: up.userId, name: up.user.name, remuneracao: up.remuneracao ?? null, horasDiarias: up.horasDiarias ?? null }))
 }
 
-/** Planilha de custos do projeto, calculada da árvore EAP/WBS atual. */
-export async function planilhaDoProjeto(projectId: string, tenantId: string): Promise<PlanilhaDeCustos | null> {
+async function planilhaComArvore(projectId: string, tenantId: string) {
   const project = await prisma.project.findFirst({ where: { id: projectId, tenantId, deletedAt: null }, select: { valorReferencia: true, horasPorDia: true } })
   if (!project) return null
   const [tree, elaboradores] = await Promise.all([getTree(projectId, tenantId), elaboradoresDoProjeto(projectId)])
-  return computarPlanilhaCustos(
+  const planilha = computarPlanilhaCustos(
     tree.nodes, tree.rootId,
     { valorReferencia: project.valorReferencia ?? 4000, horasPorDia: project.horasPorDia ?? 8 },
     new Map(elaboradores.map(e => [e.userId, e])),
   )
+  return { planilha, tree }
+}
+
+/** Planilha de custos do projeto, calculada da árvore EAP/WBS atual. */
+export async function planilhaDoProjeto(projectId: string, tenantId: string): Promise<PlanilhaDeCustos | null> {
+  return (await planilhaComArvore(projectId, tenantId))?.planilha ?? null
+}
+
+/** Dados da linha da planilha exibidos no minicard do card ligado à atividade. */
+export interface ResumoCardPlanilha {
+  minOrcado: number
+  minReal: number
+  dataPrevista: string | null
+  dataRealizacao: string | null
+  /** null sem valor calculado (sem elaborador com salário e sem materiais). */
+  totalOrcado: number | null
+  totalReal: number | null
+}
+
+/**
+ * Linha da planilha de cada card (vínculo `WbsNode.properties.cardId`), para o
+ * minicard mostrar as mesmas horas, datas e valores da atividade.
+ */
+export async function resumoDaPlanilhaPorCard(projectId: string, tenantId: string): Promise<Map<string, ResumoCardPlanilha>> {
+  const r = await planilhaComArvore(projectId, tenantId)
+  const mapa = new Map<string, ResumoCardPlanilha>()
+  if (!r) return mapa
+  for (const fase of r.planilha.macrofases) {
+    for (const a of fase.atividades) {
+      const cardId = (r.tree.nodes[a.nodeId]?.properties as { cardId?: unknown } | undefined)?.cardId
+      if (typeof cardId !== 'string' || !cardId) continue
+      mapa.set(cardId, {
+        minOrcado: a.minOrcado, minReal: a.minReal,
+        dataPrevista: a.dataPrevista, dataRealizacao: a.dataRealizacao,
+        totalOrcado: a.totalOrcado, totalReal: a.totalReal,
+      })
+    }
+  }
+  return mapa
 }
 
 /**

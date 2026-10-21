@@ -56,10 +56,23 @@ const PRAZO_STYLE: Record<PrazoStatus, { cls: string; title: string }> = {
   concluido: { cls: 'bg-gray-100 text-gray-400 line-through', title: 'Prazo (card concluído)' },
 }
 
-function formatTempo(min?: number | null): string {
+/** Minutos → "8h" ou "1h35" (mesma leitura da coluna Horas da planilha). */
+export function formatTempo(min?: number | null): string {
   if (min == null || min <= 0) return ''
-  const horas = (min / 60).toFixed(1).replace('.0', '')
-  return `${horas}h`
+  const total = Math.round(min)
+  const h = Math.floor(total / 60), m = total % 60
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`
+}
+
+const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+/** "2026-10-21" (ou Date) → "21/10"; ano só quando não é o corrente. */
+function formatDataCurta(d: Date | string | null | undefined): string {
+  if (!d) return ''
+  const iso = typeof d === 'string' ? d.slice(0, 10) : d.toISOString().slice(0, 10)
+  const [y, m, dia] = iso.split('-')
+  if (!y || !m || !dia) return ''
+  return y === String(new Date().getFullYear()) ? `${dia}/${m}` : `${dia}/${m}/${y}`
 }
 
 function formatCardTimer(seconds: number): string {
@@ -82,8 +95,14 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
 
   const orcadoMin = card.orcado_min ?? null
   const realizadoMin = card.realizado_min ?? null
-  const isOverrun = orcadoMin != null && realizadoMin != null && realizadoMin > orcadoMin
-  const hasTempoData = orcadoMin != null || realizadoMin != null
+  const isOverrun = orcadoMin != null && orcadoMin > 0 && realizadoMin != null && realizadoMin > orcadoMin
+  const hasTempoData = (orcadoMin ?? 0) > 0 || (realizadoMin ?? 0) > 0
+  const dataPrevista = formatDataCurta(card.data_prevista)
+  const dataRealizada = formatDataCurta(card.data_realizacao)
+  // Em aberto mostra o valor orçado; concluído, o realizado (com a data realizada).
+  const valor = concluido
+    ? (card.realizado_total != null ? { rotulo: 'Realizado', texto: brl(card.realizado_total) } : null)
+    : (card.orcado_total != null ? { rotulo: 'Orçado', texto: brl(card.orcado_total) } : null)
 
   // Depende do relógio e do fuso do navegador: só calcula no cliente.
   const now = useClientNow()
@@ -210,6 +229,27 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
                 </div>
               )}
 
+              {/* Planejamento x execução da atividade (Planilha de Custos) */}
+              {(dataPrevista || dataRealizada || valor) && (
+                <div data-testid="card-planilha" className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1 text-[11px] text-gray-600">
+                  {dataPrevista && (
+                    <span data-testid="card-data-prevista" title="Data prevista (orçado)">
+                      <span className="text-gray-400">Prev.</span> {dataPrevista}
+                    </span>
+                  )}
+                  {(dataRealizada || concluido) && (
+                    <span data-testid="card-data-realizada" title="Data realizada" className={dataRealizada ? 'text-green-700' : 'text-gray-400'}>
+                      <span className="text-gray-400">Real.</span> {dataRealizada || '—'}
+                    </span>
+                  )}
+                  {valor && (
+                    <span data-testid="card-valor" title={`Valor ${valor.rotulo.toLowerCase()} na Planilha de Custos`} className="font-semibold text-gray-700">
+                      <span className="font-normal text-gray-400">{valor.rotulo}</span> {valor.texto}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="flex-1" />
 
               {timer.error && <p role="alert" className="text-xs text-red-600">{timer.error} <button type="button" onClick={event => { event.stopPropagation(); void timer.refresh() }} disabled={timer.loading}>Atualizar timer</button></p>}
@@ -256,7 +296,7 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
                   {hasTempoData && (
                     <div
                       data-testid="card-tempo-row"
-                      title="Tempo planejado / realizado"
+                      title="Horas orçadas / realizadas (Planilha de Custos)"
                       className={`flex items-center gap-1 text-[11px] font-mono font-bold ${isOverrun ? 'text-red-500' : 'text-gray-500'}`}
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>

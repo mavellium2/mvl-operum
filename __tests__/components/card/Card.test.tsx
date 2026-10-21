@@ -132,6 +132,42 @@ describe('Card tempo planejado/realizado display', () => {
   })
 })
 
+describe('Card dados da Planilha de Custos', () => {
+  it('mostra horas orçadas/realizadas no formato da planilha', () => {
+    const card = makeCard({ orcado_min: 95, realizado_min: 480 } as never)
+    render(<Card {...defaultProps} card={card} />)
+    expect(screen.getByTestId('card-tempo-row')).toHaveTextContent('1h35')
+    expect(screen.getByTestId('card-tempo-row')).toHaveTextContent('8h')
+  })
+
+  it('em aberto: data prevista e valor orçado, identificados', () => {
+    const card = makeCard({ orcado_min: 60, data_prevista: '2026-03-10', orcado_total: 300, realizado_total: 120 } as never)
+    render(<Card {...defaultProps} card={card} />)
+    expect(screen.getByTestId('card-data-prevista')).toHaveTextContent(/Prev\.\s*10\/03/)
+    expect(screen.getByTestId('card-valor')).toHaveTextContent(/Orçado\s*R\$\s*300,00/)
+    expect(screen.queryByTestId('card-data-realizada')).not.toBeInTheDocument()
+  })
+
+  it('concluído: valor realizado e data realizada', () => {
+    const card = makeCard({ data_prevista: '2026-03-10', data_realizacao: '2026-03-12', orcado_total: 300, realizado_total: 120.5 } as never)
+    render(<Card {...defaultProps} card={card} concluido />)
+    expect(screen.getByTestId('card-data-realizada')).toHaveTextContent(/Real\.\s*12\/03/)
+    expect(screen.getByTestId('card-valor')).toHaveTextContent(/Realizado\s*R\$\s*120,50/)
+  })
+
+  it('sem permissão de ver a planilha (sem totais) não mostra valor', () => {
+    const card = makeCard({ orcado_min: 60, data_prevista: '2026-03-10' } as never)
+    render(<Card {...defaultProps} card={card} />)
+    expect(screen.queryByTestId('card-valor')).not.toBeInTheDocument()
+  })
+
+  it('não marca estouro quando não há horas orçadas', () => {
+    const card = makeCard({ orcado_min: 0, realizado_min: 30 } as never)
+    render(<Card {...defaultProps} card={card} />)
+    expect(screen.queryByTestId('card-overrun-flag')).not.toBeInTheDocument()
+  })
+})
+
 describe('Card responsible avatars', () => {
   it('renders responsible avatars on card face', () => {
     const card = makeCard({
