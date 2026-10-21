@@ -7,5 +7,8 @@ auditConfig:
   ignoreGhsas:
     - GHSA-vfj7-8cjw-p6xm
 overrides:
+  # GHSA-q3jh-wrc6-jgq8 e GHSA-587h-7wmj-h5pm: manter correções compatíveis.
+  follow-redirects: "1.16.1"
+  vite: "8.3.3"
   proxy-addr: ">=2.0.8"
   source-map-js: ">=1.2.2"

@@ -24,6 +24,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Prisma generated files — not hand-written, linting them is noise
     "lib/generated/prisma/**",
+    // Saída compilada do MCP; o código TypeScript de src continua validado.
+    "mcp-server/dist/**",
     // Key-generation script — not part of the app, already gitignored
     "gerar-chaves.js",
     // Node.js helper scripts — CJS files that intentionally use require()

@@ -564,6 +564,9 @@ Gerenciamento de workspaces (multi-tenant): listar tenants, entrar em um, trocar
 
 ### `/admin/cadastros`
 Cadastro de departamentos e funções globais reutilizáveis pelos projetos (`ProjetoDepartamento`/`ProjetoFuncao` — legado, direto no Prisma do monolito).
+O menu lateral do projeto oferece atalhos para Departamentos e Funções a
+administradores (papel obtido da sessão no layout servidor). Esses atalhos abrem
+o catálogo global existente; o layout administrativo mantém sua autorização.
 
 ### `/no-project`
 Tela exibida quando o usuário autenticado não está vinculado a nenhum projeto ativo.
@@ -1039,6 +1042,12 @@ Checks por pacote executam instalação frozen, testes existentes, build, audit,
 imagem final, smoke com dependências isoladas e Trivy. Notification-service
 não possui testes existentes; build/smoke continuam obrigatórios. Operações têm
 check próprio de pressão Redis, simulação de release e restore sintético.
+O workspace raiz e as sete instalações isoladas mantêm overrides e lockfiles
+próprios; correções de dependências precisam alcançar ambos os contextos, pois
+as imagens dos serviços são construídas a partir de seus diretórios. A versão
+1.33.1 fixa `follow-redirects` 1.16.1 e Vite 8.3.3 nos dois contextos para
+eliminar as versões vulneráveis, dentro das majors usadas pelos consumidores.
+As auditorias e exceções existentes permanecem ativas e sem novas supressões.
 Backups propostos são descritos em `docs/operations/backups.md`; o operador não
 soube confirmar a rotina atual e a VPS não foi inspecionada nesta entrega.
 

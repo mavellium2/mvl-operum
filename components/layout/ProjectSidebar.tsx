@@ -3,7 +3,7 @@
 import { useEffect, useState, useId } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { PanelLeftOpen } from 'lucide-react'
+import { PanelLeftOpen, Building2, Briefcase } from 'lucide-react'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import Tooltip from '@/components/ui/Tooltip'
 import DocumentSidebar from '@/components/projetos/documentacao/DocumentSidebar'
@@ -12,6 +12,7 @@ import SidebarLayout from '@/components/layout/SidebarLayout'
 interface Props {
   projetoId: string
   canManageMembers: boolean
+  canManageGlobalCatalogs?: boolean
 }
 
 const STORAGE_KEY = 'wbs-project-sidebar-collapsed'
@@ -52,7 +53,7 @@ const CustosIcon = () => (
   </svg>
 )
 
-export default function ProjectSidebar({ projetoId, canManageMembers }: Props) {
+export default function ProjectSidebar({ projetoId, canManageMembers, canManageGlobalCatalogs = false }: Props) {
   const panelId = useId()
   const permissions = useProjectPermissions()
   const pathname = usePathname()
@@ -95,6 +96,10 @@ export default function ProjectSidebar({ projetoId, canManageMembers }: Props) {
           { href: `/projetos/${projetoId}/stakeholders`, label: 'Stakeholders', Icon: StakeholdersIcon },
         ]
       : []),
+    ...(canManageGlobalCatalogs ? [
+      { href: '/admin/cadastros/departamentos', label: 'Departamentos', Icon: Building2 },
+      { href: '/admin/cadastros/funcoes', label: 'Funções', Icon: Briefcase },
+    ] : []),
   ].filter(item => {
     if (item.label === 'Sprints' || item.label === 'Dashboard') return permissions.has('quadro:ver')
     if (item.label === 'Documentação') return permissions.has('documentos:ver')
