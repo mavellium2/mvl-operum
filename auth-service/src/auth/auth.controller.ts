@@ -137,9 +137,20 @@ export class AuthController {
   }
 
   @Get('my-tenants')
-  async myTenants(@Headers('x-user-id') userId: string) {
+  async myTenants(
+    @Headers('x-user-id') userId: string,
+    @Headers('x-auth-type') authType: string | undefined,
+    @Headers('x-oauth-tenants') oauthTenants: string | undefined,
+  ) {
     if (!userId) throw new UnauthorizedException()
-    return this.authService.getMyTenants(userId)
+    const tenants = await this.authService.getMyTenants(userId)
+    // Conexão OAuth: só os workspaces autorizados no consentimento (o gateway
+    // define x-oauth-tenants a partir da introspecção e descarta o do cliente).
+    if (authType === 'oauth') {
+      const granted = new Set((oauthTenants ?? '').split(',').filter(Boolean))
+      return tenants.filter(t => granted.has(t.tenantId))
+    }
+    return tenants
   }
 
   @Post('switch-tenant')

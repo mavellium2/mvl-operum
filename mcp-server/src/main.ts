@@ -1,57 +1,5 @@
 import 'dotenv/config'
-import express from 'express'
-import { registerUploadRoute } from './uploadRoute.js'
-import { telemetry, metrics } from './telemetry.js'
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { buildServer } from './server.js'
-import { parseTokens, TenantRegistry } from './tenants.js'
-
-const app = express()
-app.use(telemetry)
-app.get('/health/metrics', (req, res) => {
-  if (!process.env.INTERNAL_API_KEY || req.headers.authorization !== `Bearer ${process.env.INTERNAL_API_KEY}`) return res.status(401).end()
-  res.type('text/plain').send(metrics())
-})
-// 15 MB: operum_upload_attachment aceita até 10 MB em content_base64 (≈13,4 MB em base64).
-// O parse vem depois da checagem do token, para requisição sem PAT não fazer o
-// servidor ler um corpo desse tamanho.
-registerUploadRoute(app)
-const jsonBody = express.json({ limit: '15mb' })
-
-app.post('/mcp', (req, res, next) => {
-  // Authorization: Bearer <pat> = tenant padrão; X-Operum-Tokens: <pat>,<pat> = demais tenants.
-  // A validação real de cada token acontece no api-gateway, a cada chamada.
-  const tokens = parseTokens(req.headers.authorization, req.headers['x-operum-tokens'])
-  if (!tokens) {
-    res.status(401).set('WWW-Authenticate', 'Bearer realm="operum"').end()
-    return
-  }
-  res.locals.tokens = tokens
-  next()
-}, jsonBody, async (req, res) => {
-  const tokens = res.locals.tokens as string[]
-  const server = buildServer(new TenantRegistry(tokens))
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
-  res.on('close', () => {
-    transport.close()
-    server.close()
-  })
-  await server.connect(transport)
-  await transport.handleRequest(req, res, req.body)
-})
-
-// Stateless (D3): GET/DELETE em /mcp não são suportados — sem sessão para retomar/fechar.
-app.all('/mcp', (_req, res) => res.status(405).end())
-
-app.get('/health', (_req, res) => res.json({ ok: true }))
-app.get('/health/ready', async (_req, res) => {
-  let ready = false
-  try {
-    ready = (await fetch(`${process.env.API_GATEWAY_INTERNAL_URL ?? 'http://api-gateway:4000'}/health/ready`, { signal: AbortSignal.timeout(3000) })).ok
-  } catch { /* bounded failure */ }
-  res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not ready' })
-})
-
+import { createApp } from './app.js'
 
 const PORT = Number(process.env.PORT ?? 4006)
-app.listen(PORT, () => { console.log(`mcp-server listening on :${PORT}`) })
+createApp().listen(PORT, () => { console.log(`mcp-server listening on :${PORT}`) })

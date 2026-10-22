@@ -15,14 +15,30 @@ export interface GatewayError extends Error {
   publicMessage?: string
 }
 
-async function request<T>(token: string, path: string, init: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
+export const OAUTH_ACCESS_PREFIX = 'opr_oat_'
+
+/**
+ * Cabeçalhos de autenticação para o api-gateway. PAT: só o Authorization.
+ * Token OAuth: também a chave interna do mcp-server (o gateway só aceita o
+ * token OAuth vindo daqui, que é a audiência dele) e o workspace escolhido.
+ */
+export function gatewayAuthHeaders(token: string, tenantId?: string): Record<string, string> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
+  if (token.startsWith(OAUTH_ACCESS_PREFIX)) {
+    headers['X-Operum-Mcp-Key'] = process.env.MCP_GATEWAY_KEY ?? ''
+    if (tenantId) headers['X-Operum-Tenant'] = tenantId
+  }
+  return headers
+}
+
+async function request<T>(token: string, path: string, init: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS, tenantId?: string): Promise<T> {
   // FormData: o fetch monta o Content-Type multipart com o boundary.
   const isForm = init.body instanceof FormData
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
       ...(isForm ? {} : { 'Content-Type': 'application/json' }),
-      Authorization: `Bearer ${token}`,
+      ...gatewayAuthHeaders(token, tenantId),
       ...(init.headers as Record<string, string> | undefined),
     },
     signal: AbortSignal.timeout(timeoutMs),
@@ -69,13 +85,19 @@ export interface Gateway {
   upload: <T>(path: string, form: FormData) => Promise<T>
 }
 
-/** Cliente HTTP do api-gateway autenticado com o PAT do chamador. Nunca fala com Prisma/serviços de domínio diretamente (D2). */
-export function gateway(token: string): Gateway {
+/**
+ * Cliente HTTP do api-gateway autenticado com o token do chamador (PAT ou
+ * OAuth). `tenantId` escolhe o workspace de uma conexão OAuth; com PAT é
+ * ignorado (o PAT já é preso a um tenant). Nunca fala com Prisma/serviços de
+ * domínio diretamente (D2).
+ */
+export function gateway(token: string, tenantId?: string): Gateway {
+  const T = REQUEST_TIMEOUT_MS
   return {
-    get: (path, params) => request(token, `${path}${toQueryString(params)}`),
-    post: (path, body) => request(token, path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }),
-    patch: (path, body) => request(token, path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }),
-    delete: (path) => request(token, path, { method: 'DELETE' }),
-    upload: (path, form) => request(token, path, { method: 'POST', body: form }, UPLOAD_TIMEOUT_MS),
+    get: (path, params) => request(token, `${path}${toQueryString(params)}`, {}, T, tenantId),
+    post: (path, body) => request(token, path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }, T, tenantId),
+    patch: (path, body) => request(token, path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }, T, tenantId),
+    delete: (path) => request(token, path, { method: 'DELETE' }, T, tenantId),
+    upload: (path, form) => request(token, path, { method: 'POST', body: form }, UPLOAD_TIMEOUT_MS, tenantId),
   }
 }

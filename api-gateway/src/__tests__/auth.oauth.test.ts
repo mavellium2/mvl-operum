@@ -73,6 +73,7 @@ describe('authMiddleware — token OAuth do MCP', () => {
     expect(req.headers['x-user-role']).toBe('admin')
     expect(req.headers['x-auth-type']).toBe('oauth')
     expect(req.headers['x-api-token-id']).toBe('oauth:grant-1')
+    expect(req.headers['x-oauth-tenants']).toBe('t-a,t-b')
     expect(fetchMock).toHaveBeenCalledWith('http://auth-service:4001/oauth/introspect', expect.anything())
     expect(mockRedis.set).toHaveBeenCalledWith(expect.stringMatching(/^oat:/), expect.any(String), 'EX', 60)
   })
@@ -148,6 +149,12 @@ describe('authMiddleware — token OAuth do MCP', () => {
     const res = makeRes()
     await middleware(makeReq({ headers: oauthHeaders() }), res, vi.fn())
     expect(res.status).toHaveBeenCalledWith(503)
+  })
+
+  it('descarta x-oauth-tenants enviado pelo cliente numa sessão comum', async () => {
+    const req = makeReq({ path: '/health', headers: { 'x-oauth-tenants': 't-x' } })
+    await middleware(req, makeRes(), vi.fn())
+    expect(req.headers['x-oauth-tenants']).toBeUndefined()
   })
 
   it('nunca repassa X-Operum-Mcp-Key e X-Operum-Tenant aos serviços', async () => {

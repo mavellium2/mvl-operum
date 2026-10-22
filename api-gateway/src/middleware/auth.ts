@@ -221,6 +221,7 @@ export function authMiddleware() {
     delete req.headers['x-user-role']
     delete req.headers['x-auth-type']
     delete req.headers['x-api-token-id']
+    delete req.headers['x-oauth-tenants']
 
     // Skip auth for public paths
     if (PUBLIC_PATHS.some(p => path.startsWith(p))) {
@@ -268,6 +269,8 @@ export function authMiddleware() {
       req.headers['x-user-role'] = tenant.role
       req.headers['x-auth-type'] = 'oauth'
       req.headers['x-api-token-id'] = `oauth:${introspection.grantId ?? ''}`
+      // Workspaces da conexão: o auth-service restringe /auth/my-tenants a eles.
+      req.headers['x-oauth-tenants'] = tenants.map(t => t.tenantId).join(',')
 
       return next()
     }
