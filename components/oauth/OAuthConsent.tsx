@@ -70,6 +70,9 @@ export default function OAuthConsent({ request, check }: { request: OAuthAuthori
         Depois de permitir, você volta para <strong className="font-semibold text-gray-900 break-all">{check.redirectHost}</strong>.
         Ele só vê e altera o que você mesmo pode ver e alterar.
       </p>
+      <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+        Só permita se foi você quem pediu esta conexão agora. Se recebeu este link de outra pessoa, clique em Negar.
+      </p>
 
       {check.loopback && (
         <p role="alert" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">

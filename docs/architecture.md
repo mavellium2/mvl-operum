@@ -100,7 +100,7 @@ Os estágios finais das imagens instalam apenas dependências de produção (`pn
 ```
 
 **Fluxo de autorização no gateway** (`api-gateway/src/middleware/auth.ts`):
-1. Rotas públicas (`/auth/login`, `/auth/tenants/*`, `/auth/password/request-reset|validate-code|reset`, `/auth/verify`, `/health`) passam sem token.
+1. Rotas públicas (`/auth/login`, `/auth/tenants/*`, `/auth/password/request-reset|validate-code|reset`, `/auth/verify`, `/health` e, desde 1.36.0, `/.well-known/oauth-authorization-server`, `/oauth/register`, `/oauth/token`, `/oauth/revoke`) passam sem token. As introspecções internas (`/auth/api-tokens/introspect`, `/oauth/introspect`) respondem 404, comparando o caminho normalizado (minúsculas, sem barras repetidas). Token `opr_oat_` (OAuth) só é aceito com `X-Operum-Mcp-Key` do mcp-server; ver [Conector OAuth do MCP](#conector-oauth-do-mcp-136).
 2. Extrai token do header `Authorization: Bearer` ou do cookie `session`.
 3. Verifica JWT: tenta RS256 (`JWT_PUBLIC_KEY`) e cai para HS256 (`SESSION_SECRET`) se falhar.
 4. Em `NODE_ENV=production`, exige JTI e consulta o auth-service, que comprova sessão Redis e usuário/tenant persistido. Credencial inválida retorna 401; indisponibilidade retorna 503.
@@ -111,6 +111,7 @@ Os estágios finais das imagens instalam apenas dependências de produção (`pn
 | Prefixo | Destino |
 |---------|---------|
 | `/auth` | auth-service |
+| `/oauth`, `/.well-known/oauth-authorization-server` | auth-service (servidor de autorização OAuth, desde 1.36.0) |
 | `/projects`, `/departments`, `/roles`, `/permissions`, `/stakeholders` | project-service |
 | `/sprints`, `/cards`, `/tags`, `/time-entries`, `/audit` | sprint-service |
 | `/notifications` | notification-service |
@@ -294,7 +295,7 @@ Não existe database-per-service: **todos os 5 microsserviços apontam para o me
 
 | Serviço | Modelos próprios (Prisma) |
 |---------|---------------------------|
-| `auth-service` | `Tenant`, `User` (dono canônico de identidade) |
+| `auth-service` | `Tenant`, `User` (dono canônico de identidade), `ApiToken`, `OAuthClient`, `OAuthGrant`, `OAuthGrantTenant`, `OAuthCode`, `OAuthToken` (migration `20261021120000_add_oauth`, só no schema do auth-service, como o `ApiToken`) |
 | `project-service` | `Project`, `ProjectMacroFase`, `Department`, `UserDepartment`, `UserProject`, `Role`, `Permission`, `RolePermission`, `UserProjectRole`, `Stakeholder`, `ProjectStakeholder` |
 | `sprint-service` | `Sprint`, `SprintColumn`, `Card`, `CardMovement`, `Tag`, `CardTag`, `CardResponsible`, `Comment`, `TimeEntry`, `DashboardMetric`, `SprintFeedback`, `AuditLog` |
 | `notification-service` | `Notification` |
@@ -429,6 +430,11 @@ Admin cria usuário com forcePasswordChange=true
 | GET | `/auth/tenants/:subdomain` | Lookup público de tenant |
 | GET | `/auth/users`, `/auth/all-users` | Listagem (admin) |
 | POST | `/auth/admin/users` / PATCH `/auth/admin/users/:id`, `/:id/active`, `/:id/role` | CRUD de usuário pelo admin |
+| POST | `/auth/oauth/authorize/check`, `/approve`, `/deny` | Consentimento OAuth (só sessão JWT; desde 1.36.0) |
+| GET / DELETE | `/auth/oauth/grants`, `/auth/oauth/grants/:id` | Apps conectados do usuário (só sessão JWT) |
+| GET | `/.well-known/oauth-authorization-server` | Metadados do servidor de autorização (RFC 8414), público |
+| POST | `/oauth/register`, `/oauth/token`, `/oauth/revoke` | Registro dinâmico (RFC 7591), token e revogação (RFC 7009), públicos |
+| POST | `/oauth/introspect` | Introspecção do token OAuth; só com `X-Internal-Api-Key`, bloqueada no gateway |
 
 **E-mail da recuperação de senha (1.25.1):** o auth-service envia o código por SMTP (`nodemailer`, `src/mailer/mailer.service.ts`) com `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` e `APP_PUBLIC_URL` do `.env` da VPS. Sem SMTP, o pedido continua respondendo sucesso (anti-enumeração), mas nada é enviado. Em produção, o serviço registra erro na subida e a cada pedido, **sem o código** (só fora de produção ele aparece no log, para testes). Com SMTP, a subida testa a conexão (`verify`). Os logs mostram o e-mail mascarado. O deploy (`scripts/deploy/configure-observability.py`) avisa quando o SMTP do `auth-service` está incompleto, sem bloquear a release; a checagem só roda quando o compose tem o `auth-service`.
 
@@ -511,7 +517,8 @@ Admin cria usuário com forcePasswordChange=true
 
 ### mcp-server (`/mcp`)
 
-Servidor MCP remoto e sem estado. Cada chamada usa o PAT do usuário contra o api-gateway, e o mcp-server nunca fala direto com os serviços. A lista de tools e as regras estão em [`mcp-server/README.md`](../mcp-server/README.md).
+Servidor MCP remoto e sem estado. Cada chamada usa o token do usuário (PAT ou, desde 1.36.0, token OAuth do conector do Claude) contra o api-gateway, e o mcp-server nunca fala direto com os serviços. A lista de tools e as regras estão em [`mcp-server/README.md`](../mcp-server/README.md).
+- **OAuth (1.36.0, ADR-057):** publica `/.well-known/oauth-protected-resource/mcp` (e na raiz), responde 401 com `resource_metadata` e escopos e valida o token OAuth na entrada (vencido vira HTTP 401 para o cliente renovar). Uma conexão cobre os workspaces autorizados: cada chamada ao gateway leva `X-Operum-Tenant` e a chave interna `X-Operum-Mcp-Key`. Desligado sem `OAUTH_ISSUER`, `MCP_RESOURCE_URL` e `MCP_GATEWAY_KEY`. Fluxo completo em [Conector OAuth do MCP](#conector-oauth-do-mcp-136).
 - **Tenant:** as tools de anexo (`operum_upload_attachment`, `operum_add_link`, `operum_delete_attachment`) também conferem a tarefa no tenant antes de chamar o file-service.
 - **SSRF:** o download por `url` é protegido (`mcp-server/src/download.ts`).
 - **Tempo:** as tools de timer (`operum_start_timer`, `operum_stop_timer`, `operum_log_time`) e de correção de lançamentos (`operum_list_time_entries`, `operum_update_time_entry`, `operum_delete_time_entry`, desde 1.30.0) usam as rotas de time entries do sprint-service: `GET /cards/:id/time-entries`, `PATCH` e `DELETE /time-entries/:id`. As regras de duração, futuro e sobreposição ficam no sprint-service (ADR-046). O gateway só deixa editar e apagar o dono do lançamento ou um admin, e o MCP não repete essa regra.
@@ -605,7 +612,10 @@ Board Kanban — acesso global, sem contexto de projeto na URL.
 Dashboard de sprint: PieChart/BarChart (Recharts), ranking por usuário, cards atrasados, SprintFeedback.
 
 ### `/notificacoes`, `/arquivos`, `/perfil`, `/alterar-senha`
-Notificações, galeria de anexos, edição de perfil, troca de senha forçada.
+Notificações, galeria de anexos, edição de perfil, troca de senha forçada. `/perfil/tokens` gerencia os PATs e, desde 1.36.0, os apps conectados por OAuth (revogação imediata).
+
+### `/oauth/autorizar`
+Tela de consentimento OAuth (1.36.0), fora da sidebar. Exige sessão; o proxy guarda a query no `from` do login e o login volta para ela mesmo sem projeto. Valida o pedido no auth-service, mostra app, host de retorno, permissões e workspaces. Permitir e Negar navegam pelo navegador até a URL de retorno (a CSP limita `form-action` a `'self'`). Sem cache e com `Referrer-Policy: no-referrer`.
 
 ### `/sobre`, `/equipe`
 Página institucional (`/equipe` redireciona para `/sobre`).
@@ -740,6 +750,7 @@ Migrações anteriores (base multi-tenant, RBAC, auditoria, `DocumentVersion`, `
 | `REDIS_HOST` / `PORT` / `PASSWORD` | Liveness de sessão |
 | `AUTH_SERVICE_URL`, `PROJECT_SERVICE_URL`, `SPRINT_SERVICE_URL`, `NOTIFICATION_SERVICE_URL`, `FILE_SERVICE_URL` | Destinos do proxy |
 | `ALLOWED_ORIGINS` | CORS allow-list (⚠️ ausente do `.env.example` raiz) |
+| `MCP_GATEWAY_KEY`, `MCP_RESOURCE_URL` | Token OAuth só é aceito com a chave interna do mcp-server e com a audiência do MCP (1.36.0) |
 | `PORT` | 4000 |
 
 ### Demais serviços (auth/project/sprint/notification/file-service)
@@ -1161,6 +1172,28 @@ O Termo alterna entre formulário privado e prévia explícita; alternar não sa
 Versões legadas sem contexto/diff mostram a ausência; não recebem cabeçalho atual silenciosamente. A prévia privada não exibe assinatura do gerente como aprovação. Imagens Word são buscadas exclusivamente no navegador, com URL segura, timeout e limite de 5 MB, preservando proporção; falha de imagem interrompe exportação com mensagem. O servidor da exportação de Ata não busca URLs de anexos.
 
 O “hoje” do Gantt usa snapshot estável do servidor para hidratação e calendário local do navegador em seguida, atualizado por assinatura a cada minuto (`useCalendarToday`). As datas planejadas permanecem date-only; a linha de hoje não desloca datas do projeto nem assume que o calendário do usuário é UTC.
+
+### Conector OAuth do MCP (1.36)
+
+Implementado na 1.36.0 (SDD [`SDD-mcp-oauth.md`](specs/SDD-mcp-oauth.md), ADR-057). Permite adicionar `https://api.operum.adm.br/mcp` como conector personalizado no claude.ai (web, Desktop e celular) e nas sessões do Claude Code na nuvem. A homologação em staging e no celular ainda está pendente.
+
+```
+Claude ─POST /mcp sem token─────────────► mcp-server ── 401 + resource_metadata
+       ─GET /.well-known/oauth-protected-resource/mcp ─► mcp-server (Traefik roteia no host api.)
+       ─GET /.well-known/oauth-authorization-server ───► gateway → auth-service
+       ─navegador: operum.adm.br/oauth/autorizar (login + consentimento) → código
+       ─POST /oauth/token (código + PKCE + resource) ──► gateway → auth-service
+       ─POST /mcp  Bearer opr_oat_… ──► mcp-server ─► gateway (+ X-Operum-Mcp-Key, X-Operum-Tenant)
+```
+
+- **Clientes:** CIMD (`client_id` em URL, só hosts de `OAUTH_CIMD_ALLOWED_HOSTS`, leitura com proteção a SSRF, sem redirecionamento, 5 s, 64 KB, cache de 24 h) e DCR (`opr_dcr_…`, redirects só da allowlist ou loopback com qualquer porta). Só clientes públicos.
+- **Código:** `opr_oac_…`, 60 s, uso único (marcado antes de conferir o resto), ligado a cliente, redirect, `code_challenge` S256, `resource`, escopos e workspaces. Reuso revoga o grant gerado.
+- **Tokens:** access `opr_oat_…` de 1 h e refresh `opr_ort_…` de 30 dias com rotação. Teto de 90 dias por conexão. Reuso de refresh depois de 10 s revoga a conexão. Tudo guardado só como hash SHA-256.
+- **Gateway:** introspecção `oat:{hash}` com cache de 60 s, apagado na revogação. Só aceita o token com `X-Operum-Mcp-Key` correta e `resource` igual a `MCP_RESOURCE_URL`, e só no workspace pedido em `X-Operum-Tenant`, que precisa estar no grant (sem ele, vale o padrão). Mesma allowlist do PAT no auth-service; escrita exige `operum:write`. Injeta `x-auth-type: oauth`, `x-api-token-id: oauth:<grant>` (rate limit de 20 req/s e auditoria) e `x-oauth-tenants`, com o qual `/auth/my-tenants` devolve só os workspaces autorizados. Os cabeçalhos `x-operum-*` nunca seguem aos serviços.
+- **Workspaces:** o grant guarda `(tenantId, userId)` por workspace escolhido, validado por e-mail e usuário ativo, a mesma regra do `switch-tenant`. A introspecção tira o workspace cujo usuário foi desativado ou está com troca de senha pendente.
+- **Rotas de conta:** `NoPatGuard` e as rotas de PAT recusam qualquer `x-auth-type` (PAT ou OAuth).
+- **Rate limit:** 30 registros/min e 300 tokens/min no gateway; como o IP visto é o do Traefik, o limite é global.
+- **Configuração:** `OAUTH_ISSUER`, `MCP_RESOURCE_URL`, `OAUTH_AUTHORIZE_URL`, `MCP_GATEWAY_KEY`, `OAUTH_CIMD_ALLOWED_HOSTS` e `OAUTH_DCR_ALLOWED_REDIRECTS` no `.env` (ver `.env.example`). O router `mcp-prod-api` do Traefik inclui `/.well-known/oauth-protected-resource`.
 
 ### MCP — importação incremental e uploads locais (fase 8)
 

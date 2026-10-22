@@ -7,6 +7,20 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.36.0] — 2026-10-23
+
+Conector do Operum no app do Claude (web, Desktop e celular) com login OAuth.
+
+### Adicionado
+- MCP com login OAuth 2.1: o Operum pode ser adicionado como conector personalizado no claude.ai e usado pelo chat do app no celular. O auth-service virou servidor de autorização (metadados, registro de cliente CIMD/DCR, PKCE S256, token de acesso de 1 h e renovação com rotação) e o mcp-server publica os metadados do recurso protegido. Uma conexão pode cobrir vários workspaces. Fica desligado até configurar `OAUTH_ISSUER`, `MCP_RESOURCE_URL` e `MCP_GATEWAY_KEY` (ver `.env.example`).
+- Tela de autorização `/oauth/autorizar`: mostra o app, para onde volta, as permissões (leitura ou leitura e escrita) e os workspaces.
+- "Apps conectados" em Meu perfil → Personal Access Tokens, com desconexão imediata.
+- `.mcp.json` com o servidor `operum-nuvem` para sessões do Claude Code na nuvem (token em segredo de rede) e o passo a passo no tutorial.
+
+### Segurança
+- O token OAuth só é aceito pelo gateway quando vem do mcp-server (chave interna) e com a audiência do MCP. Usado direto na API pública, é recusado.
+- Corrigido: o bloqueio da introspecção interna de PAT diferenciava maiúsculas, e `/AUTH/API-TOKENS/INTROSPECT` chegava ao auth-service para usuários logados. O gateway agora compara o caminho normalizado.
+- Rotas de conta do auth-service recusam qualquer token de acesso (PAT ou OAuth), não só PAT.
 ## [1.35.1] — 2026-10-23
 
 Atualização de segurança.

@@ -46,6 +46,7 @@ describe('OAuthConsent', () => {
     render(<OAuthConsent request={request} check={check()} />)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Claude quer acessar o seu Operum')
     expect(screen.getByText('claude.ai')).toBeTruthy()
+    expect(screen.getByText(/Só permita se foi você quem pediu/)).toBeTruthy()
     expect((screen.getByLabelText(/Mavellium/) as HTMLInputElement).checked).toBe(true)
     expect((screen.getByLabelText(/Fábio/) as HTMLInputElement).checked).toBe(false)
   })

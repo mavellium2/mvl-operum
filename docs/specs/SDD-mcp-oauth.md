@@ -1,6 +1,6 @@
 # SDD — Login OAuth no MCP do Operum (conector do app Claude)
 
-> **Status:** proposta, aguardando aprovação. Nada deste documento está implementado.
+> **Status:** implementado na 1.36.0 (branch `feat/mcp-claude-nuvem`); homologação em staging e no celular pendente. As questões da seção 8 seguiram as recomendações (ver ADR-057).
 > **Data:** 2026-10-21.
 > **Cards (projeto Operum, sprint 1.6):** SDD/ADR `cmviogcqv003101o2mce220xt` · servidor de autorização `cmviogcwz003301o2ans819z9` · consentimento e apps conectados `cmviohqyy003501o2v6g8pyj4` · mcp-server `cmviohw4e003701o2g2y7p4s7` · homologação `cmvioi1hz003901o2gorssbxe`.
 > **Decisão:** [ADR-056](../decisions.md#adr-056--login-oauth-no-mcp-para-conectores-do-claude) (proposta).
@@ -93,7 +93,7 @@ claude.ai ──(1) POST /mcp sem token─────────────�
 | Refresh | `opr_ort_` + 43 caracteres base62 | 30 dias desde a última rotação; teto de 90 dias por grant ⚠️ DECISÃO | hash SHA-256 |
 
 - O token opaco, e não JWT, mantém a revogação imediata e o mesmo modelo de introspecção do PAT.
-- **Rotação:** cada refresh emite um par novo e invalida o refresh anterior. Reuso de um refresh já trocado revoga o grant inteiro (detecção de roubo). Tolerância de 30 s para retentativa concorrente do mesmo refresh, devolvendo o mesmo par. ⚠️ DECISÃO.
+- **Rotação:** cada refresh emite um par novo e invalida o refresh anterior. Reuso de um refresh já trocado revoga o grant inteiro (detecção de roubo). Como só o hash é guardado, não dá para devolver o mesmo par numa retentativa: dentro de 10 s o reuso só responde `invalid_grant`, sem revogar; depois disso, revoga.
 - `POST /oauth/token` aceita `authorization_code` (com `code_verifier` e `resource`) e `refresh_token`. Erros seguem a RFC 6749 (`invalid_grant`, `invalid_client`, `unsupported_grant_type`). Responde com `Cache-Control: no-store`.
 - `POST /oauth/revoke` (RFC 7009) revoga o grant do token e apaga o cache.
 
@@ -201,7 +201,7 @@ A migration fica no lugar em que o deploy já aplica as migrations desse schema 
 
 - **Traefik:** acrescentar ao router `mcp-prod-api` (e ao de staging) `PathPrefix('/.well-known/oauth-protected-resource')`. O `/.well-known/oauth-authorization-server` e o `/oauth/*` ficam no gateway, que precisa tê-los como rotas públicas, com o parser `application/x-www-form-urlencoded` em `/oauth/token` e `/oauth/revoke`, e com rate limit próprio.
 - **Variáveis novas:** `OAUTH_ISSUER`, `MCP_RESOURCE_URL`, `OAUTH_AUTHORIZE_URL`, `OAUTH_CIMD_ALLOWED_HOSTS`, `MCP_GATEWAY_KEY` (32 bytes aleatórios, no mcp-server e no gateway).
-- **CSP** do app: a página `/oauth/autorizar` com `frame-ancestors 'none'`.
+- **CSP** do app: `frame-ancestors 'none'` já vale para todas as páginas. Como `form-action` é `'self'`, Permitir/Negar devolvem a URL e o navegador navega até ela. `/oauth/*` sai com `Cache-Control: no-store` e `Referrer-Policy: no-referrer`.
 - Nenhuma regra de firewall pode bloquear `160.79.104.0/21`.
 
 ## 5. Segurança — checklist de aceite
@@ -239,7 +239,10 @@ As fases 1 a 3 podem ir numa PR só ou em PRs encadeadas, mas o fluxo só é lig
 - **mcp-server:** 401 com `resource_metadata` e `scope`; metadados do recurso; vários tenants a partir de um token; PAT inalterado.
 - **Ponta a ponta (staging):** MCP Inspector e conector personalizado no claude.ai (web e celular).
 
-## 8. Questões em aberto
+## 8. Questões em aberto (resolvidas com as recomendações)
+
+O usuário pediu para continuar com as recomendações. Ficou assim: 1 h / 30 dias / 90 dias; `api.` agora, configurável; loopback aceito com aviso; gestão pelo admin depois; chave interna. Lista original:
+
 
 1. Prazos: access de 1 h, refresh de 30 dias deslizantes e teto de 90 dias.
 2. Domínio definitivo do recurso (`api.` agora ou esperar `mcp.`).
