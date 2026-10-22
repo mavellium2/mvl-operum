@@ -83,8 +83,8 @@ export async function propagarPlanilhaDeCustos(projectId: string, tenantId: stri
     custo: f.atividades.some(a => a.totalOrcado !== null) ? round2(f.totalOrcado) : null,
   }))
   const resumo = await aplicarResumoDaPlanilha(projectId, tenantId, fases, planilha.dataFimProjeto)
-  await sincronizarCardsDaPlanilha(projectId, tenantId)
+  const cards = await sincronizarCardsDaPlanilha(projectId, tenantId)
   // Datas dos cards podem ter mudado: o início do projeto segue a primeira tarefa.
   await sincronizarInicioDoProjeto(projectId, tenantId).catch(() => null)
-  return resumo
+  return { ...resumo, cards }
 }

@@ -3,7 +3,9 @@ import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import { canProjectPermission } from '@/services/projectAccess'
 import { getTree, resetTree } from '@/services/wbsService'
-import { sincronizarEapSprintSePermitido } from '@/services/eapSprintSyncService'
+import { podeSincronizar, sincronizarEapSprintSePermitido } from '@/services/eapSprintSyncService'
+import { statusDaSincronizacao } from '@/services/sincronizacaoStatus'
+import StatusSincronizacao from '@/components/sincronizacao/StatusSincronizacao'
 import WbsCanvas from '@/components/wbs/WbsCanvas'
 import prisma from '@/lib/prisma'
 import { valorPorMinutoDoElaborador } from '@/lib/planilhaCustos'
@@ -37,6 +39,7 @@ export default async function WbsPage({
   const requested = (await searchParams).view
   const initialView: WbsViewMode = requested === 'details' || requested === 'gantt' || (requested === 'costs' && canViewCosts) ? requested : 'chart'
   await sincronizarEapSprintSePermitido({ userId, tenantId, role }, projetoId)
+  const [statusSync, sincroniza] = await Promise.all([statusDaSincronizacao(projetoId, tenantId), podeSincronizar({ userId, tenantId, role }, projetoId)])
   let initialTree = await getTree(projetoId, tenantId)
 
   // Auto-initialize on first access
@@ -46,6 +49,8 @@ export default async function WbsPage({
   }
 
   return (
+    <>
+    <StatusSincronizacao projectId={projetoId} inicial={statusSync} podeSincronizar={sincroniza} flutuante />
     <WbsCanvas
       projetoId={projetoId}
       tenantId={tenantId}
@@ -58,5 +63,6 @@ export default async function WbsPage({
       owners={owners}
       today={new Date().toISOString().slice(0, 10)}
     />
+    </>
   )
 }

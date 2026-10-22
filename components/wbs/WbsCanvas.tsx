@@ -6,6 +6,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 import { computeLayout, resolveDropPosition, NODE_W, NODE_H } from '@/lib/wbsLayout'
 import { measureNodeWidths } from '@/lib/wbsMedidas'
+import type { ArvoreEap, ResultadoMescla } from '@/lib/wbsMerge'
+import { apagarRascunho, lerRascunho, salvarRascunho, type RascunhoEap } from '@/lib/wbsRascunho'
+import RecuperarRascunhoEap from './RecuperarRascunhoEap'
 import { elaboradoresDe } from '@/lib/elaboradores'
 import { computeFinancialRollups, computeRollups } from '@/lib/wbsRollup'
 import WbsGantt from './WbsGantt'
@@ -67,7 +70,7 @@ function extrasDoSalvamento(s: WbsTreeState, motivo: string) {
   }
 }
 
-function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCosts = false, rates = {}, owners = {}, today = new Date().toISOString().slice(0, 10) }: Omit<WbsCanvasProps, 'initialTree' | 'tenantId' | 'userId'>) {
+function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'chart', canViewCosts = false, rates = {}, owners = {}, today = new Date().toISOString().slice(0, 10) }: Omit<WbsCanvasProps, 'initialTree'>) {
   const calendarToday = useCalendarToday(today)
   const [viewMode, setViewMode] = useState<WbsViewMode>(initialView === 'costs' && !canViewCosts ? 'chart' : initialView)
   const changeView = (mode: WbsViewMode) => {
@@ -82,6 +85,24 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
 
   const stateRef = useRef(state)
   useIsomorphicLayoutEffect(() => { stateRef.current = state }, [state])
+
+  // ── Rascunho preservado (conflito/falha de salvamento) ─────────────────────
+  // Base = última versão do servidor sobre a qual a pessoa está editando.
+  const baseRef = useRef<ArvoreEap>({ rootId: state.rootId, nodes: state.nodes })
+  useEffect(() => {
+    if (arvoresDoServidor.has(state.nodes)) baseRef.current = { rootId: state.rootId, nodes: state.nodes }
+  }, [state.nodes, state.rootId])
+  const [rascunho, setRascunho] = useState<RascunhoEap | null>(null)
+  useEffect(() => {
+    // Rascunho só existe no navegador (localStorage): lido após montar, para não divergir da hidratação.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (canEdit) setRascunho(lerRascunho(tenantId, userId, projetoId))
+  }, [canEdit, tenantId, userId, projetoId])
+  const preservarRascunho = useCallback((s: WbsTreeState, motivo: 'conflito' | 'falha') => {
+    const r = { tenantId, userId, projetoId, motivo, salvoEm: Date.now(), base: baseRef.current, local: { rootId: s.rootId, nodes: s.nodes } }
+    salvarRascunho(r)
+    return { versao: 1 as const, ...r }
+  }, [tenantId, userId, projetoId])
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -197,26 +218,33 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
       const res = await saveSnapshot(s)
       if (res.ok) {
         motivoExclusaoRef.current = ''
+        baseRef.current = { rootId: s.rootId, nodes: s.nodes }
+        // Rascunho de uma falha de rede já foi salvo agora; o de um conflito espera a decisão da pessoa.
+        setRascunho(r => { if (r?.motivo === 'falha') { apagarRascunho(tenantId, userId, projetoId); return null } return r })
         dispatch({ type: 'SET_SYNC_STATUS', payload: { status: stateRef.current.nodes === s.nodes ? 'IDLE' : 'DIRTY', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
       } else if (res.conflict) {
         // A EAP mudou no servidor (outra pessoa ou a sincronização com as sprints):
-        // carrega a versão atual em vez de deixar o editor travado em conflito.
+        // guarda a edição local ANTES de carregar a versão atual, para recuperar depois.
+        const guardado = preservarRascunho(s, 'conflito')
         const atual = await getWbsTreeAction(projetoId)
         if (atual.ok) {
           arvoresDoServidor.add(atual.nodes)
           dispatch({ type: 'SET_TREE', payload: { nodes: atual.nodes, rootId: atual.rootId, serverVersion: atual.serverVersion } })
-          toast('A EAP foi atualizada no servidor enquanto você editava. Carregamos a versão atual; refaça a última alteração.', 'warning')
+          setRascunho(guardado)
+          toast('A EAP foi atualizada no servidor enquanto você editava. Suas alterações foram guardadas: revise e reaplique.', 'warning')
         } else {
+          setRascunho(guardado)
           dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'CONFLICT' } })
-          toast('Conflito: esta EAP foi editada por outra pessoa. Recarregue a página.', 'warning')
+          toast('Conflito: esta EAP foi editada por outra pessoa. Suas alterações foram guardadas neste navegador; recarregue a página.', 'warning')
         }
       } else {
+        preservarRascunho(s, 'falha')
         dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'ERROR' } })
-        toast(res.error || 'Erro ao salvar automaticamente', 'error')
+        toast(`${res.error || 'Erro ao salvar automaticamente'} Suas alterações ficaram guardadas neste navegador.`, 'error')
       }
     }, 1500)
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
-  }, [state.nodes, canEdit, projetoId, dispatch, toast, saveSnapshot])
+  }, [state.nodes, canEdit, projetoId, dispatch, toast, saveSnapshot, preservarRascunho, tenantId, userId])
 
   // Flush de alterações pendentes: o debounce de 1500ms cancela o save no cleanup,
   // então navegar antes do tempo (back/SPA) perdia a edição silenciosamente.
@@ -232,13 +260,13 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
         .then(res => {
           if (res.ok) {
             dispatch({ type: 'SET_SYNC_STATUS', payload: { status: stateRef.current.nodes === s.nodes ? 'IDLE' : 'DIRTY', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
-          } else if (res.conflict) {
-            dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'CONFLICT' } })
           } else {
-            dispatch({ type: 'SET_SYNC_STATUS', payload: { status: 'ERROR' } })
+            // Ao sair da página: guarda para recuperar quando reabrir o editor.
+            preservarRascunho(s, res.conflict ? 'conflito' : 'falha')
+            dispatch({ type: 'SET_SYNC_STATUS', payload: { status: res.conflict ? 'CONFLICT' : 'ERROR' } })
           }
         })
-        .catch(() => {})
+        .catch(() => { preservarRascunho(s, 'falha') })
     }
   })
   useEffect(() => {
@@ -265,6 +293,20 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
       toast(res.error || 'Erro ao salvar', 'error')
     }
   }, [canEdit, dispatch, toast, saveSnapshot])
+
+  const aplicarRascunho = useCallback((resultado: ResultadoMescla) => {
+    // Árvore mesclada sobre a versão atual; o autosave grava (não é árvore do servidor).
+    dispatch({ type: 'SET_TREE', payload: { nodes: resultado.arvore.nodes, rootId: resultado.arvore.rootId, serverVersion: stateRef.current.sync.serverVersion } })
+    apagarRascunho(tenantId, userId, projetoId)
+    setRascunho(null)
+    toast(resultado.conflitos.length
+      ? `${resultado.aplicadas.length} alteração(ões) reaplicada(s); ${resultado.conflitos.length} em conflito ficaram com a versão do servidor.`
+      : `${resultado.aplicadas.length} alteração(ões) reaplicada(s).`, resultado.conflitos.length ? 'warning' : 'success')
+  }, [dispatch, toast, tenantId, userId, projetoId])
+  const descartarRascunho = useCallback(() => {
+    apagarRascunho(tenantId, userId, projetoId)
+    setRascunho(null)
+  }, [tenantId, userId, projetoId])
 
   // ── Zoom helpers (reutilizados por teclado, menu de contexto e roda) ──────
   const zoomBy = useCallback((factor: number) => {
@@ -661,6 +703,14 @@ function WbsCanvasInner({ projetoId, canEdit, initialView = 'chart', canViewCost
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {rascunho && canEdit && (
+        <RecuperarRascunhoEap
+          rascunho={rascunho}
+          atual={{ rootId: state.rootId, nodes: state.nodes }}
+          onAplicar={aplicarRascunho}
+          onDescartar={descartarRascunho}
+        />
+      )}
       <WbsMenubar
         viewMode={viewMode}
         onChangeView={changeView}
