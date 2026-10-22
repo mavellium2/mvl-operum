@@ -73,8 +73,9 @@ services:
       - "traefik.http.routers.mcp-prod.service=mcp-server-${COMPOSE_PROJECT_NAME}"
       - "traefik.http.routers.mcp-prod.middlewares=secure-headers@file"
       # TODO: remover este router quando o registro DNS de mcp.operum.adm.br existir.
-      # Fallback temporário: expõe MCP e uploads em api.operum.adm.br
-      - "traefik.http.routers.mcp-prod-api.rule=Host(`api.operum.adm.br`) && (Path(`/mcp`) || PathPrefix(`/uploads/`))"
+      # Fallback temporário: expõe MCP, uploads e os metadados OAuth do recurso
+      # (RFC 9728) em api.operum.adm.br. O resto do host segue no api-gateway.
+      - "traefik.http.routers.mcp-prod-api.rule=Host(`api.operum.adm.br`) && (Path(`/mcp`) || PathPrefix(`/uploads/`) || PathPrefix(`/.well-known/oauth-protected-resource`))"
       - "traefik.http.routers.mcp-prod-api.entrypoints=websecure"
       - "traefik.http.routers.mcp-prod-api.tls.certresolver=myresolver"
       - "traefik.http.routers.mcp-prod-api.service=mcp-server-${COMPOSE_PROJECT_NAME}"
