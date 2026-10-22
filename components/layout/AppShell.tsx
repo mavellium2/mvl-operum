@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import GlobalSidebar from '@/components/layout/GlobalSidebar'
 import IdleLogout from '@/components/auth/IdleLogout'
 
-const HIDDEN_PATHS = ['/login', '/register', '/recuperar-senha', '/alterar-senha', '/no-project']
+const HIDDEN_PATHS = ['/login', '/register', '/recuperar-senha', '/alterar-senha', '/no-project', '/oauth']
 
 /**
  * Casca do app: sem header superior — o cabeçalho (marca, busca, workspace,

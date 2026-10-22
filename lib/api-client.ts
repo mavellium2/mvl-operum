@@ -136,6 +136,60 @@ export const apiTokensApi = {
     request(`/auth/api-tokens/${id}`, { method: 'DELETE' }),
 }
 
+// ── OAuth (conector do Claude) ─────────────────────────────
+
+export type OAuthAuthorizeRequest = {
+  response_type: string
+  client_id: string
+  redirect_uri: string
+  code_challenge: string
+  code_challenge_method: string
+  state?: string
+  scope?: string
+  resource?: string
+}
+
+export type OAuthAuthorizeCheck =
+  | {
+      ok: true
+      client: { name: string; kind: string; clientId: string }
+      redirectUri: string
+      redirectHost: string
+      loopback: boolean
+      scopes: string[]
+      writeRequested: boolean
+      tenants: { tenantId: string; tenantName: string; role: string; isCurrent: boolean }[]
+    }
+  | { ok: false; error: string; description: string; redirect?: string }
+
+export type OAuthDecision = { redirect: string } | { ok: false; error: string; description: string; redirect?: string }
+
+export type OAuthGrantSummary = {
+  id: string
+  clientName: string
+  redirectHost: string
+  scopes: string[]
+  tenants: string[]
+  createdAt: string
+  lastUsedAt: string | null
+  expiresAt: string
+}
+
+export const oauthApi = {
+  check: (req: OAuthAuthorizeRequest) =>
+    request<OAuthAuthorizeCheck>('/auth/oauth/authorize/check', { method: 'POST', body: JSON.stringify(req) }),
+
+  approve: (req: OAuthAuthorizeRequest, tenantIds: string[], allowWrite: boolean) =>
+    request<OAuthDecision>('/auth/oauth/authorize/approve', { method: 'POST', body: JSON.stringify({ request: req, tenantIds, allowWrite }) }),
+
+  deny: (req: OAuthAuthorizeRequest) =>
+    request<OAuthDecision>('/auth/oauth/authorize/deny', { method: 'POST', body: JSON.stringify(req) }),
+
+  grants: () => request<OAuthGrantSummary[]>('/auth/oauth/grants'),
+
+  revokeGrant: (id: string) => request(`/auth/oauth/grants/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+}
+
 // ── Admin ─────────────────────────────────────────────────
 
 export const adminApi = {
