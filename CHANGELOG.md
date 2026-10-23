@@ -21,6 +21,7 @@ Conector do Operum no app do Claude (web, Desktop e celular) com login OAuth.
 - O token OAuth só é aceito pelo gateway quando vem do mcp-server (chave interna) e com a audiência do MCP. Usado direto na API pública, é recusado.
 - Corrigido: o bloqueio da introspecção interna de PAT diferenciava maiúsculas, e `/AUTH/API-TOKENS/INTROSPECT` chegava ao auth-service para usuários logados. O gateway agora compara o caminho normalizado.
 - Rotas de conta do auth-service recusam qualquer token de acesso (PAT ou OAuth), não só PAT.
+
 ## [1.35.1] — 2026-10-23
 
 Atualização de segurança.
