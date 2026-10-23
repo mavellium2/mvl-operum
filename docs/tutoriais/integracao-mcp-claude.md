@@ -136,6 +136,7 @@ No seu computador, o Claude Code também vai encontrar o `operum-nuvem` no `.mcp
 | O Claude diz que não tem permissão para criar ou alterar | O token foi gerado sem **Permitir escrita**. Gere outro com a opção marcada. |
 | "Token inválido" ou "não autorizado" | O token venceu ou foi revogado. Gere outro e conecte de novo (`claude mcp remove operum` e o comando novo). |
 | O Claude não encontra um projeto | Confira se você é membro do projeto no Operum e se ele é da instituição do token. |
+| No app do Claude, o conector não conecta ou diz que "a integração rejeitou as credenciais" | O login OAuth não está ligado no servidor. Quem administra o Operum precisa preencher `OAUTH_ISSUER`, `MCP_RESOURCE_URL` e `MCP_GATEWAY_KEY` no `.env` e recriar `auth-service`, `api-gateway` e `mcp-server`. Depois, remova o conector e conecte de novo. |
 | Cópias ou importações grandes param no meio | Aumente o tempo limite das ferramentas: `MCP_TOOL_TIMEOUT=600000 claude`. |
 
 ---
