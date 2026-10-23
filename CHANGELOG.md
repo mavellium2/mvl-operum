@@ -7,6 +7,11 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.36.2] — 2026-10-23
+
+### Segurança
+- Atualiza o zod para 4.6.7 (override `>=4.6.6 <5.0.0`) no workspace e nas instalações isoladas dos serviços que o usam, corrigindo o consumo excessivo de memória ao validar coleções grandes (GHSA-mrhx-c7xc-m3w5) e desbloqueando a auditoria de dependências do CI. Sem mudança de comportamento.
+
 ## [1.36.1] — 2026-10-23
 
 Correção do conector OAuth do MCP.
