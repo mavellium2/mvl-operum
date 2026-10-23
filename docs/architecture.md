@@ -617,6 +617,16 @@ Notificações, galeria de anexos, edição de perfil, troca de senha forçada. 
 ### `/oauth/autorizar`
 Tela de consentimento OAuth (1.36.0), fora da sidebar. Exige sessão; o proxy guarda a query no `from` do login e o login volta para ela mesmo sem projeto. Valida o pedido no auth-service, mostra app, quem pede (host do `client_id` no CIMD; no DCR, o nome é marcado como declarado pelo app), host de retorno, permissões e workspaces. Permitir e Negar navegam pelo navegador até a URL de retorno (a CSP limita `form-action` a `'self'`). Sem cache e com `Referrer-Policy: no-referrer`.
 
+### PWA: `/manifest.webmanifest`, `/sw.js`, `/offline`
+App instalável (1.38.0, ADR-058, cards MOB-18 e MOB-19 da sprint 1.2 Mobile). Usa o suporte nativo do Next, sem biblioteca:
+
+- `app/manifest.ts` gera o manifest (`display: standalone`, `start_url` e `scope` em `/`, ícones em `public/icons/`). Os PNG foram gerados a partir de `public/icons/operum.svg` (comum, cantos arredondados) e `operum-maskable.svg` (fundo sangrado, glifo na zona segura). `app/layout.tsx` declara `theme-color`, `appleWebApp` e o `apple-touch-icon`.
+- `app/sw.js/route.ts` serve o worker montado por `lib/pwa/serviceWorker.ts` (`swMain` serializada no script, com a versão do `package.json` no nome dos caches), com `Cache-Control: no-cache, no-store, must-revalidate`. Escopo `/`.
+- O worker guarda só `/_next/static/*` e `/icons/*` (cache primeiro, teto de 300 entradas) e a página `/offline` com os estáticos que ela usa (buscada sem cookies na instalação). Navegações vão sempre à rede; só a falha de rede devolve `/offline` no endereço pedido. APIs, RSC, Server Actions, anexos, outras origens e pedidos com `Range` não passam pelo worker. Como nada guardado depende de sessão, logout e troca de instituição não precisam limpar cache.
+- `components/pwa/ServiceWorkerRegistrar.tsx` (no layout raiz, também no login) registra o worker só em produção, procura versão nova ao voltar para a aba e mostra o aviso de atualização; o worker novo só assume com `SKIP_WAITING` pedido pelo usuário. Em desenvolvimento remove registros antigos.
+- `/offline` é pública (fora do `proxy.ts` e do AppShell) e cobre a tela com uma camada fixa, porque é servida no endereço que falhou.
+- Pendências: `viewport-fit=cover` e as áreas seguras ficam para a navegação mobile (MOB-01); orientação de instalação (MOB-20) e push (MOB-21) ainda não existem; homologação em Android e iPhone reais pendente.
+
 ### `/sobre`, `/equipe`
 Página institucional (`/equipe` redireciona para `/sobre`).
 
@@ -694,6 +704,7 @@ Schemas em `lib/validation/`:
 | Isolamento de dados | Toda query usa `tenantId` da sessão |
 | Validação de input | Zod em todas as actions e API routes |
 | Auditoria | `AuditLog`/`Auditoria` registra ações críticas com userId, entidade e detalhes |
+| PWA / service worker | `/sw.js` só guarda estáticos versionados, ícones e a página pública `/offline`; nunca HTML autenticado, APIs nem anexos (ADR-058). CSP com `manifest-src` e `worker-src` em `'self'`. Manifest, worker, ícones e `/offline` ficam fora do `proxy.ts`. |
 | Middleware de auth (monolito) | `proxy.ts` valida sessão via `http://localhost:PORT/api/me` antes de cada rota protegida |
 | Confiança gateway↔serviços | Serviços internos **não** revalidam o JWT — confiam nos headers `x-user-id`/`x-tenant-id`/`x-user-role` injetados pelo gateway, protegidos pelo segredo compartilhado `X-Internal-Api-Key` (`INTERNAL_API_KEY`). Rede `internal` do Docker Compose impede acesso direto de fora. |
 | Rate limiting | `api-gateway`: 200 req/s por IP (`express-rate-limit`) |

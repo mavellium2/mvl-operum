@@ -14,7 +14,7 @@ vi.mock('jose', async (importOriginal) => {
 
 import { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
-import { proxy } from '@/proxy'
+import { proxy, config } from '@/proxy'
 
 function makeRequest(path: string, cookie?: string) {
   const url = `http://localhost${path}`
@@ -125,4 +125,23 @@ describe('proxy — volta para a autorização OAuth depois do login', () => {
     const res = await proxy(makeRequest('/projetos?aba=x'))
     expect(new URL(res.headers.get('location')!).searchParams.get('from')).toBe('/projetos')
   })
+})
+
+describe('proxy — arquivos do PWA ficam fora da sessão', () => {
+  // Mesma leitura do Next: o matcher casa o caminho inteiro.
+  const matcher = new RegExp(`^${config.matcher[0]}$`)
+
+  it.each(['/manifest.webmanifest', '/sw.js', '/icons/icon-192.png', '/icons/apple-icon-180.png', '/apple-touch-icon.png', '/offline'])(
+    '%s não passa pelo proxy (o navegador busca sem sessão)',
+    path => {
+      expect(matcher.test(path)).toBe(false)
+    },
+  )
+
+  it.each(['/', '/dashboard', '/projetos/abc', '/configuracoes/integracoes', '/api/search'])(
+    '%s continua protegido',
+    path => {
+      expect(matcher.test(path)).toBe(true)
+    },
+  )
 })
