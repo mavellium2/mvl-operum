@@ -718,19 +718,6 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** o documento escala a árvore para caber na página A4; árvores muito largas ficam com texto menor.
 - **Referências:** `components/projetos/documentacao/EapGraficaDaAba.tsx`, `components/projetos/documentacao/EapDocumentSheet.tsx`, `lib/wbsLayout.ts`, card `cmvfuznz0004b01qnstet076j`.
 
-
-## ADR-057 — Login OAuth no MCP para conectores do Claude
-
-- **Data do registro:** 2026-10-21.
-- **Status:** proposta, aguardando aprovação; nada implementado.
-- **Contexto:** os conectores do Claude (claude.ai, Desktop, celular, Cowork e sessões do Claude Code na nuvem) se autenticam por OAuth 2.1, seguindo a especificação MCP 2025-11-25. O MCP do Operum só aceita PAT no cabeçalho, então só funciona no Claude Code local. A equipe quer criar e atualizar tarefas pelo chat do celular.
-- **Escolha (proposta):** o auth-service vira servidor de autorização (issuer `https://api.operum.adm.br`, rotas públicas `/oauth/*` pelo gateway), com CIMD (allowlist de hosts) e DCR (allowlist de redirects), PKCE S256, código de uso único, access token opaco `opr_oat_` de 1 h e refresh rotativo com detecção de reuso. O consentimento fica no app (`/oauth/autorizar`) e permite escolher vários workspaces e leitura ou escrita. O mcp-server publica os metadados do recurso, responde 401 com `resource_metadata` e chama o gateway com o token, o `X-Operum-Tenant` e uma chave interna (`X-Operum-Mcp-Key`). O gateway só aceita o token OAuth com essa chave e com a audiência do MCP. O PAT continua como está.
-- **Justificativa:** reaproveita a introspecção com cache, a revogação imediata e a autorização por chamada do gateway, que já valem para o PAT. O token opaco mantém a revogação imediata. A chave interna restringe o token à sua audiência sem criar um segundo tipo de token.
-- **Alternativas consideradas:** provedor de identidade externo (Keycloak, Auth0, WorkOS), que exigiria migrar o login e duplicar usuários por tenant; JWT como access token, que perde a revogação imediata; PAT emitido no consentimento, que não tem audiência, rotação nem refresh; troca de token RFC 8693 a cada chamada (mais rígida, fica como evolução); cabeçalho fixo do claude.ai (`static_headers`, beta), que é uma credencial da organização inteira e não identifica cada pessoa.
-- **Consequências:** novos modelos no auth-service (cliente, grant, tenants do grant, código, token), rotas públicas novas no gateway, rota `/.well-known/oauth-protected-resource` no Traefik e os segredos `MCP_GATEWAY_KEY` e `OAUTH_*`. Mudar depois o recurso canônico para `mcp.operum.adm.br` invalida as conexões existentes. Superfície de ataque nova (registro e busca CIMD), mitigada por allowlist, proteção a SSRF e rate limit.
-- **Condições de revisão:** se o Claude passar a exigir JWT ou outro formato de token; se o Operum adotar um provedor de identidade externo; ao trocar o domínio do MCP.
-- **Referências:** [`docs/specs/SDD-mcp-oauth.md`](specs/SDD-mcp-oauth.md), `mcp-server/src/tenants.ts`, `api-gateway/src/middleware/auth.ts`, `auth-service/src/api-tokens/`, cards `cmviogcqv003101o2mce220xt` e seguintes da sprint 1.6.
-
 ## ADR-054 — Conclusão e reabertura entre Planilha e quadro
 
 - **Data:** 2026-10-21.
@@ -765,3 +752,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** o rascunho fica só no navegador onde a edição foi feita. Duas abas do mesmo usuário compartilham a chave: a mais recente prevalece.
 - **Referências:** `lib/wbsMerge.ts`, `lib/wbsRascunho.ts`, `components/wbs/RecuperarRascunhoEap.tsx`, `components/wbs/WbsCanvas.tsx`, card `cmvfctgt0003b01qwh2g6ah3r`.
 
+## ADR-057 — Login OAuth no MCP para conectores do Claude
+
+- **Data do registro:** 2026-10-21.
+- **Status:** implementada nesta entrega (1.36.0); homologação em staging e no celular pendente. O usuário pediu para seguir com as recomendações do SDD (seção 8) sem escolher outra opção.
+- **Contexto:** os conectores do Claude (claude.ai, Desktop, celular, Cowork e sessões do Claude Code na nuvem) se autenticam por OAuth 2.1, seguindo a especificação MCP 2025-11-25. O MCP do Operum só aceita PAT no cabeçalho, então só funciona no Claude Code local. A equipe quer criar e atualizar tarefas pelo chat do celular.
+- **Escolha:** o auth-service vira servidor de autorização (issuer `https://api.operum.adm.br`, rotas públicas `/oauth/*` pelo gateway), com CIMD (allowlist de hosts) e DCR (allowlist de redirects), PKCE S256, código de uso único, access token opaco `opr_oat_` de 1 h e refresh rotativo com detecção de reuso. O consentimento fica no app (`/oauth/autorizar`) e permite escolher vários workspaces e leitura ou escrita. O mcp-server publica os metadados do recurso, responde 401 com `resource_metadata` e chama o gateway com o token, o `X-Operum-Tenant` e uma chave interna (`X-Operum-Mcp-Key`). O gateway só aceita o token OAuth com essa chave e com a audiência do MCP. O PAT continua como está.
+- **Justificativa:** reaproveita a introspecção com cache, a revogação imediata e a autorização por chamada do gateway, que já valem para o PAT. O token opaco mantém a revogação imediata. A chave interna restringe o token à sua audiência sem criar um segundo tipo de token.
+- **Alternativas consideradas:** provedor de identidade externo (Keycloak, Auth0, WorkOS), que exigiria migrar o login e duplicar usuários por tenant; JWT como access token, que perde a revogação imediata; PAT emitido no consentimento, que não tem audiência, rotação nem refresh; troca de token RFC 8693 a cada chamada (mais rígida, fica como evolução); cabeçalho fixo do claude.ai (`static_headers`, beta), que é uma credencial da organização inteira e não identifica cada pessoa.
+- **Decisões da seção 8 do SDD adotadas:** access de 1 h, refresh de 30 dias com rotação e teto de 90 dias; recurso canônico `https://api.operum.adm.br/mcp` agora, configurável por `MCP_RESOURCE_URL` (trocar por `mcp.` desconecta quem já conectou); loopback aceito em produção, com aviso no consentimento; revogação de grants pelo admin do tenant fica para depois; chave interna no lugar da troca de token RFC 8693. Reuso de refresh dentro de 10 s só responde `invalid_grant` (tolera retentativa do cliente); depois disso revoga a conexão.
+- **Consequências:** novos modelos no auth-service (cliente, grant, tenants do grant, código, token), rotas públicas novas no gateway, rota `/.well-known/oauth-protected-resource` no Traefik e os segredos `MCP_GATEWAY_KEY` e `OAUTH_*`. Mudar depois o recurso canônico para `mcp.operum.adm.br` invalida as conexões existentes. Superfície de ataque nova (registro e busca CIMD), mitigada por allowlist, proteção a SSRF e rate limit.
+- **Condições de revisão:** se o Claude passar a exigir JWT ou outro formato de token; se o Operum adotar um provedor de identidade externo; ao trocar o domínio do MCP.
+- **Referências:** [`docs/specs/SDD-mcp-oauth.md`](specs/SDD-mcp-oauth.md), `mcp-server/src/tenants.ts`, `api-gateway/src/middleware/auth.ts`, `auth-service/src/api-tokens/`, cards `cmviogcqv003101o2mce220xt` e seguintes da sprint 1.6.

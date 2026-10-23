@@ -1,10 +1,15 @@
 import { createHash } from 'crypto'
-import { gateway as defaultGatewayFactory, type Gateway } from './gateway.js'
+import { gateway as defaultGatewayFactory, OAUTH_ACCESS_PREFIX, type Gateway } from './gateway.js'
 import { UserError } from './errors.js'
 
 export const PAT_PREFIX = 'opr_pat_'
 export const MAX_TOKENS = 10
 const PAT_PATTERN = /^opr_pat_[A-Za-z0-9]{8,128}$/
+const OAUTH_PATTERN = /^opr_oat_[A-Za-z0-9]{8,128}$/
+
+export function isOAuthToken(token: string): boolean {
+  return token.startsWith(OAUTH_ACCESS_PREFIX)
+}
 const IDENTITY_TTL_MS = 60_000
 
 export interface TenantIdentity {
@@ -46,9 +51,13 @@ interface MyTenantItem {
  */
 export function parseTokens(authorization: string | undefined, extra: string | string[] | undefined): string[] | null {
   const primary = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : ''
+  const extraRaw = Array.isArray(extra) ? extra.join(',') : (extra ?? '')
+
+  // Token OAuth (conector do Claude): uma conexão já cobre os workspaces
+  // autorizados no consentimento. Não se mistura com PATs extras.
+  if (OAUTH_PATTERN.test(primary)) return extraRaw.trim() ? null : [primary]
   if (!PAT_PATTERN.test(primary)) return null
 
-  const extraRaw = Array.isArray(extra) ? extra.join(',') : (extra ?? '')
   const others = extraRaw
     .split(',')
     .map(t => t.trim())
@@ -114,9 +123,43 @@ export class TenantRegistry {
   private resolved: Promise<{ contexts: TenantContext[]; failures: TokenFailure[] }> | null = null
   private defaultCtx: Promise<TenantContext> | null = null
 
-  constructor(tokens: string[], makeGateway: (token: string) => Gateway = defaultGatewayFactory) {
+  private readonly oauth: boolean
+
+  constructor(tokens: string[], private readonly makeGateway: (token: string, tenantId?: string) => Gateway = defaultGatewayFactory) {
     if (tokens.length === 0) throw new Error('TenantRegistry exige ao menos um token')
+    this.oauth = isOAuthToken(tokens[0])
     this.entries = tokens.map(token => ({ token, tokenHash: hashToken(token), gw: makeGateway(token) }))
+  }
+
+  /** A conexão é OAuth (conector do Claude) e não PAT. */
+  get isOAuth(): boolean {
+    return this.oauth
+  }
+
+  /**
+   * Conexão OAuth: um só token cobre vários workspaces. O gateway devolve em
+   * /auth/my-tenants só os workspaces autorizados; cada um ganha um cliente
+   * com X-Operum-Tenant e uma chave de cache própria.
+   */
+  private async oauthContexts(def: TenantContext): Promise<{ contexts: TenantContext[]; failures: TokenFailure[] }> {
+    const token = this.entries[0].token
+    const granted = await def.gw.get<MyTenantItem[]>('/auth/my-tenants')
+    const contexts: TenantContext[] = [def]
+    const failures: TokenFailure[] = []
+    for (const t of granted) {
+      if (t.tenantId === def.tenantId) continue
+      const tokenHash = hashToken(`${token}#${t.tenantId}`)
+      const gw = this.makeGateway(token, t.tenantId)
+      try {
+        const identity = await fetchIdentity(gw, tokenHash)
+        if (!this.entries.some(e => e.tokenHash === tokenHash)) this.entries.push({ token, tokenHash, gw })
+        contexts.push({ ...identity, gw, isDefault: false, tokenHash })
+      } catch (err) {
+        const e = err as { status?: number; message?: string }
+        failures.push({ token_index: 0, status: e?.status, message: e?.message ?? 'erro desconhecido' })
+      }
+    }
+    return { contexts, failures }
   }
 
   /** Only used to encrypt a task-bound, short-lived upload grant; never serialize this token. */
@@ -150,6 +193,12 @@ export class TenantRegistry {
 
   /** Todos os tenants alcançáveis. Tokens que falham vão para `failures` sem derrubar os demais. */
   listAll(): Promise<{ contexts: TenantContext[]; failures: TokenFailure[] }> {
+    if (!this.resolved && this.oauth) {
+      this.resolved = this.getDefault().then(def => this.oauthContexts(def))
+      this.resolved.catch(() => {
+        this.resolved = null
+      })
+    }
     if (!this.resolved) {
       this.resolved = (async () => {
         const results = await Promise.allSettled(
@@ -192,6 +241,12 @@ export class TenantRegistry {
     if (match) return match
 
     const available = contexts.map(c => `${c.tenantId} (${c.tenantName ?? 'sem nome'})`).join(', ')
+    if (this.oauth) {
+      throw new UserError(
+        `O workspace ${tenantId} não foi autorizado nesta conexão. Workspaces disponíveis: ${available}. ` +
+          'Para incluir outro, reconecte o conector do Operum no Claude e marque o workspace.',
+      )
+    }
     throw new UserError(
       `Nenhum token configurado para o tenant ${tenantId}. Tenants disponíveis: ${available}. ` +
         'Para operar outro tenant, gere um PAT nele (/perfil/tokens) e adicione ao header X-Operum-Tokens.',

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { jwtVerify, importSPKI } from 'jose'
-import { createHash } from 'crypto'
+import { createHash, timingSafeEqual } from 'crypto'
 import Redis from 'ioredis'
 
 // Routes that don't require authentication
@@ -12,13 +12,20 @@ const PUBLIC_PATHS = [
   '/auth/password/reset',
   '/auth/verify',
   '/health',
+  // Servidor de autorização OAuth (SDD-mcp-oauth): metadados, registro, token e revogação.
+  '/.well-known/oauth-authorization-server',
+  '/oauth/register',
+  '/oauth/token',
+  '/oauth/revoke',
 ]
 
 // Rota interna do auth-service — nunca deve ser alcançável através do gateway,
 // pois o proxy injeta X-Internal-Api-Key incondicionalmente em toda requisição
 // proxiada, o que transformaria esta rota num oráculo de validação de tokens
 // de qualquer tenant se fosse exposta publicamente.
-const BLOCKED_PATHS = ['/auth/api-tokens/introspect']
+// A comparação usa o caminho normalizado (minúsculas, sem barras repetidas):
+// o Express e o Nest roteiam sem diferenciar maiúsculas.
+const BLOCKED_PATHS = ['/auth/api-tokens/introspect', '/oauth/introspect']
 
 // PATs servem à automação (MCP). No auth-service só alcançam leituras de
 // identidade — allowlist, não denylist: rotas de sessão/conta (switch-tenant,
@@ -43,7 +50,9 @@ export function isPatAllowed(method: string, path: string): boolean {
 }
 
 const PAT_PREFIX = 'opr_pat_'
+const OAUTH_ACCESS_PREFIX = 'opr_oat_'
 const PAT_CACHE_TTL_SECONDS = 60
+const OAUTH_SCOPE_WRITE = 'operum:write'
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 function normalizePem(raw: string): string {
@@ -117,20 +126,29 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
 
+interface OAuthIntrospectResult {
+  active: boolean
+  grantId?: string
+  clientId?: string
+  scopes?: string[]
+  resource?: string
+  tenants?: { tenantId: string; userId: string; role: string; isDefault: boolean }[]
+}
+
 /**
- * Introspecta um PAT junto ao auth-service, com cache no Redis (TTL 60s).
- * Retorna `null` quando nem o cache nem o auth-service estão disponíveis —
- * nesse caso o chamador deve falhar fechado (503). Sessões JWT também
- * exigem prova atual da autoridade em produção.
+ * Introspecta um token (PAT ou OAuth) junto ao auth-service, com cache no
+ * Redis (TTL 60s). Retorna `null` quando nem o cache nem o auth-service estão
+ * disponíveis — nesse caso o chamador deve falhar fechado (503). Sessões JWT
+ * também exigem prova atual da autoridade em produção.
  */
-async function introspectPat(token: string): Promise<IntrospectResult | null> {
+async function introspect<T>(token: string, cachePrefix: string, path: string): Promise<T | null> {
   const hash = hashToken(token)
-  const cacheKey = `pat:${hash}`
+  const cacheKey = `${cachePrefix}:${hash}`
   let redisAvailable = true
 
   try {
     const cached = await getRedis().get(cacheKey)
-    if (cached) return JSON.parse(cached) as IntrospectResult
+    if (cached) return JSON.parse(cached) as T
   } catch {
     redisAvailable = false
   }
@@ -138,15 +156,15 @@ async function introspectPat(token: string): Promise<IntrospectResult | null> {
   const authServiceUrl = process.env.AUTH_SERVICE_URL ?? 'http://auth-service:4001'
   const internalApiKey = process.env.INTERNAL_API_KEY ?? ''
 
-  let result: IntrospectResult | null = null
+  let result: T | null = null
   try {
-    const response = await fetch(`${authServiceUrl}/auth/api-tokens/introspect`, {
+    const response = await fetch(`${authServiceUrl}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Internal-Api-Key': internalApiKey },
       body: JSON.stringify({ token }),
       signal: AbortSignal.timeout(5000),
     })
-    if (response.ok) result = (await response.json()) as IntrospectResult
+    if (response.ok) result = (await response.json()) as T
   } catch {
     result = null
   }
@@ -164,13 +182,34 @@ async function introspectPat(token: string): Promise<IntrospectResult | null> {
   return result
 }
 
+const introspectPat = (token: string) => introspect<IntrospectResult>(token, 'pat', '/auth/api-tokens/introspect')
+const introspectOAuth = (token: string) => introspect<OAuthIntrospectResult>(token, 'oat', '/oauth/introspect')
+
+function sameSecret(a: string, b: string): boolean {
+  const ab = Buffer.from(a)
+  const bb = Buffer.from(b)
+  return ab.length === bb.length && timingSafeEqual(ab, bb)
+}
+
+function sameResource(a: string, b: string): boolean {
+  return a.replace(/\/+$/, '').toLowerCase() === b.replace(/\/+$/, '').toLowerCase()
+}
+
 export function authMiddleware() {
   return async (req: Request, res: Response, next: NextFunction) => {
     const path = req.path
+    const normalized = normalizePath(path)
 
-    if (BLOCKED_PATHS.some(p => path === p || path.startsWith(`${p}/`))) {
+    if (BLOCKED_PATHS.some(p => normalized === p || normalized.startsWith(`${p}/`))) {
       return res.status(404).end()
     }
+
+    // Cabeçalhos que só o mcp-server envia (token OAuth). Lidos aqui e nunca
+    // repassados aos serviços.
+    const mcpKey = req.headers['x-operum-mcp-key'] as string | undefined
+    const requestedTenant = req.headers['x-operum-tenant'] as string | undefined
+    delete req.headers['x-operum-mcp-key']
+    delete req.headers['x-operum-tenant']
 
     // Nunca confiar em headers de identidade vindos do cliente — cada branch
     // abaixo (PAT ou JWT) os reatribui explicitamente a partir de uma fonte
@@ -182,6 +221,7 @@ export function authMiddleware() {
     delete req.headers['x-user-role']
     delete req.headers['x-auth-type']
     delete req.headers['x-api-token-id']
+    delete req.headers['x-oauth-tenants']
 
     // Skip auth for public paths
     if (PUBLIC_PATHS.some(p => path.startsWith(p))) {
@@ -193,6 +233,46 @@ export function authMiddleware() {
 
     if (!token) {
       return res.status(401).json({ error: 'Não autorizado' })
+    }
+
+    if (token.startsWith(OAUTH_ACCESS_PREFIX)) {
+      // Token OAuth tem audiência: o MCP. Só vale chegando pelo mcp-server, que
+      // prova isso com a chave interna; direto na API pública é recusado.
+      const expectedKey = process.env.MCP_GATEWAY_KEY ?? ''
+      if (!expectedKey || !mcpKey || !sameSecret(mcpKey, expectedKey)) {
+        return res.status(401).json({ error: 'Token OAuth só é aceito pelo MCP do Operum' })
+      }
+      const introspection = await introspectOAuth(token)
+      if (!introspection) {
+        return res.status(503).json({ error: 'Operum indisponível no momento, tente novamente.' })
+      }
+      const resource = process.env.MCP_RESOURCE_URL ?? 'https://api.operum.adm.br/mcp'
+      if (!introspection.active || !introspection.resource || !sameResource(introspection.resource, resource)) {
+        return res.status(401).json({ error: 'Token inválido ou revogado' })
+      }
+      const tenants = introspection.tenants ?? []
+      const tenant = requestedTenant
+        ? tenants.find(t => t.tenantId === requestedTenant)
+        : (tenants.find(t => t.isDefault) ?? tenants[0])
+      if (!tenant) {
+        return res.status(403).json({ error: 'Workspace não autorizado nesta conexão' })
+      }
+      if (!isPatAllowed(req.method, path)) {
+        return res.status(403).json({ error: 'Operação não permitida com token de acesso' })
+      }
+      if (WRITE_METHODS.has(req.method) && !(introspection.scopes ?? []).includes(OAUTH_SCOPE_WRITE)) {
+        return res.status(403).json({ error: 'Conexão sem permissão de escrita (só leitura)' })
+      }
+
+      req.headers['x-user-id'] = tenant.userId
+      req.headers['x-tenant-id'] = tenant.tenantId
+      req.headers['x-user-role'] = tenant.role
+      req.headers['x-auth-type'] = 'oauth'
+      req.headers['x-api-token-id'] = `oauth:${introspection.grantId ?? ''}`
+      // Workspaces da conexão: o auth-service restringe /auth/my-tenants a eles.
+      req.headers['x-oauth-tenants'] = tenants.map(t => t.tenantId).join(',')
+
+      return next()
     }
 
     if (token.startsWith(PAT_PREFIX)) {

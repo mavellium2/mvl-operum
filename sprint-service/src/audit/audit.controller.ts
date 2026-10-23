@@ -29,7 +29,7 @@ export class AuditController {
   ) {
     if (!body.action || !body.entity) throw new BadRequestException('action e entity são obrigatórios')
     // authType/apiTokenId vêm do gateway (não do cliente) e sobrescrevem o que vier em details.
-    const details = authType === 'pat' ? { ...body.details, authType, apiTokenId } : body.details
+    const details = authType === 'pat' || authType === 'oauth' ? { ...body.details, authType, apiTokenId } : body.details
     return this.auditService.log(tenantId, userId || undefined, body.action, body.entity, body.entityId, details)
   }
 }

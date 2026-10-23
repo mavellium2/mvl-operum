@@ -23,7 +23,7 @@ export class ApiTokensController {
   // x-auth-type só existe quando o api-gateway autenticou a requisição via
   // introspecção de PAT (Fase 1b) — sessões JWT normais não o enviam.
   private assertNotPat(authType: string | undefined): void {
-    if (authType === 'pat') throw new ForbiddenException('Personal Access Tokens não podem gerenciar outros tokens')
+    if (authType) throw new ForbiddenException('Tokens de acesso não podem gerenciar outros tokens')
   }
 
   @Post()

@@ -28,6 +28,7 @@ model Tenant {
 
   users     User[]
   apiTokens ApiToken[]
+  oauthGrantTenants OAuthGrantTenant[]
 }
 
 model User {
@@ -67,6 +68,7 @@ model User {
   updatedAt           DateTime  @updatedAt
 
   apiTokens ApiToken[]
+  oauthGrantTenants OAuthGrantTenant[]
 
   @@unique([email, tenantId])
 }
@@ -88,4 +90,81 @@ model ApiToken {
   user   User   @relation(fields: [userId], references: [id])
 
   @@index([userId, tenantId])
+}
+
+// ── OAuth 2.1 para conectores MCP (SDD-mcp-oauth, ADR-056) ────────────────────
+// Códigos e tokens são guardados só como hash SHA-256.
+
+model OAuthClient {
+  id           String    @id @default(cuid())
+  clientId     String    @unique // URL (CIMD) ou id gerado (DCR)
+  kind         String // "cimd" | "dcr"
+  name         String
+  redirectUris String[]
+  fetchedAt    DateTime? // CIMD: última leitura do documento
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  grants OAuthGrant[]
+}
+
+model OAuthGrant {
+  id          String    @id @default(cuid())
+  clientRowId String
+  email       String
+  resource    String
+  scopes      String[]
+  redirectUri String
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime // teto absoluto da conexão
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+
+  client  OAuthClient        @relation(fields: [clientRowId], references: [id])
+  tenants OAuthGrantTenant[]
+  tokens  OAuthToken[]
+
+  @@index([email])
+}
+
+model OAuthGrantTenant {
+  grantId   String
+  tenantId  String
+  userId    String
+  isDefault Boolean @default(false)
+
+  grant  OAuthGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  tenant Tenant     @relation(fields: [tenantId], references: [id])
+  user   User       @relation(fields: [userId], references: [id])
+
+  @@id([grantId, tenantId])
+  @@index([userId])
+}
+
+model OAuthCode {
+  codeHash      String    @id
+  clientRowId   String
+  redirectUri   String
+  codeChallenge String
+  resource      String
+  scopes        String[]
+  email         String
+  tenants       Json // [{ tenantId, userId, isDefault }]
+  expiresAt     DateTime
+  usedAt        DateTime?
+  grantId       String? // preenchido na troca; reuso do código revoga este grant
+  createdAt     DateTime  @default(now())
+}
+
+model OAuthToken {
+  tokenHash String    @id
+  grantId   String
+  type      String // "access" | "refresh"
+  expiresAt DateTime
+  rotatedAt DateTime? // refresh já trocado por um novo par
+  createdAt DateTime  @default(now())
+
+  grant OAuthGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  @@index([grantId])
 }

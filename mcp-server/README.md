@@ -48,6 +48,18 @@ Escritas exigem tokens com escopo `write`. Um token revogado deixa de funcionar 
 
 Cópias de projetos grandes podem levar alguns minutos (o servidor respeita o limite de 20 req/s por token do gateway). Se o cliente MCP cortar a chamada, aumente o timeout de tools (no Claude Code: `MCP_TOOL_TIMEOUT`, em ms).
 
+## Conectar no app do Claude (OAuth, desde 1.36.0)
+
+No claude.ai (web, Desktop e celular), adicione um conector personalizado com a URL `https://api.operum.adm.br/mcp`. O Claude recebe 401 com `resource_metadata`, descobre o servidor de autorização do Operum, abre `operum.adm.br/oauth/autorizar` para login e consentimento e passa a usar um token `opr_oat_…` de 1 h, renovado sozinho.
+
+- Uma conexão cobre os workspaces marcados no consentimento; as tools continuam aceitando `tenant_id`.
+- Permissões: `operum:read` sempre; `operum:write` se o usuário deixar marcado "Permitir criar e alterar".
+- Desconectar: Meu perfil → Personal Access Tokens → Apps conectados.
+- Configuração (mesmo `.env` para auth-service, api-gateway e mcp-server): `OAUTH_ISSUER`, `MCP_RESOURCE_URL`, `OAUTH_AUTHORIZE_URL`, `MCP_GATEWAY_KEY` (`openssl rand -base64 32`), `OAUTH_CIMD_ALLOWED_HOSTS` e `OAUTH_DCR_ALLOWED_REDIRECTS`. Sem as três primeiras obrigatórias (`OAUTH_ISSUER`, `MCP_RESOURCE_URL`, `MCP_GATEWAY_KEY`), o MCP segue só com PAT.
+- O token OAuth não é aceito direto na API pública: o gateway exige a chave interna que só o mcp-server envia (`X-Operum-Mcp-Key`).
+
+Desenho e decisões: [`docs/specs/SDD-mcp-oauth.md`](../docs/specs/SDD-mcp-oauth.md) e ADR-057.
+
 ## Desenvolvimento local
 
 ```bash

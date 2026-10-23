@@ -2,6 +2,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { listApiTokensAction } from '@/app/actions/apiTokens'
 import ApiTokensManager from '@/components/profile/ApiTokensManager'
+import { listOAuthGrantsAction } from '@/app/actions/oauth'
+import ConnectedApps from '@/components/profile/ConnectedApps'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +12,7 @@ export const metadata: Metadata = { title: 'Personal Access Tokens' }
 export default async function ApiTokensPage() {
   const result = await listApiTokensAction()
   const tokens = ('tokens' in result ? result.tokens : []) ?? []
+  const { grants } = await listOAuthGrantsAction()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -29,6 +32,14 @@ export default async function ApiTokensPage() {
             Escolha o escopo de leitura ou escrita conforme a necessidade e revogue tokens que não estiverem mais em uso.
           </p>
           <ApiTokensManager tokens={tokens} />
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-1">Apps conectados</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Apps que você autorizou com login, como o conector do Operum no app do Claude (web e celular).
+          </p>
+          <ConnectedApps grants={grants} />
         </div>
       </main>
     </div>
