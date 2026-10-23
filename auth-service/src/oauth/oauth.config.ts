@@ -20,6 +20,16 @@ function trimSlash(url: string): string {
   return url.replace(/\/+$/, '')
 }
 
+/**
+ * O servidor de autorização só funciona com as mesmas três variáveis que o
+ * mcp-server exige (mcp-server/src/oauth.ts). Sem elas, o auth-service emitia
+ * tokens com os valores padrão abaixo que o mcp-server recusava logo depois
+ * do login ("a integração rejeitou as credenciais que acabou de emitir").
+ */
+export function oauthEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(env.OAUTH_ISSUER?.trim() && env.MCP_RESOURCE_URL?.trim() && env.MCP_GATEWAY_KEY?.trim())
+}
+
 export function oauthConfig() {
   return {
     issuer: trimSlash(process.env.OAUTH_ISSUER ?? 'https://api.operum.adm.br'),

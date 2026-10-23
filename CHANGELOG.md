@@ -7,6 +7,13 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.36.1] — 2026-10-23
+
+Correção do conector OAuth do MCP.
+
+### Corrigido
+- Com o OAuth sem configuração completa (`OAUTH_ISSUER`, `MCP_RESOURCE_URL` e `MCP_GATEWAY_KEY`), o auth-service usava valores padrão e fazia o login inteiro, mas o mcp-server recusava o token emitido. No app do Claude aparecia "Sua conta foi autorizada, mas a integração rejeitou as credenciais que acabou de emitir". Agora os metadados, o registro, o token e o consentimento respondem 404 enquanto a configuração estiver incompleta, e o Claude avisa já ao adicionar o conector. Revogação e "Apps conectados" seguem funcionando.
+
 ## [1.36.0] — 2026-10-23
 
 Conector do Operum no app do Claude (web, Desktop e celular) com login OAuth.

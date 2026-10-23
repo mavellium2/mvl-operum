@@ -1193,7 +1193,7 @@ Claude ─POST /mcp sem token─────────────► mcp-serv
 - **Workspaces:** o grant guarda `(tenantId, userId)` por workspace escolhido, validado por e-mail e usuário ativo, a mesma regra do `switch-tenant`. A introspecção tira o workspace cujo usuário foi desativado ou está com troca de senha pendente.
 - **Rotas de conta:** `NoPatGuard` e as rotas de PAT recusam qualquer `x-auth-type` (PAT ou OAuth).
 - **Rate limit:** 30 registros/min e 300 tokens/min no gateway; como o IP visto é o do Traefik, o limite é global.
-- **Configuração:** `OAUTH_ISSUER`, `MCP_RESOURCE_URL`, `OAUTH_AUTHORIZE_URL`, `MCP_GATEWAY_KEY`, `OAUTH_CIMD_ALLOWED_HOSTS` e `OAUTH_DCR_ALLOWED_REDIRECTS` no `.env` (ver `.env.example`). O router `mcp-prod-api` do Traefik inclui `/.well-known/oauth-protected-resource`.
+- **Configuração:** `OAUTH_ISSUER`, `MCP_RESOURCE_URL`, `OAUTH_AUTHORIZE_URL`, `MCP_GATEWAY_KEY`, `OAUTH_CIMD_ALLOWED_HOSTS` e `OAUTH_DCR_ALLOWED_REDIRECTS` no `.env` (ver `.env.example`). O router `mcp-prod-api` do Traefik inclui `/.well-known/oauth-protected-resource`. Sem `OAUTH_ISSUER`, `MCP_RESOURCE_URL` e `MCP_GATEWAY_KEY`, o auth-service responde 404 nos metadados, no registro, no token e no consentimento (`OAuthEnabledGuard`, 1.36.1), a mesma condição que desliga o OAuth no mcp-server; revogação, introspecção e a lista de apps conectados seguem disponíveis. Os três serviços leem o mesmo `.env` da VPS e só pegam valores novos quando recriados.
 
 ### MCP — importação incremental e uploads locais (fase 8)
 

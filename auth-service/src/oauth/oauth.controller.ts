@@ -9,6 +9,7 @@ interface Response {
 }
 import { Public } from '../decorators/public.decorator'
 import { NoPatGuard } from '../guards/no-pat.guard'
+import { OAuthEnabledGuard } from '../guards/oauth-enabled.guard'
 import { authorizationServerMetadata } from './oauth.config'
 import { OAuthError, OAuthService } from './oauth.service'
 import {
@@ -38,6 +39,7 @@ export class OAuthPublicController {
 
   @Public()
   @Get('.well-known/oauth-authorization-server')
+  @UseGuards(OAuthEnabledGuard)
   metadata(@Res({ passthrough: true }) res: Response) {
     res.setHeader('Cache-Control', 'public, max-age=300')
     return authorizationServerMetadata()
@@ -45,6 +47,7 @@ export class OAuthPublicController {
 
   @Public()
   @Post('oauth/register')
+  @UseGuards(OAuthEnabledGuard)
   async register(@Body() body: unknown, @Res() res: Response) {
     const parsed = RegisterClientSchema.safeParse(body)
     if (!parsed.success) return sendOAuthError(res, new OAuthError('invalid_client_metadata', 'Metadados do cliente inválidos'))
@@ -58,6 +61,7 @@ export class OAuthPublicController {
 
   @Public()
   @Post('oauth/token')
+  @UseGuards(OAuthEnabledGuard)
   async token(@Body() body: unknown, @Res() res: Response) {
     const parsed = TokenRequestSchema.safeParse(body)
     if (!parsed.success) {
@@ -106,6 +110,7 @@ export class OAuthSessionController {
   constructor(private readonly oauth: OAuthService) {}
 
   @Post('authorize/check')
+  @UseGuards(OAuthEnabledGuard)
   @HttpCode(HttpStatus.OK)
   async check(@Headers('x-user-id') userId: string, @Body() body: unknown) {
     if (!userId) throw new UnauthorizedException()
@@ -113,6 +118,7 @@ export class OAuthSessionController {
   }
 
   @Post('authorize/approve')
+  @UseGuards(OAuthEnabledGuard)
   @HttpCode(HttpStatus.OK)
   async approve(@Headers('x-user-id') userId: string, @Body() body: unknown) {
     if (!userId) throw new UnauthorizedException()
@@ -121,6 +127,7 @@ export class OAuthSessionController {
   }
 
   @Post('authorize/deny')
+  @UseGuards(OAuthEnabledGuard)
   @HttpCode(HttpStatus.OK)
   async deny(@Headers('x-user-id') userId: string, @Body() body: unknown) {
     if (!userId) throw new UnauthorizedException()

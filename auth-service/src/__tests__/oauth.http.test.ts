@@ -19,7 +19,14 @@ describe('OAuth HTTP', () => {
     register: vi.fn(),
   }
 
+  const OAUTH_ENV = {
+    OAUTH_ISSUER: 'https://api.operum.adm.br',
+    MCP_RESOURCE_URL: 'https://api.operum.adm.br/mcp',
+    MCP_GATEWAY_KEY: 'chave-de-teste',
+  }
+
   beforeAll(async () => {
+    for (const [k, v] of Object.entries(OAUTH_ENV)) vi.stubEnv(k, v)
     const mod = await Test.createTestingModule({
       controllers: [OAuthPublicController],
       providers: [{ provide: OAuthService, useValue: service }],
@@ -29,7 +36,29 @@ describe('OAuth HTTP', () => {
     base = await app.getUrl()
   })
 
-  afterAll(async () => app.close())
+  afterAll(async () => {
+    vi.unstubAllEnvs()
+    await app.close()
+  })
+
+  it('sem a configuração completa do OAuth, metadados, registro e token respondem 404', async () => {
+    for (const missing of Object.keys(OAUTH_ENV)) {
+      vi.stubEnv(missing, '')
+      expect((await fetch(`${base}/.well-known/oauth-authorization-server`)).status).toBe(404)
+      const form = { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=refresh_token&refresh_token=x&client_id=y' }
+      expect((await fetch(`${base}/oauth/token`, form)).status).toBe(404)
+      const json = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ redirect_uris: ['https://claude.ai/api/mcp/auth_callback'] }) }
+      expect((await fetch(`${base}/oauth/register`, json)).status).toBe(404)
+      vi.stubEnv(missing, OAUTH_ENV[missing as keyof typeof OAUTH_ENV])
+    }
+    expect(service.refresh).not.toHaveBeenCalled()
+    expect(service.register).not.toHaveBeenCalled()
+    // Revogação segue disponível para quem já conectou.
+    vi.stubEnv('MCP_GATEWAY_KEY', '')
+    const revoke = await fetch(`${base}/oauth/revoke`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'token=opr_oat_x' })
+    expect(revoke.status).toBe(200)
+    vi.stubEnv('MCP_GATEWAY_KEY', OAUTH_ENV.MCP_GATEWAY_KEY)
+  })
 
   it('metadados respondem também com barra no final (reescrita do gateway)', async () => {
     for (const path of ['/.well-known/oauth-authorization-server', '/.well-known/oauth-authorization-server/']) {
