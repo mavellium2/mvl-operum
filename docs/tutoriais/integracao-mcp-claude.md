@@ -11,7 +11,7 @@ O fim deste documento traz o **roteiro do vídeo tutorial**, com as cenas na ord
 - Uma conta no Operum, com acesso aos projetos que quer usar.
 - O **Claude Code** instalado: no terminal ou na extensão do VS Code. As instruções de instalação estão em https://claude.com/claude-code.
 
-> **Onde funciona:** a conexão usa um token pessoal enviado no cabeçalho da requisição. Isso funciona no **Claude Code** (terminal e VS Code). Os conectores personalizados do site claude.ai exigem login OAuth, que o Operum ainda não oferece, então por enquanto **não dá para conectar pelo claude.ai**.
+> **Onde funciona:** a conexão usa um token pessoal enviado no cabeçalho da requisição. Isso funciona no **Claude Code** (terminal e VS Code). Os conectores personalizados do site claude.ai exigem login OAuth, que o Operum ainda não oferece, então por enquanto **não dá para conectar pelo chat do claude.ai**. Pelo celular, use o Claude Code na nuvem (seção [Pelo celular](#pelo-celular-claude-code-na-nuvem)).
 
 ---
 
@@ -85,6 +85,30 @@ claude mcp add --transport http operum https://api.operum.adm.br/mcp \
 A primeira instituição é a padrão. Para falar de outra, cite o nome dela no pedido: "No Fábio, liste...".
 
 Se você já tinha conectado antes, remova a conexão antiga com `claude mcp remove operum` e rode o comando novo.
+
+---
+
+## Pelo celular: Claude Code na nuvem
+
+Na aba **Code** do app Claude (ou em [claude.ai/code](https://claude.ai/code)), o Claude Code roda num servidor da Anthropic. Ele clona o repositório do Operum, mexe no código, roda os testes e abre a PR, mesmo com o seu computador desligado. Com a configuração abaixo, ele também lê e atualiza os cards pelo MCP.
+
+O repositório já traz um `.mcp.json` com o servidor `operum-nuvem`, sem token. O token fica guardado no ambiente da nuvem como **segredo de rede**: o proxy da Anthropic coloca o token na requisição só depois que ela sai da máquina da sessão, então ele não aparece nas variáveis nem nos arquivos que o Claude vê.
+
+1. Gere um token no Operum (Passo 1), com **Permitir escrita**, na instituição em que estão os seus projetos.
+2. Em [claude.ai/code](https://claude.ai/code), conecte o GitHub e escolha o repositório `mavellium/mvl-operum`.
+3. Abra o ambiente da nuvem para editar e, em **Network secrets**, clique em **Add secret**:
+   - **Secret type:** Bearer
+   - **Name:** `Operum MCP`
+   - **Allowed websites:** `api.operum.adm.br`
+   - **Custom headers:** `Authorization`, prefixo `Bearer`, e o token como **Value**
+   - Para outras instituições, adicione uma segunda linha: nome `X-Operum-Tokens`, sem prefixo, com os demais tokens separados por vírgula.
+4. Abra uma sessão e peça, por exemplo: "Liste as tarefas em A Fazer da sprint ativa do projeto Operum, implemente a primeira e abra a PR".
+
+Não coloque o token em **Environment variables**: qualquer pessoa que use o ambiente consegue ler esses valores.
+
+No seu computador, o Claude Code também vai encontrar o `operum-nuvem` no `.mcp.json` e pedir aprovação. Se você já conectou o Operum pelo Passo 2, recuse: sem token, esse servidor responde "não autorizado".
+
+> Quando o Operum oferecer login OAuth, o conector do claude.ai vai funcionar direto no chat do app e nas sessões da nuvem, sem segredo de rede.
 
 ---
 

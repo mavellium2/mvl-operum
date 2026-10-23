@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "operum-nuvem": {
+      "type": "http",
+      "url": "https://api.operum.adm.br/mcp"
+    }
+  }
+}
