@@ -50,9 +50,14 @@ app.get('/health/ready', async (_req, res) => {
 })
 
 
+// Limites próprios do servidor de autorização OAuth, antes da autenticação.
+// O IP visto aqui é o do Traefik, então o limite vale para o total de clientes.
+app.use('/oauth/register', rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'too_many_requests' } }))
+app.use('/oauth/token', rateLimit({ windowMs: 60_000, max: 300, standardHeaders: true, legacyHeaders: false, message: { error: 'too_many_requests' } }))
+
 app.use(authMiddleware())
 
-// Rate limit adicional por PAT (20 req/s por token), além do limite global por IP acima.
+// Rate limit adicional por PAT ou conexão OAuth (20 req/s por token), além do limite global por IP acima.
 // x-auth-type/x-api-token-id só chegam aqui se authMiddleware() os definiu a
 // partir de uma introspecção válida — nunca são repassados de um valor
 // enviado pelo cliente (ver limpeza no início de authMiddleware).
@@ -71,7 +76,8 @@ function sweepStaleRateLimitBuckets(now: number) {
 }
 
 app.use((req, res, next) => {
-  if (req.headers['x-auth-type'] !== 'pat') return next()
+  const authType = req.headers['x-auth-type']
+  if (authType !== 'pat' && authType !== 'oauth') return next()
   const tokenId = req.headers['x-api-token-id'] as string | undefined
   if (!tokenId) return next()
 
@@ -107,6 +113,8 @@ function makeProxy(targetUrl: string, prefix: string) {
 
 const proxyRoutes = [
   { context: '/auth', target: AUTH_SERVICE_URL },
+  { context: '/oauth', target: AUTH_SERVICE_URL },
+  { context: '/.well-known/oauth-authorization-server', target: AUTH_SERVICE_URL },
   { context: '/projects', target: PROJECT_SERVICE_URL },
   { context: '/departments', target: PROJECT_SERVICE_URL },
   { context: '/roles', target: PROJECT_SERVICE_URL },

@@ -113,6 +113,8 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
   // Volta para onde o usuário estava (ex.: sessão expirada por inatividade),
   // só para caminhos internos e se ele tiver algum projeto.
   const from = destinoInterno(formData.get('from') as string | null)
+  // A autorização OAuth não depende de projeto: volta para ela mesmo sem nenhum.
+  if (from?.startsWith('/oauth/')) redirect(from)
   redirect(from && projectRedirect !== '/no-project' ? from : projectRedirect)
 }
 

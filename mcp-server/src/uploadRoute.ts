@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { pipeline } from 'node:stream/promises'
 import { Readable } from 'node:stream'
-import { gateway } from './gateway.js'
+import { gateway, gatewayAuthHeaders } from './gateway.js'
 import { MAX_ATTACHMENT_BYTES, ACCEPTED_TYPES_LABEL, resolveMime, safeFileName } from './attachmentTypes.js'
 import { UploadLinks, UploadLinkError, uploadLinks } from './uploadLink.js'
 
@@ -35,7 +35,7 @@ export function registerUploadRoute(app: Express, deps: UploadRouteDeps = { link
     const disconnect = () => controller.abort(); req.on('aborted',disconnect)
     try {
       const grant = deps.links.consume(String(req.params.token))
-      const gw = deps.gateway(grant.pat)
+      const gw = deps.gateway(grant.pat, grant.tenantId)
       const me = await gw.get<{ tenantId: string }>('/auth/me')
       if (me.tenantId !== grant.tenantId) throw new UploadError(403,'Sem permissão.')
       await gw.get(`/cards/${grant.taskId}`) // recheck current PAT and task access before reading multipart
@@ -51,7 +51,7 @@ export function registerUploadRoute(app: Express, deps: UploadRouteDeps = { link
         yield Buffer.from(`\r\n--${boundary}--\r\n`)
       }
       const base = (process.env.API_GATEWAY_INTERNAL_URL ?? 'http://api-gateway:4000').replace(/\/$/,'')
-      const upstream = await deps.fetch(`${base}/files/upload?cardId=${grant.taskId}`, { method: 'POST', redirect: 'error', signal: controller.signal, headers: { Authorization: `Bearer ${grant.pat}`, 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'X-Request-ID': String(req.headers['x-request-id'] ?? '') }, body: Readable.toWeb(Readable.from(multipart())) as ReadableStream, duplex: 'half' } as RequestInit & { duplex: 'half' })
+      const upstream = await deps.fetch(`${base}/files/upload?cardId=${grant.taskId}`, { method: 'POST', redirect: 'error', signal: controller.signal, headers: { ...gatewayAuthHeaders(grant.pat, grant.tenantId), 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'X-Request-ID': String(req.headers['x-request-id'] ?? '') }, body: Readable.toWeb(Readable.from(multipart())) as ReadableStream, duplex: 'half' } as RequestInit & { duplex: 'half' })
       if (!upstream.ok) throw new UploadError(upstream.status === 413 ? 413 : upstream.status === 401 || upstream.status === 403 ? upstream.status : 502, upstream.status === 413 ? 'Arquivo acima do limite de 50 MB do Operum.' : 'Não foi possível anexar o arquivo. Gere um novo link para tentar novamente.')
       const attachment = await upstream.json() as { id: string }
       await gw.post('/audit',{ action: 'CREATE', entity: 'attachment', entityId: attachment.id, details: { via: 'mcp', tool: 'operum_create_upload_link', cardId: grant.taskId } }).catch(() => {})

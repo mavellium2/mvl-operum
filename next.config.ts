@@ -69,6 +69,16 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
+      {
+        // Consentimento OAuth: sem cache e sem vazar a query (client_id,
+        // redirect_uri, state) no Referer. Fica depois da regra geral porque,
+        // no mesmo cabeçalho, a última regra vence.
+        source: "/oauth/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
     ];
   },
 };

@@ -36,19 +36,29 @@ async function verifyToken(token: string): Promise<boolean> {
   return false
 }
 
+/**
+ * Para onde voltar depois do login. A autorização OAuth depende da query
+ * (client_id, redirect_uri, PKCE...), então ela vai junto; nas demais páginas,
+ * só o caminho, como antes.
+ */
+function returnTo(request: NextRequest): string {
+  const { pathname, search } = request.nextUrl
+  return pathname.startsWith('/oauth/') ? `${pathname}${search}` : pathname
+}
+
 export async function proxy(request: NextRequest) {
   const token = request.cookies.get('session')?.value
 
   if (!token) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('from', request.nextUrl.pathname)
+    loginUrl.searchParams.set('from', returnTo(request))
     return NextResponse.redirect(loginUrl)
   }
 
   const valid = await verifyToken(token)
   if (!valid) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('from', request.nextUrl.pathname)
+    loginUrl.searchParams.set('from', returnTo(request))
     const response = NextResponse.redirect(loginUrl)
     response.cookies.delete('session')
     return response
@@ -59,7 +69,7 @@ export async function proxy(request: NextRequest) {
   const now = Date.now()
   if (isIdleExpired(request.cookies.get(LAST_SEEN_COOKIE)?.value, now, idleMs())) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('from', request.nextUrl.pathname)
+    loginUrl.searchParams.set('from', returnTo(request))
     loginUrl.searchParams.set('motivo', 'inatividade')
     const response = NextResponse.redirect(loginUrl)
     response.cookies.delete('session')

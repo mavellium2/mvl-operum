@@ -57,3 +57,26 @@ export function generateApiToken(): { token: string; prefix: string } {
 export function hashApiToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
+
+// ── OAuth 2.1 (conectores MCP) ────────────────────────────────────────────────
+
+export const OAUTH_ACCESS_PREFIX = 'opr_oat_'
+export const OAUTH_REFRESH_PREFIX = 'opr_ort_'
+export const OAUTH_CODE_PREFIX = 'opr_oac_'
+
+/** Token opaco `<prefixo><base62 de 32 bytes>`; só o hash é persistido. */
+export function generateOAuthSecret(prefix: string): string {
+  return `${prefix}${base62Encode(randomBytes(API_TOKEN_RANDOM_BYTES))}`
+}
+
+/** PKCE S256: BASE64URL(SHA256(code_verifier)) sem padding (RFC 7636 §4.2). */
+export function pkceS256(verifier: string): string {
+  return createHash('sha256').update(verifier).digest('base64url')
+}
+
+export function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a)
+  const bb = Buffer.from(b)
+  if (ab.length !== bb.length) return false
+  return timingSafeEqual(ab, bb)
+}

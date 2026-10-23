@@ -112,3 +112,17 @@ describe('proxy middleware', () => {
     })
   })
 })
+
+describe('proxy — volta para a autorização OAuth depois do login', () => {
+  it('sem sessão em /oauth/autorizar, guarda caminho e query no from', async () => {
+    const res = await proxy(makeRequest('/oauth/autorizar?client_id=https%3A%2F%2Fclaude.ai%2Fx&state=abc'))
+    const location = new URL(res.headers.get('location')!)
+    expect(location.pathname).toBe('/login')
+    expect(location.searchParams.get('from')).toBe('/oauth/autorizar?client_id=https%3A%2F%2Fclaude.ai%2Fx&state=abc')
+  })
+
+  it('nas demais páginas, continua só com o caminho', async () => {
+    const res = await proxy(makeRequest('/projetos?aba=x'))
+    expect(new URL(res.headers.get('location')!).searchParams.get('from')).toBe('/projetos')
+  })
+})

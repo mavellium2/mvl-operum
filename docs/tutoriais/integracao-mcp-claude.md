@@ -11,7 +11,7 @@ O fim deste documento traz o **roteiro do vídeo tutorial**, com as cenas na ord
 - Uma conta no Operum, com acesso aos projetos que quer usar.
 - O **Claude Code** instalado: no terminal ou na extensão do VS Code. As instruções de instalação estão em https://claude.com/claude-code.
 
-> **Onde funciona:** a conexão usa um token pessoal enviado no cabeçalho da requisição. Isso funciona no **Claude Code** (terminal e VS Code). Os conectores personalizados do site claude.ai exigem login OAuth, que o Operum ainda não oferece, então por enquanto **não dá para conectar pelo chat do claude.ai**. Pelo celular, use o Claude Code na nuvem (seção [Pelo celular](#pelo-celular-claude-code-na-nuvem)).
+> **Onde funciona:** no **Claude Code** (terminal e VS Code), com o token pessoal dos Passos 1 a 3. No **app do Claude** (claude.ai, Desktop e celular), com login, sem token: veja [No app do Claude](#no-app-do-claude-web-desktop-e-celular). Para programar pelo celular, veja [Claude Code na nuvem](#pelo-celular-claude-code-na-nuvem).
 
 ---
 
@@ -88,6 +88,22 @@ Se você já tinha conectado antes, remova a conexão antiga com `claude mcp rem
 
 ---
 
+## No app do Claude (web, Desktop e celular)
+
+> Disponível a partir da versão 1.36.0, depois que o login OAuth for ligado no servidor.
+
+1. No claude.ai (no computador ou no navegador do celular), abra **Configurações → Conectores** e clique em **Adicionar conector personalizado**.
+2. **Nome:** `Operum`. **URL:** `https://api.operum.adm.br/mcp`. Deixe os campos de OAuth em branco.
+3. Clique em **Conectar**. Abre a tela de login do Operum. Entre com o seu usuário.
+4. Na tela de autorização, confira se o retorno é para **claude.ai**, marque os workspaces que quer usar e deixe "Permitir criar e alterar" marcado se quiser que o Claude crie e mova cards.
+5. Clique em **Permitir**. Pronto: no app do celular, o conector já aparece na conversa. Peça, por exemplo: "Crie no Operum um card *Revisar contrato* na sprint atual do projeto Operum".
+
+Para desconectar, vá em **Meu perfil → Personal Access Tokens → Apps conectados** e clique em **Desconectar**. O acesso acaba na hora.
+
+O conector também funciona nas sessões do Claude Code na nuvem: com ele ligado na sessão, não precisa do segredo de rede da seção abaixo.
+
+---
+
 ## Pelo celular: Claude Code na nuvem
 
 Na aba **Code** do app Claude (ou em [claude.ai/code](https://claude.ai/code)), o Claude Code roda num servidor da Anthropic. Ele clona o repositório do Operum, mexe no código, roda os testes e abre a PR, mesmo com o seu computador desligado. Com a configuração abaixo, ele também lê e atualiza os cards pelo MCP.
@@ -108,7 +124,7 @@ Não coloque o token em **Environment variables**: qualquer pessoa que use o amb
 
 No seu computador, o Claude Code também vai encontrar o `operum-nuvem` no `.mcp.json` e pedir aprovação. Se você já conectou o Operum pelo Passo 2, recuse: sem token, esse servidor responde "não autorizado".
 
-> Quando o Operum oferecer login OAuth, o conector do claude.ai vai funcionar direto no chat do app e nas sessões da nuvem, sem segredo de rede.
+> Com o conector do app do Claude (seção acima) ligado na sessão, o segredo de rede não é necessário.
 
 ---
 
