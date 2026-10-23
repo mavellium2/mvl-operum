@@ -718,7 +718,6 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** o documento escala a árvore para caber na página A4; árvores muito largas ficam com texto menor.
 - **Referências:** `components/projetos/documentacao/EapGraficaDaAba.tsx`, `components/projetos/documentacao/EapDocumentSheet.tsx`, `lib/wbsLayout.ts`, card `cmvfuznz0004b01qnstet076j`.
 
-
 ## ADR-054 — Conclusão e reabertura entre Planilha e quadro
 
 - **Data:** 2026-10-21.

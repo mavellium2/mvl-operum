@@ -1,9 +1,9 @@
 # SDD — Login OAuth no MCP do Operum (conector do app Claude)
 
-> **Status:** implementado na 1.36.0 (branch `feat/mcp-claude-nuvem`); homologação em staging e no celular pendente. As questões da seção 8 seguiram as recomendações (ver ADR-057).
+> **Status:** implementado na 1.36.0 (branch `feat/mcp-oauth`); homologação em staging e no celular pendente. As questões da seção 8 seguiram as recomendações (ver ADR-057).
 > **Data:** 2026-10-21.
 > **Cards (projeto Operum, sprint 1.6):** SDD/ADR `cmviogcqv003101o2mce220xt` · servidor de autorização `cmviogcwz003301o2ans819z9` · consentimento e apps conectados `cmviohqyy003501o2v6g8pyj4` · mcp-server `cmviohw4e003701o2g2y7p4s7` · homologação `cmvioi1hz003901o2gorssbxe`.
-> **Decisão:** [ADR-056](../decisions.md#adr-056--login-oauth-no-mcp-para-conectores-do-claude) (proposta).
+> **Decisão:** [ADR-057](../decisions.md#adr-057--login-oauth-no-mcp-para-conectores-do-claude) (implementada na 1.36.0).
 >
 > Marcações: **✅** confirmado no código ou na documentação • **⚠️ DECISÃO** pendente de aprovação • **🔎** a confirmar em homologação.
 
@@ -224,13 +224,13 @@ A migration fica no lugar em que o deploy já aplica as migrations desse schema 
 
 | Fase | Card | Entrega | Versão |
 |---|---|---|---|
-| 0 | SDD/ADR | este documento e a ADR-056 aprovados | — |
+| 0 | SDD/ADR | este documento e a ADR-057 aprovados | — |
 | 1 | servidor de autorização | modelos, metadados, CIMD/DCR, aprovação, token, refresh, revogação e introspecção interna, com testes | — |
 | 2 | consentimento | `/oauth/autorizar`, apps conectados no perfil | — |
 | 3 | mcp-server | metadados do recurso, 401, `opr_oat_`, `X-Operum-Tenant`, gateway com `X-Operum-Mcp-Key`, Traefik | MINOR na PR que liberar o fluxo inteiro |
 | 4 | homologação | staging → produção, teste no celular (iOS/Android) e no Claude Code na nuvem, tutorial | — |
 
-As fases 1 a 3 podem ir numa PR só ou em PRs encadeadas, mas o fluxo só é ligado em produção quando as três estiverem juntas. A versão sobe uma vez (MINOR), com `CHANGELOG.md`, `docs/architecture.md` (seções auth-service, api-gateway, mcp-server e fluxo de autenticação) e a ADR-056 marcada como implementada.
+As fases 1 a 3 podem ir numa PR só ou em PRs encadeadas, mas o fluxo só é ligado em produção quando as três estiverem juntas. A versão sobe uma vez (MINOR), com `CHANGELOG.md`, `docs/architecture.md` (seções auth-service, api-gateway, mcp-server e fluxo de autenticação) e a ADR-057 marcada como implementada.
 
 ## 7. Testes
 
