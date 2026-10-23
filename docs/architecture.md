@@ -20,7 +20,7 @@ A aplicação é um **Next.js 16 App Router** que atua como frontend + BFF, na f
 
 | Camada | Tecnologia |
 |--------|------------|
-| Framework | Next.js 16.3.6 (App Router) |
+| Framework | Next.js 16.4.2 (App Router) |
 | UI | React 19.2.4 |
 | Linguagem | TypeScript 5 |
 | Banco de dados | PostgreSQL 17 |

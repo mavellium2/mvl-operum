@@ -2,7 +2,7 @@
   "name": "kanban-board",
 
 
-  "version": "1.35.0",
+  "version": "1.35.1",
 
 
   "private": true,
@@ -36,7 +36,7 @@
     "jose": "^6.2.2",
     "lucide-react": "^1.8.0",
     "mysql2": "^3.22.0",
-    "next": "16.3.8",
+    "next": "16.4.2",
     "papaparse": "^5.5.3",
     "pg": "^8.20.0",
     "react": "19.2.4",

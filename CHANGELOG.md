@@ -7,6 +7,13 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.35.1] — 2026-10-23
+
+Atualização de segurança.
+
+### Segurança
+- Next.js 16.3.8 → 16.4.2. Corrige duas falhas críticas de execução remota de código sem autenticação (GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr) e uma negação de serviço no App Router (GHSA-p3m5-59mp-jv5r), que afetam todas as versões de 16.0.0 a 16.4.0. O `pnpm audit --audit-level=high` volta a passar.
+
 ## [1.35.0] — 2026-10-21
 
 Sincronização EAP ↔ planilha ↔ sprints (sprint 1.3).
