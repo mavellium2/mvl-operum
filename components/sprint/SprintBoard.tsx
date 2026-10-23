@@ -692,8 +692,8 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
         if (!openCardRaw) return null
 
         const openCardType = toCardType(openCardRaw, sprint.id, inativos)
-        // Cards em "Concluído": só visualização, edição desabilitada.
-        const readOnly = !!currentColumn && currentColumn.title === 'Concluído'
+        // Cards na coluna de conclusão (mesmo renomeada: "Done", "Entregue"…): só visualização.
+        const readOnly = !!currentColumn && isColunaConcluida(currentColumn.title)
         const isBacklog = !currentColumn
 
         return (
