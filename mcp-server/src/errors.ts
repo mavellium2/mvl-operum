@@ -28,7 +28,7 @@ export function toToolError(err: unknown, entity?: string, tool?: string): ToolE
 
   switch (status) {
     case 401:
-      message = 'Token inválido ou revogado. O usuário precisa gerar um novo em /perfil/tokens.'
+      message = 'Token inválido ou revogado. O usuário precisa gerar um novo em /configuracoes/integracoes.'
       break
     case 403:
       message = safe ? `Sem permissão: ${safe}` : 'Sem permissão para esta operação (o token pode ter só escopo read).'

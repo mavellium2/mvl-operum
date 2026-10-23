@@ -137,7 +137,7 @@ export default function SprintListPage({
               {userMenuOpen && (
                 <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20">
                   <Link
-                    href="/perfil"
+                    href="/configuracoes/perfil"
                     className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => setUserMenuOpen(false)}
                   >

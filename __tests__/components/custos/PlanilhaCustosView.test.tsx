@@ -235,7 +235,8 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     const rotulo = screen.getByText('Sub-total')
     expect(rotulo).toHaveClass('text-right')
     const [materiais] = screen.getAllByLabelText('Materiais orçados')
-    fireEvent.change(materiais, { target: { value: '50' } })
+    // Máscara com centavos à direita: "5000" vira R$ 50,00.
+    fireEvent.change(materiais, { target: { value: '5000' } })
     const sub = rotulo.closest('tr')!
     expect(sub).toHaveTextContent('R$ 50,00')
     expect(sub).toHaveTextContent('R$ 140,00')

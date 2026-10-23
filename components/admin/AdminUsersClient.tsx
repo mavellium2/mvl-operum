@@ -1,5 +1,6 @@
 'use client'
 
+import { formatReais } from '@/lib/dinheiro'
 import Modal from '@/components/ui/Modal'
 import PermissoesUsuario from '@/components/permissoes/PermissoesUsuario'
 
@@ -145,7 +146,7 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                     {user.departamento && <p className="text-xs text-gray-400">{user.departamento}</p>}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-600 hidden lg:table-cell">
-                    {user.hourlyRate > 0 ? `R$ ${user.hourlyRate.toFixed(2)}` : '—'}
+                    {user.hourlyRate > 0 ? formatReais(user.hourlyRate) : '—'}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>

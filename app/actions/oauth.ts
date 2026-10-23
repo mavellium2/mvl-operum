@@ -58,7 +58,7 @@ export async function revokeOAuthGrantAction(id: string) {
     await verifySession()
     if (!TENANT_ID.test(id)) return { error: 'Conexão inválida' }
     await oauthApi.revokeGrant(id)
-    revalidatePath('/perfil/tokens')
+    revalidatePath('/configuracoes/integracoes')
     return { ok: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao desconectar' }

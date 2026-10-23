@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { adminCreateUserAction } from '@/app/actions/admin'
+import { EmailInput } from '@/components/ui/ContatoInputs'
+import { erroEmail } from '@/lib/contato'
 import AddressFields, { type AddressValues, emptyAddress } from '@/components/ui/AddressFields'
 import PasswordInput from '@/components/ui/PasswordInput'
 
@@ -50,6 +52,11 @@ export default function AdminCreateUserModal({ onClose, onCreated }: Props) {
       setError('Nome, e-mail e senha são obrigatórios.')
       return
     }
+    const erroDoEmail = erroEmail(form.email, true)
+    if (erroDoEmail) {
+      setError(erroDoEmail)
+      return
+    }
     if (form.password.length < 8) {
       setError('A senha deve ter no mínimo 8 caracteres.')
       return
@@ -90,10 +97,10 @@ export default function AdminCreateUserModal({ onClose, onCreated }: Props) {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">E-mail *</label>
-            <input
-              type="email"
+            <EmailInput
               value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              onValueChange={v => setForm(f => ({ ...f, email: v }))}
+              required
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

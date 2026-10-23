@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import { emailValido, formatEmail, MENSAGEM_EMAIL_INVALIDO } from '@/lib/contato'
+
+/** Mesmo texto de ATA_PLANO_DO_PROJETO (lib/exports/ataDocx.ts), sem importar o gerador de DOCX. */
+const COPIA_PLANO_DO_PROJETO = 'Plano do Projeto'
 
 export const AtaPresenteSchema = z.object({
   nome: z.string().trim().min(1, 'Nome obrigatório').max(200),
@@ -30,7 +34,13 @@ export const CriarAtaSchema = z.object({
   assuntosTratados: z.string().max(10000).optional().nullable(),
   decisoesTomadas: z.string().max(10000).optional().nullable(),
   observacoes: z.string().max(10000).optional().nullable(),
-  copiasPara: z.array(z.string().email('E-mail inválido')).optional().default([]),
+  copiasPara: z
+    .array(
+      z.string().transform(c => (c.trim() === COPIA_PLANO_DO_PROJETO ? COPIA_PLANO_DO_PROJETO : formatEmail(c)))
+        .refine(c => c === COPIA_PLANO_DO_PROJETO || emailValido(c), MENSAGEM_EMAIL_INVALIDO),
+    )
+    .optional()
+    .default([]),
   presentes: z.array(AtaPresenteSchema).optional().default([]),
   acoes: z.array(AtaAcaoSchema).optional().default([]),
   anexos: z.array(AtaAnexoSchema).optional().default([]),

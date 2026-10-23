@@ -34,7 +34,7 @@ export async function createApiTokenAction(prevState: CreateApiTokenState, formD
     const expiresInDays = expiresInDaysParsed
 
     const created = await apiTokensApi.create({ name, scopes, expiresInDays })
-    revalidatePath('/perfil/tokens')
+    revalidatePath('/configuracoes/integracoes')
     return { created }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao criar token' }
@@ -45,7 +45,7 @@ export async function revokeApiTokenAction(id: string) {
   try {
     await verifySession()
     await apiTokensApi.revoke(id)
-    revalidatePath('/perfil/tokens')
+    revalidatePath('/configuracoes/integracoes')
     return { ok: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao revogar token' }

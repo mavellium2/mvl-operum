@@ -1,5 +1,7 @@
 'use client'
 
+import { EmailInput } from '@/components/ui/ContatoInputs'
+import { erroEmail } from '@/lib/contato'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import Modal from '@/components/ui/Modal'
 import { useToast } from '@/components/ui/Toast'
@@ -86,6 +88,11 @@ export default function MembroEquipeSelect({
       setFormError('Preencha nome, e-mail e senha.')
       return
     }
+    const erroDoEmail = erroEmail(email, true)
+    if (erroDoEmail) {
+      setFormError(erroDoEmail)
+      return
+    }
     setSaving(true)
     setFormError(null)
     const result = await criarMembroEquipeAction({
@@ -164,11 +171,11 @@ export default function MembroEquipeSelect({
           </div>
           <div>
             <label className={fieldCls}>E-mail <span className="text-red-500">*</span></label>
-            <input
-              type="email"
+            <EmailInput
               className={inputCls}
               value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              onValueChange={v => setForm(f => ({ ...f, email: v }))}
+              required
               placeholder="email@exemplo.com"
             />
           </div>
