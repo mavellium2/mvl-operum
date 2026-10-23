@@ -2,6 +2,8 @@ packages:
   - "."
   - "*"
 overrides:
+  # GHSA-mrhx-c7xc-m3w5 (memória em coleções grandes): correção dentro da v4.
+  zod: ">=4.6.6 <5.0.0"
   # GHSA-q3jh-wrc6-jgq8 e GHSA-587h-7wmj-h5pm: manter correções compatíveis.
   follow-redirects: "1.16.1"
   vite: "8.3.3"

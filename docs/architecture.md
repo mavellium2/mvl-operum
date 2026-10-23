@@ -1059,6 +1059,8 @@ as imagens dos serviços são construídas a partir de seus diretórios. A vers�
 1.33.1 fixa `follow-redirects` 1.16.1 e Vite 8.3.3 nos dois contextos para
 eliminar as versões vulneráveis, dentro das majors usadas pelos consumidores.
 As auditorias e exceções existentes permanecem ativas e sem novas supressões.
+A 1.36.2 adiciona o override `zod: ">=4.6.6 <5.0.0"` (GHSA-mrhx-c7xc-m3w5) na
+raiz e nos seis serviços que usam zod; o api-gateway não depende dele.
 Backups propostos são descritos em `docs/operations/backups.md`; o operador não
 soube confirmar a rotina atual e a VPS não foi inspecionada nesta entrega.
 
