@@ -1,7 +1,7 @@
 import { lookup as dnsLookup, type LookupAddress } from 'node:dns'
 import https from 'node:https'
 import { BlockList, isIP, type LookupFunction } from 'node:net'
-import { isValidRedirectUri } from './redirect'
+import { isLoopback, isValidRedirectUri } from './redirect'
 
 /**
  * Leitura de Client ID Metadata Document (CIMD), com proteção a SSRF
@@ -126,6 +126,12 @@ export function parseClientMetadata(clientId: string, doc: unknown): ClientMetad
   const uris = d.redirect_uris
   if (!Array.isArray(uris) || uris.length === 0 || uris.length > 10 || !uris.every(u => typeof u === 'string' && isValidRedirectUri(u))) {
     throw new CimdError('redirect_uris inválidos no documento do cliente')
+  }
+  // O documento é declarado pelo próprio cliente: redirect que não é loopback
+  // tem de ficar na mesma origem do client_id (recomendação da Anthropic).
+  const origin = new URL(clientId).origin
+  if ((uris as string[]).some(u => !isLoopback(u) && new URL(u).origin !== origin)) {
+    throw new CimdError('redirect_uris fora da origem do client_id')
   }
   const method = d.token_endpoint_auth_method
   if (method !== undefined && method !== 'none') {

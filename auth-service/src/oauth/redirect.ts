@@ -3,9 +3,9 @@
  *
  * Regra geral: igualdade exata com um URI registrado. Exceção do RFC 8252
  * §7.3 para clientes nativos (Claude Code): em loopback http
- * (`localhost`/`127.0.0.1`) só a porta pode variar.
+ * (`localhost`/`127.0.0.1`/`[::1]`) só a porta pode variar.
  */
-const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1'])
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 
 function parse(uri: string): URL | null {
   try {

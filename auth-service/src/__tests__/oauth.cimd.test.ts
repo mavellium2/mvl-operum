@@ -29,6 +29,8 @@ describe('CIMD', () => {
     expect(() => parseClientMetadata(ID, { ...ok, redirect_uris: [] })).toThrow('redirect_uris')
     expect(() => parseClientMetadata(ID, { ...ok, token_endpoint_auth_method: 'client_secret_basic' })).toThrow('públicos')
     expect(() => parseClientMetadata(ID, 'texto')).toThrow()
+    expect(() => parseClientMetadata(ID, { ...ok, redirect_uris: ['https://evil.example/cb'] })).toThrow('origem')
+    expect(parseClientMetadata(ID, { ...ok, redirect_uris: ['http://localhost/callback'] }).redirectUris).toEqual(['http://localhost/callback'])
   })
 
   it('bloqueia endereços internos', () => {
@@ -51,6 +53,7 @@ describe('redirect_uri', () => {
   it('loopback aceita qualquer porta, mas não outro caminho nem outro host', () => {
     expect(redirectAllowed('http://localhost:3118/callback', registered)).toBe(true)
     expect(redirectAllowed('http://127.0.0.1:53111/callback', registered)).toBe(true)
+    expect(redirectAllowed('http://[::1]:53111/callback', [...registered, 'http://[::1]/callback'])).toBe(true)
     expect(redirectAllowed('http://localhost:3118/outro', registered)).toBe(false)
     expect(redirectAllowed('http://evil.example:3118/callback', registered)).toBe(false)
   })

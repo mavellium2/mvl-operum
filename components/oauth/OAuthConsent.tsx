@@ -66,6 +66,10 @@ export default function OAuthConsent({ request, check }: { request: OAuthAuthori
       <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
         <span className="break-words">{check.client.name}</span> quer acessar o seu Operum
       </h1>
+      <p className="mt-1 text-xs text-gray-500 break-all">
+        Aplicativo identificado por <strong className="font-semibold text-gray-700">{check.client.host}</strong>
+        {check.client.kind === 'dcr' ? ' (nome informado pelo próprio aplicativo)' : ''}
+      </p>
       <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
         Depois de permitir, você volta para <strong className="font-semibold text-gray-900 break-all">{check.redirectHost}</strong>.
         Ele só vê e altera o que você mesmo pode ver e alterar.

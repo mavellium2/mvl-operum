@@ -159,6 +159,7 @@ describe('OAuthService', () => {
       if (check.ok !== true) return
       expect(check.client.name).toBe('Claude')
       expect(check.redirectHost).toBe('claude.ai')
+      expect(check.client.host).toBe('claude.ai')
       expect(check.tenants.map(t => t.tenantId).sort()).toEqual(['t-a', 't-b'])
       expect(check.tenants.find(t => t.tenantId === 't-a')!.isCurrent).toBe(true)
     })
@@ -377,7 +378,7 @@ describe('OAuthService', () => {
       const reg = await service.register({ redirect_uris: ['http://127.0.0.1/callback'] })
       const check = await service.checkAuthorize(
         authorizeRequest(pkce().challenge, { client_id: reg.client_id, redirect_uri: 'http://127.0.0.1:53111/callback' }), 'u-a')
-      expect(check).toMatchObject({ ok: true, loopback: true })
+      expect(check).toMatchObject({ ok: true, loopback: true, client: { kind: 'dcr', host: '127.0.0.1:53111' } })
     })
 
     it('client_id inventado é recusado', async () => {

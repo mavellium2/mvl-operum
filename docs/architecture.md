@@ -615,7 +615,7 @@ Dashboard de sprint: PieChart/BarChart (Recharts), ranking por usuário, cards a
 Notificações, galeria de anexos, edição de perfil, troca de senha forçada. `/perfil/tokens` gerencia os PATs e, desde 1.36.0, os apps conectados por OAuth (revogação imediata).
 
 ### `/oauth/autorizar`
-Tela de consentimento OAuth (1.36.0), fora da sidebar. Exige sessão; o proxy guarda a query no `from` do login e o login volta para ela mesmo sem projeto. Valida o pedido no auth-service, mostra app, host de retorno, permissões e workspaces. Permitir e Negar navegam pelo navegador até a URL de retorno (a CSP limita `form-action` a `'self'`). Sem cache e com `Referrer-Policy: no-referrer`.
+Tela de consentimento OAuth (1.36.0), fora da sidebar. Exige sessão; o proxy guarda a query no `from` do login e o login volta para ela mesmo sem projeto. Valida o pedido no auth-service, mostra app, quem pede (host do `client_id` no CIMD; no DCR, o nome é marcado como declarado pelo app), host de retorno, permissões e workspaces. Permitir e Negar navegam pelo navegador até a URL de retorno (a CSP limita `form-action` a `'self'`). Sem cache e com `Referrer-Policy: no-referrer`.
 
 ### `/sobre`, `/equipe`
 Página institucional (`/equipe` redireciona para `/sobre`).
@@ -1186,7 +1186,7 @@ Claude ─POST /mcp sem token─────────────► mcp-serv
        ─POST /mcp  Bearer opr_oat_… ──► mcp-server ─► gateway (+ X-Operum-Mcp-Key, X-Operum-Tenant)
 ```
 
-- **Clientes:** CIMD (`client_id` em URL, só hosts de `OAUTH_CIMD_ALLOWED_HOSTS`, leitura com proteção a SSRF, sem redirecionamento, 5 s, 64 KB, cache de 24 h) e DCR (`opr_dcr_…`, redirects só da allowlist ou loopback com qualquer porta). Só clientes públicos.
+- **Clientes:** CIMD (`client_id` em URL, só hosts de `OAUTH_CIMD_ALLOWED_HOSTS`, leitura com proteção a SSRF, sem redirecionamento, 5 s, 64 KB, cache de 24 h; redirect que não é loopback precisa estar na origem do `client_id`) e DCR (`opr_dcr_…`, redirects só da allowlist ou loopback com qualquer porta). Só clientes públicos.
 - **Código:** `opr_oac_…`, 60 s, uso único (marcado antes de conferir o resto), ligado a cliente, redirect, `code_challenge` S256, `resource`, escopos e workspaces. Reuso revoga o grant gerado.
 - **Tokens:** access `opr_oat_…` de 1 h e refresh `opr_ort_…` de 30 dias com rotação. Teto de 90 dias por conexão. Reuso de refresh depois de 10 s revoga a conexão. Tudo guardado só como hash SHA-256.
 - **Gateway:** introspecção `oat:{hash}` com cache de 60 s, apagado na revogação. Só aceita o token com `X-Operum-Mcp-Key` correta e `resource` igual a `MCP_RESOURCE_URL`, e só no workspace pedido em `X-Operum-Tenant`, que precisa estar no grant (sem ele, vale o padrão). Mesma allowlist do PAT no auth-service; escrita exige `operum:write`. Injeta `x-auth-type: oauth`, `x-api-token-id: oauth:<grant>` (rate limit de 20 req/s e auditoria) e `x-oauth-tenants`, com o qual `/auth/my-tenants` devolve só os workspaces autorizados. Os cabeçalhos `x-operum-*` nunca seguem aos serviços.

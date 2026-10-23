@@ -29,7 +29,8 @@ type TenantChoice = { tenantId: string; userId: string; isDefault: boolean }
 
 export interface AuthorizeCheck {
   ok: true
-  client: { name: string; kind: string; clientId: string }
+  /** Quem pede acesso: host do client_id (CIMD) ou do redirect (DCR). O nome é declarado pelo cliente. */
+  client: { name: string; kind: string; clientId: string; host: string }
   redirectUri: string
   redirectHost: string
   loopback: boolean
@@ -184,7 +185,12 @@ export class OAuthService {
     const tenants = await this.tenantsOf(me.email)
     return {
       ok: true,
-      client: { name: client.name, kind: client.kind, clientId: client.clientId },
+      client: {
+        name: client.name,
+        kind: client.kind,
+        clientId: client.clientId,
+        host: client.kind === 'cimd' ? new URL(client.clientId).host : new URL(req.redirect_uri).host,
+      },
       redirectUri: req.redirect_uri,
       redirectHost: new URL(req.redirect_uri).host,
       loopback: isLoopback(req.redirect_uri),

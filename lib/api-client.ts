@@ -152,7 +152,7 @@ export type OAuthAuthorizeRequest = {
 export type OAuthAuthorizeCheck =
   | {
       ok: true
-      client: { name: string; kind: string; clientId: string }
+      client: { name: string; kind: string; clientId: string; host: string }
       redirectUri: string
       redirectHost: string
       loopback: boolean

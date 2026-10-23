@@ -20,7 +20,7 @@ const request = {
 function check(overrides: Record<string, unknown> = {}) {
   return {
     ok: true as const,
-    client: { name: 'Claude', kind: 'cimd', clientId: request.client_id },
+    client: { name: 'Claude', kind: 'cimd', clientId: request.client_id, host: 'claude.ai' },
     redirectUri: request.redirect_uri,
     redirectHost: 'claude.ai',
     loopback: false,
@@ -45,8 +45,10 @@ describe('OAuthConsent', () => {
   it('mostra o app, o host de retorno e marca só o workspace atual', () => {
     render(<OAuthConsent request={request} check={check()} />)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Claude quer acessar o seu Operum')
-    expect(screen.getByText('claude.ai')).toBeTruthy()
+    expect(screen.getAllByText('claude.ai')).toHaveLength(2)
     expect(screen.getByText(/Só permita se foi você quem pediu/)).toBeTruthy()
+    expect(screen.getByText(/Aplicativo identificado por/).textContent).toContain('claude.ai')
+    expect(screen.queryByText(/nome informado pelo próprio aplicativo/)).toBeNull()
     expect((screen.getByLabelText(/Mavellium/) as HTMLInputElement).checked).toBe(true)
     expect((screen.getByLabelText(/Fábio/) as HTMLInputElement).checked).toBe(false)
   })
@@ -88,6 +90,11 @@ describe('OAuthConsent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Permitir' }))
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(assign).not.toHaveBeenCalled()
+  })
+
+  it('cliente DCR avisa que o nome é declarado pelo próprio app', () => {
+    render(<OAuthConsent request={request} check={check({ client: { name: 'Claude Code', kind: 'dcr', clientId: 'opr_dcr_x', host: 'localhost:3118' } })} />)
+    expect(screen.getByText(/nome informado pelo próprio aplicativo/)).toBeTruthy()
   })
 
   it('retorno para loopback mostra o aviso', () => {
