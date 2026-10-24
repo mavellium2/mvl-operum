@@ -3,13 +3,22 @@ import { telemetry, metrics } from './telemetry'
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware'
 import rateLimit from 'express-rate-limit'
 import { authorizationMiddleware } from './middleware/authorization'
-import { authMiddleware } from './middleware/auth'
+import { authMiddleware, isPublicAuthAllowed, sameSecret } from './middleware/auth'
 
-export function createGatewayApp() {
+export interface GatewayOptions {
+  /** Porta exposta pelo Traefik: restringe /auth/* às leituras de identidade. */
+  publicExposure?: boolean
+}
+
+export function createGatewayApp({ publicExposure = false }: GatewayOptions = {}) {
 const app = express()
 app.use(telemetry)
+if (publicExposure) {
+  app.use((req, res, next) => (isPublicAuthAllowed(req.method, req.path) ? next() : res.status(404).end()))
+}
 app.get('/health/metrics', (req, res) => {
-  if (!process.env.INTERNAL_API_KEY || req.headers.authorization !== `Bearer ${process.env.INTERNAL_API_KEY}`) return res.status(401).end()
+  const key = process.env.INTERNAL_API_KEY
+  if (!key || !sameSecret(req.headers.authorization ?? '', `Bearer ${key}`)) return res.status(401).end()
   res.type('text/plain').send(metrics())
 })
 

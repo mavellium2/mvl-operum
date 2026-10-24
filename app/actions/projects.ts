@@ -113,7 +113,9 @@ export async function updateUserProjectAction(
 ) {
   try {
     await verifySession()
-    await projectsApi.addMember(projectId, { userId, ...data })
+    // Só os campos do vínculo (role, departamento, valor/hora): o resto é descartado.
+    const { role, departmentId, hourlyRate } = data
+    await projectsApi.addMember(projectId, { userId, role, departmentId, hourlyRate })
     revalidatePath(`/projetos/${projectId}/membros`)
     revalidatePath(`/projetos/${projectId}`)
     revalidatePath('/admin/users')

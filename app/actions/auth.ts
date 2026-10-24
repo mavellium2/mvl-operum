@@ -243,18 +243,34 @@ export async function getMyTenantsAction() {
 // CUID v1/v2 format — prevents arbitrary string injection downstream
 const CUID_RE = /^c[a-z0-9]{20,}$/i
 
-export async function switchTenantAction(targetTenantId: string) {
-  if (!targetTenantId?.trim() || !CUID_RE.test(targetTenantId)) return
+export type SwitchTenantResult = { error?: string; needsPassword?: boolean }
+
+/**
+ * Troca para a conta da mesma pessoa em outra instituição. Contas ainda não
+ * vinculadas (ADR-061) pedem a senha da conta de destino na primeira vez.
+ */
+export async function switchTenantAction(targetTenantId: string, password?: string): Promise<SwitchTenantResult | void> {
+  if (!targetTenantId?.trim() || !CUID_RE.test(targetTenantId)) return { error: 'Instituição inválida' }
+  if (password !== undefined && (typeof password !== 'string' || password.length > 128)) return { error: 'Senha inválida' }
 
   const { token: oldToken } = await verifySession()
 
   // Verify the user actually has a membership in the target tenant before switching.
   // This is a client-side guard; auth-service enforces the same check server-side.
   const myTenants = await authApi.getMyTenants().catch(() => [])
-  const isMember = myTenants.some(t => t.tenantId === targetTenantId)
-  if (!isMember) return
+  const alvo = myTenants.find(t => t.tenantId === targetTenantId)
+  if (!alvo) return { error: 'Instituição não encontrada' }
+  if (alvo.requiresPassword && !password) return { needsPassword: true }
 
-  const result = await authApi.switchTenant(targetTenantId)
+  let result: Awaited<ReturnType<typeof authApi.switchTenant>>
+  try {
+    result = await authApi.switchTenant(targetTenantId, password)
+  } catch (err) {
+    const status = (err as { status?: number }).status
+    if (status === 403 && !password) return { needsPassword: true }
+    if (status === 403 && err instanceof Error) return { error: err.message, needsPassword: true }
+    return { error: 'Não foi possível acessar a instituição' }
+  }
 
   // Invalidate old session only after the new one is issued, to avoid a race
   // where the gateway rejects the switch call as "Sessão expirada".

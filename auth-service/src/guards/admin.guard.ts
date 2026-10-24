@@ -1,5 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common'
 import { prisma } from '../prisma'
+import { timingSafeEqual } from 'crypto'
 
 @Injectable()
 export class AdminGuard implements CanActivate {
@@ -12,7 +13,9 @@ export class AdminGuard implements CanActivate {
     // because the API gateway strips/overwrites x-user-id from external requests before
     // injecting it from the verified JWT payload.
     const internalKey = process.env.INTERNAL_API_KEY
-    if (!internalKey || req.headers['x-internal-api-key'] !== internalKey) {
+    const recebida = Buffer.from(req.headers['x-internal-api-key'] ?? '')
+    const esperada = Buffer.from(internalKey ?? '')
+    if (!internalKey || recebida.length !== esperada.length || !timingSafeEqual(recebida, esperada)) {
       throw new UnauthorizedException()
     }
 

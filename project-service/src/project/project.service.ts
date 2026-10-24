@@ -45,6 +45,19 @@ export const CreateProjectSchema = z.object({
   departamentos: z.array(z.string()).optional(),
 })
 
+/**
+ * Vínculo de membro: só estes campos chegam ao Prisma. Sem o schema, o corpo
+ * era espalhado no upsert e podia trocar `projectId` (membro em projeto de
+ * outra instituição), `active`, `order`... Campos desconhecidos são descartados.
+ */
+export const AddMemberSchema = z.object({
+  userId: z.string().trim().min(1).max(128),
+  role: z.string().trim().max(500).nullable().optional(),
+  departmentId: z.string().trim().min(1).max(128).nullable().optional(),
+  hourlyRate: z.number().min(0).max(1_000_000).nullable().optional(),
+})
+export type AddMemberInput = z.infer<typeof AddMemberSchema>
+
 export const UpdateProjectSchema = CreateProjectSchema.partial().omit({ tenantId: true }).extend({
   status: z.enum(['ACTIVE', 'INACTIVE', 'COMPLETED', 'ARCHIVED']).optional(),
 })
@@ -152,13 +165,22 @@ export class ProjectService {
     )
   }
 
-  async addMember(projectId: string, tenantId: string, userId: string, data: { role?: string; departmentId?: string; hourlyRate?: number }) {
+  async addMember(projectId: string, tenantId: string, userId: string, input: Omit<AddMemberInput, 'userId'>) {
     await this.findOne(projectId, tenantId)
     await assertUserInTenant(userId, tenantId)
+    const data = {
+      ...(input.role !== undefined ? { role: input.role } : {}),
+      ...(input.departmentId !== undefined ? { departmentId: input.departmentId } : {}),
+      ...(input.hourlyRate !== undefined ? { hourlyRate: input.hourlyRate } : {}),
+    }
+    if (data.departmentId) {
+      const dept = await prisma.department.findFirst({ where: { id: data.departmentId, tenantId }, select: { id: true } })
+      if (!dept) throw new BadRequestException('Departamento inválido')
+    }
     return prisma.userProject.upsert({
       where: { userId_projectId: { userId, projectId } },
-      create: { userId, projectId, ...data },
-      update: { active: true, inactiveReason: null, inactivatedAt: null, ...data },
+      create: { ...data, userId, projectId },
+      update: { ...data, active: true, inactiveReason: null, inactivatedAt: null },
     })
   }
 

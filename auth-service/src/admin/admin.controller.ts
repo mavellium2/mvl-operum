@@ -10,9 +10,11 @@ import {
   HttpStatus,
   UnauthorizedException,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common'
 import { AdminService } from './admin.service'
 import { NoPatGuard } from '../guards/no-pat.guard'
+import { AdminCreateUserSchema, AdminUpdateUserSchema } from './admin.dto'
 
 @Controller('auth')
 export class AdminController {
@@ -32,55 +34,44 @@ export class AdminController {
   createUser(
     @Headers('x-tenant-id') tenantId: string,
     @Headers('x-user-role') role: string,
-    @Body() body: {
-      name: string
-      email: string
-      password: string
-      isAdmin?: boolean
-      forcePasswordChange?: boolean
-      avatarUrl?: string
-      phone?: string
-      cep?: string
-      logradouro?: string
-      numero?: string
-      complemento?: string
-      bairro?: string
-      cidade?: string
-      estado?: string
-      notes?: string
-    },
+    @Body() body: unknown,
   ) {
-    return this.adminService.createUser(tenantId, role, body)
+    return this.adminService.createUser(tenantId, role, AdminCreateUserSchema.parse(body))
   }
 
   @Patch('admin/users/:id')
   @UseGuards(NoPatGuard)
   updateUser(
     @Param('id') userId: string,
+    @Headers('x-tenant-id') tenantId: string,
     @Headers('x-user-role') role: string,
-    @Body() body: Record<string, unknown>,
+    @Body() body: unknown,
   ) {
-    return this.adminService.updateUser(userId, role, body as Parameters<AdminService['updateUser']>[2])
+    return this.adminService.updateUser(userId, tenantId, role, AdminUpdateUserSchema.parse(body))
   }
 
   @Patch('admin/users/:id/active')
   @UseGuards(NoPatGuard)
   toggleActive(
     @Param('id') userId: string,
+    @Headers('x-tenant-id') tenantId: string,
     @Headers('x-user-role') role: string,
-    @Body() body: { active: boolean },
+    @Body() body: { active?: unknown },
   ) {
-    return this.adminService.toggleActive(userId, role, body.active)
+    if (typeof body?.active !== 'boolean') throw new BadRequestException('active deve ser booleano')
+    return this.adminService.toggleActive(userId, tenantId, role, body.active)
   }
 
   @Patch('admin/users/:id/role')
   @UseGuards(NoPatGuard)
   setRole(
     @Param('id') userId: string,
+    @Headers('x-tenant-id') tenantId: string,
     @Headers('x-user-role') role: string,
-    @Body() body: { role: string },
+    @Body() body: { role?: unknown },
   ) {
-    return this.adminService.setRole(userId, role, body.role)
+    if (typeof body?.role !== 'string') throw new BadRequestException('role inválida')
+    return this.adminService.setRole(userId, tenantId, role, body.role)
   }
 
   @Get('all-users')

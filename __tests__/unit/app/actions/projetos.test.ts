@@ -240,6 +240,18 @@ describe('updateProjetoMemberAction — horas por dia (SDD 4.5)', () => {
   })
 })
 
+describe('updateProjetoMemberAction — atribuição em massa (auditoria 24/10)', () => {
+  it('só campos de contato chegam ao User; papel, tenant e operador são descartados', async () => {
+    vi.mocked(verifySession).mockResolvedValue({ ...mockSession, role: 'member' } as never)
+    await updateProjetoMemberAction('u2', 'p1', {
+      cep: '01000-000', notes: 'ok',
+      ...({ role: 'admin', tenantId: 't2', platformOperator: true, passwordHash: 'x', identityId: 'u9' } as object),
+    })
+    const data = vi.mocked(prisma.user.update).mock.calls[0][0].data as Record<string, unknown>
+    expect(data).toEqual({ cep: '01000-000', notes: 'ok' })
+  })
+})
+
 describe('macrofases — persistência e recuperação', () => {
   beforeEach(() => {
     vi.mocked(verifySession).mockResolvedValue(mockSession as never)

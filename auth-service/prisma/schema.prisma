@@ -61,6 +61,10 @@ model User {
   forcePasswordChange Boolean   @default(false)
   lastLogin           DateTime?
   tokenVersion        Int       @default(0)
+  /** Operador da plataforma (Mavellium): gerencia instituições. Diferente do `admin` de uma instituição (ADR-060). */
+  platformOperator    Boolean   @default(false)
+  /** Contas da mesma pessoa em instituições diferentes compartilham este id (ADR-061). Nulo = conta isolada. */
+  identityId          String?
   resetToken          String?
   resetTokenExpiry    DateTime?
   deletedAt           DateTime?
@@ -71,6 +75,7 @@ model User {
   oauthGrantTenants OAuthGrantTenant[]
 
   @@unique([email, tenantId])
+  @@index([identityId])
 }
 
 model ApiToken {

@@ -6,6 +6,7 @@ vi.mock('../prisma', () => ({
   prisma: {
     project: { findFirst: vi.fn() },
     userProject: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
+    department: { findFirst: vi.fn() },
   },
 }))
 
@@ -13,7 +14,7 @@ vi.mock('../common/tenant-scope', () => ({ assertUserInTenant: vi.fn() }))
 
 import { prisma } from '../prisma'
 import { assertUserInTenant } from '../common/tenant-scope'
-import { ProjectService, UpdateProjectSchema } from './project.service'
+import { ProjectService, UpdateProjectSchema, AddMemberSchema } from './project.service'
 
 const db = prisma as unknown as Record<string, Record<string, ReturnType<typeof vi.fn>>>
 const assertUser = assertUserInTenant as unknown as ReturnType<typeof vi.fn>
@@ -39,6 +40,22 @@ describe('ProjectService.addMember', () => {
     await service.addMember('p1', 't1', 'u1', { role: 'dev' })
     expect(assertUser).toHaveBeenCalledWith('u1', 't1')
     expect(db.userProject.upsert).toHaveBeenCalled()
+  })
+
+  it('corpo não troca o projeto nem o estado do vínculo (atribuição em massa)', async () => {
+    db.userProject.upsert.mockResolvedValue({})
+    const { userId, ...data } = AddMemberSchema.parse({ userId: 'u1', role: 'dev', projectId: 'p-outro', active: false, order: 99, tenantId: 't2' })
+    await service.addMember('p1', 't1', userId, data)
+    const args = db.userProject.upsert.mock.calls[0][0]
+    expect(args.create).toEqual({ role: 'dev', userId: 'u1', projectId: 'p1' })
+    expect(args.update).toEqual({ role: 'dev', active: true, inactiveReason: null, inactivatedAt: null })
+  })
+
+  it('departamento de outra instituição é recusado', async () => {
+    db.department.findFirst.mockResolvedValue(null)
+    await expect(service.addMember('p1', 't1', 'u1', { departmentId: 'd-outro' })).rejects.toThrow()
+    expect(db.department.findFirst).toHaveBeenCalledWith({ where: { id: 'd-outro', tenantId: 't1' }, select: { id: true } })
+    expect(db.userProject.upsert).not.toHaveBeenCalled()
   })
 })
 

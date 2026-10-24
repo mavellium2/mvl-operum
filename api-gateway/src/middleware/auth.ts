@@ -43,6 +43,18 @@ function normalizePath(path: string): string {
   return ('/' + decoded.split('/').filter(Boolean).join('/')).toLowerCase()
 }
 
+// Porta pública (Traefik): o app e o mcp-server usam a porta interna, que
+// alcança todas as rotas do auth-service. Na pública, o proxy também injeta
+// X-Internal-Api-Key, então /auth/* só expõe as leituras de identidade que a
+// API direta (PAT) usa; contas, tenants, senhas e tokens ficam só na interna.
+const PUBLIC_AUTH_ALLOWLIST = new Set(['GET /auth/me', 'GET /auth/my-tenants', 'GET /auth/all-users'])
+
+export function isPublicAuthAllowed(method: string, path: string): boolean {
+  const normalized = normalizePath(path)
+  if (normalized !== '/auth' && !normalized.startsWith('/auth/')) return true
+  return PUBLIC_AUTH_ALLOWLIST.has(`${method.toUpperCase()} ${normalized}`)
+}
+
 export function isPatAllowed(method: string, path: string): boolean {
   const normalized = normalizePath(path)
   if (normalized !== '/auth' && !normalized.startsWith('/auth/')) return true
@@ -185,7 +197,7 @@ async function introspect<T>(token: string, cachePrefix: string, path: string): 
 const introspectPat = (token: string) => introspect<IntrospectResult>(token, 'pat', '/auth/api-tokens/introspect')
 const introspectOAuth = (token: string) => introspect<OAuthIntrospectResult>(token, 'oat', '/oauth/introspect')
 
-function sameSecret(a: string, b: string): boolean {
+export function sameSecret(a: string, b: string): boolean {
   const ab = Buffer.from(a)
   const bb = Buffer.from(b)
   return ab.length === bb.length && timingSafeEqual(ab, bb)

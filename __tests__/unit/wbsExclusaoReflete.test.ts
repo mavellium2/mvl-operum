@@ -43,8 +43,18 @@ describe('excluir na EAP exclui do lado da sprint', () => {
 
   it('recortar e colar (id novo, mesmo card) não exclui o card', async () => {
     tx.wbsNode.findMany.mockResolvedValue([{ id: 'r', properties: {} }, { id: 'a', properties: { cardId: 'c1' } }])
+    tx.card.findMany.mockResolvedValue([{ id: 'c1' }])
     await salvar({ r: n('r', null, ['a2']), a2: n('a2', 'r', [], { cardId: 'c1' }) })
     expect(tx.card.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('vínculo com card de outro projeto é descartado ao salvar', async () => {
+    tx.wbsNode.findMany.mockResolvedValue([{ id: 'r', properties: {} }])
+    tx.card.findMany.mockResolvedValue([])
+    await salvar({ r: n('r', null, ['a']), a: n('a', 'r', [], { cardId: 'c-de-outra-instituicao', tempoMinutos: 30 }) })
+    expect(tx.card.findMany).toHaveBeenCalledWith({ where: { id: { in: ['c-de-outra-instituicao'] }, OR: [{ projectId: 'p1' }, { sprint: { projectId: 'p1' } }] }, select: { id: true } })
+    const gravados = tx.wbsNode.createMany.mock.calls[0][0].data as { id: string; properties: Record<string, unknown> }[]
+    expect(gravados.find(g => g.id === 'a')!.properties).toEqual({ tempoMinutos: 30 })
   })
 
   it('fase removida exclui a sprint e manda os cards que sobraram para o fim do backlog', async () => {

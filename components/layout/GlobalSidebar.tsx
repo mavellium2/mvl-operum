@@ -49,6 +49,7 @@ export default function GlobalSidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const [animated, setAnimated] = useState(false)
   const [role, setRole] = useState<string | undefined>(undefined)
+  const [operador, setOperador] = useState(false)
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY)
@@ -61,7 +62,7 @@ export default function GlobalSidebar() {
   useEffect(() => {
     fetchWithSession('/api/me')
       .then(r => r.json())
-      .then(d => { if (d?.user?.role) setRole(d.user.role) })
+      .then(d => { if (d?.user?.role) setRole(d.user.role); setOperador(d?.user?.platformOperator === true) })
       .catch(() => { })
   }, [])
 
@@ -89,7 +90,8 @@ export default function GlobalSidebar() {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
 
-  const nav = role === 'admin' ? ADMIN_ITEMS : NAV_ITEMS
+  // Instituições é do operador da plataforma (ADR-060), não do admin de uma instituição.
+  const nav = role === 'admin' ? ADMIN_ITEMS.filter(i => i.href !== '/admin/tenants' || operador) : NAV_ITEMS
 
   const title = nav.find(i => isActive(i.href))?.label
     ?? FALLBACK_TITLES[parts[0]]
