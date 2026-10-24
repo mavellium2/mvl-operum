@@ -13,8 +13,8 @@ vi.mock('@/lib/dal', () => ({ verifySession: vi.fn().mockResolvedValue({ userId:
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/lib/api-client', () => ({ sprintsApi: { delete: vi.fn(), update: vi.fn(), create: vi.fn() } }))
 
-import { diferencasSprint, sprintTemDados } from '@/services/sprintHistoricoService'
-import { deleteSprintAction } from '@/app/actions/sprints'
+import { camposDaSprint, diferencasSprint, sprintTemDados } from '@/services/sprintHistoricoService'
+import { deleteSprintAction, updateSprintAction } from '@/app/actions/sprints'
 import { sprintsApi } from '@/lib/api-client'
 import { registrarAcao } from '@/services/auditoriaService'
 import { sincronizarEapComSprint } from '@/services/wbsService'
@@ -63,5 +63,24 @@ describe('excluir sprint pelo quadro', () => {
   it('sprint vazia é excluída sem motivo', async () => {
     expect(await deleteSprintAction('s1', 'p1')).toEqual({ success: true })
     expect(sprintsApi.delete).toHaveBeenCalled()
+  })
+})
+
+describe('histórico de sprint de outra instituição', () => {
+  it('camposDaSprint só procura sprints de projetos da instituição', async () => {
+    await camposDaSprint('s1', 't1')
+    expect(db.sprint.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 's1', project: { tenantId: 't1' } } }))
+  })
+  it('sem instituição não consulta nada', async () => {
+    expect(await camposDaSprint('s1', '')).toBeNull()
+    expect(db.sprint.findFirst).not.toHaveBeenCalled()
+  })
+  it('alterar sprint de outra instituição não grava histórico com os dados dela', async () => {
+    // A sprint s-outra é de outro tenant: a busca filtrada não a encontra.
+    db.sprint.findFirst.mockImplementation(async ({ where }) => (where.project?.tenantId === 't2' ? { name: 'Alheia', projectId: 'p2' } : null))
+    vi.mocked(sprintsApi.update).mockResolvedValue({ id: 's-outra' } as never)
+    await updateSprintAction(undefined, 's-outra', { name: 'Novo' })
+    for (const [arg] of db.sprint.findFirst.mock.calls) expect(arg.where.project).toEqual({ tenantId: 't1' })
+    expect(registrarAcao).not.toHaveBeenCalled()
   })
 })

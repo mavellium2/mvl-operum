@@ -357,7 +357,7 @@ async function refletirExclusoesDaEap(
   // Sprint com dados só é excluída com motivo; o resumo é tirado antes de excluir os cards.
   const resumos = []
   for (const sid of sprintIds) {
-    const resumo = await resumoDaSprint(sid, tx)
+    const resumo = await resumoDaSprint(sid, tx, ctx.tenantId || undefined)
     if (resumo && resumo.projectId === projectId) resumos.push(resumo)
   }
   const motivo = ctx.motivo?.trim() ?? ''
