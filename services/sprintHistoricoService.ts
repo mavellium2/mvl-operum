@@ -48,9 +48,11 @@ export function diferencasSprint(antes: CamposSprint | null, depois: CamposSprin
 /** Sprint "com dados": tem cards abertos ou tempo registrado neles. */
 export const sprintTemDados = (r: Pick<ResumoSprint, 'cards' | 'segundosRegistrados'>) => r.cards > 0 || r.segundosRegistrados > 0
 
-export async function camposDaSprint(sprintId: string, tx: Prisma.TransactionClient | typeof prisma = prisma, tenantId?: string): Promise<(CamposSprint & { projectId: string | null }) | null> {
+/** Campos do "antes/depois" do histórico; só lê sprints de projetos da instituição (`tenantId`). */
+export async function camposDaSprint(sprintId: string, tenantId: string, tx: Prisma.TransactionClient | typeof prisma = prisma): Promise<(CamposSprint & { projectId: string | null }) | null> {
+  if (!tenantId) return null
   return tx.sprint.findFirst({
-    where: { id: sprintId, ...(tenantId ? { project: { tenantId } } : {}) },
+    where: { id: sprintId, project: { tenantId } },
     select: { name: true, status: true, startDate: true, endDate: true, description: true, qualidade: true, dificuldade: true, projectId: true },
   })
 }

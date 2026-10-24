@@ -7,6 +7,10 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.40.3] — 2026-10-24
+
+- **Segurança:** o histórico de alterações da sprint ("antes/depois" no quadro e nas metas da sprint) só lê sprints de projetos da instituição de quem altera. A exclusão de fase pela EAP também confere a instituição ao resumir a sprint. Pendência da auditoria de 24/10.
+
 ## [1.40.2] — 2026-10-24
 
 - Corrige o realizado da Planilha de Custos: atividades vinculadas a cards passam a usar os apontamentos encerrados, incluindo lançamentos manuais e timers parados. Edição e exclusão dos registros se refletem na próxima leitura; excluir o último zera o tempo.

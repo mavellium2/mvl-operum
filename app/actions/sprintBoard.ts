@@ -460,11 +460,11 @@ export async function updateSprintMetaAction(
 ) {
   try {
     const { userId, tenantId } = await verifySession()
-    const antes = await camposDaSprint(sprintId)
+    const antes = await camposDaSprint(sprintId, tenantId)
     const sprint = await sprintsApi.update(sprintId, data as Record<string, unknown>)
     // Histórico de alterações da sprint (nome, datas, notas).
     try {
-      const depois = await camposDaSprint(sprintId)
+      const depois = await camposDaSprint(sprintId, tenantId)
       if (depois) await registrarHistoricoSprint({ tenantId, userId, sprintId, acao: 'UPDATE', projectId: depois.projectId, nome: depois.name ?? '', alteracoes: diferencasSprint(antes, depois), origem: 'quadro' })
     } catch (error) { console.error('[sprint] falha ao gravar histórico', error) }
     revalidatePath(`/sprints/${sprintId}`)

@@ -11,7 +11,7 @@ import {
 /** Grava a alteração no histórico da sprint; falha no histórico não desfaz a alteração. */
 async function historicoDeAlteracao(tenantId: string, userId: string, id: string, antes: Awaited<ReturnType<typeof camposDaSprint>>) {
   try {
-    const depois = await camposDaSprint(id)
+    const depois = await camposDaSprint(id, tenantId)
     if (!depois) return
     await registrarHistoricoSprint({
       tenantId, userId, sprintId: id, acao: 'UPDATE', projectId: depois.projectId, nome: depois.name ?? '',
@@ -51,7 +51,7 @@ export async function createSprintAction(
 export async function updateSprintAction(_prevState: unknown, id: string, data: Record<string, unknown>) {
   try {
     const { userId, tenantId } = await verifySession()
-    const antes = await camposDaSprint(id)
+    const antes = await camposDaSprint(id, tenantId)
     const sprint = await sprintsApi.update(id, data)
     await historicoDeAlteracao(tenantId, userId, id, antes)
     revalidatePath('/sprints')
@@ -114,7 +114,7 @@ export async function deleteSprintAction(id: string, _projectId?: string, motivo
 export async function completeSprintAction(id: string) {
   try {
     const { userId, tenantId } = await verifySession()
-    const antes = await camposDaSprint(id)
+    const antes = await camposDaSprint(id, tenantId)
     const sprint = await sprintsApi.update(id, { status: 'COMPLETED' })
     await historicoDeAlteracao(tenantId, userId, id, antes)
     revalidatePath('/sprints')
