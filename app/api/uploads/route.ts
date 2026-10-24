@@ -2,9 +2,29 @@ import { NextResponse } from 'next/server'
 import { verifyRouteSession } from '@/lib/routeAuth'
 import { cardsApi } from '@/lib/api-client'
 import { erroDoAnexo, tipoDoAnexo } from '@/lib/attachmentTypes'
+import prisma from '@/lib/prisma'
+import { authorizeApi, isAccessDenied } from '@/services/apiAuthorization'
 
 const FILE_SERVICE_URL = (process.env.FILE_SERVICE_URL ?? '').replace(/\/$/, '')
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? ''
+
+/**
+ * Esta rota fala direto com o file-service (sem o gateway), então aplica a mesma
+ * regra que o gateway aplicaria: enviar exige editar cards do projeto; apagar
+ * exige a permissão sobre o anexo. Papel lido do banco, nunca da sessão.
+ */
+async function autorizado(session: { userId: string; tenantId: string }, method: 'POST' | 'DELETE', path: string): Promise<Response | null> {
+  try {
+    const user = await prisma.user.findFirst({ where: { id: session.userId, tenantId: session.tenantId, isActive: true, deletedAt: null }, select: { role: true } })
+    if (!user) return Response.json({ error: 'Acesso negado' }, { status: 403 })
+    const access = await authorizeApi({ userId: session.userId, tenantId: session.tenantId, role: user.role }, method, path)
+    return access.allowed ? null : Response.json({ error: 'Acesso negado' }, { status: 403 })
+  } catch (err) {
+    if (isAccessDenied(err)) return Response.json({ error: 'Sem permissão para esta operação' }, { status: 403 })
+    console.error('[uploads] falha ao autorizar', err instanceof Error ? err.name : 'Error')
+    return Response.json({ error: 'Autorização indisponível' }, { status: 503 })
+  }
+}
 
 export async function POST(request: Request) {
   let session: Awaited<ReturnType<typeof verifyRouteSession>>
@@ -40,6 +60,8 @@ export async function POST(request: Request) {
     }
   }
   if (!card) return Response.json({ error: 'Acesso negado' }, { status: 403 })
+  const negado = await autorizado(session as { userId: string; tenantId: string }, 'POST', `/files/upload?cardId=${encodeURIComponent(cardId)}`)
+  if (negado) return negado
 
   if (!FILE_SERVICE_URL) {
     return Response.json({ error: 'Serviço de arquivos não configurado' }, { status: 503 })
@@ -88,6 +110,9 @@ export async function DELETE(request: Request) {
   if (!FILE_SERVICE_URL) {
     return NextResponse.json({ error: 'Serviço de arquivos não configurado' }, { status: 503 })
   }
+
+  const negado = await autorizado(session as { userId: string; tenantId: string }, 'DELETE', `/files/${encodeURIComponent(attachmentId)}`)
+  if (negado) return negado
 
   const res = await fetch(`${FILE_SERVICE_URL}/files/${encodeURIComponent(attachmentId)}`, {
     method: 'DELETE',

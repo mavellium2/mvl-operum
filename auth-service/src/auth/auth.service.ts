@@ -17,6 +17,7 @@ import { MailerService } from '../mailer/mailer.service'
 import { generateResetCode, hashResetCode, compareResetCode } from '../lib/crypto'
 import type { UpdateProfileDto } from './dto/update-profile.dto'
 import { contasVinculadas, mesmaIdentidade, vincularContas, identidade } from './identity'
+import { revogarAcessosPersistentes } from './revogacao'
 import type { LoginDto } from './dto/login.dto'
 import type { RegisterDto } from './dto/register.dto'
 import type { ChangePasswordDto, RequestResetDto, ValidateCodeDto, ResetPasswordDto } from './dto/password.dto'
@@ -72,9 +73,11 @@ export class AuthService {
       return this.completeLogin(candidates[0] ?? null, dto.password)
     }
 
+    const testados: string[] = []
     for (const candidate of candidates) {
       if (!candidate.isActive || candidate.status !== 'active') continue
       if ((candidate.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS) continue
+      testados.push(candidate.id)
       if (await bcrypt.compare(dto.password, candidate.passwordHash)) {
         await prisma.user.update({
           where: { id: candidate.id },
@@ -84,6 +87,11 @@ export class AuthService {
       }
     }
 
+    // Senha errada conta tentativa em todas as contas testadas; antes, e-mails
+    // com conta em mais de uma instituição nunca chegavam ao bloqueio.
+    if (testados.length) {
+      await prisma.user.updateMany({ where: { id: { in: testados } }, data: { loginAttempts: { increment: 1 } } })
+    }
     throw new UnauthorizedException('Credenciais inválidas')
   }
 
@@ -94,21 +102,26 @@ export class AuthService {
   ) {
     if (!user) throw new UnauthorizedException('Credenciais inválidas')
 
+    const bloqueada = (user.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS
+    const match = await bcrypt.compare(password, user.passwordHash)
+    if (!match) {
+      // Mesma resposta para conta inexistente, inativa ou bloqueada: o motivo só
+      // aparece para quem acertou a senha (não revela que o e-mail tem conta).
+      if (!bloqueada && user.isActive && user.status === 'active') {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { loginAttempts: { increment: 1 } },
+        })
+      }
+      throw new UnauthorizedException('Credenciais inválidas')
+    }
+
     if (!user.isActive || user.status !== 'active') {
       throw new UnauthorizedException('Conta inativa ou bloqueada')
     }
 
-    if ((user.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS) {
+    if (bloqueada) {
       throw new UnauthorizedException('Conta bloqueada por excesso de tentativas. Contate o suporte.')
-    }
-
-    const match = await bcrypt.compare(password, user.passwordHash)
-    if (!match) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { loginAttempts: (user.loginAttempts ?? 0) + 1 },
-      })
-      throw new UnauthorizedException('Credenciais inválidas')
     }
 
     await prisma.user.update({
@@ -249,9 +262,16 @@ export class AuthService {
       where: { id: userId },
       data: { passwordHash, tokenVersion: { increment: 1 } },
     })
+    await revogarAcessosPersistentes(userId, this.redis)
   }
 
   async alterarSenha(userId: string, newPassword: string) {
+    // Sem a senha atual: só vale na troca obrigatória (primeiro acesso / senha
+    // redefinida). Fora dela, uma sessão roubada trocaria a senha e trancaria o dono.
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { forcePasswordChange: true } })
+    if (!user?.forcePasswordChange) {
+      throw new ForbiddenException('Use "Alterar senha" informando a senha atual')
+    }
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS)
     await prisma.user.update({
       where: { id: userId },
@@ -261,6 +281,7 @@ export class AuthService {
         tokenVersion: { increment: 1 },
       },
     })
+    await revogarAcessosPersistentes(userId, this.redis)
   }
 
   private async resolveTenant(subdomain?: string) {
@@ -385,6 +406,15 @@ export class AuthService {
         })
       : await prisma.user.findFirst({ where: { email: dto.email, deletedAt: null } })
 
+    // Mesmo contador da Etapa 2: chamar só a Etapa 3 não dá tentativas ilimitadas.
+    if (user?.resetToken) {
+      const attempts = await this.redis.incrWithTTL(`reset_attempts:${user.id}`, RESET_CODE_TTL_SECONDS)
+      if (attempts > MAX_VALIDATE_ATTEMPTS) {
+        await prisma.user.update({ where: { id: user.id }, data: { resetToken: null, resetTokenExpiry: null } })
+        throw new HttpException({ success: false, error: 'Código inválido ou expirado.' }, HttpStatus.BAD_REQUEST)
+      }
+    }
+
     // Re-valida o código (não confia que a Etapa 2 passou)
     const invalid =
       !user ||
@@ -413,6 +443,7 @@ export class AuthService {
 
     // Remove contador de tentativas
     await this.redis.delResetAttempts(user!.id)
+    await revogarAcessosPersistentes(user!.id, this.redis)
     // Revogação de sessões: tokenVersion++ já faz o gateway rejeitar tokens antigos.
     // Sessões Redis expiram naturalmente ou são rejeitadas no verify() via tokenVersion.
 

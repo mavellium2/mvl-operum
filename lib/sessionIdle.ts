@@ -41,5 +41,11 @@ export function isPassiveRequest(pathname: string, headers: Headers): boolean {
  */
 export function destinoInterno(from: string | null | undefined): string | null {
   if (!from || !from.startsWith('/') || from.startsWith('//') || from.startsWith('/\\')) return null
-  return from
+  // O parser de URL descarta tab/CR/LF e trata "\" como "/": "/\t/evil.com"
+  // vira "//evil.com". Recusa controles e barra invertida e confere a origem.
+  if (/[\u0000-\u001F\u007F\\]/.test(from)) return null
+  let url: URL
+  try { url = new URL(from, 'http://operum.invalid') } catch { return null }
+  if (url.origin !== 'http://operum.invalid') return null
+  return url.pathname + url.search + url.hash
 }

@@ -35,7 +35,7 @@ function makeApiToken(overrides: Partial<Record<string, unknown>> = {}) {
     lastUsedAt: null,
     revokedAt: null,
     createdAt: new Date(),
-    user: { role: 'member', isActive: true, forcePasswordChange: false },
+    user: { role: 'member', isActive: true, forcePasswordChange: false, deletedAt: null, status: 'active', tenantId: 'tenant-a', tenant: { status: 'ACTIVE', deletedAt: null } },
     ...overrides,
   }
 }
@@ -185,6 +185,18 @@ describe('ApiTokensService', () => {
       const result = await service.introspect('opr_pat_force_change')
       expect(result.active).toBe(false)
     })
+
+  it('retorna active=false quando a instituição está suspensa ou a conta foi apagada', async () => {
+    const base = { role: 'member', isActive: true, forcePasswordChange: false, deletedAt: null, status: 'active', tenantId: 'tenant-a' }
+    vi.mocked(prisma.apiToken.findUnique).mockResolvedValueOnce(
+      makeApiToken({ user: { ...base, tenant: { status: 'SUSPENDED', deletedAt: null } } }) as any,
+    )
+    expect((await service.introspect('opr_pat_x')).active).toBe(false)
+    vi.mocked(prisma.apiToken.findUnique).mockResolvedValueOnce(
+      makeApiToken({ user: { ...base, deletedAt: new Date(), tenant: { status: 'ACTIVE', deletedAt: null } } }) as any,
+    )
+    expect((await service.introspect('opr_pat_x')).active).toBe(false)
+  })
 
     it('retorna active=false e campos nulos quando o token não é encontrado', async () => {
       vi.mocked(prisma.apiToken.findUnique).mockResolvedValue(null)

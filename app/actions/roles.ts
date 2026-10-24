@@ -93,7 +93,11 @@ export async function updateRoleNameAction(id: string, name: string) {
 
 export async function deleteRoleAction(id: string) {
   try {
-    await verifySession()
+    const { role, tenantId } = await verifySession()
+    // Remover função é do admin (o gateway exige); confere antes de mexer no banco,
+    // e só na função da própria instituição.
+    if (role !== 'admin') return { error: 'Acesso restrito a administradores' }
+    if (!(await prisma.role.findFirst({ where: { id, tenantId }, select: { id: true } }))) return { error: 'Função não encontrada' }
     // Associações por projeto não existem mais: limpa as antigas em vez de bloquear.
     await prisma.projetoFuncao.deleteMany({ where: { funcaoId: id } })
     await rolesApi.delete(id)

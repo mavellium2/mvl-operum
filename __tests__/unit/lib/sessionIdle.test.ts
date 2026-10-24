@@ -42,4 +42,10 @@ describe('destinoInterno', () => {
     expect(destinoInterno('https://evil.com')).toBeNull()
     expect(destinoInterno(null)).toBeNull()
   })
+  it('recusa caracteres que o parser de URL descarta (open redirect com tab)', () => {
+    expect(destinoInterno('/\t/evil.com')).toBeNull()
+    expect(destinoInterno('/\n/evil.com')).toBeNull()
+    expect(destinoInterno('/%09/evil.com')).toBe('/%09/evil.com')
+    expect(destinoInterno('/projetos?x=1#y')).toBe('/projetos?x=1#y')
+  })
 })

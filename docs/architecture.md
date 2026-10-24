@@ -722,7 +722,7 @@ Schemas em `lib/validation/`:
 | Senha | bcrypt rounds 10–12 |
 | Sessão | JWT RS256 httpOnly cookie, `SameSite=strict`, 7 dias, `jti` registrado no Redis (`session:{jti}`) |
 | Algoritmo JWT | RS256 em staging/produção; HS256 fallback em dev local (sem chaves configuradas) |
-| Invalidação de sessão | `tokenVersion` — incrementar invalida todas as sessões; sessão Redis e estado persistido verificados pelo auth-service (produção) |
+| Invalidação de sessão | `tokenVersion` — incrementar invalida todas as sessões; sessão Redis e estado persistido verificados pelo auth-service (produção). Trocar ou redefinir a senha (inclusive pelo admin) também revoga os PATs e as conexões OAuth da conta (`auth-service/src/auth/revogacao.ts`). A introspecção de PAT e o `/api/internal/authorize` exigem conta não excluída e instituição ativa |
 | Bloqueio de conta | `isActive=false` verificado em cada request |
 | Troca de senha forçada | `forcePasswordChange` verificado no login e em `verifySession` |
 | Isolamento de dados | Toda query usa `tenantId` da sessão |
@@ -731,10 +731,10 @@ Schemas em `lib/validation/`:
 | PWA / service worker | `/sw.js` só guarda estáticos versionados, ícones e a página pública `/offline`; nunca HTML autenticado, APIs nem anexos (ADR-058). CSP com `manifest-src` e `worker-src` em `'self'`. Manifest, worker, ícones e `/offline` ficam fora do `proxy.ts`. |
 | Middleware de auth (monolito) | `proxy.ts` valida sessão via `http://localhost:PORT/api/me` antes de cada rota protegida |
 | Confiança gateway↔serviços | Serviços internos **não** revalidam o JWT — confiam nos headers `x-user-id`/`x-tenant-id`/`x-user-role` injetados pelo gateway, protegidos pelo segredo compartilhado `X-Internal-Api-Key` (`INTERNAL_API_KEY`, comparado em tempo constante). Rede `internal` do Docker Compose impede acesso direto de fora. Como o gateway anexa a chave também ao tráfego público, a porta pública restringe `/auth/*` (ADR-059) e as rotas de conta validam campos (`.strict()`) e escopo de tenant. O notification-service usa o `x-user-id` do gateway como dono (nunca o `userId` de query/body) e recusa criar notificação pelo gateway. |
-| Rate limiting | `api-gateway`: 200 req/s por IP (`express-rate-limit`) |
+| Rate limiting | `api-gateway`: 200 req/s por IP do cliente (`express-rate-limit`), com `trust proxy` só para loopback/redes privadas (`GATEWAY_TRUST_PROXY`), para que o IP venha do `X-Forwarded-For` do Traefik sem aceitar valor forjado; `/oauth/register` e `/oauth/token` com limites próprios; 20 req/s por PAT/conexão OAuth. Login: tentativa errada conta em todas as contas candidatas do mesmo e-mail (bloqueio após 10) |
 | CORS | `api-gateway`: allow-list via `ALLOWED_ORIGINS` (⚠️ não documentado em `.env.example` — gap de configuração conhecido) |
 | Dependência de sessão indisponível | Produção bloqueia com 503; credencial inválida/revogada retorna 401. Gateway consulta auth-service sem cache de validade JWT. |
-| CI/CD | TruffleHog (secrets), CodeQL (SAST), Trivy (scan de todas as 7 imagens), OWASP ZAP (DAST) em `deploy-staging.yml`/`deploy-production.yml`. `dependency-audit.yml` verifica instalações congeladas, patch efetivo e audit high da raiz/gateway nas PRs para main/develop. O pnpm dos workflows vem de `packageManager` da raiz. O job `deploy-production.yml:security-scan` também roda nas PRs para main, garantindo a mesma configuração CodeQL da base; testes de deploy, build/push e deploy ficam bloqueados nesse evento. |
+| CI/CD | TruffleHog (secrets), CodeQL (SAST), Trivy (scan de todas as 7 imagens), OWASP ZAP (DAST) em `deploy-staging.yml`/`deploy-production.yml`. `dependency-audit.yml` verifica instalações congeladas, patch efetivo e audit high da raiz/gateway nas PRs para main/develop. O pnpm dos workflows vem de `packageManager` da raiz. O job `deploy-production.yml:security-scan` também roda nas PRs para main, garantindo a mesma configuração CodeQL da base; testes de deploy, build/push e deploy ficam bloqueados nesse evento. Actions de terceiros fixadas por SHA de commit (com a tag em comentário); `deploy-production.yml` com `permissions: contents: read` por padrão e entradas do `workflow_dispatch` passadas por `env`. |
 
 ---
 
@@ -789,6 +789,7 @@ Migrações anteriores (base multi-tenant, RBAC, auditoria, `DocumentVersion`, `
 | `MCP_GATEWAY_KEY`, `MCP_RESOURCE_URL` | Token OAuth só é aceito com a chave interna do mcp-server e com a audiência do MCP (1.36.0) |
 | `PORT` | 4000 — porta interna (app e mcp-server) |
 | `PUBLIC_PORT` | 4080 — porta pública, usada pelo Traefik; `/auth/*` só com `GET /auth/me`, `/auth/my-tenants` e `/auth/all-users` (ADR-059) |
+| `GATEWAY_TRUST_PROXY` | Opcional. Proxies confiáveis para obter o IP do cliente (padrão `loopback, uniquelocal`) |
 
 ### Demais serviços (auth/project/sprint/notification/file-service)
 

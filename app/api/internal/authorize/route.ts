@@ -13,7 +13,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return Response.json({ error: 'Requisição inválida' }, { status: 400 })
   const { userId, tenantId, method, path, body } = parsed.data
   try {
-    const user = await prisma.user.findFirst({ where: { id: userId, tenantId, isActive: true, deletedAt: null }, select: { role: true } })
+    // Instituição suspensa ou removida não autoriza nada, nem com sessão/PAT ainda válidos.
+    const user = await prisma.user.findFirst({ where: { id: userId, tenantId, isActive: true, deletedAt: null, tenant: { status: 'ACTIVE', deletedAt: null } }, select: { role: true } })
     if (!user) return Response.json({ allowed: false }, { status: 403 })
     return Response.json(await authorizeApi({ userId, tenantId, role: user.role }, method, path, body))
   } catch (error) {

@@ -24,6 +24,20 @@ describe('contrato das tools', () => {
     }
   })
 
+  it('todo parâmetro *_id/*_ids é validado (id injetado com "../" não desvia a chamada)', async () => {
+    const { tools } = await h.client.listTools()
+    for (const tool of tools) {
+      const props = (tool.inputSchema.properties ?? {}) as Record<string, { type?: string; pattern?: string; items?: { pattern?: string } }>
+      for (const [nome, prop] of Object.entries(props)) {
+        if (nome === 'tenant_id') continue
+        if (nome.endsWith('_id') && prop.type === 'string') expect(prop.pattern, `${tool.name}.${nome}`).toBeTruthy()
+        if (nome.endsWith('_ids') && prop.type === 'array') expect(prop.items?.pattern, `${tool.name}.${nome}`).toBeTruthy()
+      }
+    }
+    const res = await h.raw('operum_delete_task', { task_id: 'x/../../projects/p1', confirm: true })
+    expect(res.isError).toBe(true)
+  })
+
   it('servidor declara instruções de uso', async () => {
     expect(h.client.getInstructions()).toMatch(/tenant → projeto → sprint → coluna → tarefa/)
   })
