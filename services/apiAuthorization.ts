@@ -90,6 +90,12 @@ export async function authorizeApi(s: SessaoAuthz, method: string, path: string,
       return { allowed: true }
     }
     const project = target ? await cardProject(target) : body.sprintId ? await sprintProject(body.sprintId) : body.projectId
+    if (child === 'budget') {
+      if (p.length !== 3 || !['GET', 'PATCH'].includes(method)) deny()
+      await require(project, 'planilha:ver')
+      if (!read) await require(project, 'planilha:orcado')
+      return { allowed: true }
+    }
     const keys = Object.keys(body)
     const moves = !read && !child && !!target && keys.some(k => movement.has(k))
     // userId é metadado de movimento, sem conceder acesso para alterar outros campos.

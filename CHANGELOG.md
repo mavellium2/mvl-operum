@@ -7,6 +7,12 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.40.0] — 2026-10-24
+
+- **MCP:** ferramentas `operum_get_task_budget` e `operum_set_task_budget` consultam e alteram os minutos orçados na atividade da EAP/Planilha de Custos vinculada ao card. Exigem permissões financeiras, preservam o realizado e recusam vínculo ausente ou ambíguo.
+- **Instituições:** confirmação do operador da plataforma utiliza a senha da conta ativa; administradores institucionais e membros continuam comprovando a senha de destino na primeira vinculação. Contas inativas/suspensas e limites de tentativas continuam bloqueando acesso.
+- **Formulário de confirmação:** lê a senha efetivamente preenchida no formulário, inclusive por preenchimento automático sem evento do React; permite mostrar/ocultar senha e informa qual conta está sendo confirmada. O identificador da instituição deixa de ser apresentado como domínio inexistente `.operum.com`.
+
 ## [1.39.1] — 2026-10-24
 
 Correções médias e baixas da auditoria de segurança de 24/10.

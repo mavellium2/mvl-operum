@@ -460,7 +460,7 @@ export class AuthService {
   async getMyTenants(userId: string, opcoes: { incluirNaoVinculadas?: boolean } = {}) {
     const me = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, identityId: true },
+      select: { id: true, email: true, identityId: true, platformOperator: true },
     })
     if (!me) throw new NotFoundException('Usuário não encontrado')
 
@@ -483,21 +483,28 @@ export class AuthService {
         role: u.role,
         isCurrent: u.id === userId,
         requiresPassword: !mesmaIdentidade(me, u),
+        passwordScope: me.platformOperator ? 'current' as const : 'target' as const,
       }))
   }
 
   async switchTenant(userId: string, targetTenantId: string, password?: string) {
     const me = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, identityId: true },
+      select: { id: true, email: true, identityId: true, platformOperator: true,
+        passwordHash: true, loginAttempts: true, isActive: true, status: true,
+        deletedAt: true, forcePasswordChange: true, tenant: { select: { status: true, deletedAt: true } } },
     })
     if (!me) throw new UnauthorizedException('Usuário não encontrado')
+    if (!me.isActive || me.status !== 'active' || me.deletedAt || me.tenant?.status !== 'ACTIVE' || me.tenant?.deletedAt) {
+      throw new ForbiddenException('Conta inativa ou bloqueada')
+    }
 
     const target = await prisma.user.findFirst({
       where: {
         tenantId: targetTenantId,
         deletedAt: null,
         isActive: true,
+        status: 'active',
         tenant: { status: 'ACTIVE', deletedAt: null },
         OR: [contasVinculadas(me), { email: me.email }],
       },
@@ -505,19 +512,23 @@ export class AuthService {
     if (!target) throw new NotFoundException('Usuário não encontrado neste workspace')
 
     if (!mesmaIdentidade(me, target)) {
-      // Primeira troca para uma conta com o mesmo e-mail: comprova a posse
-      // pela senha da conta de destino, com o mesmo limite do login.
+      // Operador já tem autoridade para administrar instituições: reautentica
+      // pela conta ativa, sem depender de cópias antigas da senha no destino.
+      // Admin de instituição não recebe essa exceção (ADR-063).
+      const confirmation = me.platformOperator ? me : target
+      if (me.platformOperator && me.forcePasswordChange) throw new ForbiddenException('Altere sua senha antes de trocar de instituição')
       if (!password) throw new ForbiddenException({ code: 'PASSWORD_REQUIRED', message: 'Confirme a senha da sua conta nesta instituição' })
       // 403, não 401: a sessão atual continua válida (o app trata 401 como sessão expirada).
-      if ((target.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS) {
+      if ((confirmation.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS || (target.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS) {
         throw new ForbiddenException({ code: 'ACCOUNT_LOCKED', message: 'Conta bloqueada por excesso de tentativas. Contate o suporte.' })
       }
-      const ok = await bcrypt.compare(password, target.passwordHash)
+      const ok = await bcrypt.compare(password, confirmation.passwordHash)
       if (!ok) {
-        await prisma.user.update({ where: { id: target.id }, data: { loginAttempts: { increment: 1 } } })
+        await prisma.user.update({ where: { id: confirmation.id }, data: { loginAttempts: { increment: 1 } } })
         throw new ForbiddenException({ code: 'PASSWORD_INVALID', message: 'Senha incorreta' })
       }
       await vincularContas(me, target)
+      if (me.platformOperator) await prisma.user.update({ where: { id: me.id }, data: { loginAttempts: 0 } })
       this.logger.log(`AUDIT linkAccounts userId=${userId} linkedUserId=${target.id} tenantId=${targetTenantId}`)
     }
 

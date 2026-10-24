@@ -38,6 +38,7 @@ const service = () => new AuthService(jwt as never, redis as never, {} as never)
 const conta = (o: Record<string, unknown> = {}) => ({
   id: 'u-1', email: 'ana@x.com', name: 'Ana', tenantId: 't-a', identityId: null, role: 'member',
   passwordHash: 'hash', tokenVersion: 0, loginAttempts: 0, isActive: true, deletedAt: null,
+  status: 'active', forcePasswordChange: false, tenant: { status: 'ACTIVE', deletedAt: null },
   platformOperator: false, ...o,
 })
 
@@ -98,6 +99,43 @@ describe('rotas de admin — campos e escopo de instituição', () => {
 })
 
 describe('troca de instituição — só contas vinculadas', () => {
+  it('operador confirma a senha da conta ativa mesmo com hash antigo no destino', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(conta({ platformOperator: true, passwordHash: 'hash-atual' }) as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(conta({ id: 'u-2', tenantId: 't-b', passwordHash: 'hash-antigo' }) as never)
+    vi.mocked(bcrypt.compare).mockImplementation(async (senha, hash) => senha === 'atual' && hash === 'hash-atual')
+    await expect(service().switchTenant('u-1', 't-b', 'atual')).resolves.toMatchObject({ token: 'jwt' })
+    expect(bcrypt.compare).toHaveBeenCalledWith('atual', 'hash-atual')
+    expect(prisma.user.updateMany).toHaveBeenCalled()
+  })
+
+  it('admin institucional continua precisando da senha do destino', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(conta({ role: 'admin', passwordHash: 'hash-atual' }) as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(conta({ id: 'u-2', tenantId: 't-b', passwordHash: 'hash-destino' }) as never)
+    vi.mocked(bcrypt.compare).mockImplementation(async (_senha, hash) => hash === 'hash-atual')
+    await expect(service().switchTenant('u-1', 't-b', 'atual')).rejects.toThrow(ForbiddenException)
+    expect(bcrypt.compare).toHaveBeenCalledWith('atual', 'hash-destino')
+    expect(prisma.user.updateMany).not.toHaveBeenCalled()
+    expect(jwt.sign).not.toHaveBeenCalled()
+  })
+
+  it('senha errada do operador conta tentativa na conta ativa e não vincula', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(conta({ platformOperator: true }) as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(conta({ id: 'u-2', tenantId: 't-b' }) as never)
+    vi.mocked(bcrypt.compare).mockResolvedValue(false as never)
+    await expect(service().switchTenant('u-1', 't-b', 'chute')).rejects.toThrow(ForbiddenException)
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'u-1' }, data: { loginAttempts: { increment: 1 } } })
+    expect(prisma.user.updateMany).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { isActive: false }, { status: 'blocked' }, { deletedAt: new Date() },
+    { tenant: { status: 'SUSPENDED', deletedAt: null } },
+  ])('conta ativa inválida não troca: %j', async estado => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(conta({ platformOperator: true, ...estado }) as never)
+    await expect(service().switchTenant('u-1', 't-b', 'atual')).rejects.toThrow(ForbiddenException)
+    expect(jwt.sign).not.toHaveBeenCalled()
+  })
+
   it('conta com o mesmo e-mail e sem vínculo exige a senha de destino', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(conta() as never)
     vi.mocked(prisma.user.findFirst).mockResolvedValue(conta({ id: 'u-vitima', tenantId: 't-b' }) as never)

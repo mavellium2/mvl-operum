@@ -12,6 +12,7 @@ type TenantEntry = {
   isCurrent: boolean
   /** Conta com o mesmo e-mail ainda não vinculada: a primeira troca pede a senha dela. */
   requiresPassword?: boolean
+  passwordScope?: 'current' | 'target'
 }
 
 const roleBadge: Record<string, string> = {
@@ -33,6 +34,7 @@ export default function UserTenantsList() {
   const [senhaPara, setSenhaPara] = useState<string | null>(null)
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
+  const [mostrarSenha, setMostrarSenha] = useState(false)
 
   function acessar(tenantId: string, password?: string) {
     setSwitchingId(tenantId)
@@ -96,35 +98,47 @@ export default function UserTenantsList() {
                 {roleLabel[t.role] ?? t.role}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-0.5 truncate">{t.tenantSubdomain}.operum.com</p>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">Identificador: {t.tenantSubdomain}</p>
           </div>
 
           {!t.isCurrent && senhaPara === t.tenantId && (
             <form
               className="flex flex-col items-end gap-1 shrink-0"
-              onSubmit={e => { e.preventDefault(); if (senha) acessar(t.tenantId, senha) }}
+              onSubmit={e => {
+                e.preventDefault()
+                // FormData lê o valor real, inclusive quando preenchido pelo
+                // gerenciador de senhas sem atualizar o estado do React.
+                const password = new FormData(e.currentTarget).get('password')
+                if (typeof password === 'string' && password) acessar(t.tenantId, password)
+              }}
             >
               <label className="text-xs text-gray-500" htmlFor={`senha-${t.tenantId}`}>
-                Senha da sua conta em {t.tenantName}
+                {t.passwordScope === 'current' ? 'Senha da conta que está ativa' : `Senha da sua conta em ${t.tenantName}`}
               </label>
               <div className="flex gap-2">
                 <input
                   id={`senha-${t.tenantId}`}
-                  type="password"
+                  name="password"
+                  type={mostrarSenha ? 'text' : 'password'}
                   autoComplete="current-password"
                   autoFocus
                   value={senha}
                   onChange={e => setSenha(e.target.value)}
+                  required
                   className="w-40 px-2 py-1.5 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
                   type="submit"
-                  disabled={isPending || !senha}
+                  disabled={isPending}
                   className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
                 >
                   {isPending && switchingId === t.tenantId ? 'Confirmando…' : 'Confirmar'}
                 </button>
               </div>
+              <button type="button" className="text-xs text-blue-600" onClick={() => setMostrarSenha(v => !v)} aria-pressed={mostrarSenha}>
+                {mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+              </button>
+              {t.passwordScope !== 'current' && <p className="text-xs text-gray-500 max-w-64">Esta conta pode ter uma senha diferente da instituição ativa.</p>}
               {erro && <p role="alert" className="text-xs text-red-600">{erro}</p>}
             </form>
           )}
@@ -133,7 +147,7 @@ export default function UserTenantsList() {
             <button
               disabled={isPending}
               onClick={() => {
-                if (t.requiresPassword) { setSenha(''); setErro(null); setSenhaPara(t.tenantId); return }
+                if (t.requiresPassword) { setSenha(''); setMostrarSenha(false); setErro(null); setSenhaPara(t.tenantId); return }
                 acessar(t.tenantId)
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 shrink-0"
