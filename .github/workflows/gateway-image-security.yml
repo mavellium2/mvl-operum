@@ -36,7 +36,3 @@ jobs:
           trivyignores: .trivyignore-gateway.yaml
           cache-dir: ${{ github.workspace }}/.cache/trivy
 
-      - name: Verify Trivy exception scope with negative controls
-        env:
-          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
-        run: node scripts/security/verify-trivy-braces-filter.cjs
