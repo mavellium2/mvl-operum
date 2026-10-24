@@ -268,8 +268,9 @@ Tenant 1 ─┬─ Users ─┬─ Projetos ─ Sprints ─ Cards
 | Valor | Acesso |
 |-------|--------|
 | `admin` | Painel `/admin/*` da **própria instituição**: usuários, cargos, departamentos e projetos. As rotas de admin do auth-service filtram pelo `tenantId` de quem chama |
-| `gerente` | Gerenciamento de membros em projetos que participa |
-| `member` | Apenas operações no board e perfil próprio |
+| `member` | Acesso definido pelas permissões do projeto (função-base, cargos e ajustes do usuário) |
+
+O admin grava só `admin` ou `member`. Gerente é papel de projeto (`UserProjectRole`, abaixo), não valor de `User.role`; o `register.dto.ts` do auth-service ainda aceita `gerente`, mas essa rota não fica exposta na porta pública (ADR-059). O que cada perfil pode fazer está em [matriz-acessos.md](matriz-acessos.md).
 
 ### Operador da plataforma (`User.platformOperator`, ADR-060)
 
