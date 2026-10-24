@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       .map(p => p.projectId ?? p.id ?? '')
 
     return NextResponse.json({
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl, projectManagerIn: managerProjects },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, platformOperator: user.platformOperator === true, avatarUrl: user.avatarUrl, projectManagerIn: managerProjects },
     })
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -13,7 +13,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common'
-import { ProjectService, CreateProjectSchema, UpdateProjectSchema } from './project.service'
+import { ProjectService, CreateProjectSchema, UpdateProjectSchema, AddMemberSchema } from './project.service'
 
 @Controller('projects')
 export class ProjectController {
@@ -81,10 +81,12 @@ export class ProjectController {
   addMember(
     @Param('id') projectId: string,
     @Headers('x-tenant-id') tenantId: string,
-    @Body() body: { userId: string; role?: string; departmentId?: string; hourlyRate?: number },
+    @Body() body: unknown,
   ) {
-    if (!body.userId) throw new BadRequestException('userId é obrigatório')
-    return this.projectService.addMember(projectId, tenantId, body.userId, body)
+    const parsed = AddMemberSchema.safeParse(body)
+    if (!parsed.success) throw new BadRequestException(parsed.error.issues[0]?.message ?? 'userId é obrigatório')
+    const { userId, ...data } = parsed.data
+    return this.projectService.addMember(projectId, tenantId, userId, data)
   }
 
   @Delete(':id/members/:userId')

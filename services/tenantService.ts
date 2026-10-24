@@ -60,12 +60,13 @@ export async function updateTenant(id: string, input: UpdateTenantInput) {
 }
 
 export async function listTenants(callerUserId: string) {
+  // Lista todas as instituições: só o operador da plataforma (ADR-060).
   const caller = await prisma.user.findUnique({
     where: { id: callerUserId },
-    select: { role: true },
+    select: { platformOperator: true, isActive: true, deletedAt: true },
   })
-  if (caller?.role !== 'admin') {
-    throw new Error('Acesso restrito a administradores')
+  if (!caller?.platformOperator || !caller.isActive || caller.deletedAt) {
+    throw new Error('Acesso restrito ao operador da plataforma')
   }
   return prisma.tenant.findMany({
     where: { deletedAt: null },

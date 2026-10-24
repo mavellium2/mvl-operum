@@ -536,7 +536,11 @@ export async function updateNodeStyle(input: UpdateNodeStyleInput): Promise<Muta
 export async function updateNodeProperties(input: UpdateNodePropertiesInput, acesso: { userId: string; permissoes: ReadonlySet<Permissao> }): Promise<MutationResult & { responsaveisAdicionados: string[]; cardId: string | null }> {
   return prisma.$transaction(async tx => {
     const { nodeId, projectId, tenantId } = input
-    let properties: Record<string, unknown> = { ...input.properties }
+    // O vínculo com card/sprint é do servidor (sincronização, salvar árvore validado):
+    // editar propriedades não o troca, senão um cardId forjado guiaria escritas em
+    // responsáveis de card de outro projeto.
+    const { cardId: _cardIdIgnorado, sprintId: _sprintIdIgnorado, ...propriedadesEditaveis } = input.properties
+    let properties: Record<string, unknown> = { ...propriedadesEditaveis }
     // Serializa alterações da mesma linha, inclusive troca do elaborador.
     await tx.$queryRaw`SELECT id FROM "WbsNode" WHERE id = ${nodeId} AND "projectId" = ${projectId} AND "tenantId" = ${tenantId} FOR UPDATE`
     const node = await tx.wbsNode.findFirst({ where: { id: nodeId, projectId, tenantId } })
@@ -595,7 +599,11 @@ export async function updateNodeProperties(input: UpdateNodePropertiesInput, ace
  */
 export async function refletirResponsaveisNoNo(cardId: string): Promise<boolean> {
   return prisma.$transaction(async tx => {
-    const node = await tx.wbsNode.findFirst({ where: { properties: { path: ['cardId'], equals: cardId } }, select: { id: true, projectId: true, tenantId: true, properties: true } })
+    const card = await tx.card.findUnique({ where: { id: cardId }, select: { projectId: true, sprint: { select: { projectId: true } } } })
+    const projetoDoCard = card?.sprint?.projectId ?? card?.projectId
+    if (!projetoDoCard) return false
+    // Só o nó do projeto do card: um nó de outro projeto apontando para este card não recebe os nomes.
+    const node = await tx.wbsNode.findFirst({ where: { projectId: projetoDoCard, properties: { path: ['cardId'], equals: cardId } }, select: { id: true, projectId: true, tenantId: true, properties: true } })
     if (!node) return false
     const responsaveis = await tx.cardResponsible.findMany({ where: { cardId }, select: { userId: true, user: { select: { name: true } } } })
     const ids = responsaveis.map(r => r.userId)
@@ -666,6 +674,28 @@ export async function saveTree(
     const recalculated = rootId ? recalcCodes(nodes) : nodes
     const nodeValues = Object.values(recalculated)
     const newVersion = serverVersion + 1
+
+    // Vínculos com card/sprint chegam do cliente ao salvar a árvore (recortar e colar
+    // mantém o nó ligado). Só valem cards e sprints deste projeto; um id de outro
+    // projeto/instituição é descartado antes de gravar.
+    const idsCard = [...new Set(nodeValues.map(n => n.properties?.cardId).filter((v): v is string => typeof v === 'string'))]
+    const idsSprint = [...new Set(nodeValues.map(n => n.properties?.sprintId).filter((v): v is string => typeof v === 'string'))]
+    const [cardsDoProjeto, sprintsDoProjeto] = await Promise.all([
+      idsCard.length ? tx.card.findMany({ where: { id: { in: idsCard }, OR: [{ projectId }, { sprint: { projectId } }] }, select: { id: true } }) : [],
+      idsSprint.length ? tx.sprint.findMany({ where: { id: { in: idsSprint }, projectId }, select: { id: true } }) : [],
+    ])
+    const cardValido = new Set(cardsDoProjeto.map(c => c.id))
+    const sprintValida = new Set(sprintsDoProjeto.map(sp => sp.id))
+    for (const n of nodeValues) {
+      const props = n.properties
+      if (!props) continue
+      const cardForaDoProjeto = typeof props.cardId === 'string' && !cardValido.has(props.cardId)
+      const sprintForaDoProjeto = typeof props.sprintId === 'string' && !sprintValida.has(props.sprintId)
+      if (cardForaDoProjeto || sprintForaDoProjeto) {
+        const { cardId, sprintId, ...resto } = props
+        n.properties = { ...resto, ...(cardForaDoProjeto ? {} : { cardId }), ...(sprintForaDoProjeto ? {} : { sprintId }) }
+      }
+    }
 
     if (opts.refletirExclusoes) {
       const mantidos = new Set(nodeValues.map(n => n.id))
@@ -987,7 +1017,8 @@ export async function sincronizarEapComSprint(projectId: string, tenantId: strin
     // cards do projeto
     const linkedIds = nodes.map(n => cardIdDe(n.id)).filter((v): v is string => !!v)
     const [linkedCards, openCards] = await Promise.all([
-      tx.card.findMany({ where: { id: { in: linkedIds } }, select: { id: true, title: true, deletedAt: true, updatedAt: true, sprintId: true } }),
+      // Só cards do próprio projeto: um vínculo forjado para card de outro projeto/instituição é ignorado.
+      tx.card.findMany({ where: { id: { in: linkedIds }, OR: [{ projectId }, { sprint: { projectId } }] }, select: { id: true, title: true, deletedAt: true, updatedAt: true, sprintId: true } }),
       tx.card.findMany({
         where: { deletedAt: null, OR: [{ projectId }, { sprint: { projectId, deletedAt: null } }] },
         select: { id: true, title: true, description: true, updatedAt: true, sprintId: true },
@@ -1155,7 +1186,7 @@ export async function sincronizarEapComSprint(projectId: string, tenantId: strin
     const paresCard = nodes
       .filter(n => propsDe.has(n.id))
       .map(n => ({ id: n.id, cardId: texto(propsDe.get(n.id)!.cardId) }))
-      .filter((p): p is { id: string; cardId: string } => !!p.cardId && !(cardPorId.get(p.cardId)?.deletedAt))
+      .filter((p): p is { id: string; cardId: string } => !!p.cardId && cardPorId.has(p.cardId) && !cardPorId.get(p.cardId)!.deletedAt)
     if (paresCard.length) {
       const resp = await tx.cardResponsible.findMany({ where: { cardId: { in: paresCard.map(p => p.cardId) } }, select: { cardId: true, userId: true } })
       const doCard = new Map<string, string[]>()

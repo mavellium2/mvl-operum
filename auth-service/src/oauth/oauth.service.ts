@@ -1,3 +1,4 @@
+import { contasVinculadas } from '../auth/identity'
 import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import { prisma } from '../prisma'
 import { RedisService } from '../redis/redis.service'
@@ -157,9 +158,12 @@ export class OAuthService {
     return me
   }
 
-  private async tenantsOf(email: string) {
+  /** Só contas vinculadas (ADR-061): o e-mail sozinho não dá acesso a outra instituição. */
+  private async tenantsOf(userId: string) {
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, identityId: true } })
+    if (!me) return []
     const users = await prisma.user.findMany({
-      where: { email, deletedAt: null, isActive: true, forcePasswordChange: false },
+      where: { ...contasVinculadas(me), deletedAt: null, isActive: true, forcePasswordChange: false },
       include: { tenant: { select: { name: true, status: true } } },
     })
     return users.filter(u => u.tenant.status === 'ACTIVE')
@@ -182,7 +186,7 @@ export class OAuthService {
     if (!scopes) return fail('invalid_scope', 'Escopo desconhecido')
 
     const me = await this.myIdentity(userId)
-    const tenants = await this.tenantsOf(me.email)
+    const tenants = await this.tenantsOf(userId)
     return {
       ok: true,
       client: {
@@ -207,7 +211,7 @@ export class OAuthService {
     const client = (await this.resolveClient(req.client_id))!
 
     const me = await this.myIdentity(userId)
-    const mine = await this.tenantsOf(me.email)
+    const mine = await this.tenantsOf(userId)
     const unique = [...new Set(tenantIds)]
     const chosen = unique.map(id => mine.find(u => u.tenantId === id))
     if (chosen.some(u => !u)) return { ok: false, error: 'access_denied', description: 'Workspace não disponível para este usuário.' }

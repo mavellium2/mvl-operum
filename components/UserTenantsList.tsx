@@ -10,6 +10,8 @@ type TenantEntry = {
   tenantSubdomain: string
   role: string
   isCurrent: boolean
+  /** Conta com o mesmo e-mail ainda não vinculada: a primeira troca pede a senha dela. */
+  requiresPassword?: boolean
 }
 
 const roleBadge: Record<string, string> = {
@@ -28,6 +30,20 @@ export default function UserTenantsList() {
   const [tenants, setTenants] = useState<TenantEntry[] | null>(null)
   const [isPending, startTransition] = useTransition()
   const [switchingId, setSwitchingId] = useState<string | null>(null)
+  const [senhaPara, setSenhaPara] = useState<string | null>(null)
+  const [senha, setSenha] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+
+  function acessar(tenantId: string, password?: string) {
+    setSwitchingId(tenantId)
+    setErro(null)
+    startTransition(async () => {
+      const result = await switchTenantAction(tenantId, password)
+      if (!result) return
+      if (result.needsPassword) setSenhaPara(tenantId)
+      if (result.error) setErro(result.error)
+    })
+  }
 
   useEffect(() => {
     getMyTenantsAction().then(setTenants).catch(() => setTenants([]))
@@ -83,12 +99,42 @@ export default function UserTenantsList() {
             <p className="text-xs text-gray-400 mt-0.5 truncate">{t.tenantSubdomain}.operum.com</p>
           </div>
 
-          {!t.isCurrent && (
+          {!t.isCurrent && senhaPara === t.tenantId && (
+            <form
+              className="flex flex-col items-end gap-1 shrink-0"
+              onSubmit={e => { e.preventDefault(); if (senha) acessar(t.tenantId, senha) }}
+            >
+              <label className="text-xs text-gray-500" htmlFor={`senha-${t.tenantId}`}>
+                Senha da sua conta em {t.tenantName}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id={`senha-${t.tenantId}`}
+                  type="password"
+                  autoComplete="current-password"
+                  autoFocus
+                  value={senha}
+                  onChange={e => setSenha(e.target.value)}
+                  className="w-40 px-2 py-1.5 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isPending || !senha}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {isPending && switchingId === t.tenantId ? 'Confirmando…' : 'Confirmar'}
+                </button>
+              </div>
+              {erro && <p role="alert" className="text-xs text-red-600">{erro}</p>}
+            </form>
+          )}
+
+          {!t.isCurrent && senhaPara !== t.tenantId && (
             <button
               disabled={isPending}
               onClick={() => {
-                setSwitchingId(t.tenantId)
-                startTransition(() => switchTenantAction(t.tenantId))
+                if (t.requiresPassword) { setSenha(''); setErro(null); setSenhaPara(t.tenantId); return }
+                acessar(t.tenantId)
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 shrink-0"
             >
