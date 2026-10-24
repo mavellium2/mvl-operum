@@ -14,7 +14,13 @@ vi.mock('@/lib/api-client', () => ({
   },
 }))
 
+vi.mock('@/lib/prisma', () => ({ default: { user: { findFirst: vi.fn().mockResolvedValue({ role: 'member' }) } } }))
+vi.mock('@/services/apiAuthorization', () => ({
+  authorizeApi: vi.fn().mockResolvedValue({ allowed: true }),
+  isAccessDenied: (e: unknown) => e instanceof Error && e.message === 'negado',
+}))
 import { POST } from '@/app/api/uploads/route'
+import { authorizeApi } from '@/services/apiAuthorization'
 import { verifyRouteSession } from '@/lib/routeAuth'
 import { cardsApi } from '@/lib/api-client'
 import { MAX_ATTACHMENT_BYTES } from '@/lib/attachmentTypes'
@@ -34,6 +40,7 @@ function makeRequest(body: FormData, sessionToken?: string): Request {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(authorizeApi).mockResolvedValue({ allowed: true })
   mockVerifyRoute.mockResolvedValue({ userId: 'u1', tenantId: 't1' })
 })
 
@@ -42,6 +49,19 @@ afterEach(() => {
 })
 
 describe('POST /api/uploads', () => {
+  it('quem só lê o quadro não envia anexo (403, sem chamar o file-service)', async () => {
+    vi.mocked(cardsApi.get).mockResolvedValue({ id: 'c1' } as never)
+    vi.mocked(authorizeApi).mockRejectedValue(new Error('negado'))
+    global.fetch = vi.fn() as never
+    const fd = new FormData()
+    fd.append('cardId', 'c1')
+    fd.append('file', new File(['x'], 'a.png', { type: 'image/png' }))
+    const res = await POST(makeRequest(fd, 'tok'))
+    expect(res.status).toBe(403)
+    expect(authorizeApi).toHaveBeenCalledWith(expect.anything(), 'POST', '/files/upload?cardId=c1')
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
   it('returns 401 without session', async () => {
     mockVerifyRoute.mockResolvedValue(null)
     const form = new FormData()

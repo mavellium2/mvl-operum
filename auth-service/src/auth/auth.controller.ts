@@ -16,6 +16,7 @@ import { JwtService } from './jwt.service'
 import { Public } from '../decorators/public.decorator'
 import { AdminGuard } from '../guards/admin.guard'
 import { NoPatGuard } from '../guards/no-pat.guard'
+import { UpdateProfileSchema } from './dto/update-profile.dto'
 import { LoginSchema } from './dto/login.dto'
 import { RegisterSchema } from './dto/register.dto'
 import {
@@ -117,10 +118,10 @@ export class AuthController {
   @UseGuards(NoPatGuard)
   async updateProfile(
     @Headers('x-user-id') userId: string,
-    @Body() body: Record<string, unknown>,
+    @Body() body: unknown,
   ) {
     if (!userId) throw new UnauthorizedException()
-    return this.authService.updateProfile(userId, body as Parameters<AuthService['updateProfile']>[1])
+    return this.authService.updateProfile(userId, UpdateProfileSchema.parse(body))
   }
 
   // Endpoint for forced password change (forcePasswordChange flow)
@@ -143,7 +144,8 @@ export class AuthController {
     @Headers('x-oauth-tenants') oauthTenants: string | undefined,
   ) {
     if (!userId) throw new UnauthorizedException()
-    const tenants = await this.authService.getMyTenants(userId)
+    // Contas ainda não vinculadas (pedem senha) só aparecem na sessão do navegador.
+    const tenants = await this.authService.getMyTenants(userId, { incluirNaoVinculadas: !authType })
     // Conexão OAuth: só os workspaces autorizados no consentimento (o gateway
     // define x-oauth-tenants a partir da introspecção e descarta o do cliente).
     if (authType === 'oauth') {
@@ -162,7 +164,7 @@ export class AuthController {
   ) {
     if (!userId) throw new UnauthorizedException()
     const dto = SwitchTenantSchema.parse(body)
-    return this.authService.switchTenant(userId, dto.targetTenantId)
+    return this.authService.switchTenant(userId, dto.targetTenantId, dto.password)
   }
 
   @Post('join-tenant')

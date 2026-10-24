@@ -1,3 +1,4 @@
+import { idSchema } from '../tool'
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { TenantContext, TenantRegistry } from '../tenants.js'
@@ -137,11 +138,11 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
       description:
         'Tarefas (cards) de um projeto ou sprint, com filtros. Sem sprint_id nem backlog, lista o projeto inteiro (backlog + todas as sprints). Ordenação estável por criação e ID; use next_cursor com os mesmos filtros. Novos cards posteriores ao início ficam para uma nova listagem. fields="summary" (padrão) traz os campos principais; "full" traz tudo, inclusive descrição e anexos.',
       inputSchema: {
-        project_id: z.string().optional(),
-        sprint_id: z.string().optional(),
+        project_id: idSchema.optional(),
+        sprint_id: idSchema.optional(),
         backlog: z.boolean().optional().describe('Só as tarefas do backlog do projeto (fora de sprint).'),
-        column_id: z.string().optional(),
-        responsible_id: z.string().optional(),
+        column_id: idSchema.optional(),
+        responsible_id: idSchema.optional(),
         priority: z.enum(PRIORITIES).optional(),
         due_before: dateInput.optional().describe('Prazo (end_date) até esta data.'),
         due_after: dateInput.optional().describe('Prazo (end_date) a partir desta data.'),
@@ -182,7 +183,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
       title: 'Detalhar tarefa',
       description:
         'Todos os campos da tarefa: título, descrição (markdown), prioridade, cor, projeto/sprint/coluna, datas, tempo, responsáveis, etiquetas, anexos e comentários. Anexo de arquivo traz download_url (válida por 1 h); anexo de link traz url. include_history=true traz também as movimentações entre colunas.',
-      inputSchema: { task_id: z.string(), include_history: z.boolean().optional() },
+      inputSchema: { task_id: idSchema, include_history: z.boolean().optional() },
       entity: 'Tarefa',
       annotations: { readOnlyHint: true },
     },
@@ -211,13 +212,13 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
       description:
         'Cria uma tarefa no backlog do projeto (project_id) ou numa sprint (sprint_id, opcionalmente column_id; padrão: primeira coluna). Aceita responsáveis e etiquetas. Use idempotency_key para poder repetir a chamada com segurança.',
       inputSchema: {
-        project_id: z.string().optional(),
-        sprint_id: z.string().optional(),
-        column_id: z.string().optional(),
+        project_id: idSchema.optional(),
+        sprint_id: idSchema.optional(),
+        column_id: idSchema.optional(),
         ...taskFieldsShape,
         title: z.string().min(1),
-        responsible_ids: z.array(z.string()).optional(),
-        tag_ids: z.array(z.string()).optional(),
+        responsible_ids: z.array(idSchema).optional(),
+        tag_ids: z.array(idSchema).optional(),
         idempotency_key: z.string().min(1).max(200).optional(),
       },
       entity: 'Projeto, sprint ou coluna',
@@ -267,7 +268,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
       title: 'Atualizar tarefa',
       description:
         'Altera título, descrição, prioridade, cor ou datas. Para mudar coluna/sprint/projeto use operum_move_task; para responsáveis e etiquetas, operum_set_task_responsibles/operum_set_task_tags.',
-      inputSchema: { task_id: z.string(), ...taskFieldsShape },
+      inputSchema: { task_id: idSchema, ...taskFieldsShape },
       entity: 'Tarefa',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
@@ -289,11 +290,11 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
       description:
         'Move a tarefa: para outra coluna da mesma sprint (column_id), para outra sprint (sprint_id [+ column_id]; padrão primeira coluna) ou para o backlog (to_backlog: true, opcionalmente project_id de outro projeto). A mudança de coluna fica registrada no histórico com o reason.',
       inputSchema: {
-        task_id: z.string(),
-        sprint_id: z.string().optional(),
-        column_id: z.string().optional(),
+        task_id: idSchema,
+        sprint_id: idSchema.optional(),
+        column_id: idSchema.optional(),
         to_backlog: z.boolean().optional(),
-        project_id: z.string().optional().describe('Só com to_backlog: backlog de outro projeto do tenant.'),
+        project_id: idSchema.optional().describe('Só com to_backlog: backlog de outro projeto do tenant.'),
         position: z.number().int().min(0).optional().describe('Posição na coluna (ou no backlog). Padrão: ao final.'),
         reason: z.string().optional(),
       },
@@ -342,7 +343,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
     {
       title: 'Excluir tarefa',
       description: 'Exclui a tarefa (soft delete). Exige confirm: true.',
-      inputSchema: { task_id: z.string(), ...confirmShape },
+      inputSchema: { task_id: idSchema, ...confirmShape },
       entity: 'Tarefa',
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     },
@@ -367,7 +368,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
           kind === 'tags'
             ? 'Define o conjunto completo de etiquetas da tarefa (substitui o atual). ids de operum_list_tags.'
             : 'Define o conjunto completo de responsáveis da tarefa (substitui o atual). ids de operum_list_users.',
-        inputSchema: { task_id: z.string(), [idsField]: z.array(z.string()) },
+        inputSchema: { task_id: idSchema, [idsField]: z.array(idSchema) },
         entity: 'Tarefa',
         annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
       },
@@ -394,7 +395,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
       description: `Altera até ${MAX_BULK} tarefas numa chamada. dry_run=true (padrão) só mostra o antes/depois de cada uma, sem gravar — revise com o usuário e repita com dry_run=false. column_id move entre colunas da sprint atual da tarefa.`,
       inputSchema: {
         updates: z
-          .array(z.object({ task_id: z.string(), column_id: z.string().optional(), ...taskFieldsShape }))
+          .array(z.object({ task_id: idSchema, column_id: idSchema.optional(), ...taskFieldsShape }))
           .min(1)
           .max(MAX_BULK),
         reason: z.string().optional().describe('Motivo registrado nas mudanças de coluna.'),
@@ -482,7 +483,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
     {
       title: 'Listar comentários',
       description: 'Comentários da tarefa em ordem cronológica, com autor e data.',
-      inputSchema: { task_id: z.string(), ...paginationShape },
+      inputSchema: { task_id: idSchema, ...paginationShape },
       entity: 'Tarefa',
       annotations: { readOnlyHint: true },
     },
@@ -500,7 +501,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
       title: 'Comentar tarefa',
       description: 'Adiciona um comentário na tarefa. O autor é o dono do token.',
       inputSchema: {
-        task_id: z.string(),
+        task_id: idSchema,
         content: z.string().min(1).max(20000),
         type: z.enum(['COMMENT', 'FEEDBACK']).optional(),
       },
@@ -521,7 +522,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
     {
       title: 'Editar comentário',
       description: 'Edita um comentário. Só o autor pode editar.',
-      inputSchema: { task_id: z.string(), comment_id: z.string(), content: z.string().min(1).max(20000) },
+      inputSchema: { task_id: idSchema, comment_id: idSchema, content: z.string().min(1).max(20000) },
       entity: 'Comentário',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
@@ -539,7 +540,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
     {
       title: 'Excluir comentário',
       description: 'Exclui um comentário (só o autor). Exige confirm: true.',
-      inputSchema: { task_id: z.string(), comment_id: z.string(), ...confirmShape },
+      inputSchema: { task_id: idSchema, comment_id: idSchema, ...confirmShape },
       entity: 'Comentário',
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     },
@@ -563,7 +564,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
         'Histórico de uma entidade. Para tarefa: movimentações entre colunas + registros de auditoria. Para projeto/sprint: registros de auditoria (hoje o Operum só audita parte das operações — as feitas via MCP sempre são registradas).',
       inputSchema: {
         entity: z.enum(['card', 'project', 'sprint']).describe('card = tarefa.'),
-        entity_id: z.string(),
+        entity_id: idSchema,
         ...paginationShape,
       },
       entity: 'Entidade',

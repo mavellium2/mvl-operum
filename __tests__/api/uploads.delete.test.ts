@@ -9,7 +9,13 @@ vi.mock('@/lib/routeAuth', () => ({
   verifyRouteSession: vi.fn(),
 }))
 
+vi.mock('@/lib/prisma', () => ({ default: { user: { findFirst: vi.fn().mockResolvedValue({ role: 'member' }) } } }))
+vi.mock('@/services/apiAuthorization', () => ({
+  authorizeApi: vi.fn().mockResolvedValue({ allowed: true }),
+  isAccessDenied: (e: unknown) => e instanceof Error && e.message === 'negado',
+}))
 import { DELETE } from '@/app/api/uploads/route'
+import { authorizeApi } from '@/services/apiAuthorization'
 import { verifyRouteSession } from '@/lib/routeAuth'
 
 const mockVerifyRoute = verifyRouteSession as ReturnType<typeof vi.fn>
@@ -25,6 +31,7 @@ const originalFetch = global.fetch
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(authorizeApi).mockResolvedValue({ allowed: true })
   mockVerifyRoute.mockResolvedValue({ userId: 'u1', tenantId: 't1' })
 })
 
@@ -33,6 +40,15 @@ afterEach(() => {
 })
 
 describe('DELETE /api/uploads', () => {
+  it('sem permissão sobre o anexo responde 403 e não chama o file-service', async () => {
+    vi.mocked(authorizeApi).mockRejectedValue(new Error('negado'))
+    global.fetch = vi.fn() as never
+    const res = await DELETE(makeRequest('http://localhost/api/uploads?id=a1'))
+    expect(res.status).toBe(403)
+    expect(authorizeApi).toHaveBeenCalledWith({ userId: 'u1', tenantId: 't1', role: 'member' }, 'DELETE', '/files/a1')
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
   it('returns 401 when not authenticated', async () => {
     mockVerifyRoute.mockResolvedValue(null)
     const res = await DELETE(makeRequest('http://localhost/api/uploads?id=a1'))

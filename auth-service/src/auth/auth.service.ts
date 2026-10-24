@@ -15,6 +15,9 @@ import { JwtService } from './jwt.service'
 import { RedisService } from '../redis/redis.service'
 import { MailerService } from '../mailer/mailer.service'
 import { generateResetCode, hashResetCode, compareResetCode } from '../lib/crypto'
+import type { UpdateProfileDto } from './dto/update-profile.dto'
+import { contasVinculadas, mesmaIdentidade, vincularContas, identidade } from './identity'
+import { revogarAcessosPersistentes } from './revogacao'
 import type { LoginDto } from './dto/login.dto'
 import type { RegisterDto } from './dto/register.dto'
 import type { ChangePasswordDto, RequestResetDto, ValidateCodeDto, ResetPasswordDto } from './dto/password.dto'
@@ -70,9 +73,11 @@ export class AuthService {
       return this.completeLogin(candidates[0] ?? null, dto.password)
     }
 
+    const testados: string[] = []
     for (const candidate of candidates) {
       if (!candidate.isActive || candidate.status !== 'active') continue
       if ((candidate.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS) continue
+      testados.push(candidate.id)
       if (await bcrypt.compare(dto.password, candidate.passwordHash)) {
         await prisma.user.update({
           where: { id: candidate.id },
@@ -82,6 +87,11 @@ export class AuthService {
       }
     }
 
+    // Senha errada conta tentativa em todas as contas testadas; antes, e-mails
+    // com conta em mais de uma instituição nunca chegavam ao bloqueio.
+    if (testados.length) {
+      await prisma.user.updateMany({ where: { id: { in: testados } }, data: { loginAttempts: { increment: 1 } } })
+    }
     throw new UnauthorizedException('Credenciais inválidas')
   }
 
@@ -92,21 +102,26 @@ export class AuthService {
   ) {
     if (!user) throw new UnauthorizedException('Credenciais inválidas')
 
+    const bloqueada = (user.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS
+    const match = await bcrypt.compare(password, user.passwordHash)
+    if (!match) {
+      // Mesma resposta para conta inexistente, inativa ou bloqueada: o motivo só
+      // aparece para quem acertou a senha (não revela que o e-mail tem conta).
+      if (!bloqueada && user.isActive && user.status === 'active') {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { loginAttempts: { increment: 1 } },
+        })
+      }
+      throw new UnauthorizedException('Credenciais inválidas')
+    }
+
     if (!user.isActive || user.status !== 'active') {
       throw new UnauthorizedException('Conta inativa ou bloqueada')
     }
 
-    if ((user.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS) {
+    if (bloqueada) {
       throw new UnauthorizedException('Conta bloqueada por excesso de tentativas. Contate o suporte.')
-    }
-
-    const match = await bcrypt.compare(password, user.passwordHash)
-    if (!match) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { loginAttempts: (user.loginAttempts ?? 0) + 1 },
-      })
-      throw new UnauthorizedException('Credenciais inválidas')
     }
 
     await prisma.user.update({
@@ -188,6 +203,7 @@ export class AuthService {
         hourlyRate: true,
         isActive: true,
         forcePasswordChange: true,
+        platformOperator: true,
         phone: true,
         cep: true,
         logradouro: true,
@@ -246,9 +262,16 @@ export class AuthService {
       where: { id: userId },
       data: { passwordHash, tokenVersion: { increment: 1 } },
     })
+    await revogarAcessosPersistentes(userId, this.redis)
   }
 
   async alterarSenha(userId: string, newPassword: string) {
+    // Sem a senha atual: só vale na troca obrigatória (primeiro acesso / senha
+    // redefinida). Fora dela, uma sessão roubada trocaria a senha e trancaria o dono.
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { forcePasswordChange: true } })
+    if (!user?.forcePasswordChange) {
+      throw new ForbiddenException('Use "Alterar senha" informando a senha atual')
+    }
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS)
     await prisma.user.update({
       where: { id: userId },
@@ -258,6 +281,7 @@ export class AuthService {
         tokenVersion: { increment: 1 },
       },
     })
+    await revogarAcessosPersistentes(userId, this.redis)
   }
 
   private async resolveTenant(subdomain?: string) {
@@ -359,24 +383,7 @@ export class AuthService {
     return { success: true }
   }
 
-  async updateProfile(userId: string, data: {
-    name?: string
-    email?: string
-    cargo?: string
-    departamento?: string
-    hourlyRate?: number
-    phone?: string
-    cep?: string
-    logradouro?: string
-    numero?: string
-    complemento?: string
-    bairro?: string
-    cidade?: string
-    estado?: string
-    notes?: string
-    avatarUrl?: string
-    signatureUrl?: string
-  }) {
+  async updateProfile(userId: string, data: UpdateProfileDto) {
     const user = await prisma.user.findUnique({ where: { id: userId } })
     if (!user) throw new NotFoundException('Usuário não encontrado')
     return prisma.user.update({
@@ -398,6 +405,15 @@ export class AuthService {
           where: { email: dto.email, tenantId: tenant.id, deletedAt: null },
         })
       : await prisma.user.findFirst({ where: { email: dto.email, deletedAt: null } })
+
+    // Mesmo contador da Etapa 2: chamar só a Etapa 3 não dá tentativas ilimitadas.
+    if (user?.resetToken) {
+      const attempts = await this.redis.incrWithTTL(`reset_attempts:${user.id}`, RESET_CODE_TTL_SECONDS)
+      if (attempts > MAX_VALIDATE_ATTEMPTS) {
+        await prisma.user.update({ where: { id: user.id }, data: { resetToken: null, resetTokenExpiry: null } })
+        throw new HttpException({ success: false, error: 'Código inválido ou expirado.' }, HttpStatus.BAD_REQUEST)
+      }
+    }
 
     // Re-valida o código (não confia que a Etapa 2 passou)
     const invalid =
@@ -427,6 +443,7 @@ export class AuthService {
 
     // Remove contador de tentativas
     await this.redis.delResetAttempts(user!.id)
+    await revogarAcessosPersistentes(user!.id, this.redis)
     // Revogação de sessões: tokenVersion++ já faz o gateway rejeitar tokens antigos.
     // Sessões Redis expiram naturalmente ou são rejeitadas no verify() via tokenVersion.
 
@@ -434,21 +451,25 @@ export class AuthService {
   }
 
   // ── Multi-tenant user federation ─────────────────────────────────────────────
-  // Security model: one physical person can have separate User rows per tenant,
-  // all sharing the same verified email. Access between tenants is earned by
-  // explicitly calling joinTenant (which requires current auth + new password).
-  // switchTenant is only allowed to tenants where a matching User row exists,
-  // scoped strictly to the authenticated user's own email (userId → email lookup).
+  // Uma pessoa pode ter uma conta (User) por instituição. A troca entre elas só
+  // vale para contas VINCULADAS (identityId, ADR-061): o e-mail sozinho não
+  // comprova nada, porque o admin de qualquer instituição cadastra qualquer
+  // e-mail. Uma conta com o mesmo e-mail ainda não vinculada aparece na lista
+  // (sessão do navegador) pedindo a senha dela na primeira troca.
 
-  async getMyTenants(userId: string) {
+  async getMyTenants(userId: string, opcoes: { incluirNaoVinculadas?: boolean } = {}) {
     const me = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true },
+      select: { id: true, email: true, identityId: true },
     })
     if (!me) throw new NotFoundException('Usuário não encontrado')
 
     const users = await prisma.user.findMany({
-      where: { email: me.email, deletedAt: null, isActive: true },
+      where: {
+        deletedAt: null,
+        isActive: true,
+        OR: [contasVinculadas(me), ...(opcoes.incluirNaoVinculadas ? [{ email: me.email }] : [])],
+      },
       include: { tenant: { select: { name: true, subdomain: true, status: true } } },
     })
 
@@ -461,28 +482,48 @@ export class AuthService {
         tenantSubdomain: u.tenant.subdomain,
         role: u.role,
         isCurrent: u.id === userId,
+        requiresPassword: !mesmaIdentidade(me, u),
       }))
   }
 
-  async switchTenant(userId: string, targetTenantId: string) {
+  async switchTenant(userId: string, targetTenantId: string, password?: string) {
     const me = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true },
+      select: { id: true, email: true, identityId: true },
     })
     if (!me) throw new UnauthorizedException('Usuário não encontrado')
 
-    // Defense-in-depth: require both email match AND active status
     const target = await prisma.user.findFirst({
-      where: { email: me.email, tenantId: targetTenantId, deletedAt: null, isActive: true },
+      where: {
+        tenantId: targetTenantId,
+        deletedAt: null,
+        isActive: true,
+        tenant: { status: 'ACTIVE', deletedAt: null },
+        OR: [contasVinculadas(me), { email: me.email }],
+      },
     })
-    // Explicit email assertion — guards against any future query drift
-    if (!target || target.email !== me.email) {
-      throw new NotFoundException('Usuário não encontrado neste workspace')
+    if (!target) throw new NotFoundException('Usuário não encontrado neste workspace')
+
+    if (!mesmaIdentidade(me, target)) {
+      // Primeira troca para uma conta com o mesmo e-mail: comprova a posse
+      // pela senha da conta de destino, com o mesmo limite do login.
+      if (!password) throw new ForbiddenException({ code: 'PASSWORD_REQUIRED', message: 'Confirme a senha da sua conta nesta instituição' })
+      // 403, não 401: a sessão atual continua válida (o app trata 401 como sessão expirada).
+      if ((target.loginAttempts ?? 0) >= MAX_LOGIN_ATTEMPTS) {
+        throw new ForbiddenException({ code: 'ACCOUNT_LOCKED', message: 'Conta bloqueada por excesso de tentativas. Contate o suporte.' })
+      }
+      const ok = await bcrypt.compare(password, target.passwordHash)
+      if (!ok) {
+        await prisma.user.update({ where: { id: target.id }, data: { loginAttempts: { increment: 1 } } })
+        throw new ForbiddenException({ code: 'PASSWORD_INVALID', message: 'Senha incorreta' })
+      }
+      await vincularContas(me, target)
+      this.logger.log(`AUDIT linkAccounts userId=${userId} linkedUserId=${target.id} tenantId=${targetTenantId}`)
     }
 
     await prisma.user.update({
       where: { id: target.id },
-      data: { lastLogin: new Date() },
+      data: { lastLogin: new Date(), loginAttempts: 0 },
     })
 
     const { token, jti } = await this.jwtService.sign({
@@ -513,12 +554,19 @@ export class AuthService {
     }
   }
 
-  async joinTenant(userId: string, targetTenantId: string, password: string) {
+  /** Gerenciar instituições é do operador da plataforma, não do admin de uma instituição (ADR-060). */
+  private async exigirOperador(userId: string) {
     const me = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, name: true },
+      select: { id: true, email: true, name: true, passwordHash: true, identityId: true, platformOperator: true, isActive: true, deletedAt: true },
     })
-    if (!me) throw new UnauthorizedException('Usuário não encontrado')
+    if (!me || !me.isActive || me.deletedAt) throw new UnauthorizedException('Usuário não encontrado')
+    if (!me.platformOperator) throw new ForbiddenException('Acesso restrito ao operador da plataforma')
+    return me
+  }
+
+  async joinTenant(userId: string, targetTenantId: string, password: string) {
+    const me = await this.exigirOperador(userId)
 
     const tenant = await prisma.tenant.findFirst({
       where: { id: targetTenantId, status: 'ACTIVE', deletedAt: null },
@@ -531,15 +579,20 @@ export class AuthService {
     if (existing) throw new ConflictException('Você já possui acesso a este workspace')
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
-    await prisma.user.create({
-      data: {
-        name: me.name,
-        email: me.email,
-        passwordHash,
-        tenantId: targetTenantId,
-        role: 'member',
-      },
-    })
+    const grupo = identidade(me)
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: me.id }, data: { identityId: grupo } }),
+      prisma.user.create({
+        data: {
+          name: me.name,
+          email: me.email,
+          passwordHash,
+          tenantId: targetTenantId,
+          role: 'member',
+          identityId: grupo,
+        },
+      }),
+    ])
 
     this.logger.log(`AUDIT joinTenant userId=${userId} email=${me.email} tenantId=${targetTenantId}`)
 
@@ -547,12 +600,7 @@ export class AuthService {
   }
 
   async provisionTenantAdmin(userId: string, targetTenantId: string) {
-    const me = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, name: true, passwordHash: true, role: true },
-    })
-    if (!me) throw new UnauthorizedException('Usuário não encontrado')
-    if (me.role !== 'admin') throw new ForbiddenException('Apenas administradores podem provisionar workspaces')
+    const me = await this.exigirOperador(userId)
 
     const tenant = await prisma.tenant.findFirst({
       where: { id: targetTenantId, status: 'ACTIVE', deletedAt: null },
@@ -564,15 +612,20 @@ export class AuthService {
     })
     if (existing) throw new ConflictException('Você já possui acesso a este workspace')
 
-    await prisma.user.create({
-      data: {
-        name: me.name,
-        email: me.email,
-        passwordHash: me.passwordHash,
-        tenantId: targetTenantId,
-        role: 'admin',
-      },
-    })
+    const grupo = identidade(me)
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: me.id }, data: { identityId: grupo } }),
+      prisma.user.create({
+        data: {
+          name: me.name,
+          email: me.email,
+          passwordHash: me.passwordHash,
+          tenantId: targetTenantId,
+          role: 'admin',
+          identityId: grupo,
+        },
+      }),
+    ])
 
     this.logger.log(`AUDIT provisionTenantAdmin userId=${userId} email=${me.email} tenantId=${targetTenantId}`)
 

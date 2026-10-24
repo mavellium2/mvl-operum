@@ -7,6 +7,9 @@ vi.mock('../prisma', () => ({
   prisma: {
     tenant: { findFirst: vi.fn() },
     user: { findFirst: vi.fn(), update: vi.fn() },
+    apiToken: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
+    oAuthGrant: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
+    oAuthToken: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }))
 

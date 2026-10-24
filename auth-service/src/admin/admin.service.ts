@@ -1,8 +1,18 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common'
 import { prisma } from '../prisma'
 import bcrypt from 'bcryptjs'
+import type { AdminCreateUserDto, AdminUpdateUserDto } from './admin.dto'
+import { revogarAcessosPersistentes } from '../auth/revogacao'
 
 const BCRYPT_ROUNDS = 12
+
+// Nunca devolve passwordHash, resetToken, mfaSecret ou tokenVersion.
+const USER_SELECT = {
+  id: true, name: true, email: true, role: true, tenantId: true, isActive: true, avatarUrl: true,
+  cargo: true, departamento: true, hourlyRate: true, phone: true, cep: true, logradouro: true,
+  numero: true, complemento: true, bairro: true, cidade: true, estado: true, notes: true,
+  forcePasswordChange: true, createdAt: true,
+} as const
 
 @Injectable()
 export class AdminService {
@@ -40,83 +50,56 @@ export class AdminService {
     })
   }
 
-  async createUser(
-    tenantId: string,
-    role: string,
-    data: {
-      name: string
-      email: string
-      password: string
-      isAdmin?: boolean
-      forcePasswordChange?: boolean
-      avatarUrl?: string
-      phone?: string
-      cep?: string
-      logradouro?: string
-      numero?: string
-      complemento?: string
-      bairro?: string
-      cidade?: string
-      estado?: string
-      notes?: string
-    },
-  ) {
+  async createUser(tenantId: string, role: string, data: AdminCreateUserDto) {
     this.requireAdmin(role)
+    if (!tenantId) throw new ForbiddenException()
     const existing = await prisma.user.findFirst({
       where: { email: data.email, tenantId, deletedAt: null },
     })
     if (existing) throw new ConflictException('Email já cadastrado')
 
     const passwordHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS)
-    const { password: _password, isAdmin: _isAdmin, ...rest } = data
+    const { password: _password, isAdmin, forcePasswordChange, ...contato } = data
     return prisma.user.create({
       data: {
-        ...rest,
+        ...contato,
         tenantId,
         passwordHash,
-        role: _isAdmin ? 'admin' : 'member',
-        forcePasswordChange: data.forcePasswordChange ?? false,
+        role: isAdmin ? 'admin' : 'member',
+        forcePasswordChange: forcePasswordChange ?? false,
       },
+      select: USER_SELECT,
     })
   }
 
-  async updateUser(
-    userId: string,
-    callerRole: string,
-    data: {
-      name?: string
-      email?: string
-      avatarUrl?: string
-      phone?: string
-      cep?: string
-      logradouro?: string
-      numero?: string
-      complemento?: string
-      bairro?: string
-      cidade?: string
-      estado?: string
-      notes?: string
-      password?: string
-      cargo?: string
-      departamento?: string
-      hourlyRate?: number
-    },
-  ) {
-    this.requireAdmin(callerRole)
-    const user = await prisma.user.findUnique({ where: { id: userId } })
+  /** Só usuários da instituição de quem chama; o id de outro tenant responde 404. */
+  private async userInTenant(userId: string, tenantId: string) {
+    if (!tenantId) throw new ForbiddenException()
+    const user = await prisma.user.findFirst({ where: { id: userId, tenantId, deletedAt: null }, select: { id: true } })
     if (!user) throw new NotFoundException('Usuário não encontrado')
+    return user
+  }
+
+  async updateUser(userId: string, callerTenantId: string, callerRole: string, data: AdminUpdateUserDto) {
+    this.requireAdmin(callerRole)
+    await this.userInTenant(userId, callerTenantId)
 
     const { password, ...rest } = data
     const updateData: Record<string, unknown> = { ...rest }
-    if (password) updateData.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
+    if (password) {
+      updateData.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
+      // Senha redefinida pelo admin encerra as sessões abertas da conta.
+      updateData.tokenVersion = { increment: 1 }
+    }
 
-    return prisma.user.update({ where: { id: userId }, data: updateData })
+    const atualizado = await prisma.user.update({ where: { id: userId }, data: updateData, select: USER_SELECT })
+    if (password) await revogarAcessosPersistentes(userId)
+    return atualizado
   }
 
-  async toggleActive(userId: string, callerRole: string, active: boolean) {
+  async toggleActive(userId: string, callerTenantId: string, callerRole: string, active: boolean) {
     this.requireAdmin(callerRole)
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    if (!user) throw new NotFoundException('Usuário não encontrado')
+    await this.userInTenant(userId, callerTenantId)
 
     return prisma.user.update({
       where: { id: userId },
@@ -128,13 +111,12 @@ export class AdminService {
     })
   }
 
-  async setRole(userId: string, callerRole: string, role: string) {
+  async setRole(userId: string, callerTenantId: string, callerRole: string, role: string) {
     this.requireAdmin(callerRole)
     if (!['admin', 'member'].includes(role)) {
       throw new ForbiddenException('Role inválida')
     }
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    if (!user) throw new NotFoundException('Usuário não encontrado')
+    await this.userInTenant(userId, callerTenantId)
     return prisma.user.update({
       where: { id: userId },
       data: { role },

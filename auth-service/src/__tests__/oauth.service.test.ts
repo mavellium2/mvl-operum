@@ -17,6 +17,7 @@ const db = vi.hoisted(() => {
   const id = () => `id-${++seq}`
   const match = (row: Row, where: Row = {}): boolean =>
     Object.entries(where).every(([k, v]) => {
+      if (k === 'OR') return (v as Row[]).some(w => match(row, w))
       if (v && typeof v === 'object' && !(v instanceof Date)) {
         if ('in' in v) return (v.in as unknown[]).includes(row[k])
         if ('gt' in v) return row[k] > v.gt
@@ -130,8 +131,8 @@ describe('OAuthService', () => {
       { id: 't-b', name: 'Fábio', status: 'ACTIVE' },
     )
     db.state.users.push(
-      { id: 'u-a', tenantId: 't-a', email: 'vini@x.com', role: 'admin', isActive: true, deletedAt: null, forcePasswordChange: false },
-      { id: 'u-b', tenantId: 't-b', email: 'vini@x.com', role: 'member', isActive: true, deletedAt: null, forcePasswordChange: false },
+      { id: 'u-a', identityId: 'u-a', tenantId: 't-a', email: 'vini@x.com', role: 'admin', isActive: true, deletedAt: null, forcePasswordChange: false },
+      { id: 'u-b', identityId: 'u-a', tenantId: 't-b', email: 'vini@x.com', role: 'member', isActive: true, deletedAt: null, forcePasswordChange: false },
       { id: 'u-c', tenantId: 't-b', email: 'outro@x.com', role: 'member', isActive: true, deletedAt: null, forcePasswordChange: false },
     )
     delete process.env.OAUTH_CIMD_ALLOWED_HOSTS
@@ -153,7 +154,17 @@ describe('OAuthService', () => {
   }
 
   describe('autorização', () => {
-    it('aceita cliente CIMD de host permitido e lista os workspaces do usuário pelo e-mail', async () => {
+    it('mesmo e-mail sem vínculo não aparece no consentimento (ADR-061)', async () => {
+      // Conta criada pelo admin de outra instituição com o e-mail da vítima.
+      db.state.tenants.push({ id: 't-x', name: 'Outra', status: 'ACTIVE' })
+      db.state.users.push({ id: 'u-intruso', identityId: null, tenantId: 't-x', email: 'vini@x.com', role: 'admin', isActive: true, deletedAt: null, forcePasswordChange: false })
+      const check = await service.checkAuthorize(authorizeRequest(pkce().challenge), 'u-intruso')
+      expect(check.ok).toBe(true)
+      if (check.ok !== true) return
+      expect(check.tenants.map(t => t.tenantId)).toEqual(['t-x'])
+    })
+
+    it('aceita cliente CIMD de host permitido e lista os workspaces vinculados do usuário', async () => {
       const check = await service.checkAuthorize(authorizeRequest(pkce().challenge), 'u-a')
       expect(check.ok).toBe(true)
       if (check.ok !== true) return

@@ -61,6 +61,20 @@ describe('Custos — permissões por campo e responsável persistido', () => {
   })
 })
 
+describe('vínculo com card/sprint (auditoria 24/10)', () => {
+  it('editar propriedades não troca o card nem a sprint ligados ao nó', async () => {
+    tx.wbsNode.findFirst.mockReset()
+      .mockResolvedValueOnce({ id: 'n1', properties: { cardId: 'c1', tempoMinutos: 100 } })
+      .mockResolvedValue({ id: 'root', version: 1 })
+    const r = await updateNodeProperties(
+      { ...input, properties: { cardId: 'c-outra-instituicao', sprintId: 's-outra', tempoMinutos: 120 } },
+      { userId: 'g', permissoes: permissions('planilha:orcado') },
+    )
+    expect(r.cardId).toBe('c1')
+    expect(tx.wbsNode.update).toHaveBeenCalledWith({ where: { id: 'n1' }, data: { properties: { cardId: 'c1', tempoMinutos: 120 } } })
+  })
+})
+
 describe('Elaborado por = responsáveis do card', () => {
   const orcado = permissions('planilha:orcado')
   const membros = (...ids: string[]) => ids.map(id => ({ userId: id, user: { name: id.toUpperCase() } }))

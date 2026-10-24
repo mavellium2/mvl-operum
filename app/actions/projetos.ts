@@ -416,7 +416,9 @@ export async function updateUsuarioProjetoAction(
       const erroValor = erroMoeda(data.hourlyRate, { rotulo: 'Valor/hora' })
       if (erroValor) throw new Error(erroValor)
     }
-    await projectsApi.addMember(projetoId, { userId, ...data, tenantId })
+    // Só os campos do vínculo; o gateway ainda barra cargos/papéis para não-admins.
+    const { projectRole, cargos, departamentos, hourlyRate, active } = data
+    await projectsApi.addMember(projetoId, { userId, projectRole, cargos, departamentos, hourlyRate, active, tenantId })
     revalidatePath(`/projetos/${projetoId}/membros`)
     revalidatePath(`/projetos/${projetoId}`)
     revalidatePath('/admin/users')
@@ -514,8 +516,15 @@ export async function updateProjetoMemberAction(
       if (!existing) throw new Error('Só o administrador cria departamentos')
     }
 
-    // 1. Update User profile via Prisma (name/email only for admin)
-    const userUpdateData: Record<string, unknown> = { ...profileData }
+    // 1. Update User profile via Prisma (name/email only for admin).
+    // Allowlist: o restante de `data` vem do cliente (Server Action é um endpoint
+    // público) e não pode chegar ao Prisma — role, tenantId, platformOperator...
+    const CAMPOS_CONTATO = ['phone', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'estado', 'notes'] as const
+    const userUpdateData: Record<string, unknown> = {}
+    for (const campo of CAMPOS_CONTATO) {
+      const valor = (profileData as Record<string, unknown>)[campo]
+      if (typeof valor === 'string') userUpdateData[campo] = valor.slice(0, campo === 'notes' ? 2000 : 200)
+    }
     if ('avatarUrl' in profileData) {
       userUpdateData.avatarUrl = validateAvatarUrl(profileData.avatarUrl)
     }

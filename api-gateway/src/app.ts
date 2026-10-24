@@ -3,13 +3,28 @@ import { telemetry, metrics } from './telemetry'
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware'
 import rateLimit from 'express-rate-limit'
 import { authorizationMiddleware } from './middleware/authorization'
-import { authMiddleware } from './middleware/auth'
+import { authMiddleware, isPublicAuthAllowed, sameSecret } from './middleware/auth'
 
-export function createGatewayApp() {
+export interface GatewayOptions {
+  /** Porta exposta pelo Traefik: restringe /auth/* às leituras de identidade. */
+  publicExposure?: boolean
+}
+
+export function createGatewayApp({ publicExposure = false }: GatewayOptions = {}) {
 const app = express()
+// O Traefik (rede Docker privada) repassa o IP do cliente em X-Forwarded-For.
+// Confiar só em loopback/redes privadas: o Express lê a cadeia da direita para
+// a esquerda e para no primeiro IP público, então um X-Forwarded-For forjado
+// pelo cliente não troca o IP usado nos limites abaixo (antes todos os
+// clientes dividiam o balde do IP do Traefik).
+app.set('trust proxy', process.env.GATEWAY_TRUST_PROXY ?? 'loopback, uniquelocal')
 app.use(telemetry)
+if (publicExposure) {
+  app.use((req, res, next) => (isPublicAuthAllowed(req.method, req.path) ? next() : res.status(404).end()))
+}
 app.get('/health/metrics', (req, res) => {
-  if (!process.env.INTERNAL_API_KEY || req.headers.authorization !== `Bearer ${process.env.INTERNAL_API_KEY}`) return res.status(401).end()
+  const key = process.env.INTERNAL_API_KEY
+  if (!key || !sameSecret(req.headers.authorization ?? '', `Bearer ${key}`)) return res.status(401).end()
   res.type('text/plain').send(metrics())
 })
 
@@ -50,8 +65,7 @@ app.get('/health/ready', async (_req, res) => {
 })
 
 
-// Limites próprios do servidor de autorização OAuth, antes da autenticação.
-// O IP visto aqui é o do Traefik, então o limite vale para o total de clientes.
+// Limites próprios do servidor de autorização OAuth, antes da autenticação, por IP do cliente.
 app.use('/oauth/register', rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'too_many_requests' } }))
 app.use('/oauth/token', rateLimit({ windowMs: 60_000, max: 300, standardHeaders: true, legacyHeaders: false, message: { error: 'too_many_requests' } }))
 

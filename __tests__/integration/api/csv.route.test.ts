@@ -60,6 +60,26 @@ describe('POST /api/csv', () => {
     expect(res.status).toBe(400)
   })
 
+  it('recusa CSV com mais de 500 linhas sem criar nenhum card', async () => {
+    vi.mocked(sprintsApi.get).mockResolvedValue(MOCK_SPRINT as never)
+    vi.mocked(sprintsApi.listColumns).mockResolvedValue([{ id: 'col1', title: 'A Fazer' }])
+    const csv = 'title,status\n' + Array.from({ length: 501 }, (_, i) => `T${i},A Fazer`).join('\n')
+    const form = new FormData()
+    form.set('sprintId', 's1')
+    form.set('file', new File([csv], 'tasks.csv', { type: 'text/csv' }))
+    const res = await POST(makeRequest(form, 'valid-token'))
+    expect(res.status).toBe(413)
+    expect(cardsApi.create).not.toHaveBeenCalled()
+  })
+
+  it('recusa arquivo acima de 1 MB', async () => {
+    const form = new FormData()
+    form.set('sprintId', 's1')
+    form.set('file', new File(['x'.repeat(1024 * 1024 + 1)], 'big.csv', { type: 'text/csv' }))
+    const res = await POST(makeRequest(form, 'valid-token'))
+    expect(res.status).toBe(413)
+  })
+
   it('returns 200 with imported count for valid CSV', async () => {
     vi.mocked(sprintsApi.get).mockResolvedValue(MOCK_SPRINT as never)
     vi.mocked(sprintsApi.listColumns).mockResolvedValue([{ id: 'col1', title: 'A Fazer' }])

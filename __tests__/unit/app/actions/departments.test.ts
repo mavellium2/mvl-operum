@@ -173,6 +173,8 @@ describe('Department Actions', () => {
       const mockSession = { userId: 'u1', tenantId: 't1', role: 'admin' }
       vi.mocked(verifySession).mockResolvedValue(mockSession)
       vi.mocked(departmentsApi.delete).mockResolvedValue(undefined)
+      const prisma = (await import('@/lib/prisma')).default as unknown as { department: { findFirst: ReturnType<typeof vi.fn> } }
+      prisma.department.findFirst.mockResolvedValueOnce({ id: 'd1' })
 
       const result = await deleteDepartmentAction('d1')
       expect(result).toHaveProperty('success')

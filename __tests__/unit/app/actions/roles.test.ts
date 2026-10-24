@@ -21,6 +21,7 @@ vi.mock('@/lib/api-client', () => ({
 vi.mock('@/lib/prisma', () => ({
   default: {
     projetoFuncao: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    role: { findFirst: vi.fn().mockResolvedValue({ id: 'r1' }) },
   },
 }))
 
@@ -219,6 +220,16 @@ describe('Role Actions', () => {
       const result = await deleteRoleAction('r1')
       expect(result).toHaveProperty('success')
       expect((result as { success?: boolean }).success).toBe(true)
+    })
+
+    it('membro ou função de outra instituição não apaga vínculos (auditoria 24/10)', async () => {
+      const prisma = (await import('@/lib/prisma')).default as unknown as { role: { findFirst: ReturnType<typeof vi.fn> }; projetoFuncao: { deleteMany: ReturnType<typeof vi.fn> } }
+      vi.mocked(verifySession).mockResolvedValue({ userId: 'u1', tenantId: 't1', role: 'member' })
+      expect(await deleteRoleAction('r1')).toEqual({ error: 'Acesso restrito a administradores' })
+      vi.mocked(verifySession).mockResolvedValue({ userId: 'u1', tenantId: 't1', role: 'admin' })
+      prisma.role.findFirst.mockResolvedValueOnce(null)
+      expect(await deleteRoleAction('r-outra')).toEqual({ error: 'Função não encontrada' })
+      expect(prisma.projetoFuncao.deleteMany).not.toHaveBeenCalled()
     })
 
     it('should return error on failure', async () => {

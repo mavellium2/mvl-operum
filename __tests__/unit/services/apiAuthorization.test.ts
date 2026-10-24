@@ -121,6 +121,16 @@ describe('escritas e destinos persistidos', () => {
     await expect(authorizeApi(session, 'POST', '/projects/project-A/members', { userId: 'user-A', role: 'Gerente' })).rejects.toThrow()
     await expect(authorizeApi(session, 'POST', '/projects/project-A/roles', { roleId: 'role-A' })).rejects.toThrow()
   })
+  it('maiúsculas no caminho não contornam a regra de papéis (Express roteia sem diferenciar)', async () => {
+    granted.add('projeto:equipe')
+    granted.add('projeto:editar')
+    await expect(authorizeApi(session, 'POST', '/projects/project-A/Roles', { roleId: 'role-A' })).rejects.toThrow()
+    await expect(authorizeApi(session, 'POST', '/Projects/project-A/MEMBERS', { userId: 'user-A', role: 'Gerente' })).rejects.toThrow()
+    await expect(authorizeApi(session, 'POST', '/projects/project-A/Members', { userId: 'user-A', isGerente: true })).rejects.toThrow()
+  })
+  it('palavras-chave do segundo segmento também ignoram maiúsculas', async () => {
+    expect(await authorizeApi(session, 'GET', '/Cards/Search?q=abc')).toEqual({ allowed: true, projectIds: ['project-A'] })
+  })
   it.each(['/roles','/permissions','/departments'])('cadastro global %s não aceita membros', async path => {
     await expect(authorizeApi(session, 'POST', path, {})).rejects.toThrow()
   })

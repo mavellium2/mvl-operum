@@ -66,7 +66,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 // ── Auth ──────────────────────────────────────────────────
 
 export const authApi = {
-  me: () => request<{ id: string; name: string; email: string; role: string; tenantId: string; avatarUrl?: string; signatureUrl?: string; cargo?: string; departamento?: string; hourlyRate?: number; isActive: boolean; forcePasswordChange: boolean; phone?: string; cep?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; cidade?: string; estado?: string; notes?: string }>('/auth/me'),
+  me: () => request<{ id: string; name: string; email: string; role: string; tenantId: string; avatarUrl?: string; signatureUrl?: string; cargo?: string; departamento?: string; hourlyRate?: number; isActive: boolean; forcePasswordChange: boolean; platformOperator?: boolean; phone?: string; cep?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; cidade?: string; estado?: string; notes?: string }>('/auth/me'),
 
   updateProfile: (data: Record<string, unknown>) =>
     request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
@@ -78,13 +78,13 @@ export const authApi = {
     request('/auth/password/alterar', { method: 'POST', body: JSON.stringify({ password }) }),
 
   getMyTenants: () =>
-    request<{ userId: string; tenantId: string; tenantName: string; tenantSubdomain: string; role: string; isCurrent: boolean }[]>('/auth/my-tenants'),
+    request<{ userId: string; tenantId: string; tenantName: string; tenantSubdomain: string; role: string; isCurrent: boolean; requiresPassword?: boolean }[]>('/auth/my-tenants'),
 
-  switchTenant: (targetTenantId: string) => {
+  switchTenant: (targetTenantId: string, password?: string) => {
     if (!targetTenantId?.trim()) throw new Error('targetTenantId is required')
     return request<{ token: string; user: { id: string; name: string; email: string; role: string; tenantId: string } }>(
       '/auth/switch-tenant',
-      { method: 'POST', body: JSON.stringify({ targetTenantId: targetTenantId.trim() }) },
+      { method: 'POST', body: JSON.stringify({ targetTenantId: targetTenantId.trim(), ...(password ? { password } : {}) }) },
     )
   },
 

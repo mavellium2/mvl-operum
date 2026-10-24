@@ -75,7 +75,7 @@ export class ApiTokensService {
     const tokenHash = hashApiToken(token)
     const record = await prisma.apiToken.findUnique({
       where: { tokenHash },
-      include: { user: true },
+      include: { user: { include: { tenant: { select: { status: true, deletedAt: true } } } } },
     })
 
     if (!record) {
@@ -87,7 +87,13 @@ export class ApiTokensService {
       !record.revokedAt &&
       !(record.expiresAt && record.expiresAt < now) &&
       record.user.isActive &&
-      !record.user.forcePasswordChange
+      !record.user.deletedAt &&
+      record.user.status === 'active' &&
+      !record.user.forcePasswordChange &&
+      // Instituição suspensa ou removida derruba também os PATs dela.
+      record.user.tenantId === record.tenantId &&
+      record.user.tenant.status === 'ACTIVE' &&
+      !record.user.tenant.deletedAt
 
     if (active) {
       const shouldUpdateLastUsed =

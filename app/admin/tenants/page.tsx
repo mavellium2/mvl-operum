@@ -3,6 +3,7 @@ import { listTenants } from '@/services/tenantService'
 import { getMyTenantsAction } from '@/app/actions/auth'
 import AdminTenantsClient from '@/components/admin/AdminTenantsClient'
 import { redirect } from 'next/navigation'
+import { ehOperadorDaPlataforma } from '@/lib/platformOperator'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
@@ -11,9 +12,10 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Instituições' }
 
 export default async function AdminTenantsPage() {
-  const { role, userId } = await verifySession()
-  
-  if (role !== 'admin') {
+  const { userId } = await verifySession()
+
+  // Instituições é do operador da plataforma (ADR-060), não do admin de uma instituição.
+  if (!(await ehOperadorDaPlataforma(userId))) {
     redirect('/projetos')
   }
 

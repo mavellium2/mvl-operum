@@ -87,7 +87,11 @@ export async function updateDepartmentNameAction(id: string, name: string) {
 
 export async function deleteDepartmentAction(id: string) {
   try {
-    await verifySession()
+    const { role, tenantId } = await verifySession()
+    // Remover departamento é do admin (o gateway exige); confere antes de mexer no
+    // banco, e só no departamento da própria instituição.
+    if (role !== 'admin') return { error: 'Acesso restrito a administradores' }
+    if (!(await prisma.department.findFirst({ where: { id, tenantId }, select: { id: true } }))) return { error: 'Departamento não encontrado' }
     // Associações por projeto não existem mais: limpa as antigas em vez de bloquear.
     await prisma.projetoDepartamento.deleteMany({ where: { departamentoId: id } })
     await departmentsApi.delete(id)

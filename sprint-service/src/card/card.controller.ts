@@ -141,7 +141,12 @@ export class CardController {
 
   @Delete('tags/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  deleteTag(@TenantId() tenantId: string, @Param('id') tagId: string) {
-    return this.cardService.deleteTag(tenantId, tagId)
+  deleteTag(
+    @TenantId() tenantId: string,
+    @Headers('x-user-id') userId: string,
+    @Headers('x-user-role') role: string | undefined,
+    @Param('id') tagId: string,
+  ) {
+    return this.cardService.deleteTag(tenantId, tagId, { userId, isAdmin: role === 'admin' })
   }
 }

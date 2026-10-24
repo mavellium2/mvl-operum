@@ -74,12 +74,13 @@ function formatRelativeTime(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR')
 }
 
-// O campo `reference` é usado como href do link "Ver". Só aceita rotas
-// relativas do app (/...) ou URLs absolutas — referências antigas que
-// guardavam IDs crus não geram link quebrado.
-const SAFE_REFERENCE_RE = /^(?:\/|https?:\/\/)/
-function isSafeReference(ref: string) {
-  return SAFE_REFERENCE_RE.test(ref) && !ref.includes('\n') && !ref.includes('\r')
+// O campo `reference` é usado como href do link "Ver". Só aceita rotas do
+// próprio app (/...): nunca "//host" nem "/\host", que o navegador trata como
+// outro site, nem caracteres de controle (o parser de URL descarta tab/CR/LF).
+// Referências antigas que guardavam IDs crus não geram link quebrado.
+const SAFE_REFERENCE_RE = /^\/(?![/\\])[^\u0000-\u001F\u007F\\]*$/
+export function isSafeReference(ref: string) {
+  return SAFE_REFERENCE_RE.test(ref)
 }
 
 export default function NotificacaoList({ initialNotificacoes }: Props) {

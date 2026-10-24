@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
+import { useRouter } from 'next/navigation'
 import { getMyTenantsAction, switchTenantAction } from '@/app/actions/auth'
 
 type TenantEntry = {
@@ -11,12 +12,14 @@ type TenantEntry = {
   tenantSubdomain: string
   role: string
   isCurrent: boolean
+  requiresPassword?: boolean
 }
 
 export default function TenantSwitcher() {
   const [tenants, setTenants] = useState<TenantEntry[]>([])
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
   const ref = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
 
@@ -93,13 +96,19 @@ export default function TenantSwitcher() {
               disabled={t.isCurrent || isPending}
               onClick={() => {
                 setOpen(false)
-                startTransition(() => switchTenantAction(t.tenantId))
+                // Conta ainda não vinculada: a senha é confirmada em Minhas instituições.
+                if (t.requiresPassword) { router.push('/configuracoes/instituicoes'); return }
+                startTransition(async () => {
+                  const result = await switchTenantAction(t.tenantId)
+                  if (result?.needsPassword) router.push('/configuracoes/instituicoes')
+                })
               }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors disabled:cursor-default"
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${t.isCurrent ? 'bg-blue-500' : 'bg-gray-300'}`} />
               <span className="flex-1 truncate text-gray-800">{t.tenantName}</span>
               {t.isCurrent && <span className="text-xs text-blue-500 font-medium shrink-0">atual</span>}
+              {!t.isCurrent && t.requiresPassword && <span className="text-xs text-gray-400 shrink-0">confirmar senha</span>}
             </button>
           ))}
         </div>,

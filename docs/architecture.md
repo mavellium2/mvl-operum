@@ -45,7 +45,7 @@ Todos em NestJS 11 + Prisma 7, exceto o API Gateway (Express). Cada serviço tem
 
 | Serviço | Framework | Porta | Responsabilidade |
 |---------|-----------|-------|-------------------|
-| `api-gateway` | Express 5 + `http-proxy-middleware` | 4000 | Ponto de entrada único, autenticação JWT, rate limiting, proxy para os demais serviços |
+| `api-gateway` | Express 5 + `http-proxy-middleware` | 4000 (interna) / 4080 (pública) | Ponto de entrada único, autenticação JWT, rate limiting, proxy para os demais serviços. A porta pública (Traefik) só expõe as leituras de identidade em `/auth/*` (ADR-059) |
 | `auth-service` | NestJS 11 + Prisma 7 | 4001 | Autenticação, usuários, tenants, sessões (Redis) |
 | `project-service` | NestJS 11 + Prisma 7 | 4002 | Projetos, departamentos, roles/permissões RBAC, stakeholders |
 | `sprint-service` | NestJS 11 + Prisma 7 | 4003 | Sprints, board Kanban (cards, colunas, tags), comentários, time tracking, dashboard de sprint, auditoria |
@@ -266,9 +266,17 @@ Tenant 1 ─┬─ Users ─┬─ Projetos ─ Sprints ─ Cards
 
 | Valor | Acesso |
 |-------|--------|
-| `admin` | Painel `/admin/*`, gerenciamento de usuários, tenants e projetos |
+| `admin` | Painel `/admin/*` da **própria instituição**: usuários, cargos, departamentos e projetos. As rotas de admin do auth-service filtram pelo `tenantId` de quem chama |
 | `gerente` | Gerenciamento de membros em projetos que participa |
 | `member` | Apenas operações no board e perfil próprio |
+
+### Operador da plataforma (`User.platformOperator`, ADR-060)
+
+Gerenciar instituições (página `/admin/tenants`, criar, mudar status, renomear, entrar ou provisionar admin) exige `platformOperator = true`, conferido no banco a cada chamada (`lib/platformOperator.ts`; `exigirOperador` no auth-service). O papel é independente do `role`; a migration `20261024120000_operador_e_identidade` o concede aos admins atuais das instituições `mavellium` e `mavellium-main`. Conceder ou retirar é, por ora, alteração direta no banco.
+
+### Contas da mesma pessoa em instituições diferentes (`User.identityId`, ADR-061)
+
+Cada instituição tem a sua conta (`User`). A troca de instituição e os workspaces do consentimento OAuth só valem para contas **vinculadas** (mesmo `identityId`), não para qualquer conta com o mesmo e-mail. O vínculo nasce ao entrar/provisionar uma instituição a partir da conta atual ou ao confirmar a senha da conta de destino na primeira troca (`switch-tenant` com `password`, mesmo limite de tentativas do login). Contas com o mesmo e-mail ainda não vinculadas aparecem em "Minhas instituições" com `requiresPassword`.
 
 ### Role por projeto (`UserProjectRole`)
 
@@ -276,7 +284,7 @@ Além do papel global, cada usuário pode ter um papel específico dentro de um 
 
 ### Restrição na navegação
 
-- `/admin/*` — verificado em `app/admin/layout.tsx` e nas actions via `requireAdmin()`
+- `/admin/*` — verificado em `app/admin/layout.tsx` e nas actions via `requireAdmin()`; `/admin/tenants` e as ações de instituição exigem operador (`exigirOperadorDaPlataforma()`)
 - `/projetos/:id/membros` — apenas `admin` ou `gerente`
 - Demais rotas — qualquer usuário autenticado
 
@@ -714,7 +722,7 @@ Schemas em `lib/validation/`:
 | Senha | bcrypt rounds 10–12 |
 | Sessão | JWT RS256 httpOnly cookie, `SameSite=strict`, 7 dias, `jti` registrado no Redis (`session:{jti}`) |
 | Algoritmo JWT | RS256 em staging/produção; HS256 fallback em dev local (sem chaves configuradas) |
-| Invalidação de sessão | `tokenVersion` — incrementar invalida todas as sessões; sessão Redis e estado persistido verificados pelo auth-service (produção) |
+| Invalidação de sessão | `tokenVersion` — incrementar invalida todas as sessões; sessão Redis e estado persistido verificados pelo auth-service (produção). Trocar ou redefinir a senha (inclusive pelo admin) também revoga os PATs e as conexões OAuth da conta (`auth-service/src/auth/revogacao.ts`). A introspecção de PAT e o `/api/internal/authorize` exigem conta não excluída e instituição ativa |
 | Bloqueio de conta | `isActive=false` verificado em cada request |
 | Troca de senha forçada | `forcePasswordChange` verificado no login e em `verifySession` |
 | Isolamento de dados | Toda query usa `tenantId` da sessão |
@@ -722,17 +730,17 @@ Schemas em `lib/validation/`:
 | Auditoria | `AuditLog`/`Auditoria` registra ações críticas com userId, entidade e detalhes |
 | PWA / service worker | `/sw.js` só guarda estáticos versionados, ícones e a página pública `/offline`; nunca HTML autenticado, APIs nem anexos (ADR-058). CSP com `manifest-src` e `worker-src` em `'self'`. Manifest, worker, ícones e `/offline` ficam fora do `proxy.ts`. |
 | Middleware de auth (monolito) | `proxy.ts` valida sessão via `http://localhost:PORT/api/me` antes de cada rota protegida |
-| Confiança gateway↔serviços | Serviços internos **não** revalidam o JWT — confiam nos headers `x-user-id`/`x-tenant-id`/`x-user-role` injetados pelo gateway, protegidos pelo segredo compartilhado `X-Internal-Api-Key` (`INTERNAL_API_KEY`). Rede `internal` do Docker Compose impede acesso direto de fora. |
-| Rate limiting | `api-gateway`: 200 req/s por IP (`express-rate-limit`) |
+| Confiança gateway↔serviços | Serviços internos **não** revalidam o JWT — confiam nos headers `x-user-id`/`x-tenant-id`/`x-user-role` injetados pelo gateway, protegidos pelo segredo compartilhado `X-Internal-Api-Key` (`INTERNAL_API_KEY`, comparado em tempo constante). Rede `internal` do Docker Compose impede acesso direto de fora. Como o gateway anexa a chave também ao tráfego público, a porta pública restringe `/auth/*` (ADR-059) e as rotas de conta validam campos (`.strict()`) e escopo de tenant. O notification-service usa o `x-user-id` do gateway como dono (nunca o `userId` de query/body) e recusa criar notificação pelo gateway. |
+| Rate limiting | `api-gateway`: 200 req/s por IP do cliente (`express-rate-limit`), com `trust proxy` só para loopback/redes privadas (`GATEWAY_TRUST_PROXY`), para que o IP venha do `X-Forwarded-For` do Traefik sem aceitar valor forjado; `/oauth/register` e `/oauth/token` com limites próprios; 20 req/s por PAT/conexão OAuth. Login: tentativa errada conta em todas as contas candidatas do mesmo e-mail (bloqueio após 10) |
 | CORS | `api-gateway`: allow-list via `ALLOWED_ORIGINS` (⚠️ não documentado em `.env.example` — gap de configuração conhecido) |
 | Dependência de sessão indisponível | Produção bloqueia com 503; credencial inválida/revogada retorna 401. Gateway consulta auth-service sem cache de validade JWT. |
-| CI/CD | TruffleHog (secrets), CodeQL (SAST), Trivy (scan de todas as 7 imagens), OWASP ZAP (DAST) em `deploy-staging.yml`/`deploy-production.yml`. `dependency-audit.yml` verifica instalações congeladas, patch efetivo e audit high da raiz/gateway nas PRs para main/develop. O pnpm dos workflows vem de `packageManager` da raiz. O job `deploy-production.yml:security-scan` também roda nas PRs para main, garantindo a mesma configuração CodeQL da base; testes de deploy, build/push e deploy ficam bloqueados nesse evento. |
+| CI/CD | TruffleHog (secrets), CodeQL (SAST), Trivy (scan de todas as 7 imagens), OWASP ZAP (DAST) em `deploy-staging.yml`/`deploy-production.yml`. `dependency-audit.yml` verifica instalações congeladas, patch efetivo e audit high da raiz/gateway nas PRs para main/develop. O pnpm dos workflows vem de `packageManager` da raiz. O job `deploy-production.yml:security-scan` também roda nas PRs para main, garantindo a mesma configuração CodeQL da base; testes de deploy, build/push e deploy ficam bloqueados nesse evento. Actions de terceiros fixadas por SHA de commit (com a tag em comentário); `deploy-production.yml` com `permissions: contents: read` por padrão e entradas do `workflow_dispatch` passadas por `env`. |
 
 ---
 
 ## Migrações Aplicadas
 
-O monolito tem **16 migrações** em `prisma/migrations/`. As mais recentes (não presentes na versão anterior deste doc) refletem as funcionalidades novas:
+O monolito tem **30 migrações** em `prisma/migrations/`. Algumas que refletem funcionalidades novas:
 
 | Migração | O que faz |
 |----------|-----------|
@@ -743,6 +751,7 @@ O monolito tem **16 migrações** em `prisma/migrations/`. As mais recentes (nã
 | `add_projeto_funcao` | Tabela `ProjetoFuncao` |
 | `add_ata_member_refs` | Vínculo de presentes/ações de ata com `User` |
 | `add_eap_template_document` | Tabelas `EapTemplate`, `EapDocument` |
+| `operador_e_identidade` (1.39.0) | `User.platformOperator` e `User.identityId` (+ índice); concede operador aos admins de `mavellium`/`mavellium-main` e vincula contas com mesmo e-mail e hash (ADR-060, ADR-061). O campo também está no schema do auth-service, que não tem migration própria para ele |
 
 Migrações anteriores (base multi-tenant, RBAC, auditoria, `DocumentVersion`, `ProjectDraft` etc.) seguem a mesma linha da versão anterior deste documento — ver histórico completo em `prisma/migrations/`.
 
@@ -773,12 +782,14 @@ Migrações anteriores (base multi-tenant, RBAC, auditoria, `DocumentVersion`, `
 | Variável | Uso |
 |----------|-----|
 | `JWT_PUBLIC_KEY`, `SESSION_SECRET` | Validação de JWT (RS256 + fallback HS256) |
-| `INTERNAL_API_KEY` | Segredo injetado em todo proxy para os serviços |
+| `INTERNAL_API_KEY` | Segredo injetado em todo proxy para os serviços (comparado em tempo constante nos serviços) |
 | `REDIS_HOST` / `PORT` / `PASSWORD` | Liveness de sessão |
 | `AUTH_SERVICE_URL`, `PROJECT_SERVICE_URL`, `SPRINT_SERVICE_URL`, `NOTIFICATION_SERVICE_URL`, `FILE_SERVICE_URL` | Destinos do proxy |
 | `ALLOWED_ORIGINS` | CORS allow-list (⚠️ ausente do `.env.example` raiz) |
 | `MCP_GATEWAY_KEY`, `MCP_RESOURCE_URL` | Token OAuth só é aceito com a chave interna do mcp-server e com a audiência do MCP (1.36.0) |
-| `PORT` | 4000 |
+| `PORT` | 4000 — porta interna (app e mcp-server) |
+| `PUBLIC_PORT` | 4080 — porta pública, usada pelo Traefik; `/auth/*` só com `GET /auth/me`, `/auth/my-tenants` e `/auth/all-users` (ADR-059) |
+| `GATEWAY_TRUST_PROXY` | Opcional. Proxies confiáveis para obter o IP do cliente (padrão `loopback, uniquelocal`) |
 
 ### Demais serviços (auth/project/sprint/notification/file-service)
 

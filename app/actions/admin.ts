@@ -6,6 +6,7 @@ import { adminApi, authApi } from '@/lib/api-client'
 import { createTenant, updateTenant, ConflictError } from '@/services/tenantService'
 import { normalizarContato } from '@/lib/contato'
 import { erroMoeda } from '@/lib/dinheiro'
+import { exigirOperadorDaPlataforma } from '@/lib/platformOperator'
 
 async function requireAdmin() {
   const session = await verifySession()
@@ -121,7 +122,7 @@ type TenantStatus = typeof VALID_STATUSES[number]
 
 export async function createTenantAction(data: { name: string; subdomain: string }) {
   try {
-    const session = await requireAdmin()
+    const session = await exigirOperadorDaPlataforma()
     const tenant = await createTenant(data)
     // Auto-provision creator as admin in the new tenant using their existing password hash.
     // Non-fatal: if this fails (e.g. already has access), the tenant was still created.
@@ -138,7 +139,7 @@ export async function createTenantAction(data: { name: string; subdomain: string
 
 export async function joinAsTenantAdminAction(tenantId: string) {
   try {
-    const session = await requireAdmin()
+    const session = await exigirOperadorDaPlataforma()
     await authApi.provisionTenantAdmin(tenantId, session.role)
     revalidatePath('/admin/tenants')
     return {}
@@ -152,7 +153,7 @@ export async function updateTenantStatusAction(id: string, status: TenantStatus)
     return { error: 'Status inválido' }
   }
   try {
-    await requireAdmin()
+    await exigirOperadorDaPlataforma()
     await updateTenant(id, { status })
     revalidatePath('/admin/tenants')
     return {}
@@ -164,7 +165,7 @@ export async function updateTenantStatusAction(id: string, status: TenantStatus)
 export async function updateTenantNameAction(id: string, name: string) {
   if (!name?.trim()) return { error: 'Nome não pode ser vazio' }
   try {
-    await requireAdmin()
+    await exigirOperadorDaPlataforma()
     await updateTenant(id, { name: name.trim() })
     revalidatePath('/admin/tenants')
     return {}
@@ -175,7 +176,7 @@ export async function updateTenantNameAction(id: string, name: string) {
 
 export async function joinTenantAction(tenantId: string, password: string) {
   try {
-    await requireAdmin()
+    await exigirOperadorDaPlataforma()
     await authApi.joinTenant(tenantId, password)
     revalidatePath('/admin/tenants')
     return {}

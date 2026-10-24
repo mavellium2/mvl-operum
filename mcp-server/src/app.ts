@@ -5,6 +5,15 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { buildServer } from './server.js'
 import { isOAuthToken, parseTokens, TenantRegistry } from './tenants.js'
 import { oauthResourceConfig, protectedResourceMetadata, wwwAuthenticate } from './oauth.js'
+import { timingSafeEqual } from 'crypto'
+
+/** Comparação em tempo constante (não vaza o tamanho do prefixo correto pelo tempo de resposta). */
+function mesmoSegredo(recebido: string | undefined, esperado: string): boolean {
+  if (typeof recebido !== 'string') return false
+  const a = Buffer.from(recebido)
+  const b = Buffer.from(esperado)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
 
 export interface AppOptions {
   env?: NodeJS.ProcessEnv
@@ -15,7 +24,7 @@ export function createApp({ env = process.env, makeRegistry = tokens => new Tena
 const app = express()
 app.use(telemetry)
 app.get('/health/metrics', (req, res) => {
-  if (!process.env.INTERNAL_API_KEY || req.headers.authorization !== `Bearer ${process.env.INTERNAL_API_KEY}`) return res.status(401).end()
+  if (!process.env.INTERNAL_API_KEY || !mesmoSegredo(req.headers.authorization, `Bearer ${process.env.INTERNAL_API_KEY}`)) return res.status(401).end()
   res.type('text/plain').send(metrics())
 })
 // 15 MB: operum_upload_attachment aceita até 10 MB em content_base64 (≈13,4 MB em base64).

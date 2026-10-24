@@ -7,6 +7,38 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.39.1] — 2026-10-24
+
+Correções médias e baixas da auditoria de segurança de 24/10.
+
+### Segurança
+- **Login:** uma senha errada passa a contar tentativa em todas as contas do mesmo e-mail (antes, e-mails com conta em mais de uma instituição nunca eram bloqueados), e a mensagem de conta inativa ou bloqueada só aparece para quem acertou a senha.
+- **Senhas:** trocar ou redefinir a senha (inclusive pelo admin) revoga também os tokens de acesso pessoais e as conexões OAuth da conta. A troca sem a senha atual só vale no primeiro acesso, e a etapa final da redefinição respeita o limite de tentativas do código.
+- **Tokens:** tokens de acesso pessoais e chamadas autorizadas deixam de valer para contas excluídas e instituições suspensas.
+- **API pública:** os limites de requisições passam a valer por cliente (IP real vindo do Traefik), não para todos juntos.
+- **Login:** o retorno após o login recusa endereços com caracteres de controle (`/%09/site-externo`), que levavam a outro site.
+- **Anexos e arquivos:** enviar e apagar anexos pela tela exige a mesma permissão da API; a assinatura (perfil e equipe) aceita só PNG e JPEG conferidos pelo conteúdo; a importação de CSV tem limite de 1 MB e 500 linhas e cria os cards em lotes.
+- **Cadastros:** remover função ou departamento é só do admin e da própria instituição; etiquetas só são apagadas por quem as criou (ou pelo admin); a consulta de exclusão de sprint fica na instituição.
+- **MCP:** todos os ids das ferramentas são validados (um id com `../` vindo de conteúdo lido pela IA não desvia a chamada), e anexos por URL têm limite de downloads simultâneos.
+- **Repositório e CI:** as permissões pessoais de agentes de IA (`.claude/settings.local.json`) saem do git e o arquivo compartilhado deixa de liberar execução de código e `git push`; actions de terceiros fixadas por SHA; deploy de produção com permissão padrão só de leitura.
+
+## [1.39.0] — 2026-10-24
+
+Correções da auditoria de segurança de 24/10 (críticas e altas).
+
+### Segurança
+- **API pública:** o api-gateway passa a ter uma porta pública (4080, usada pelo Traefik) que só expõe `GET /auth/me`, `/auth/my-tenants` e `/auth/all-users` em `/auth/*`. Antes, por repassar a chave interna em toda requisição, rotas internas de conta (`/auth/register`, `/auth/join-tenant`, `/auth/admin/*`, `/auth/provision-tenant-admin`) ficavam acessíveis a qualquer usuário logado chamando a API direto (ADR-059).
+- **Perfil e admin:** `PATCH /auth/me` e as rotas de admin do auth-service aceitam só os campos permitidos (sem `role`, `tenantId`, hash de senha etc.), e as de admin ficam restritas à instituição de quem chama. A edição de membro no app e o vínculo de membro no project-service também deixam de gravar campos fora da lista (o `projectId` do vínculo não pode mais ser trocado pelo corpo da requisição).
+- **Troca de instituição:** contas de instituições diferentes só trocam entre si quando vinculadas. Uma conta com o mesmo e-mail e ainda não vinculada pede a senha dela na primeira troca. O consentimento OAuth mostra só as instituições vinculadas (ADR-061).
+- **Permissões por caminho:** maiúsculas no caminho (ex.: `/projects/x/Roles`) não contornam mais a regra que reserva papéis e cargos ao administrador.
+- **Notificações:** cada pessoa só lê, marca e apaga as próprias notificações pela API, e criar notificação pela API pública deixa de ser possível. O link "Ver" aceita só caminhos do próprio Operum.
+- **EAP:** o vínculo de um item com card ou sprint só vale para cards e sprints do mesmo projeto; editar propriedades não troca o card ligado; os responsáveis de um card não são copiados para itens de outro projeto.
+- Chave interna comparada em tempo constante em todos os serviços.
+
+### Adicionado
+- **Operador da plataforma:** gerenciar instituições passa a exigir o papel de operador (`User.platformOperator`). O `admin` administra só a própria instituição. A migration concede o papel aos admins atuais das instituições da Mavellium (ADR-060).
+- Confirmação de senha em "Minhas instituições" na primeira troca para uma conta ainda não vinculada.
+
 ## [1.38.1] — 2026-10-24
 
 ### Segurança
