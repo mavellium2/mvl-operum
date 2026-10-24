@@ -4,6 +4,13 @@ import { refletirResponsaveisNoNo } from '@/services/wbsService'
 
 import { verifySession } from '@/lib/dal'
 import { cardsApi, timeEntriesApi } from '@/lib/api-client'
+import { revalidatePath } from 'next/cache'
+
+function revalidarRealizado() {
+  revalidatePath('/projetos/[projetoId]/planilha-custos', 'page')
+  revalidatePath('/projetos/[projetoId]/wbs', 'page')
+  revalidatePath('/sprints/[sprintId]', 'page')
+}
 
 // CUIDs gerados pelo Prisma: começam com 'c', alfanuméricos minúsculos, ~25 chars
 const CUID_RE = /^c[a-z0-9]{20,30}$/
@@ -52,6 +59,7 @@ export async function pauseTimerAction(entryId: string) {
     await verifySession()
     assertValidId(entryId, 'entryId')
     const entry = await cardsApi.stopTimer(entryId)
+    revalidarRealizado()
     return { entry }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao pausar timer' }
@@ -130,6 +138,7 @@ export async function addManualTimeAction(cardId: string, hours: number, minutes
       endedAt: endedAt.toISOString(),
       description: safeDescription,
     })
+    revalidarRealizado()
     return { entry }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao adicionar tempo' }
@@ -158,6 +167,7 @@ export async function updateTimeEntryAction(entryId: string, hours: number, minu
       return { error: 'O tempo deve ser maior que zero' }
     }
     const entry = await timeEntriesApi.update(entryId, { duration: seconds, description: safeDescription ?? null })
+    revalidarRealizado()
     return { entry }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar registro' }
@@ -169,6 +179,7 @@ export async function deleteTimeEntryAction(entryId: string) {
     await verifySession()
     assertValidId(entryId, 'entryId')
     await timeEntriesApi.delete(entryId)
+    revalidarRealizado()
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao excluir registro' }

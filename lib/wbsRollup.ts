@@ -1,4 +1,5 @@
 import { elaboradoresDe, somaValoresPorMinuto } from './elaboradores'
+import { minutosRealizados } from './tempoRealizado'
 import type { WbsNodeClient, WbsRollup } from '@/types/wbs'
 import { custoFolhaPrevisto, custoFolhaRealizado, round2 } from './custosCalc'
 import { maiorData } from './planilhaCustos'
@@ -104,9 +105,9 @@ export function computeFinancialRollups(
       const p = n.properties, rate = somaValoresPorMinuto(elaboradoresDe(p).map(id => rates[id]))
       result[id] = {
         budgetHours: (p.tempoMinutos ?? 0) / 60,
-        actualHours: (p.tempoRealMinutos ?? 0) / 60,
+        actualHours: minutosRealizados(p) / 60,
         budgetCost: rate == null ? (p.materiais ? round2(p.materiais) : null) : custoFolhaPrevisto(p.tempoMinutos ?? 0, rate, p.materiais ?? 0),
-        actualCost: rate == null ? (p.materiaisReal ? round2(p.materiaisReal) : null) : custoFolhaRealizado(p.tempoRealMinutos ?? 0, rate, p.materiaisReal ?? 0),
+        actualCost: rate == null ? (p.materiaisReal ? round2(p.materiaisReal) : null) : custoFolhaRealizado(minutosRealizados(p), rate, p.materiaisReal ?? 0),
         dataPrevista: p.dataPrevista ?? null,
         dataRealizacao: p.dataRealizacao ?? null,
       }

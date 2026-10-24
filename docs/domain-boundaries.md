@@ -74,3 +74,7 @@ AST considera imports de tipos e reexports como referências, de maneira conserv
 `node scripts/check-domain-boundaries.mjs` impede restaurar os módulos retirados/importá-los e detectar PROJECT_SERVICE_URL/SPRINT_SERVICE_URL nas fontes do app. O novo workflow Domain Boundaries roda a verificação, testes do project-service e build. A regra não veta os contratos puros importados do sprint-service nem consultas locais documentadas. Acesso direto adicional/fetch montado indiretamente ainda exige review; a verificação não é um analisador completo de fluxo de dados.
 
 Revisão de consistência dos itens 9.1–9.6: limites de escrita atômica (sprint/timer/movimento), reconciliação de macrofases, contratos de dashboard e paginação continuam nos caminhos documentados e preservados pelos workflows PostgreSQL/HTTP existentes. Nenhum service ativo foi substituído pela implementação antiga. A fase 9.7 não exige incremento de versão: apenas retira código sem consumidor e muda testes/documentação/checks, sem comportamento do produto ou dependências.
+
+### Projeção de realizado para EAP/Planilha (1.40.2)
+
+`services/realizadoDosCards.ts`, consumido por `services/wbsService.ts:getTree`, lê agregados de `TimeEntry` no banco compartilhado apenas para compor a visão de custos. Não cria, edita ou exclui apontamentos: o sprint-service continua dono dessas escritas via gateway. Esta é uma exceção local de leitura enquanto a EAP pertence ao app (ADR-065); ao extrair esse domínio, o contrato de projeção precisa acompanhar a migração.

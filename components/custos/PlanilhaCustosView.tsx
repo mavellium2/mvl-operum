@@ -71,8 +71,9 @@ const num = (v: string | undefined, fallback: number): number => {
 }
 
 const hhmm = (min: number): string => {
-  const h = Math.floor(Math.abs(min) / 60)
-  const m = String(Math.abs(min) % 60).padStart(2, '0')
+  const rounded = Math.round(Math.abs(min))
+  const h = Math.floor(rounded / 60)
+  const m = String(rounded % 60).padStart(2, '0')
   return `${h}:${m}`
 }
 
@@ -123,7 +124,7 @@ function somaDaFase(
   let soma = SOMA_VAZIA
   for (const a of fase.atividades) {
     const r = rascunho[a.nodeId]
-    const min = lado === 'orcado' ? num(r?.minOrcado, a.minOrcado) : num(r?.minReal, a.minReal)
+    const min = lado === 'orcado' ? num(r?.minOrcado, a.minOrcado) : a.tempoRealDosCards ? a.minReal : num(r?.minReal, a.minReal)
     const materiais = lado === 'orcado' ? num(r?.materiaisOrcado, a.materiaisOrcado) : num(r?.materiaisReal, a.materiaisReal)
     const ids = idsAtuais(a, rascunho)
     const horas = menorJornada(ids.map(id => elaboradores.find(x => x.userId === id)?.horasDiarias)) ?? horasPorDiaPadrao
@@ -261,6 +262,7 @@ export default function PlanilhaCustosView({
   return (
     <div className="p-4 sm:p-6">
       <p className="mb-3 text-sm text-gray-600">Campos brancos com borda azul são editáveis. Campos cinza estão bloqueados. O realizado próprio depende do membro salvo em Elaborado por.</p>
+      <p className="mb-3 text-sm text-gray-600">Quando há apontamentos no card, o tempo realizado vem desses registros. Para corrigir esse tempo, edite os apontamentos no card.</p>
       {/* ── Cabeçalho (F.1) ─────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -613,9 +615,11 @@ const FaseFragment = memo(function FaseFragment({
       </tr>
       {fase.atividades.map(a => {
         const canReal = canEditAllActual || (canEditOwnActual && !!currentUserId && idsDaLinha(a).includes(currentUserId))
+        const canRealTime = canReal && !a.tempoRealDosCards
+        const origemTempo = a.tempoRealDosCards ? 'Calculado dos apontamentos encerrados do card. Para corrigir, edite os registros de tempo no card.' : undefined
         const minO = num(rascunho[a.nodeId]?.minOrcado, a.minOrcado)
         const matO = num(rascunho[a.nodeId]?.materiaisOrcado, a.materiaisOrcado)
-        const minR = num(rascunho[a.nodeId]?.minReal, a.minReal)
+        const minR = a.tempoRealDosCards ? a.minReal : num(rascunho[a.nodeId]?.minReal, a.minReal)
         const matR = num(rascunho[a.nodeId]?.materiaisReal, a.materiaisReal)
         const userIds = idsAtuais(a, rascunho)
         const vpm = vpmDaLinha(userIds, elaboradores)
@@ -677,13 +681,13 @@ const FaseFragment = memo(function FaseFragment({
               {canEdit ? campoInput(a.nodeId, 'dataPrevista', a.dataPrevista) : texto(fmtDataBR(a.dataPrevista))}
             </td>
             <td className="border border-gray-100 px-1 py-1 text-right">
-              {canReal ? campoInput(a.nodeId, 'minReal', a.minReal) : texto(String(a.minReal))}
+              {canRealTime ? campoInput(a.nodeId, 'minReal', a.minReal) : texto(a.minReal.toLocaleString('pt-BR', { maximumFractionDigits: 2 }), origemTempo)}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right">
-              {canReal ? campoHoras(a.nodeId, 'minReal', minR) : texto(hhmm(minR))}
+              {canRealTime ? campoHoras(a.nodeId, 'minReal', minR) : texto(hhmm(minR), origemTempo)}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right">
-              {canReal ? campoDias(a.nodeId, 'minReal', minR, horasLinha) : texto(dois(minR / 60 / horasLinha))}
+              {canRealTime ? campoDias(a.nodeId, 'minReal', minR, horasLinha) : texto(dois(minR / 60 / horasLinha), origemTempo)}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right">{celulaR(vpm)}</td>
             <td className="border border-gray-100 px-1 py-1 text-right">

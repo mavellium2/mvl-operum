@@ -330,6 +330,16 @@ describe('PlanilhaCustosView — situação ao vivo', () => {
 })
 
 describe('PlanilhaCustosView — permissões do realizado', () => {
+  it('tempo dos cards é somente leitura; materiais e data realizados continuam editáveis', () => {
+    const fromCards = structuredClone(planilha)
+    Object.assign(fromCards.macrofases[0].atividades[0], { minReal: 90, tempoRealDosCards: true })
+    render(<ToastProvider><PlanilhaCustosView {...props} planilha={fromCards} /></ToastProvider>)
+    const row = within(screen.getByText('A1 Atividade 1').closest('tr')!)
+    expect(row.queryByDisplayValue('0:00')).not.toBeInTheDocument()
+    expect(row.getByDisplayValue('1:30')).toBeInTheDocument() // Só o orçamento continua editável.
+    expect(row.getByText('1:30')).toHaveAttribute('title', expect.stringContaining('apontamentos'))
+    expect(row.getAllByRole('textbox').length).toBeGreaterThan(0)
+  })
   function renderizarPermissoes(overrides: Partial<React.ComponentProps<typeof PlanilhaCustosView>>) {
     return render(<ToastProvider><PlanilhaCustosView {...props} currentUserId="u1" canEdit={false} canEditAllActual={false} {...overrides} /></ToastProvider>)
   }

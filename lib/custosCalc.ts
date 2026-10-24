@@ -1,4 +1,5 @@
 import type { WbsNodeClient } from '@/types/wbs'
+import { minutosRealizados } from './tempoRealizado'
 
 export interface ProjetoConfigCustos {
   valorPorMinuto: number
@@ -126,7 +127,7 @@ export function computePlanilha(
 
     if (hijos.length === 0) {
       const prev = custoFolhaPrevisto(node.properties.tempoMinutos ?? 0, valorPorMinuto, node.properties.materiais ?? 0)
-      const real = custoFolhaRealizado(node.properties.tempoRealMinutos ?? 0, valorPorMinuto, node.properties.materiaisReal ?? 0)
+      const real = custoFolhaRealizado(minutosRealizados(node.properties), valorPorMinuto, node.properties.materiaisReal ?? 0)
       fatura[id] = { prev, real }
     } else {
       let prev = 0
@@ -152,7 +153,7 @@ export function computePlanilha(
 
     if (esFolha) {
       const tempo = node.properties.tempoMinutos ?? 0
-      const tempoReal = node.properties.tempoRealMinutos ?? 0
+      const tempoReal = minutosRealizados(node.properties)
       const pc = node.properties.percentualConclusao
       let situacao: string
       if (pc !== undefined) situacao = situacaoDe(pc)

@@ -1,4 +1,5 @@
 import { validarCamposCustos } from '@/lib/permissoesCustos'
+import { aplicarRealizadoDosCards } from './realizadoDosCards'
 import type { Permissao } from '@/lib/permissoes'
 import prisma from '@/lib/prisma'
 import type { Prisma } from '@/lib/generated/prisma'
@@ -224,14 +225,14 @@ async function collectSubtreeIds(tx: Tx, nodeId: string): Promise<string[]> {
 // ── Public service functions ─────────────────────────────────────────────────
 
 /**
- * Returns the full WBS tree for a project. Single DB query, O(n) in-memory assembly.
+ * Árvore e projeção atual do tempo realizado dos cards, sem persistir o derivado.
  */
 export async function getTree(projectId: string, tenantId: string): Promise<GetTreeResult> {
   const rows = await prisma.wbsNode.findMany({
     where: { projectId, tenantId },
     orderBy: { order: 'asc' },
   })
-  const nodes = buildClientMap(rows)
+  const nodes = await aplicarRealizadoDosCards(buildClientMap(rows), projectId, tenantId)
   const root = rows.find(r => r.parentId === null) ?? null
   return { nodes, rootId: root?.id ?? null, serverVersion: root?.version ?? 0 }
 }
@@ -551,6 +552,12 @@ export async function updateNodeProperties(input: UpdateNodePropertiesInput, ace
     // vira os responsáveis do card ligado, na mesma transação.
     let responsaveisAdicionados: string[] = []
     const cardId = texto((node.properties as Record<string, unknown> | null)?.cardId) ?? null
+    if (cardId && 'tempoRealMinutos' in properties) {
+      const history = await tx.timeEntry.findFirst({ where: {
+        cardId, isRunning: false, endedAt: { not: null }, user: { tenantId },
+      }, select: { id: true } })
+      if (history) throw new WbsValidationError('O tempo realizado vem dos apontamentos do card. Edite os registros de tempo no card.')
+    }
     if (Array.isArray(properties.elaboradoPorUserIds)) {
       const escolhidos = [...new Set(properties.elaboradoPorUserIds as string[])]
       const membros = escolhidos.length
