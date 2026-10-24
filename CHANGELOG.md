@@ -7,6 +7,11 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.38.1] — 2026-10-24
+
+### Segurança
+- Atualiza `body-parser` (1.20.9 / 2.4.0, GHSA-27r3-jxmh-p828), `multer` (2.5.0, GHSA-q7qp-rjg7-q26m) e `undici` (7.30.1, GHSA-xjj6-f33q-929c) por overrides no workspace e nas instalações isoladas dos serviços, corrigindo três negações de serviço publicadas em 22/10 que reprovavam o `pnpm audit --audit-level=high` e bloqueavam o deploy das 1.37.0 e 1.38.0. Sem mudança de comportamento.
+
 ## [1.38.0] — 2026-10-23
 
 Operum instalável como app no celular (PWA).

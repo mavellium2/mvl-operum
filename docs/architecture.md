@@ -1088,6 +1088,10 @@ eliminar as versões vulneráveis, dentro das majors usadas pelos consumidores.
 As auditorias e exceções existentes permanecem ativas e sem novas supressões.
 A 1.36.2 adiciona o override `zod: ">=4.6.6 <5.0.0"` (GHSA-mrhx-c7xc-m3w5) na
 raiz e nos seis serviços que usam zod; o api-gateway não depende dele.
+A 1.38.1 sobe `multer` para `>=2.5.0` (GHSA-q7qp-rjg7-q26m) e `undici` para
+`>=7.30.1 <8.0.0` (GHSA-xjj6-f33q-929c) e fixa `body-parser` em `>=1.20.9 <2.0.0`
+ou `>=2.4.0 <3.0.0` conforme a major (GHSA-27r3-jxmh-p828), na raiz e nos sete
+serviços.
 Backups propostos são descritos em `docs/operations/backups.md`; o operador não
 soube confirmar a rotina atual e a VPS não foi inspecionada nesta entrega.
 
