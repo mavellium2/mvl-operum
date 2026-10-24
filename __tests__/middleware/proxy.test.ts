@@ -13,8 +13,26 @@ vi.mock('jose', async (importOriginal) => {
 })
 
 import { NextRequest } from 'next/server'
+import * as nextProxyTesting from 'next/experimental/testing/server'
 import { jwtVerify } from 'jose'
 import { proxy, config } from '@/proxy'
+
+// Nome novo e alias legado: instalações locais e CI podem usar revisões distintas.
+const testing = nextProxyTesting as unknown as Record<string, (input: { config: typeof config; nextConfig: object; url: string }) => boolean>
+const doesProxyMatch = testing.unstable_doesProxyMatch ?? testing.unstable_doesMiddlewareMatch
+
+describe('orçamento MCP usa autenticação da rota interna, sem cookie de navegador', () => {
+  it.each(['/api/internal/task-budget/card1', '/api/internal/task-budget/card1?origem=mcp'])(
+    '%s chega à validação de chave/identidade da rota sem redirecionar ao login', url => {
+      expect(doesProxyMatch({ config, nextConfig: {}, url })).toBe(false)
+    },
+  )
+  it.each(['/projetos/p1/planilha-custos', '/api/internal/task-budget-other/card1', '/api/internal/other'])(
+    '%s continua exigindo sessão do navegador', url => {
+      expect(doesProxyMatch({ config, nextConfig: {}, url })).toBe(true)
+    },
+  )
+})
 
 function makeRequest(path: string, cookie?: string) {
   const url = `http://localhost${path}`
