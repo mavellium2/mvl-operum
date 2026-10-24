@@ -114,6 +114,7 @@ Os estágios finais das imagens instalam apenas dependências de produção (`pn
 | `/oauth`, `/.well-known/oauth-authorization-server` | auth-service (servidor de autorização OAuth, desde 1.36.0) |
 | `/projects`, `/departments`, `/roles`, `/permissions`, `/stakeholders` | project-service |
 | `/sprints`, `/cards`, `/tags`, `/time-entries`, `/audit` | sprint-service |
+| `GET/PATCH /cards/:id/budget` (antes do prefixo genérico) | Next.js `/api/internal/task-budget/:id`, domínio canônico EAP/Planilha |
 | `/notifications` | notification-service |
 | `/files` | file-service |
 
@@ -276,7 +277,7 @@ Gerenciar instituições (página `/admin/tenants`, criar, mudar status, renomea
 
 ### Contas da mesma pessoa em instituições diferentes (`User.identityId`, ADR-061)
 
-Cada instituição tem a sua conta (`User`). A troca de instituição e os workspaces do consentimento OAuth só valem para contas **vinculadas** (mesmo `identityId`), não para qualquer conta com o mesmo e-mail. O vínculo nasce ao entrar/provisionar uma instituição a partir da conta atual ou ao confirmar a senha da conta de destino na primeira troca (`switch-tenant` com `password`, mesmo limite de tentativas do login). Contas com o mesmo e-mail ainda não vinculadas aparecem em "Minhas instituições" com `requiresPassword`.
+Cada instituição tem a sua conta (`User`). A troca de instituição e os workspaces do consentimento OAuth só valem para contas **vinculadas** (mesmo `identityId`), não para qualquer conta com o mesmo e-mail. O vínculo nasce ao entrar/provisionar uma instituição a partir da conta atual ou ao confirmar a senha da conta de destino na primeira troca (`switch-tenant` com `password`, mesmo limite de tentativas do login). Desde 1.40.0, o operador da plataforma (`platformOperator` lido do banco, não o papel `admin`) confirma a senha da conta ativa; continua restrito a uma conta existente elegível no destino. As demais pessoas confirmam a senha do destino (ADR-063). Contas com o mesmo e-mail ainda não vinculadas aparecem em "Minhas instituições" com `requiresPassword` e `passwordScope` (`current` para operador, `target` para os demais). O formulário utiliza o valor real submetido, inclusive com preenchimento automático.
 
 ### Role por projeto (`UserProjectRole`)
 
@@ -331,7 +332,7 @@ Não existe database-per-service: **todos os 5 microsserviços apontam para o me
 
 ## Migração incompleta — o que ainda é monolito
 
-As funcionalidades mais recentes (EAP, WBS, Atas, Cadastros) **não passam pelo gateway nem por nenhum microsserviço** — rodam via Prisma direto no schema do monolito, através de `services/*.ts`:
+EAP, WBS, Atas e parte dos Cadastros ainda pertencem ao app: rodam via Prisma no schema do monolito, através de `services/*.ts`. As telas usam as actions locais; desde 1.40.0, o orçamento de tarefa por MCP entra pelo gateway e é encaminhado ao serviço canônico no app (ADR-064):
 
 | Funcionalidade | Actions | Service | Páginas |
 |-----------------|---------|---------|---------|
@@ -1257,3 +1258,11 @@ Após `propagarPlanilhaDeCustos`, `services/planilhaCardSync.ts` leva `dataPrevi
 Outras regras do projeto (1.34.0): `SprintColumn.color` (hex ou nulo) colore o cabeçalho da coluna; a lista de sprints colore o cartão pelo progresso (`lib/sprintProgresso.ts`); `Project.startDate` segue a primeira tarefa com data (`services/inicioDoProjeto.ts`, ADR-050); a exclusão de projeto é bloqueada enquanto houver dependências (`services/projetoDependencias.ts`, ADR-051); a ata aceita upload de anexo (`enviarAnexoAtaAction`, chave `atas/{tenant}/{projeto}/` no storage) e oferece os e-mails dos stakeholders do projeto em "Enviar cópias para" (`emailsParaCopia`); as etapas da EAP em Detalhes e Horas e Custos usam o Sub-total da planilha (`computeFinancialRollups`).
 
 `/projetos/:id/configuracoes` mantém a edição dentro do layout do projeto; o menu documental é um submenu da navegação do projeto. Dados Complementares passam pelo serviço de versões do Termo de Abertura (permissões de editar e aprovar), sem escrita genérica desses campos no project-service. A identificação do elaborador é editável e congelada em `DocumentVersion.elaboradoPor`; o servidor preenche sua ausência com a sessão e resolve Aprovado por pelo gerente do cadastro. A aprovação efetiva continua em `approvedById`, independente do nome apresentado no documento.
+
+### Orçamento de esforço por MCP (1.40.0)
+
+`operum_get_task_budget` e `operum_set_task_budget` usam `GET/PATCH /cards/:id/budget` no gateway. A rota específica antecede o proxy genérico de cards e encaminha ao app pelo mesmo `AUTHORIZATION_SERVICE_URL` usado na autorização. O gateway autentica PAT/OAuth, verifica escopos e permissões e injeta a chave interna e a identidade verificada. A rota interna compara a chave em tempo constante e recarrega usuário, instituição ativa e papel do banco antes de executar o serviço.
+
+`services/taskBudgetService.ts` resolve o projeto pelo card persistido no tenant e exige `projeto:ver`, `planilha:ver` e, para escrita, `planilha:orcado`. O orçamento é `WbsNode.properties.tempoMinutos`: inteiro entre 0 e 2.147.483.647 minutos. A escrita passa por `updateNodeProperties`, mantendo bloqueio da linha, validação financeira, incremento de versão e auditoria `PLANILHA_EDITAR`. Não cria coluna paralela em Card, não altera realizado, responsáveis, datas ou coluna do quadro. Valores monetários continuam derivados pela Planilha; a chamada não inventa valor hora nem materiais.
+
+Card sem atividade vinculada, com múltiplos vínculos ou vinculado a nó com filhos retorna erro explícito; não se escolhe um nó arbitrário nem se cria/reorganiza EAP silenciosamente. Sincronização estrutural continua pelo fluxo existente da EAP. White-label foi registrado apenas no planejamento; não está implementado por esta entrega.

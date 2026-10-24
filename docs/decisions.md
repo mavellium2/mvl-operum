@@ -825,3 +825,27 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** o `pnpm audit` e o Trivy voltam a acusar o `braces` se o advisory for republicado; nesse caso, reavaliar se o patch ainda cobre o problema antes de recriar exceções.
 - **Condições de revisão:** atualização do `braces` (ou de quem o usa: micromatch, http-proxy-middleware, fast-glob) para uma versão com limite próprio; republicação do advisory.
 - **Referências:** ADR-011, ADR-013, `patches/braces@3.0.3.patch`, `api-gateway/patches/braces@3.0.3.patch`, `__tests__/unit/security/bracesPatch.test.ts`, `api-gateway/scripts/verify-braces-patch.cjs`, `.trivyignore-gateway.yaml`, `.github/workflows/gateway-image-security.yml`, [advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
+
+## ADR-063 — Confirmação da conta ativa para operador ao trocar de instituição
+
+- **Data do registro:** 2026-10-24.
+- **Status:** implementada em código na 1.40.0; complementa a ADR-061 exclusivamente para operadores da plataforma. A ADR-061 continua vigente para os demais usuários.
+- **Contexto:** contas por instituição têm hashes e histórico de senha independentes. O operador relatou rejeição na confirmação entre instituições; o formulário também dependia do estado React da senha, que pode não acompanhar o preenchimento automático. A divergência dos hashes de produção não foi inspecionada nem comprovada nesta entrega.
+- **Escolha:** o operador, identificado por `platformOperator` no banco, reautentica a conta ativa antes de vincular/acessar sua conta existente no destino. `admin` institucional não recebe essa exceção; permanece a senha de destino. A resposta informa `passwordScope` para o formulário. O formulário lê `FormData` na submissão, oferece visualização e não inventa domínio institucional.
+- **Justificativa:** o operador já administra as instituições (ADR-060); a reautenticação usa uma credencial atual, sem depender de cópias antigas. O acesso permanece restrito a contas elegíveis e não cria conta ou papel implicitamente.
+- **Alternativas consideradas:** vincular automaticamente por e-mail (rejeitada por quebrar isolamento); igualar senhas entre instituições (rejeitada por alterar credenciais e histórico); exigir sempre senha do destino (mantida para pessoas sem autoridade de plataforma).
+- **Consequências:** confirmação do operador conta tentativas na conta ativa; bloqueios da conta ativa/destino e inatividade continuam impedindo a operação. Operador com troca de senha obrigatória não vincula novas contas. Após confirmação, usa-se o vínculo explícito existente, com auditoria.
+- **Condições de revisão:** adoção de identidade global ou reautenticação MFA; revisão do alcance do papel de operador.
+- **Referências:** `auth-service/src/auth/auth.service.ts`, `components/UserTenantsList.tsx`, `auth-service/src/__tests__/seguranca-contas.test.ts`, `__tests__/components/UserTenantsList.test.tsx`, ADR-060 e ADR-061.
+
+## ADR-064 — Orçamento MCP reutiliza a atividade canônica da EAP
+
+- **Data do registro:** 2026-10-24.
+- **Status:** implementada em código na 1.40.0.
+- **Contexto:** as ferramentas de tarefas não expunham orçamento; o campo do produto pertence à Planilha de Custos/EAP, ainda no app, e não ao modelo Card do sprint-service.
+- **Escolha:** duas ferramentas específicas consultam/definem `estimated_minutes` pelo gateway, que encaminha a uma rota interna do app. O serviço resolve o card/projeto/atividade no tenant, valida as permissões financeiras e reutiliza `updateNodeProperties` para escrever somente `tempoMinutos`, com auditoria e controle de versão.
+- **Justificativa:** manter uma única origem para o orçamento e reutilizar autorização e transação existentes, sem duplicar fórmulas no MCP.
+- **Alternativas consideradas:** estimativa na descrição do card (não preenche o campo do produto); coluna de estimativa no Card (duplicaria a fonte); acesso do MCP direto ao banco (contornaria o gateway).
+- **Consequências:** sem migration ou nova credencial. O app precisa estar disponível em `AUTHORIZATION_SERVICE_URL`. GET exige leitura financeira e PATCH exige orçamento; o gateway continua exigindo escopo de escrita do token. Vínculos ausentes/ambíguos e nós agregadores falham explicitamente; nenhuma sincronização estrutural é feita silenciosamente.
+- **Condições de revisão:** extração do domínio EAP/Planilha para microsserviço; implementação de orçamento para cards sem atividade na EAP.
+- **Referências:** `mcp-server/src/tools/budgets.ts`, `api-gateway/src/app.ts`, `services/apiAuthorization.ts`, `services/taskBudgetService.ts`, `app/api/internal/task-budget/[cardId]/route.ts`.

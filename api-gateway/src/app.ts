@@ -123,6 +123,24 @@ const SPRINT_SERVICE_URL = process.env.SPRINT_SERVICE_URL ?? 'http://sprint-serv
 const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL ?? 'http://notification-service:4004'
 const FILE_SERVICE_URL = process.env.FILE_SERVICE_URL ?? 'http://file-service:4005'
 
+// EAP/Planilha ainda pertencem ao app: reutiliza o domínio canônico com a
+// identidade verificada pelo gateway. A chave interna nunca vem do cliente.
+const budgetProxy = createProxyMiddleware({
+  target: process.env.AUTHORIZATION_SERVICE_URL ?? 'http://localhost:3000',
+  changeOrigin: true,
+  pathRewrite: path => path.replace(/^\/cards\/([A-Za-z0-9_-]{1,64})\/budget(?:\?.*)?$/i, '/api/internal/task-budget/$1'),
+  on: { proxyReq: (proxyReq, req) => {
+    proxyReq.setHeader('X-Internal-Api-Key', INTERNAL_API_KEY)
+    fixRequestBody(proxyReq, req)
+  } },
+})
+app.all(/^\/cards\/[A-Za-z0-9_-]{1,64}\/budget\/?$/i, (req, res, next) => {
+  if (!['GET', 'PATCH'].includes(req.method)) return res.sendStatus(405)
+  // Remove apenas a barra final para manter um único contrato no app.
+  req.url = req.url.replace(/\/budget\/(?=\?|$)/i, '/budget')
+  budgetProxy(req, res, next)
+})
+
 function makeProxy(targetUrl: string, prefix: string) {
   return createProxyMiddleware({ target: targetUrl, changeOrigin: true, pathRewrite: { '^/': `${prefix}/` }, on: { proxyReq: (proxyReq, req) => { proxyReq.setHeader('X-Internal-Api-Key', INTERNAL_API_KEY); fixRequestBody(proxyReq, req) } } })
 }

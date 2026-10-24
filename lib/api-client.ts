@@ -78,7 +78,7 @@ export const authApi = {
     request('/auth/password/alterar', { method: 'POST', body: JSON.stringify({ password }) }),
 
   getMyTenants: () =>
-    request<{ userId: string; tenantId: string; tenantName: string; tenantSubdomain: string; role: string; isCurrent: boolean; requiresPassword?: boolean }[]>('/auth/my-tenants'),
+    request<{ userId: string; tenantId: string; tenantName: string; tenantSubdomain: string; role: string; isCurrent: boolean; requiresPassword?: boolean; passwordScope?: 'current' | 'target' }[]>('/auth/my-tenants'),
 
   switchTenant: (targetTenantId: string, password?: string) => {
     if (!targetTenantId?.trim()) throw new Error('targetTenantId is required')

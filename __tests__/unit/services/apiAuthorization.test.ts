@@ -76,6 +76,17 @@ describe('escopo de leitura', () => {
 })
 
 describe('escritas e destinos persistidos', () => {
+  it('orçamento exige permissões financeiras em vez de edição do quadro', async () => {
+    granted.delete('quadro:cards')
+    await expect(authorizeApi(session, 'GET', '/cards/card-A/budget')).rejects.toThrow()
+    granted.add('planilha:ver')
+    await expect(authorizeApi(session, 'GET', '/cards/card-A/budget')).resolves.toEqual({ allowed: true })
+    await expect(authorizeApi(session, 'PATCH', '/cards/card-A/budget', { estimated_minutes: 60 })).rejects.toThrow()
+    granted.add('planilha:orcado')
+    await expect(authorizeApi(session, 'PATCH', '/cards/card-A/budget', { estimated_minutes: 60 })).resolves.toEqual({ allowed: true })
+    await expect(authorizeApi(session, 'DELETE', '/cards/card-A/budget')).rejects.toThrow()
+    await expect(authorizeApi(session, 'PATCH', '/cards/card-A/budget/extra')).rejects.toThrow()
+  })
   it('mover não exige editar card; reason/sprintPosition são campos de movimento', async () => {
     granted.delete('quadro:cards')
     await expect(authorizeApi(session, 'PATCH', '/cards/card-A', { sprintColumnId: 'column-A', sprintPosition: 3, reason: 'entrega', userId: 'user-A' })).resolves.toEqual({ allowed: true })
