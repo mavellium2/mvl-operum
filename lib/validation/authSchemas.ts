@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { emailSchema } from '@/lib/contato'
 
 export const PasswordSchema = z
   .string()
@@ -8,23 +9,23 @@ export const PasswordSchema = z
 
 export const SignupSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório'),
-  email: z.string().trim().email('Email inválido'),
+  email: emailSchema,
   password: PasswordSchema,
 })
 
 export const LoginSchema = z.object({
-  email: z.string().trim().min(1, 'Email é obrigatório').email('Email inválido'),
+  email: emailSchema,
   password: z.string().min(1, 'Senha é obrigatória'),
 })
 
 // ── Reset de senha ────────────────────────────────────────────────────────────
 
 export const RequestResetSchema = z.object({
-  email: z.string().trim().email('Email inválido'),
+  email: emailSchema,
 })
 
 export const ValidateCodeSchema = z.object({
-  email: z.string().trim().email('Email inválido'),
+  email: emailSchema,
   code: z
     .string()
     .length(8, 'O código deve ter 8 caracteres')
@@ -32,7 +33,7 @@ export const ValidateCodeSchema = z.object({
 })
 
 export const ResetPasswordSchema = z.object({
-  email: z.string().trim().email('Email inválido'),
+  email: emailSchema,
   code: z
     .string()
     .length(8, 'O código deve ter 8 caracteres')

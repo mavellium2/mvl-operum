@@ -1,5 +1,6 @@
 'use client'
 
+import { EmailInput } from '@/components/ui/ContatoInputs'
 import { useActionState } from 'react'
 import Link from 'next/link'
 import { signupAction } from '@/app/actions/auth'
@@ -29,13 +30,11 @@ export function RegisterForm() {
         <label htmlFor="email" className="text-sm font-medium text-gray-700">
           Email
         </label>
-        <input
+        <EmailInput
           id="email"
           name="email"
-          type="email"
           required
-          autoComplete="email"
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {state?.errors?.email && <p className="text-xs text-red-600">{state.errors.email}</p>}
       </div>

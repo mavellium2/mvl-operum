@@ -1,5 +1,7 @@
 'use server'
 
+import { erroCustosMacroFases, erroMoeda, parseMoeda } from '@/lib/dinheiro'
+import { normalizarContato } from '@/lib/contato'
 import { submeterDocumento } from '@/services/documentRevisionService'
 import { planilhaDoProjeto } from '@/services/planilhaService'
 import { verifySession } from '@/lib/dal'
@@ -93,6 +95,8 @@ export async function createProjetoAction(
     const { tenantId } = session
     if (session.role !== 'admin') throw new Error('Só o administrador cria projetos')
     const { initialMemberId, ano: anoStr, macroFases, startDate, endDate, ...rest } = input
+    const erroCusto = erroCustosMacroFases(macroFases)
+    if (erroCusto) throw new Error(erroCusto)
     const ano = anoStr ? Number(anoStr) : undefined
     const toISO = (d?: string) => d ? new Date(d).toISOString() : undefined
 
@@ -224,6 +228,8 @@ export async function updateProjetoAction(
       delete data.initialMemberId
     }
     if (data.macroFases !== undefined) {
+      const erroCusto = erroCustosMacroFases(data.macroFases)
+      if (erroCusto) throw new Error(erroCusto)
       await requireProjectPermission(session, id, 'planilha:orcado')
       await requireProjectPermission(session, id, 'planilha:realizado-todos')
     }
@@ -406,6 +412,10 @@ export async function updateUsuarioProjetoAction(
 ) {
   try {
     const { tenantId } = await verifySession()
+    if (data.hourlyRate != null) {
+      const erroValor = erroMoeda(data.hourlyRate, { rotulo: 'Valor/hora' })
+      if (erroValor) throw new Error(erroValor)
+    }
     await projectsApi.addMember(projetoId, { userId, ...data, tenantId })
     revalidatePath(`/projetos/${projetoId}/membros`)
     revalidatePath(`/projetos/${projetoId}`)
@@ -444,12 +454,20 @@ export async function updateProjetoMemberAction(
   },
 ) {
   try {
-    data = { ...data }
     const { role, tenantId, userId: sessionUserId } = await verifySession()
     const isAdmin = role === 'admin'
+    data = { ...data }
     await requireProjectPermission({ role, tenantId, userId: sessionUserId }, projetoId, 'projeto:equipe')
     const member = await prisma.userProject.findFirst({ where: { projectId: projetoId, userId, user: { tenantId, deletedAt: null } }, select: { role: true } })
     if (!member) throw new Error('Membro não encontrado neste projeto')
+    // E-mail só é alterado pelo administrador; para os demais nem é validado.
+    if (!isAdmin) delete data.email
+    if (typeof data.email === 'string' || typeof data.phone === 'string') {
+      const atual = await prisma.user.findFirst({ where: { id: userId, tenantId }, select: { email: true, phone: true } })
+      const contato = normalizarContato(data, { atual })
+      if (!contato.data) throw new Error(contato.error)
+      data = contato.data
+    }
     if (!isAdmin) {
       if (data.cargos !== undefined && data.cargos.join(', ') !== (member.role ?? '')) throw new Error('Só o administrador atribui cargos')
       if (data.isGerente !== undefined && data.isGerente !== Boolean(await prisma.userProjectRole.findFirst({ where: { userId, projectId: projetoId, deletedAt: null, role: { is: { nameKey: 'gerente', scope: 'PROJETO' } } } }))) throw new Error('Só o administrador atribui o papel de gerente')
@@ -459,12 +477,12 @@ export async function updateProjetoMemberAction(
 
     const { isGerente: makeGerente, cargos, departamento, remuneracao: rawRemuneracao, horasDiarias: rawHorasDiarias, hourlyRate: rawHourlyRate, name, email, ...profileData } = data
 
+    // Remuneração inválida é recusada; antes "abc" era descartado em silêncio.
     let remuneracao: number | undefined
-    if (rawRemuneracao !== undefined) {
-      const n = typeof rawRemuneracao === 'string'
-        ? parseFloat(rawRemuneracao.replace(/\./g, '').replace(',', '.'))
-        : rawRemuneracao
-      if (!isNaN(n)) remuneracao = n
+    if (rawRemuneracao !== undefined && rawRemuneracao !== '') {
+      const erroValor = erroMoeda(rawRemuneracao, { rotulo: 'Remuneração' })
+      if (erroValor) throw new Error(erroValor)
+      remuneracao = parseMoeda(rawRemuneracao) ?? undefined
     }
 
     // Mesma regra da tela (SDD 4.5): "8,5", "8.5" e "8:30" valem 8,5 h; fora de
@@ -483,8 +501,9 @@ export async function updateProjetoMemberAction(
 
     let directHourlyRate: number | undefined
     if (rawHourlyRate !== undefined) {
-      const hr = Number(rawHourlyRate)
-      if (!isNaN(hr) && hr > 0 && hr < 1_000_000) directHourlyRate = hr
+      const erroValor = erroMoeda(rawHourlyRate, { rotulo: 'Valor/hora' })
+      if (erroValor) throw new Error(erroValor)
+      if (rawHourlyRate > 0) directHourlyRate = rawHourlyRate
     }
     // Alguns formulários (ex.: edição de membro em ProjetoMembrosClient) enviam
     // hourlyRate direto em vez de remuneracao+horasDiarias — respeita esse valor quando presente.

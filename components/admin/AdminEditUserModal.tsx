@@ -1,9 +1,13 @@
 'use client'
 
+import MoedaInput from '@/components/ui/MoedaInput'
+import { erroMoeda, formatReais, moedaParaCampo, parseMoeda } from '@/lib/dinheiro'
 import { useState, useEffect, useTransition } from 'react'
 import { adminUpdateUserAction, setUserRoleAction } from '@/app/actions/admin'
 import { getUserProjetosAction, addMemberAction, updateUsuarioProjetoAction } from '@/app/actions/projetos'
 import { getProjetosAction } from '@/app/actions/projetos'
+import { EmailInput } from '@/components/ui/ContatoInputs'
+import { erroEmail } from '@/lib/contato'
 import AddressFields, { type AddressValues } from '@/components/ui/AddressFields'
 import type { AdminUser } from './AdminCreateUserModal'
 import PasswordInput from '@/components/ui/PasswordInput'
@@ -87,6 +91,11 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
       setError('Nome e e-mail são obrigatórios.')
       return
     }
+    const erroDoEmail = erroEmail(form.email, true)
+    if (erroDoEmail) {
+      setError(erroDoEmail)
+      return
+    }
     setLoading(true)
 
     const updateResult = await adminUpdateUserAction(user.id, {
@@ -129,23 +138,29 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
     setEditForm({
       cargo: up.cargo ?? '',
       departamento: up.departamento ?? '',
-      hourlyRate: up.hourlyRate?.toString() ?? '',
+      hourlyRate: moedaParaCampo(up.hourlyRate),
     })
   }
 
   function handleSaveEdit(up: UserProjeto) {
+    const erroValor = erroMoeda(editForm.hourlyRate, { rotulo: 'Valor/hora' })
+    if (erroValor) {
+      setError(erroValor)
+      return
+    }
+    const hourlyRate = parseMoeda(editForm.hourlyRate)
     startTransition(async () => {
       const result = await updateUsuarioProjetoAction(user.id, up.projectId, {
         cargos: editForm.cargo ? [editForm.cargo] : [],
         departamentos: editForm.departamento ? [editForm.departamento] : [],
-        hourlyRate: editForm.hourlyRate ? parseFloat(editForm.hourlyRate) : null,
+        hourlyRate,
       })
       if (!('error' in result)) {
         setUserProjetos(prev => prev.map(p => p.projectId === up.projectId ? {
           ...p,
           cargo: editForm.cargo || null,
           departamento: editForm.departamento || null,
-          hourlyRate: editForm.hourlyRate ? parseFloat(editForm.hourlyRate) : null,
+          hourlyRate,
         } : p))
         setEditingProjetoId(null)
       }
@@ -185,7 +200,16 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
         <div className="overflow-y-auto flex-1 min-h-0 px-6">
           <form onSubmit={handleSubmit} className="space-y-3">
             <Field label="Nome *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
-            <Field label="E-mail *" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">E-mail *</label>
+              <EmailInput
+                value={form.email}
+                onValueChange={v => setForm(f => ({ ...f, email: v }))}
+                required
+                aria-label="E-mail"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
             <Field label="Nova senha (deixe em branco para manter)" type="password" value={form.password} onChange={v => setForm(f => ({ ...f, password: v }))} />
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Role global</label>
@@ -313,13 +337,11 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                       </div>
                       <div>
                         <label className="block text-xs text-gray-500 mb-1">Valor/hora (R$)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                        <MoedaInput
+                          comSimbolo
+                          rotulo="Valor/hora"
                           value={editForm.hourlyRate}
-                          onChange={e => setEditForm(f => ({ ...f, hourlyRate: e.target.value }))}
-                          placeholder="0.00"
+                          onValueChange={texto => setEditForm(f => ({ ...f, hourlyRate: texto }))}
                           className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -348,7 +370,7 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                     <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
                       {up.cargo && <span className="text-xs text-gray-500">{up.cargo}</span>}
                       {up.departamento && <span className="text-xs text-gray-400">{up.departamento}</span>}
-                      {up.hourlyRate && <span className="text-xs text-gray-400">R$ {up.hourlyRate.toFixed(2)}/h</span>}
+                      {up.hourlyRate && <span className="text-xs text-gray-400">{formatReais(up.hourlyRate)}/h</span>}
                     </div>
                   )}
                 </div>

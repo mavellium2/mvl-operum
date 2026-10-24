@@ -1,5 +1,6 @@
 'use client'
 
+import { formatReais } from '@/lib/dinheiro'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface SprintCostChartProps {
@@ -17,7 +18,7 @@ export default function SprintCostChart({ data }: SprintCostChartProps) {
         <Tooltip
           formatter={(value, name) => {
             const v = Number(value)
-            return name === 'custoTotal' ? [`R$ ${v.toFixed(2)}`, 'Custo'] : [`${v.toFixed(1)}h`, 'Horas']
+            return name === 'custoTotal' ? [formatReais(v), 'Custo'] : [`${v.toFixed(1)}h`, 'Horas']
           }}
         />
         <Bar dataKey="custoTotal" fill="#3b82f6" radius={[4, 4, 0, 0]} name="custoTotal" />

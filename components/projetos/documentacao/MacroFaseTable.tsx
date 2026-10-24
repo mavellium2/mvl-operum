@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import MoedaInput from '@/components/ui/MoedaInput'
+import { useEffect, useRef } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import DateInput from '@/components/ui/DateInput'
 
@@ -18,51 +19,6 @@ interface Props {
   onRemove: (id: string) => void
   autoFocusId?: string
   disabled?: boolean
-}
-
-// ── Currency input ────────────────────────────────────────────────────────────
-
-function storedToCents(stored: string | null | undefined): number {
-  if (!stored) return 0
-  const n = parseFloat(stored.replace(',', '.'))
-  return isNaN(n) ? 0 : Math.round(n * 100)
-}
-
-function centsToDisplay(cents: number): string {
-  if (cents === 0) return ''
-  return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-interface CurrencyInputProps {
-  value: string | null
-  onChange: (v: string) => void
-  disabled?: boolean
-  className?: string
-  inputRef?: React.RefObject<HTMLInputElement | null>
-}
-
-function CurrencyInput({ value, onChange, disabled, className, inputRef }: CurrencyInputProps) {
-  const [cents, setCents] = useState(() => storedToCents(value))
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const digits = e.target.value.replace(/\D/g, '').slice(0, 13) // cap at 99 999 999 999,99
-    const newCents = digits ? parseInt(digits, 10) : 0
-    setCents(newCents)
-    onChange(newCents === 0 ? '' : (newCents / 100).toFixed(2))
-  }
-
-  return (
-    <input
-      ref={inputRef}
-      type="text"
-      inputMode="numeric"
-      className={className}
-      value={centsToDisplay(cents)}
-      onChange={handleChange}
-      placeholder="0,00"
-      disabled={disabled}
-    />
-  )
 }
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -133,9 +89,12 @@ export default function MacroFaseTable({ fases, onChange, onAdd, onRemove, autoF
                 />
               </td>
               <td className={tdClass}>
-                <CurrencyInput
+                <MoedaInput
                   value={f.custo}
-                  onChange={v => onChange(f.id, 'custo', v)}
+                  // O Termo guarda o custo como "1234.50".
+                  onValueChange={(_, valor) => onChange(f.id, 'custo', valor === null || Number.isNaN(valor) ? '' : valor.toFixed(2))}
+                  rotulo="Custo"
+                  aria-label="Custo"
                   className={inputClass + ' text-right'}
                   disabled={disabled}
                 />

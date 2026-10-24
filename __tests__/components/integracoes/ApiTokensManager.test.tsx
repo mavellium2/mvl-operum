@@ -6,7 +6,7 @@ vi.mock('@/app/actions/apiTokens', () => ({
   revokeApiTokenAction: vi.fn(),
 }))
 
-import ApiTokensManager from '@/components/profile/ApiTokensManager'
+import ApiTokensManager from '@/components/integracoes/ApiTokensManager'
 
 describe('Personal Access Tokens — comando do Claude Code', () => {
   it('usa o endereço do MCP que funciona hoje (api.operum.adm.br), não o mcp.operum.adm.br sem DNS', async () => {

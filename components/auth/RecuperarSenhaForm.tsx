@@ -1,5 +1,6 @@
 'use client'
 
+import { formatEmail } from '@/lib/contato'
 import { useActionState, useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import {
@@ -422,7 +423,7 @@ export function RecuperarSenhaForm() {
           <form action={emailAction} className="flex flex-col gap-4">
             <FloatingInput
               id="email" name="email" label="Email" type="email"
-              value={email} onChange={setEmail}
+              value={email} onChange={v => setEmail(formatEmail(v))}
               onFocus={() => setEf(true)} onBlur={() => setEf(false)} focused={ef}
               autoComplete="email" required
             />

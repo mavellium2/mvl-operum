@@ -1,5 +1,7 @@
 'use client'
 
+import MoedaInput from '@/components/ui/MoedaInput'
+import { erroMoeda, parseMoeda } from '@/lib/dinheiro'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import PermissoesUsuario from '@/components/permissoes/PermissoesUsuario'
@@ -36,6 +38,8 @@ import {
   setStakeholderAtivoAction,
 } from '@/app/actions/stakeholders'
 import { addMemberAction, removeMemberAction } from '@/app/actions/projects'
+import { EmailInput, TelefoneInput } from '@/components/ui/ContatoInputs'
+import { erroEmail, erroTelefone } from '@/lib/contato'
 import { updateProjetoMemberAction, setMembroAtivoAction } from '@/app/actions/projetos'
 import { adminCreateUserAction } from '@/app/actions/admin'
 import { parseHoras, formatHoras } from '@/lib/validation/horas'
@@ -205,11 +209,10 @@ function colorForName(name: string): string {
   return avatarColors[Math.abs(hash) % avatarColors.length]
 }
 
+/** Valor em reais do formulário ("1.234,56" ou o salvo "1234.56") → número; null se vazio/inválido. */
 function parseBRLFloat(value: string): number | null {
-  if (!value || value.trim() === '') return null
-  const clean = value.replace(/\./g, '').replace(',', '.')
-  const parsed = parseFloat(clean)
-  return isNaN(parsed) ? null : parsed
+  const n = parseMoeda(value)
+  return n === null || Number.isNaN(n) ? null : n
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -1037,6 +1040,14 @@ export default function ProjetoStakeholdersClient({
     const ehMembro = (isCreating && !selected && addMode === 'interno') || selected?.tipo === 'interno'
     if (ehMembro && horasCheck.erro) { setFormError(horasCheck.erro); return }
 
+    // E-mail e telefone só são editáveis pelo admin; o servidor ignora o que não mudou.
+    if (isAdmin) {
+      const emailObrigatorio = isCreating && !selected && addMode === 'interno'
+      const erroContato = erroEmail(formState.email, emailObrigatorio) ?? erroTelefone(formState.phone)
+        ?? (ehMembro ? erroMoeda(formState.remuneracao, { rotulo: 'Remuneração mensal' }) : null)
+      if (erroContato) { setFormError(erroContato); return }
+    }
+
     // Create new internal user (tenant member)
     if (isCreating && !selected && addMode === 'interno') {
       if (!isAdmin) return
@@ -1298,13 +1309,6 @@ export default function ProjetoStakeholdersClient({
       )
       handleClearSelection()
     }
-  }
-
-  const handleRemuneracaoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '')
-    if (!value) { setField('remuneracao', ''); return }
-    const numberValue = parseInt(value, 10) / 100
-    setField('remuneracao', numberValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
   }
 
   const horasCheck = parseHoras(formState.horasDiarias)
@@ -1810,10 +1814,10 @@ export default function ProjetoStakeholdersClient({
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     E-mail <span className="text-red-400">*</span>
                   </label>
-                  <input
-                    type="email"
+                  <EmailInput
                     value={formState.email}
-                    onChange={e => setField('email', e.target.value)}
+                    onValueChange={v => setField('email', v)}
+                    required
                     placeholder="usuario@empresa.com.br"
                     className={inputCls}
                   />
@@ -1878,18 +1882,15 @@ export default function ProjetoStakeholdersClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="field-remuneracao" className="block text-xs font-medium text-gray-600 mb-1">Remuneração mensal</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-sm font-medium text-gray-500 pointer-events-none">R$</span>
-                      <input
-                        id="field-remuneracao"
-                        type="text"
-                        value={formState.remuneracao}
-                        onChange={handleRemuneracaoChange}
-                        disabled={!isAdmin}
-                        placeholder="0,00"
-                        className={`${inputCls} pl-10 ${disabledCls}`}
-                      />
-                    </div>
+                    <MoedaInput
+                      id="field-remuneracao"
+                      value={formState.remuneracao}
+                      onValueChange={texto => setField('remuneracao', texto)}
+                      disabled={!isAdmin}
+                      rotulo="Remuneração mensal"
+                      adorno={<span className="absolute inset-y-0 left-0 pl-3 flex items-center text-sm font-medium text-gray-500 pointer-events-none">R$</span>}
+                      className={`${inputCls} pl-10 ${disabledCls}`}
+                    />
                   </div>
                   <div>
                     <label htmlFor="field-horas-diarias" className="block text-xs font-medium text-gray-600 mb-1">Horas por dia</label>
@@ -2019,10 +2020,9 @@ export default function ProjetoStakeholdersClient({
                 <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5" /> E-mail
                 </label>
-                <input
-                  type="email"
+                <EmailInput
                   value={formState.email}
-                  onChange={e => setField('email', e.target.value)}
+                  onValueChange={v => setField('email', v)}
                   disabled={!isAdmin}
                   placeholder="contato@empresa.com.br"
                   className={`${inputCls} ${disabledCls}`}
@@ -2035,12 +2035,10 @@ export default function ProjetoStakeholdersClient({
               <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5" /> Telefone
               </label>
-              <input
-                type="tel"
+              <TelefoneInput
                 value={formState.phone}
-                onChange={e => setField('phone', e.target.value)}
+                onValueChange={v => setField('phone', v)}
                 disabled={!isAdmin}
-                placeholder="(00) 00000-0000"
                 className={`${inputCls} ${disabledCls}`}
               />
             </div>

@@ -5,13 +5,11 @@ import { updateProfileAction, type ProfileActionState } from '@/app/actions/prof
 import AvatarUpload from '@/components/profile/AvatarUpload'
 import AddressFields, { type AddressValues } from '@/components/ui/AddressFields'
 import Button from '@/components/ui/Button'
+import { EmailInput, TelefoneInput } from '@/components/ui/ContatoInputs'
 
 interface ProfileFormProps {
   name: string
   email: string
-  cargo?: string | null
-  departamento?: string | null
-  hourlyRate: number
   phone?: string | null
   cep?: string | null
   logradouro?: string | null
@@ -24,7 +22,7 @@ interface ProfileFormProps {
   avatarUrl?: string | null
 }
 
-export default function ProfileForm({ name, email, cargo, departamento, hourlyRate, phone, cep, logradouro, numero, complemento, bairro, cidade, estado, notes, avatarUrl: initialAvatarUrl }: ProfileFormProps) {
+export default function ProfileForm({ name, email, phone, cep, logradouro, numero, complemento, bairro, cidade, estado, notes, avatarUrl: initialAvatarUrl }: ProfileFormProps) {
   const [state, action, isPending] = useActionState(updateProfileAction, {} as ProfileActionState)
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl ?? '')
   const [address, setAddress] = useState<AddressValues>({
@@ -58,58 +56,21 @@ export default function ProfileForm({ name, email, cargo, departamento, hourlyRa
 
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-        <input
+        <EmailInput
           id="email"
           name="email"
-          type="email"
           defaultValue={email}
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="cargo" className="block text-sm font-medium text-gray-700 mb-1">Cargo</label>
-          <input
-            id="cargo"
-            name="cargo"
-            defaultValue={cargo ?? ''}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label htmlFor="departamento" className="block text-sm font-medium text-gray-700 mb-1">Departamento</label>
-          <input
-            id="departamento"
-            name="departamento"
-            defaultValue={departamento ?? ''}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="hourlyRate" className="block text-sm font-medium text-gray-700 mb-1">Valor/hora (R$)</label>
-        <input
-          id="hourlyRate"
-          name="hourlyRate"
-          type="number"
-          min="0"
-          step="0.01"
-          defaultValue={hourlyRate}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
       <div>
         <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-        <input
+        <TelefoneInput
           id="phone"
           name="phone"
-          type="tel"
           defaultValue={phone ?? ''}
-          placeholder="(00) 00000-0000"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>

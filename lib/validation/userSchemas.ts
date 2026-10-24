@@ -1,12 +1,13 @@
 import { z } from 'zod'
+import { emailSchema, telefoneOpcionalSchema } from '@/lib/contato'
 
 export const UserProfileSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  email: z.string().trim().email('Invalid email'),
+  email: emailSchema,
   cargo: z.string().trim().optional(),
   departamento: z.string().trim().optional(),
   hourlyRate: z.coerce.number().min(0, 'Hourly rate cannot be negative'),
-  phone: z.string().trim().optional(),
+  phone: telefoneOpcionalSchema,
   cep: z.string().trim().optional(),
   logradouro: z.string().trim().optional(),
   numero: z.string().trim().optional(),
@@ -15,6 +16,23 @@ export const UserProfileSchema = z.object({
   cidade: z.string().trim().optional(),
   estado: z.string().trim().max(2).optional(),
   notes: z.string().trim().optional(),
+})
+
+const textoOpcional = z.string().trim().optional().transform(v => (v ? v : undefined))
+
+/** Dados que o próprio usuário edita em Configurações → Perfil. Cargo, departamento e valor/hora ficam com a gestão. */
+export const MeuPerfilSchema = z.object({
+  name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  email: emailSchema,
+  phone: telefoneOpcionalSchema,
+  cep: textoOpcional,
+  logradouro: textoOpcional,
+  numero: textoOpcional,
+  complemento: textoOpcional,
+  bairro: textoOpcional,
+  cidade: textoOpcional,
+  estado: z.string().trim().max(2).optional().transform(v => (v ? v : undefined)),
+  notes: textoOpcional,
 })
 
 export const ChangePasswordSchema = z
@@ -32,5 +50,6 @@ export const ChangePasswordSchema = z
     path: ['confirmacao'],
   })
 
+export type MeuPerfilInput = z.infer<typeof MeuPerfilSchema>
 export type UserProfileInput = z.infer<typeof UserProfileSchema>
 export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>

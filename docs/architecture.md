@@ -611,8 +611,24 @@ Board Kanban — acesso global, sem contexto de projeto na URL.
 ### `/dashboard/sprint/:id`
 Dashboard de sprint: PieChart/BarChart (Recharts), ranking por usuário, cards atrasados, SprintFeedback.
 
-### `/notificacoes`, `/arquivos`, `/perfil`, `/alterar-senha`
-Notificações, galeria de anexos, edição de perfil, troca de senha forçada. `/perfil/tokens` gerencia os PATs e, desde 1.36.0, os apps conectados por OAuth (revogação imediata).
+### `/notificacoes`, `/arquivos`, `/alterar-senha`
+Notificações, galeria de anexos, troca de senha forçada.
+
+### `/configuracoes`
+Tela de Configurações do usuário (1.37.0), aberta pelo item **Configurações** da sidebar global (usuários e admins) e pelo avatar do rodapé. O layout (`app/configuracoes/layout.tsx`) tem navegação própria por seções (`components/configuracoes/ConfiguracoesNav.tsx`): coluna no desktop, abas roláveis no celular. `/configuracoes` redireciona para Perfil.
+
+| Seção | Rota | Conteúdo |
+|---|---|---|
+| Conta → Perfil | `/configuracoes/perfil` | Resumo, dados pessoais, avatar e assinatura digital |
+| Conta → Segurança | `/configuracoes/seguranca` | Alterar senha |
+| Conta → Instituições | `/configuracoes/instituicoes` | Instituições do usuário e troca de tenant |
+| Conexões → Integrações | `/configuracoes/integracoes` | Apps conectados por OAuth (revogação imediata) e PATs usados pelo MCP e pela API |
+
+Os endereços antigos `/perfil` e `/perfil/tokens` redirecionam (308) para Perfil e Integrações. O Perfil não edita cargo, departamento nem valor/hora (ficam com a gestão de membros e usuários); `updateProfileAction` valida com `MeuPerfilSchema` e não envia esses campos.
+
+**Telefone e e-mail (1.37.0):** `lib/contato.ts` concentra máscara e validação (fixo, celular brasileiro ou internacional com `+`; e-mail sem espaços e com formato válido, sem mudar maiúsculas, porque o login compara o e-mail exato). Os formulários usam `TelefoneInput`/`EmailInput` (`components/ui/ContatoInputs.tsx`) e as actions de perfil, admin, membros, stakeholders e atas validam de novo com `normalizarContato`/schemas zod. Na edição, valores iguais aos já salvos não são revalidados. O `PATCH /auth/me` do auth-service ainda aceita qualquer campo sem validação.
+
+**Valores em reais (1.37.0):** `lib/dinheiro.ts` concentra máscara (centavos entram pela direita), leitura (`parseMoeda` aceita `1.234,56`, `1234.56` e número) e validação (`erroMoeda`: não negativo, até R$ 99.999.999.999,99). `components/ui/MoedaInput.tsx` é usado em valor/hora, remuneração, custo das macrofases e materiais. Os formatos salvos não mudaram: o cadastro do projeto guarda o custo da macrofase como `1.000,00`, o Termo como `1000.00`, e os demais como número. As actions de membros, vínculo por projeto, usuários e projetos e os schemas do Termo e da WBS validam no servidor.
 
 ### `/oauth/autorizar`
 Tela de consentimento OAuth (1.36.0), fora da sidebar. Exige sessão; o proxy guarda a query no `from` do login e o login volta para ela mesmo sem projeto. Valida o pedido no auth-service, mostra app, quem pede (host do `client_id` no CIMD; no DCR, o nome é marcado como declarado pelo app), host de retorno, permissões e workspaces. Permitir e Negar navegam pelo navegador até a URL de retorno (a CSP limita `form-action` a `'self'`). Sem cache e com `Referrer-Policy: no-referrer`.

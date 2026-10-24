@@ -18,8 +18,8 @@ O fim deste documento traz o **roteiro do vídeo tutorial**, com as cenas na ord
 ## Passo 1 — Gerar o seu token no Operum
 
 1. Entre no Operum.
-2. Clique na **sua foto**, no topo da barra lateral, para abrir **Meu perfil**.
-3. No quadro **Personal Access Tokens**, clique em **Gerenciar tokens →**.
+2. No menu lateral, clique em **Configurações** e depois em **Integrações**.
+3. Vá até o quadro **Personal Access Tokens**.
 4. Preencha:
    - **Nome:** algo que identifique onde você vai usar, por exemplo `Claude Code - notebook`.
    - **Permitir escrita:** marque se quer que o Claude crie e altere coisas (cards, comentários, timer). Sem essa opção, ele só consulta.
@@ -28,7 +28,7 @@ O fim deste documento traz o **roteiro do vídeo tutorial**, com as cenas na ord
 
 O token aparece **uma única vez**. Logo abaixo dele, em **Conectar no Claude Code**, já vem o comando pronto. Clique em **Copiar** ao lado do comando.
 
-> Trate o token como uma senha: não mande por chat, não cole em documentos e não suba para o Git. Se ele vazar, volte em **Gerenciar tokens** e clique em **Revogar**. O token para de funcionar na hora.
+> Trate o token como uma senha: não mande por chat, não cole em documentos e não suba para o Git. Se ele vazar, volte em **Configurações → Integrações** e clique em **Revogar**. O token para de funcionar na hora.
 
 ---
 
@@ -98,7 +98,7 @@ Se você já tinha conectado antes, remova a conexão antiga com `claude mcp rem
 4. Na tela de autorização, confira se o retorno é para **claude.ai**, marque os workspaces que quer usar e deixe "Permitir criar e alterar" marcado se quiser que o Claude crie e mova cards.
 5. Clique em **Permitir**. Pronto: no app do celular, o conector já aparece na conversa. Peça, por exemplo: "Crie no Operum um card *Revisar contrato* na sprint atual do projeto Operum".
 
-Para desconectar, vá em **Meu perfil → Personal Access Tokens → Apps conectados** e clique em **Desconectar**. O acesso acaba na hora.
+Para desconectar, vá em **Configurações → Integrações → Apps conectados** e clique em **Desconectar**. O acesso acaba na hora.
 
 O conector também funciona nas sessões do Claude Code na nuvem: com ele ligado na sessão, não precisa do segredo de rede da seção abaixo.
 
@@ -154,12 +154,12 @@ Antes de gravar:
 |---|---|---|---|
 | 1 | 0:00–0:30 | Quadro de uma sprint no Operum. | "Neste vídeo você vai conectar o Claude ao Operum. Depois disso, dá para pedir em português: criar cards, mover, iniciar o timer, comentar e anexar arquivos, sem sair do editor." |
 | 2 | 0:30–0:50 | Página do Claude Code e o terminal com `claude --version`. | "Você precisa do Claude Code instalado, no terminal ou no VS Code. O link de instalação está na descrição. Pelo site claude.ai ainda não funciona." |
-| 3 | 0:50–1:40 | Clicar na foto → **Meu perfil** → **Gerenciar tokens →**. Preencher **Nome**, marcar **Permitir escrita**, escolher **Validade** e clicar em **Gerar token**. | "O Claude acessa o Operum com um token pessoal. Dê um nome que lembre onde você vai usar. Marque Permitir escrita se quiser que ele crie e altere coisas. O token aparece uma única vez, então guarde como se fosse uma senha." |
+| 3 | 0:50–1:40 | Clicar em **Configurações** no menu lateral e depois em **Integrações**. Preencher **Nome**, marcar **Permitir escrita**, escolher **Validade** e clicar em **Gerar token**. | "O Claude acessa o Operum com um token pessoal. Dê um nome que lembre onde você vai usar. Marque Permitir escrita se quiser que ele crie e altere coisas. O token aparece uma única vez, então guarde como se fosse uma senha." |
 | 4 | 1:40–2:10 | Em **Conectar no Claude Code**, clicar em **Copiar**. Colar no terminal, apertar Enter e rodar `claude mcp list`. | "O Operum já monta o comando. É só copiar, colar no terminal e conferir com `claude mcp list`: o operum aparece conectado." |
 | 5 | 2:10–2:50 | Abrir `claude` e pedir "Liste os meus projetos no Operum". Autorizar a ferramenta. | "Na primeira vez, ele pede autorização para usar o Operum. Autorize, e pronto: ele já lê os seus projetos." |
 | 6 | 2:50–4:10 | Pedir: "Crie um card 'Gravar tutorial' na sprint 1 com prioridade alta e eu como responsável", e depois "Mova para Em andamento e inicie o timer". Mostrar o quadro do Operum atualizando (recarregar a página). | "Agora uma tarefa de verdade. Ele cria o card, coloca você como responsável, move para Em andamento e liga o timer. Repare que no Operum o card já aparece em Em andamento com o tempo correndo." |
 | 7 | 4:10–4:40 | Pedir "Comente no card que terminei e pare o timer". Mostrar o comentário e o tempo registrado no card. | "Para fechar: um comentário e o timer parado. O tempo fica registrado no card, como se você tivesse feito pela tela." |
-| 8 | 4:40–5:10 | Voltar em **Gerenciar tokens** e mostrar a lista de tokens ativos e o botão **Revogar**. | "Se o token vazar ou você trocar de computador, revogue aqui. Ele para de funcionar na hora. Se você participa de mais de uma instituição, o guia escrito mostra como usar vários tokens." |
+| 8 | 4:40–5:10 | Voltar em **Configurações → Integrações** e mostrar a lista de tokens ativos e o botão **Revogar**. | "Se o token vazar ou você trocar de computador, revogue aqui. Ele para de funcionar na hora. Se você participa de mais de uma instituição, o guia escrito mostra como usar vários tokens." |
 | 9 | 5:10–5:30 | Tela final com o link do guia. | "O passo a passo completo e os problemas mais comuns estão no guia. Até a próxima." |
 
 Depois de gravar: **revogue o token mostrado no vídeo** e anexe o vídeo, ou o link dele, ao card do tutorial no Operum.

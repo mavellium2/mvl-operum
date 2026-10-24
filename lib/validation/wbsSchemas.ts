@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MOEDA_MAXIMO } from '@/lib/dinheiro'
 
 // ── Limites globais (§8) ─────────────────────────────────────────────────────
 export const WBS_LIMITS = {
@@ -41,10 +42,10 @@ export const WbsNodePropertiesSchema = z.object({
   ownerUserId: z.string().optional(),
   description: z.string().max(2000).optional(),
   tempoMinutos: z.number().int().min(0).optional(),
-  materiais: z.number().min(0).optional(),
+  materiais: z.number().min(0).max(MOEDA_MAXIMO).optional(),
   dataPrevista: z.string().max(10).nullable().optional(),
   tempoRealMinutos: z.number().int().min(0).optional(),
-  materiaisReal: z.number().min(0).optional(),
+  materiaisReal: z.number().min(0).max(MOEDA_MAXIMO).optional(),
   dataRealizacao: z.string().max(10).nullable().optional(),
   elaboradoPor: z.string().max(200).optional(),
   elaboradoPorUserId: z.string().nullable().optional(),

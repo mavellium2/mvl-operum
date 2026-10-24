@@ -249,7 +249,7 @@ export class TenantRegistry {
     }
     throw new UserError(
       `Nenhum token configurado para o tenant ${tenantId}. Tenants disponíveis: ${available}. ` +
-        'Para operar outro tenant, gere um PAT nele (/perfil/tokens) e adicione ao header X-Operum-Tokens.',
+        'Para operar outro tenant, gere um PAT nele (/configuracoes/integracoes) e adicione ao header X-Operum-Tokens.',
     )
   }
 }

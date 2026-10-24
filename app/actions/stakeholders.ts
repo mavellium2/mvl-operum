@@ -6,6 +6,7 @@ import { verifySession } from '@/lib/dal'
 import { stakeholdersApi, projectsApi } from '@/lib/api-client'
 import { s3, BUCKET, publicUrl } from '@/lib/minio'
 import prisma from '@/lib/prisma'
+import { normalizarContato } from '@/lib/contato'
 
 interface StakeholderInput {
   name: string
@@ -27,7 +28,9 @@ interface StakeholderInput {
 export async function createStakeholderAction(data: StakeholderInput, projectId?: string) {
   try {
     await verifySession()
-    const stakeholder = await stakeholdersApi.create(data as unknown as Record<string, unknown>, projectId)
+    const contato = normalizarContato(data)
+    if (contato.error) return { error: contato.error }
+    const stakeholder = await stakeholdersApi.create(contato.data as unknown as Record<string, unknown>, projectId)
     if (projectId) {
       await stakeholdersApi.linkProject((stakeholder as { id: string }).id, projectId)
       revalidatePath(`/projetos/${projectId}/stakeholders`)
@@ -40,8 +43,12 @@ export async function createStakeholderAction(data: StakeholderInput, projectId?
 
 export async function updateStakeholderAction(stakeholderId: string, data: StakeholderInput, projectId: string) {
   try {
-    await verifySession()
-    const stakeholder = await stakeholdersApi.update(stakeholderId, data as unknown as Record<string, unknown>, projectId)
+    const { tenantId } = await verifySession()
+    // Valores já salvos passam sem validar: dados antigos não bloqueiam a edição de outros campos.
+    const atual = await prisma.stakeholder.findFirst({ where: { id: stakeholderId, tenantId }, select: { email: true, phone: true } })
+    const contato = normalizarContato(data, { atual })
+    if (contato.error) return { error: contato.error }
+    const stakeholder = await stakeholdersApi.update(stakeholderId, contato.data as unknown as Record<string, unknown>, projectId)
     revalidatePath(`/projetos/${projectId}/stakeholders`)
     return { success: true, stakeholder }
   } catch (err) {

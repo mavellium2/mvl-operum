@@ -20,6 +20,25 @@ Operum instalável como app no celular (PWA).
 - Favicon do navegador trocado pelo ícone do Operum (era o padrão do Next.js).
 - CSP com `manifest-src 'self'` e `worker-src 'self'`. Manifest, service worker, ícones e `/offline` passam a responder sem sessão; as demais rotas continuam protegidas.
 
+## [1.37.0] — 2026-10-23
+
+### Adicionado
+- Tela **Configurações** (`/configuracoes`), no menu lateral para usuários e administradores, com navegação por seções: Perfil, Segurança, Instituições e Integrações.
+- Seção **Integrações**, que reúne os apps conectados por OAuth (como o conector do Claude) e os Personal Access Tokens usados pelo MCP e pela API.
+- Máscara e validação de telefone e e-mail em todos os formulários: perfil, usuários do admin, membros, stakeholders, criação rápida de membro, documento de Partes Interessadas, cópias da ata, login, cadastro e recuperação de senha. Telefone aceita fixo `(00) 0000-0000`, celular `(00) 00000-0000` ou número internacional com `+`; o e-mail perde espaços e precisa ter formato válido. O erro aparece ao sair do campo e as actions validam de novo no servidor. Valores antigos fora do padrão não bloqueiam a edição de outros campos.
+- Máscara e validação de dinheiro em todos os campos em reais: valor/hora (membros e vínculo por projeto no admin), remuneração mensal, custo das macrofases (cadastro do projeto e Termo de Abertura) e materiais da Planilha de Custos. Os centavos entram pela direita (`1.234,56`), valores negativos ou acima de R$ 99.999.999.999,99 são recusados e as actions validam de novo no servidor. Valores em reais exibidos com ponto decimal (`R$ 500.00`) passam a usar vírgula.
+
+### Alterado
+- Meu perfil virou a seção Perfil das Configurações; alterar senha e instituições ganharam seções próprias. O avatar do rodapé abre as Configurações.
+- O perfil não mostra nem edita mais cargo, departamento e valor/hora; esses dados seguem com a gestão de membros e usuários. Salvar o perfil não altera mais esses campos.
+- Tokens e apps conectados saíram do perfil. Os endereços antigos `/perfil` e `/perfil/tokens` redirecionam para as novas seções, e as mensagens de erro do MCP, os READMEs e o tutorial apontam para o novo local.
+
+### Corrigido
+- Editar um membro sem mexer no valor/hora podia gravá-lo multiplicado por 10 ou 100 (ex.: 75,5 virava 755), porque o valor salvo era lido com o ponto como separador de milhar.
+- O total de custos do cadastro do projeto multiplicava custos salvos pelo Termo de Abertura (formato `1000.00`).
+- Remuneração ou valor/hora inválidos eram descartados em silêncio; agora a action responde com o erro.
+- Escolher "Plano do Projeto" em "Enviar cópias para" da ata era recusado ao salvar, porque todas as cópias eram validadas como e-mail.
+
 ## [1.36.2] — 2026-10-23
 
 ### Segurança
