@@ -1,5 +1,6 @@
 'use client'
 
+import { formatReais } from '@/lib/dinheiro'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface UserHoursChartProps {
@@ -17,7 +18,7 @@ export default function UserHoursChart({ data }: UserHoursChartProps) {
         <Tooltip
           formatter={(value, name) => {
             const v = Number(value)
-            return name === 'horasTotais' ? [`${v.toFixed(1)}h`, 'Horas'] : [`R$ ${v.toFixed(2)}`, 'Custo']
+            return name === 'horasTotais' ? [`${v.toFixed(1)}h`, 'Horas'] : [formatReais(v), 'Custo']
           }}
         />
         <Bar dataKey="horasTotais" fill="#10b981" radius={[4, 4, 0, 0]} name="horasTotais" />

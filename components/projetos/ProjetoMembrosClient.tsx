@@ -1,5 +1,9 @@
 'use client'
 
+import MoedaInput from '@/components/ui/MoedaInput'
+import { erroMoeda, formatReais, moedaParaCampo, parseMoeda } from '@/lib/dinheiro'
+import { EmailInput, TelefoneInput } from '@/components/ui/ContatoInputs'
+import { erroEmail, erroTelefone } from '@/lib/contato'
 import { useState, useTransition, useEffect, useRef } from 'react'
 import { addMemberAction, removeMemberAction } from '@/app/actions/projects'
 import { adminCreateUserAction, adminUpdateUserAction, toggleUserActiveAction } from '@/app/actions/admin'
@@ -117,12 +121,10 @@ const IconMail = () => (
 const inputCls = 'w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow'
 const disabledCls = 'disabled:bg-gray-100 disabled:text-gray-400 cursor-not-allowed'
 
-/** Converte valor pt-BR ("1.234,56") para float JS (1234.56). Retorna null se vazio/inválido. */
+/** Valor em reais do formulário ("1.234,56" ou o salvo "1234.56") → número; null se vazio/inválido. */
 function parseBRLFloat(value: string): number | null {
-  if (!value || value.trim() === '') return null
-  const clean = value.replace(/\./g, '').replace(',', '.')
-  const parsed = parseFloat(clean)
-  return isNaN(parsed) ? null : parsed
+  const n = parseMoeda(value)
+  return n === null || Number.isNaN(n) ? null : n
 }
 
 // ==========================================
@@ -272,7 +274,7 @@ export default function ProjetoMembrosClient({
         cargos: m.cargos ?? [],
         departamento: Array.isArray(m.departamento) ? m.departamento : (m.departamento ? [m.departamento] : []),
         isGerente: m.isGerente ?? false,
-        hourlyRate: m.hourlyRate?.toString() ?? '',
+        hourlyRate: moedaParaCampo(m.hourlyRate),
         isActive: true,
         forcePasswordChange: false,
       })
@@ -370,6 +372,12 @@ export default function ProjetoMembrosClient({
 
   async function handleSaveUser() {
     setFormError(null)
+    // Os campos ficam desabilitados para quem não é admin; o servidor ignora o que não mudou.
+    const erroContato = isAdmin ? (erroEmail(formState.email, true) ?? erroTelefone(formState.phone) ?? erroMoeda(formState.hourlyRate, { rotulo: 'Valor/hora' })) : null
+    if (erroContato) {
+      setFormError(erroContato)
+      return
+    }
 
     if (isCreating) {
       if (!isAdmin) return
@@ -530,37 +538,6 @@ export default function ProjetoMembrosClient({
     })
   }
 
-  // Máscara de Telefone: (00) 00000-0000
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let v = e.target.value.replace(/\D/g, "")
-    if (v.length <= 11) {
-      v = v.replace(/^(\d{2})(\d)/g, "($1) $2")
-      v = v.replace(/(\d)(\d{4})$/, "$1-$2")
-      setField('phone', v)
-    }
-  }
-
-  // Máscara de Dinheiro (RTL): 00,00
-  const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, "")
-
-    if (!value) {
-      setField('hourlyRate', "")
-      return
-    }
-
-    // Converte para número e divide por 100 para criar os centavos
-    const numberValue = parseInt(value, 10) / 100
-
-    // Formata usando o padrão brasileiro (ex: 1.234,56)
-    const formattedValue = numberValue.toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })
-
-    setField('hourlyRate', formattedValue)
-  }
-
   const col3Title = isCreating ? 'Novo Usuário' : editContext === 'member' ? 'Editar Membro' : 'Editar Usuário'
 
   return (
@@ -634,7 +611,7 @@ export default function ProjetoMembrosClient({
             {m.hourlyRate !== null && m.hourlyRate !== undefined && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100">
                 <IconWallet />
-                R$ {Number(m.hourlyRate).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/h
+                {formatReais(Number(m.hourlyRate))}/h
               </span>
             )}
           </div>
@@ -755,7 +732,7 @@ export default function ProjetoMembrosClient({
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">E-mail</label>
-              <input type="email" value={formState.email} onChange={e => setField('email', e.target.value)} disabled={!isAdmin} className={`${inputCls} ${disabledCls}`} />
+              <EmailInput value={formState.email} onValueChange={v => setField('email', v)} disabled={!isAdmin} required={isAdmin} className={`${inputCls} ${disabledCls}`} />
             </div>
 
             {isCreating && (
@@ -768,40 +745,37 @@ export default function ProjetoMembrosClient({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Telefone</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                  </div>
-                  <input
-                    type="tel"
-                    value={formState.phone}
-                    onChange={handlePhoneChange}
-                    disabled={!isAdmin}
-                    placeholder="(00) 00000-0000"
-                    className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                  />
-                </div>
+                <TelefoneInput
+                  value={formState.phone}
+                  onValueChange={v => setField('phone', v)}
+                  disabled={!isAdmin}
+                  adorno={
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                  }
+                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                />
               </div>
 
 
               {/* Campo: Valor/hora */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Valor/hora</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-sm font-medium text-gray-500">R$</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={formState.hourlyRate}
-                    onChange={handleCurrencyChange}
-                    disabled={!isAdmin}
-                    placeholder="0,00"
-                    className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                  />
-                </div>
+                <MoedaInput
+                  value={formState.hourlyRate}
+                  onValueChange={texto => setField('hourlyRate', texto)}
+                  disabled={!isAdmin}
+                  rotulo="Valor/hora"
+                  adorno={
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-sm font-medium text-gray-500">R$</span>
+                    </div>
+                  }
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                />
               </div>
 
             </div>

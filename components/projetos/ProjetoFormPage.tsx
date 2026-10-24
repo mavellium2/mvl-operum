@@ -1,5 +1,7 @@
 'use client'
 
+import MoedaInput from '@/components/ui/MoedaInput'
+import { parseMoeda } from '@/lib/dinheiro'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import { useState, useTransition, useEffect, Suspense } from 'react'
@@ -50,23 +52,6 @@ export default function NovoProjetoPage({ canAssignRoles = true }: { canAssignRo
     </Suspense>
   )
 }
-
-const formatCurrency = (value: string) => {
-    if (!value) return '';
-    
-    // Remove tudo que não é número
-    const rawValue = value.replace(/\D/g, '');
-    if (rawValue === '') return '';
-
-    // Converte para decimal (ex: digitou 1000 -> vira 10.00)
-    const numberValue = parseInt(rawValue, 10) / 100;
-
-    // Formata para o padrão pt-BR (1.000,00)
-    return numberValue.toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-  };
 
 // ── Datas no padrão brasileiro (dd/mm/aaaa) ─────────────────
 // O valor mantido no state é ISO (YYYY-MM-DD) — só o display é mascarado.
@@ -246,7 +231,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
 
   const calculateTotal = () => {
     const total = macroFases.reduce((acc, curr) => {
-      const val = parseFloat(curr.custo.replace(/\./g, '').replace(',', '.')) || 0
+      // Aceita "1.000,00" (este formulário) e "1000.00" (Termo de Abertura).
+      const val = parseMoeda(curr.custo) || 0
       return acc + val
     }, 0)
     return total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -605,17 +591,14 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                           />
                         </td>
                         <td className="p-3">
-                          <div className="relative flex items-center">
-                            <span className="absolute left-3 text-slate-400 text-sm font-bold">R$</span>
-                            <input
-                              type="text"
-                              value={fase.custo}
-                              // 👇 A MÁGICA ACONTECE AQUI
-                              onChange={e => updateMacroFase(idx, 'custo', formatCurrency(e.target.value))}
-                              placeholder="0,00"
-                              className="w-full pl-9 pr-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm text-right font-bold text-slate-800 transition-all outline-none"
-                            />
-                          </div>
+                          <MoedaInput
+                            value={fase.custo}
+                            onValueChange={texto => updateMacroFase(idx, 'custo', texto)}
+                            rotulo="Custo"
+                            aria-label={`Custo da fase ${idx + 1}`}
+                            adorno={<span className="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm font-bold pointer-events-none">R$</span>}
+                            className="w-full pl-9 pr-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm text-right font-bold text-slate-800 transition-all outline-none"
+                          />
                         </td>
                         <td className="p-3 text-center">
                           <button type="button" onClick={() => removeMacroFase(idx)} disabled={macroFases.length === 1} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed">

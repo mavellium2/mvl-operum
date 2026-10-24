@@ -8,13 +8,13 @@ Este serviço **nunca** acessa o banco de dados diretamente — é apenas mais u
 
 ## Gerar um token
 
-Gere um PAT em `/perfil/tokens` no Operum.
+Gere um PAT em **Configurações → Integrações** (`/configuracoes/integracoes`) no Operum.
 
 > Endpoint atual: `https://api.operum.adm.br/mcp`. O endereço definitivo `https://mcp.operum.adm.br/mcp` depende do registro DNS.
 
 ## Conectar no Claude Code
 
-Um único servidor opera todos os seus workspaces (tenants). Cada PAT do Operum é preso a um tenant, então gere **um token em cada workspace** (`/perfil/tokens`, logado nele) e passe todos:
+Um único servidor opera todos os seus workspaces (tenants). Cada PAT do Operum é preso a um tenant, então gere **um token em cada workspace** (`/configuracoes/integracoes`, logado nele) e passe todos:
 
 - `Authorization: Bearer <pat>` — tenant padrão (usado quando a tool não recebe `tenant_id`);
 - `X-Operum-Tokens: <pat>,<pat>` — demais tenants (até 10 tokens no total).
@@ -54,7 +54,7 @@ No claude.ai (web, Desktop e celular), adicione um conector personalizado com a 
 
 - Uma conexão cobre os workspaces marcados no consentimento; as tools continuam aceitando `tenant_id`.
 - Permissões: `operum:read` sempre; `operum:write` se o usuário deixar marcado "Permitir criar e alterar".
-- Desconectar: Meu perfil → Personal Access Tokens → Apps conectados.
+- Desconectar: Configurações → Integrações → Apps conectados.
 - Configuração (mesmo `.env` para auth-service, api-gateway e mcp-server): `OAUTH_ISSUER`, `MCP_RESOURCE_URL`, `OAUTH_AUTHORIZE_URL`, `MCP_GATEWAY_KEY` (`openssl rand -base64 32`), `OAUTH_CIMD_ALLOWED_HOSTS` e `OAUTH_DCR_ALLOWED_REDIRECTS`. Sem as três primeiras obrigatórias (`OAUTH_ISSUER`, `MCP_RESOURCE_URL`, `MCP_GATEWAY_KEY`), o MCP segue só com PAT.
 - O token OAuth não é aceito direto na API pública: o gateway exige a chave interna que só o mcp-server envia (`X-Operum-Mcp-Key`).
 

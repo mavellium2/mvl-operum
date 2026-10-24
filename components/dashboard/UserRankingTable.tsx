@@ -1,3 +1,4 @@
+import { formatReais } from '@/lib/dinheiro'
 import UserAvatar from '@/components/user/UserAvatar'
 
 interface UserMetric {
@@ -40,7 +41,7 @@ export default function UserRankingTable({ users }: UserRankingTableProps) {
               </div>
             </td>
             <td className="py-2.5 text-right tabular-nums text-gray-700">{u.horasTotais.toFixed(1)}h</td>
-            <td className="py-2.5 text-right tabular-nums text-green-700 font-medium">R$ {u.custoTotal.toFixed(2)}</td>
+            <td className="py-2.5 text-right tabular-nums text-green-700 font-medium">{formatReais(u.custoTotal)}</td>
           </tr>
         ))}
       </tbody>

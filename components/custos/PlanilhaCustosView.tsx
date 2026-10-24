@@ -1,5 +1,7 @@
 'use client'
 
+import MoedaInput from '@/components/ui/MoedaInput'
+import { parseMoeda as parseMoedaLib } from '@/lib/dinheiro'
 import Dica from '@/components/ui/Tooltip'
 import ElaboradoresSelect from './ElaboradoresSelect'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -79,13 +81,9 @@ const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', curren
 const brlMinuto = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 })
 const dois = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-/** "R$ 1.234,56", "1234,56" ou "1234.56" → "1234.56"; NaN quando não é número. */
+/** "R$ 1.234,56", "1234,56" ou "1234.56" → 1234.56; vazio é 0; NaN quando não é número. */
 export function parseMoeda(texto: string): number {
-  let t = texto.replace(/R\$|\s/g, '')
-  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
-  if (t === '') return 0
-  const n = Number(t)
-  return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN
+  return parseMoedaLib(texto) ?? 0
 }
 
 /** Elaboradores da linha, com o rascunho (escolha ainda não salva) por cima. */
@@ -538,28 +536,19 @@ const FaseFragment = memo(function FaseFragment({
       />
     )
   }
-  // Materiais em moeda (R$ 300,00); ao focar, o número puro para digitar.
-  const campoMoeda = (nodeId: string, campo: 'materiaisOrcado' | 'materiaisReal', valor: number) => {
-    const key = `${nodeId}:${campo}`
-    return (
-      <input
-        type="text"
-        inputMode="decimal"
-        aria-label={campo === 'materiaisOrcado' ? 'Materiais orçados' : 'Materiais realizados'}
-        value={drafts[key] ?? brl(valor)}
-        onChange={e => {
-          const t = e.target.value
-          pintaDraft(key, t)
-          const n = parseMoeda(t)
-          if (!Number.isNaN(n)) onCampoChange(nodeId, campo, String(n))
-        }}
-        onFocus={e => { pintaDraft(key, valor ? dois(valor) : ''); const el = e.target; requestAnimationFrame(() => el.select()) }}
-        onBlur={() => limparDraft(key)}
-        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
-        className={clsCampo}
-      />
-    )
-  }
+  // Materiais em moeda (R$ 300,00), com máscara: os centavos entram pela direita.
+  const campoMoeda = (nodeId: string, campo: 'materiaisOrcado' | 'materiaisReal', valor: number) => (
+    <MoedaInput
+      comSimbolo
+      aria-label={campo === 'materiaisOrcado' ? 'Materiais orçados' : 'Materiais realizados'}
+      rotulo="Materiais"
+      value={valor}
+      onValueChange={(_, n) => onCampoChange(nodeId, campo, String(n ?? 0))}
+      onFocus={e => { const el = e.target; requestAnimationFrame(() => el.select()) }}
+      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+      className={clsCampo}
+    />
+  )
   // Horas editável: com draft local, converte o digitado ("5.5" ou "5:30") para minutos
   // e grava em minOrcado/minReal, fazendo Min e Dias atualizarem ao mesmo tempo.
   const campoHoras = (nodeId: string, campo: 'minOrcado' | 'minReal', minAtual: number) => {

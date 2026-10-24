@@ -1,5 +1,6 @@
 import { DocumentRevisionError } from '@/lib/documentRevisionError'
 import { z } from 'zod'
+import { erroMoeda, MENSAGEM_MOEDA_INVALIDA } from '@/lib/dinheiro'
 import { AtualizarAtaSchema } from './ataSchemas'
 import { EAP_LIMITS, SaveEapDocumentSchema } from './eapSchemas'
 import { recomputeNodeCodes } from '@/lib/eapCode'
@@ -33,7 +34,7 @@ export const charterSchema = z
           id: z.string().max(128).optional(),
           fase: z.string().max(500),
           dataLimite: texto,
-          custo: texto,
+          custo: texto.refine(v => erroMoeda(v) === null, MENSAGEM_MOEDA_INVALIDA),
         }),
       )
       .max(500)

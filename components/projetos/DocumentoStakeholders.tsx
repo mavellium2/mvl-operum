@@ -1,5 +1,7 @@
 'use client'
 
+import { EmailInput, TelefoneInput } from '@/components/ui/ContatoInputs'
+import { erroEmail, erroTelefone } from '@/lib/contato'
 import { printPageStyle } from '@/lib/printPageStyle'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
@@ -123,6 +125,8 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
   // Aprovação em andamento
   const [actingVersionId, setActingVersionId] = useState<string | null>(null)
   const initializedFromDB = useRef(false)
+  // Contatos como vieram do documento: só valores novos ou alterados são validados.
+  const contatosCarregados = useRef({ emails: new Set<string>(), telefones: new Set<string>() })
 
   // ── Carregamento inicial ────────────────────────────────────────────────────
 
@@ -132,7 +136,13 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
       .then(r =>
         r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error)),
       )
-      .then((d: DocumentData) => setData(d))
+      .then((d: DocumentData) => {
+        contatosCarregados.current = {
+          emails: new Set(d.stakeholders.map(s => s.email ?? '')),
+          telefones: new Set(d.stakeholders.map(s => s.telefoneFax ?? '')),
+        }
+        setData(d)
+      })
       .catch(e => setError(typeof e === 'string' ? e : 'Erro ao carregar documento'))
       .finally(() => setLoading(false))
   }, [projetoId])
@@ -203,6 +213,15 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
     }
     if (editable.aprovadoPor && !editable.aprovadoPorUserId) {
       return 'Selecione um membro da equipe em "Aprovado por" — a pessoa informada não é um membro do projeto.'
+    }
+    for (const [index, pessoa] of (data?.stakeholders ?? []).entries()) {
+      const rotulo = `Parte interessada ${index + 1}`
+      const email = pessoa.email ?? ''
+      const erroDoEmail = contatosCarregados.current.emails.has(email) ? null : erroEmail(email)
+      if (erroDoEmail) return `${rotulo}: ${erroDoEmail}`
+      const telefone = pessoa.telefoneFax ?? ''
+      const erroDoTelefone = contatosCarregados.current.telefones.has(telefone) ? null : erroTelefone(telefone)
+      if (erroDoTelefone) return `${rotulo}: ${erroDoTelefone}`
     }
     return null
   }
@@ -410,14 +429,21 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
                 {([
                   ['nome', 'Nome'], ['empresaEquipe', 'Empresa / equipe'], ['cargoCompetencia', 'Cargo / competência'],
                   ['email', 'E-mail'], ['telefoneFax', 'Telefone'], ['endereco', 'Endereço'], ['observacoes', 'Observações'],
-                ] as const).map(([field, label]) => (
-                  <label key={field} className="text-sm">{label}
-                    <input className={inputClass} value={person[field] ?? ''} onChange={event => {
-                      const value = event.target.value
-                      setData(prev => prev ? { ...prev, stakeholders: prev.stakeholders.map((row, i) => i === index ? { ...row, [field]: value } : row) } : prev)
-                    }} />
-                  </label>
-                ))}
+                ] as const).map(([field, label]) => {
+                  const alterar = (value: string) =>
+                    setData(prev => prev ? { ...prev, stakeholders: prev.stakeholders.map((row, i) => i === index ? { ...row, [field]: value } : row) } : prev)
+                  return (
+                    <label key={field} className="text-sm">{label}
+                      {field === 'email' ? (
+                        <EmailInput className={inputClass} value={person[field] ?? ''} onValueChange={alterar} />
+                      ) : field === 'telefoneFax' ? (
+                        <TelefoneInput className={inputClass} value={person[field] ?? ''} onValueChange={alterar} />
+                      ) : (
+                        <input className={inputClass} value={person[field] ?? ''} onChange={event => alterar(event.target.value)} />
+                      )}
+                    </label>
+                  )
+                })}
                 <button type="button" className="text-left text-sm text-red-700" onClick={() => setData(prev => prev ? { ...prev, stakeholders: prev.stakeholders.filter((_, i) => i !== index) } : prev)}>Remover desta versão</button>
               </fieldset>
             ))}

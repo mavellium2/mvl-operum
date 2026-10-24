@@ -4,6 +4,8 @@ import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { adminApi, authApi } from '@/lib/api-client'
 import { createTenant, updateTenant, ConflictError } from '@/services/tenantService'
+import { normalizarContato } from '@/lib/contato'
+import { erroMoeda } from '@/lib/dinheiro'
 
 async function requireAdmin() {
   const session = await verifySession()
@@ -42,7 +44,9 @@ export async function adminCreateUserAction(data: {
 }) {
   try {
     await requireAdmin()
-    const user = await adminApi.createUser(data as Record<string, unknown>)
+    const contato = normalizarContato(data, { emailObrigatorio: true })
+    if (contato.error) return { error: contato.error }
+    const user = await adminApi.createUser(contato.data as Record<string, unknown>)
     revalidatePath('/admin/users')
     return { user }
   } catch (err) {
@@ -73,7 +77,13 @@ export async function adminUpdateUserAction(
 ) {
   try {
     await requireAdmin()
-    const user = await adminApi.updateUser(userId, data as Record<string, unknown>)
+    const contato = normalizarContato(data)
+    if (contato.error) return { error: contato.error }
+    if (data.hourlyRate !== undefined) {
+      const erroValor = erroMoeda(data.hourlyRate, { rotulo: 'Valor/hora' })
+      if (erroValor) return { error: erroValor }
+    }
+    const user = await adminApi.updateUser(userId, contato.data as Record<string, unknown>)
     revalidatePath('/admin/users')
     return { user }
   } catch (err) {

@@ -29,6 +29,6 @@ describe('UserRankingTable', () => {
   it('renders hours and cost', () => {
     render(<UserRankingTable users={users} />)
     expect(screen.getByText('10.0h')).toBeInTheDocument()
-    expect(screen.getByText('R$ 500.00')).toBeInTheDocument()
+    expect(screen.getByText('R$ 500,00')).toBeInTheDocument()
   })
 })

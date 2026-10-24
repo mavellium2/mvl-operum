@@ -97,7 +97,7 @@ export default function NoProjectCard({ name, email, avatarUrl, cargo, departame
         </div>
       )}
       <Link
-        href="/perfil"
+        href="/configuracoes/perfil"
         className="block text-center text-sm text-blue-600 hover:underline mt-3 py-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
       >
         Editar perfil

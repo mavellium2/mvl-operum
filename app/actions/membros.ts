@@ -1,5 +1,6 @@
 'use server'
 
+import { emailValido, formatEmail, MENSAGEM_EMAIL_INVALIDO } from '@/lib/contato'
 import { verifySession } from '@/lib/dal'
 import { isProjectManager } from '@/services/projectRoleService'
 import { adminCreateUserAction } from './admin'
@@ -28,14 +29,14 @@ export async function criarMembroEquipeAction(input: {
 }): Promise<{ membro: MembroCriado } | { error: string }> {
   try {
     const name = input.name.trim()
-    const email = input.email.trim().toLowerCase()
+    const email = formatEmail(input.email).toLowerCase()
     const password = input.password
 
     if (!name || !email || !password) {
       return { error: 'Preencha nome, e-mail e senha.' }
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return { error: 'E-mail inválido.' }
+    if (!emailValido(email)) {
+      return { error: MENSAGEM_EMAIL_INVALIDO }
     }
     if (password.length < 8) {
       return { error: 'A senha deve ter pelo menos 8 caracteres.' }

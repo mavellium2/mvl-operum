@@ -1,5 +1,6 @@
 'use client'
 
+import { emailValido, formatEmail } from '@/lib/contato'
 import { printPageStyle } from '@/lib/printPageStyle'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
@@ -89,6 +90,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
   const [decisoes, setDecisoes] = useState(initial?.decisoesTomadas ?? '')
   const [observacoes, setObservacoes] = useState(initial?.observacoes ?? '')
   const [copias, setCopias] = useState<string[]>(semRepetir(initial?.copiasPara ?? []))
+  const [erroCopia, setErroCopia] = useState<string | null>(null)
   const [avisoPresente, setAvisoPresente] = useState<string | null>(null)
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const arquivoAnexo = useRef<HTMLInputElement>(null)
@@ -469,11 +471,22 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
         <p className="mb-2 text-xs text-gray-500">Escolha os e-mails cadastrados dos stakeholders ou digite outro e tecle Enter. Revise a lista antes de salvar.</p>
         <MultiCreatableSelect
           values={copias}
-          onChange={v => setCopias(semRepetir(v))}
+          onChange={v => {
+            // Só os destinatários novos são conferidos; os já salvos seguem como estão.
+            const novos = v.filter(c => !copias.includes(c) && c !== ATA_PLANO_DO_PROJETO)
+            const invalido = novos.find(c => !emailValido(c))
+            if (invalido) {
+              setErroCopia(`"${invalido}" não é um e-mail válido.`)
+              return
+            }
+            setErroCopia(null)
+            setCopias(semRepetir(v.map(c => (novos.includes(c) ? formatEmail(c) : c))))
+          }}
           options={[...emailsSugeridos.map(e => e.email), ATA_PLANO_DO_PROJETO]}
           placeholder="Adicionar destinatário..."
           ariaLabel="Adicionar destinatário da cópia"
         />
+        {erroCopia && <p role="alert" className="mt-1 text-xs text-red-600">{erroCopia}</p>}
         {copias.length > 0 && (
           <p className="mt-1 text-xs text-gray-500" data-testid="ata-copias-resumo">
             {copias.length} destinatário{copias.length === 1 ? '' : 's'}: {copias.map(c => emailsSugeridos.find(e => e.email.toLowerCase() === c.toLowerCase())?.nome ? `${emailsSugeridos.find(e => e.email.toLowerCase() === c.toLowerCase())!.nome} <${c}>` : c).join(', ')}

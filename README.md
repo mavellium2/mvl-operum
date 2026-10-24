@@ -97,7 +97,7 @@ Para lançar uma versão:
 
 O Operum expõe um servidor MCP remoto que permite ao Claude consultar e operar projetos em nome do usuário, autenticado por um Personal Access Token.
 
-1. Gere um token em **Perfil → Tokens** (`/perfil/tokens`). Ele começa com `opr_pat_`.
+1. Gere um token em **Configurações → Integrações** (`/configuracoes/integracoes`). Ele começa com `opr_pat_`.
 2. Conecte:
 
 **Claude Code**

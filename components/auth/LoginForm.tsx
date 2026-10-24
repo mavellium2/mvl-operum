@@ -1,5 +1,6 @@
 'use client'
 
+import { formatEmail } from '@/lib/contato'
 import { useActionState, useRef, useState } from 'react'
 import Link from 'next/link'
 import { loginAction } from '@/app/actions/auth'
@@ -86,7 +87,7 @@ export function LoginForm({ from, motivo }: LoginFormProps = {}) {
             required
             autoComplete="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setEmail(formatEmail(e.target.value))}
             onFocus={() => setEmailFocused(true)}
             onBlur={() => setEmailFocused(false)}
             placeholder=" "

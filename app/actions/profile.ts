@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/dal'
 import { authApi } from '@/lib/api-client'
 import { s3, BUCKET, publicUrl } from '@/lib/minio'
+import { MeuPerfilSchema } from '@/lib/validation/userSchemas'
 
 export async function getUserProfileAction() {
   try {
@@ -21,27 +22,28 @@ export type ProfileActionState = { message?: string; error?: string }
 export async function updateProfileAction(prevState: ProfileActionState, formData: FormData): Promise<ProfileActionState> {
   try {
     await verifySession()
-    await authApi.updateProfile({
-      name: formData.get('name') as string,
-      email: formData.get('email') as string,
-      cargo: (formData.get('cargo') as string) || undefined,
-      departamento: (formData.get('departamento') as string) || undefined,
-      hourlyRate: Number(formData.get('hourlyRate') ?? 0),
-      phone: (formData.get('phone') as string) || undefined,
-      cep: (formData.get('cep') as string) || undefined,
-      logradouro: (formData.get('logradouro') as string) || undefined,
-      numero: (formData.get('numero') as string) || undefined,
-      complemento: (formData.get('complemento') as string) || undefined,
-      bairro: (formData.get('bairro') as string) || undefined,
-      cidade: (formData.get('cidade') as string) || undefined,
-      estado: (formData.get('estado') as string) || undefined,
-      notes: (formData.get('notes') as string) || undefined,
+    const campo = (nome: string) => (formData.get(nome) as string | null) ?? undefined
+    const parsed = MeuPerfilSchema.safeParse({
+      name: campo('name') ?? '',
+      email: campo('email') ?? '',
+      phone: campo('phone'),
+      cep: campo('cep'),
+      logradouro: campo('logradouro'),
+      numero: campo('numero'),
+      complemento: campo('complemento'),
+      bairro: campo('bairro'),
+      cidade: campo('cidade'),
+      estado: campo('estado'),
+      notes: campo('notes'),
     })
+    if (!parsed.success) return { error: parsed.error.issues[0].message }
+    // Cargo, departamento e valor/hora não são enviados: o perfil não os edita mais.
+    await authApi.updateProfile(parsed.data)
     const avatarUrl = formData.get('avatarUrl') as string | null
     if (avatarUrl) {
       await authApi.updateProfile({ avatarUrl })
     }
-    revalidatePath('/perfil')
+    revalidatePath('/configuracoes/perfil')
     return { message: 'Perfil atualizado com sucesso' }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar perfil' }
@@ -81,7 +83,7 @@ export async function uploadSignatureAction(formData: FormData) {
 
     const signatureUrl = publicUrl(key)
     await authApi.updateProfile({ signatureUrl })
-    revalidatePath('/perfil')
+    revalidatePath('/configuracoes/perfil')
     return { signatureUrl }
   } catch (err) {
     console.error('[uploadSignatureAction]', err)

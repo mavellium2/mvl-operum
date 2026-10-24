@@ -183,7 +183,7 @@ export default function SidebarLayout({
           </div>
 
           <Link
-            href="/perfil"
+            href="/configuracoes/perfil"
             aria-label="Meu perfil"
             className="rounded-full p-0.5 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-100"
           >
