@@ -7,6 +7,11 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.40.4] — 2026-10-24
+
+- **Segurança:** as ações de admin sobre usuários (criar, editar, mudar papel, ativar e desativar) passam a ficar registradas na auditoria da instituição, com quem fez e o que mudou. Senhas não entram no registro; a troca aparece só como "senha redefinida".
+- As ações do operador sobre instituições (criar, provisionar admin, entrar, mudar status e renomear) também ficam registradas, na auditoria da instituição afetada (ADR-066).
+
 ## [1.40.3] — 2026-10-24
 
 - **Segurança:** o histórico de alterações da sprint ("antes/depois" no quadro e nas metas da sprint) só lê sprints de projetos da instituição de quem altera. A exclusão de fase pela EAP também confere a instituição ao resumir a sprint. Pendência da auditoria de 24/10.
