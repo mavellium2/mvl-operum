@@ -1,5 +1,8 @@
 packages: []
 overrides:
+  # GHSA-27r3-jxmh-p828 (DoS no body-parser): correção dentro de cada major.
+  "body-parser@<1.20.9": ">=1.20.9 <2.0.0"
+  "body-parser@>=2.0.0 <2.4.0": ">=2.4.0 <3.0.0"
   # GHSA-mrhx-c7xc-m3w5 (memória em coleções grandes): correção dentro da v4.
   zod: ">=4.6.6 <5.0.0"
   # GHSA-q3jh-wrc6-jgq8 e GHSA-587h-7wmj-h5pm: manter correções compatíveis.
@@ -10,7 +13,7 @@ overrides:
   hono: ">=4.12.25"
   "@hono/node-server": ">=1.19.13"
   postcss: ">=8.5.18"
-  multer: ">=2.3.0"
+  multer: ">=2.5.0"
   fast-uri: ">=4.1.4 <5.0.0"
   js-yaml: ">=4.3.0"
   deepmerge-ts: ">=8.0.0"

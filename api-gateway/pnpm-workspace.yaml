@@ -7,6 +7,9 @@ auditConfig:
   ignoreGhsas:
     - GHSA-vfj7-8cjw-p6xm
 overrides:
+  # GHSA-27r3-jxmh-p828 (DoS no body-parser): correção dentro de cada major.
+  "body-parser@<1.20.9": ">=1.20.9 <2.0.0"
+  "body-parser@>=2.0.0 <2.4.0": ">=2.4.0 <3.0.0"
   # GHSA-q3jh-wrc6-jgq8 e GHSA-587h-7wmj-h5pm: manter correções compatíveis.
   follow-redirects: "1.16.1"
   vite: "8.3.3"
