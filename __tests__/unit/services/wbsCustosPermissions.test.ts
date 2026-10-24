@@ -10,6 +10,7 @@ const tx = vi.hoisted(() => ({
   userProject: { findMany: vi.fn() },
   cardResponsible: { findMany: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn() },
   card: { findUnique: vi.fn() },
+  timeEntry: { findFirst: vi.fn() },
   sprintColumn: { findMany: vi.fn() },
 }))
 vi.mock('@/lib/prisma', () => ({ default: { $transaction: (fn: (db: typeof tx) => unknown) => fn(tx) } }))
@@ -62,6 +63,13 @@ describe('Custos — permissões por campo e responsável persistido', () => {
 })
 
 describe('vínculo com card/sprint (auditoria 24/10)', () => {
+  it('tempo com apontamentos encerrados só é corrigido no card, inclusive após exclusão', async () => {
+    tx.wbsNode.findFirst.mockReset().mockResolvedValueOnce({ id: 'n1', properties: { cardId: 'c1' } })
+    tx.timeEntry.findFirst.mockResolvedValue({ id: 'registro-historico' })
+    await expect(updateNodeProperties(input, { userId: 'g', permissoes: permissions('planilha:realizado-todos') })).rejects.toThrow('apontamentos do card')
+    expect(tx.wbsNode.update).not.toHaveBeenCalled()
+    expect(tx.timeEntry.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ cardId: 'c1', isRunning: false, endedAt: { not: null }, user: { tenantId: 't1' } }) }))
+  })
   it('editar propriedades não troca o card nem a sprint ligados ao nó', async () => {
     tx.wbsNode.findFirst.mockReset()
       .mockResolvedValueOnce({ id: 'n1', properties: { cardId: 'c1', tempoMinutos: 100 } })

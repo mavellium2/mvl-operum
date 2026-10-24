@@ -7,6 +7,12 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.40.2] — 2026-10-24
+
+- Corrige o realizado da Planilha de Custos: atividades vinculadas a cards passam a usar os apontamentos encerrados, incluindo lançamentos manuais e timers parados. Edição e exclusão dos registros se refletem na próxima leitura; excluir o último zera o tempo.
+- Planilha, EAP, exportações e minicards usam a mesma projeção do tempo realizado, com precisão dos segundos registrados e cálculo monetário existente. O orçamento e os materiais não são alterados.
+- Onde não há histórico encerrado, o tempo manual da planilha continua disponível. Quando há apontamentos, o campo de tempo fica somente leitura e orienta a correção no card, evitando dupla contagem. As ações de tempo invalidam as telas relacionadas.
+
 ## [1.40.1] — 2026-10-24
 
 - Corrige o redirecionamento ao login das ferramentas de orçamento MCP: a rota interna `/api/internal/task-budget/:id` deixa de exigir cookie de sessão no proxy e continua validando chave interna, identidade e permissões financeiras no servidor.

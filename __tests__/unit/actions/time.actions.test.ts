@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { revalidatePath } from 'next/cache'
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 vi.mock('@/lib/dal', () => ({ verifySession: vi.fn() }))
 vi.mock('@/lib/api-client', () => ({
@@ -68,6 +70,7 @@ describe('pauseTimerAction', () => {
     vi.mocked(cardsApi.stopTimer).mockResolvedValue({ id: 't1', isRunning: false })
     const result = await pauseTimerAction('clh3v0v7z0000356wf5g95e3')
     expect(cardsApi.stopTimer).toHaveBeenCalledWith('clh3v0v7z0000356wf5g95e3')
+    expect(revalidatePath).toHaveBeenCalledWith('/projetos/[projetoId]/planilha-custos', 'page')
     expect(result).toHaveProperty('entry')
   })
 })

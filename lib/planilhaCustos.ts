@@ -1,10 +1,12 @@
 import { elaboradoresDe, menorJornada, somaValoresPorMinuto } from './elaboradores'
+import { minutosRealizados } from './tempoRealizado'
 import type { WbsNodeClient } from '@/types/wbs'
 import { custoFolhaPrevisto, custoFolhaRealizado, round2 } from '@/lib/custosCalc'
 
 /**
  * Planilha de Custos — modelo IDÊNTICO (§F).
- * Fonte única: folhas da EAP (`WbsNode.properties`). Custo SEMPRE derivado de
+ * Estrutura e dados manuais: folhas da EAP (`WbsNode.properties`); tempo realizado
+ * de cards com histórico vem da projeção dos apontamentos (ADR-065). Custo derivado de
  * quem elaborou a linha (membro do projeto):
  *   jornada         = horasDiarias do elaborador
  *   valorPorMinuto  = remuneracao / 30 / jornada / 60   (coluna R$)
@@ -44,6 +46,8 @@ export interface LinhaAtividade {
   totalOrcado: number | null
   // Realizado
   minReal: number
+  /** Tempo derivado do card: corrigir nos apontamentos, sem sobrescrever pela planilha. */
+  tempoRealDosCards?: boolean
   materiaisReal: number
   dataRealizacao: string | null
   rReal: number | null
@@ -203,7 +207,7 @@ export function computarPlanilhaCustos(
         const p = n.properties
         const minOrcado = p.tempoMinutos ?? 0
         const materiaisOrcado = p.materiais ?? 0
-        const minReal = p.tempoRealMinutos ?? 0
+        const minReal = minutosRealizados(p)
         const materiaisReal = p.materiaisReal ?? 0
         // Jornada/valor derivam SOMENTE de quem elaborou a linha; sem elaborador
         // (ou sem salário/jornada) o valor é nenhum — não existe valor padrão.
@@ -228,6 +232,7 @@ export function computarPlanilhaCustos(
           rOrcado: vpm !== null ? round2(minOrcado * vpm) : null,
           totalOrcado: fatura(minOrcado, materiaisOrcado, vpm),
           minReal,
+          tempoRealDosCards: p.tempoRealApontadoSegundos !== undefined,
           materiaisReal,
           dataRealizacao: p.dataRealizacao ?? null,
           rReal: vpm !== null ? round2(minReal * vpm) : null,

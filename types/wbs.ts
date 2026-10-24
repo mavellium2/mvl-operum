@@ -37,6 +37,8 @@ export interface WbsNodeProperties {
   dataPrevista?: string | null;
   /** Planilha de Custos — folha: tempo real (minutos). */
   tempoRealMinutos?: number;
+  /** DERIVADO em leitura dos apontamentos encerrados do card; não persistido no nó. */
+  tempoRealApontadoSegundos?: number;
   /** Planilha de Custos — folha: custo real de materiais. */
   materiaisReal?: number;
   /** Planilha de Custos — folha: data de realização efetiva. */
