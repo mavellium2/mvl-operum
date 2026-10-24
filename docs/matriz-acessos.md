@@ -7,7 +7,7 @@ usuário (ver [Como as permissões se somam](#como-as-permissões-se-somam)). Po
 o que vale numa instituição pode diferir dos padrões abaixo.
 
 **Status:** rascunho para revisão com o Fábio. As divergências da última seção
-ainda não foram decididas e nenhuma foi corrigida neste levantamento.
+ainda não foram decididas, exceto D1 e D2.
 
 Fontes: [lib/permissoes.ts](../lib/permissoes.ts) (catálogo e padrões),
 [services/authz.ts](../services/authz.ts) (resolução),
@@ -24,7 +24,6 @@ Fontes: [lib/permissoes.ts](../lib/permissoes.ts) (catálogo e padrões),
 | **Gerente de projeto** | Papel de projeto `UserProjectRole` com a função `gerente` (escopo PROJETO). Atribuído só pelo admin. |
 | **Membro do projeto** | `User.role = 'member'` com vínculo ativo em `UserProject`. Recebe a função-base "Membro do projeto". |
 | **Tech Lead / PO** | Cargos em `UserProject.role`. Sem permissões extras por padrão: começam iguais ao membro (decisão do usuário, 30/09/2026). |
-| **Professor** | **Não existe como perfil.** Aparece só no texto dos documentos (Termo de Abertura, EAP). Ver divergência D1. |
 | **Não membro** | Usuário da instituição sem vínculo ativo no projeto. |
 
 Tokens de acesso (PAT) e o conector do Claude (OAuth/MCP) agem como o usuário dono
@@ -91,12 +90,12 @@ tudo, função-base tem o padrão do membro, as demais funções não somam nada
 
 ## Divergências para revisar
 
-Cada item precisa de decisão antes de virar card de correção.
+Cada item ainda aberto precisa de decisão antes de virar card de correção.
 
 | ID | Divergência | Situação hoje | Proposta para discutir |
 |----|-------------|---------------|------------------------|
-| D1 | Não existe perfil "Professor". | Um professor cadastrado como membro recebe o padrão do membro: edita cards e documentos e lança realizado. Uma função só **soma** permissões; não há como uma função tirar algo da função-base. | Definir o que o professor faz (ex.: só consultar e aprovar documentos). Para "só consulta", hoje só dá com ajustes de negação por usuário. Avaliar função que restrinja ou professor como stakeholder sem vínculo de membro. |
-| D2 | `docs/architecture.md` lista `gerente` como `User.role` global. | O admin só grava `admin` ou `member` ([admin.service.ts](../auth-service/src/admin/admin.service.ts)). O `register.dto.ts` ainda aceita `gerente`, mas a rota foi fechada na porta pública (ADR-059). Gerente é papel de projeto. | Corrigido nesta revisão da arquitetura. Avaliar tirar `gerente` do DTO. |
+| D1 | Não existe perfil "Professor". | Professor aparece só no texto dos documentos (Termo de Abertura, EAP). | **Decidido em 24/10/2026: não precisa de perfil próprio.** Quem precisar de acesso diferente usa uma função ou ajustes por usuário. Observação: uma função só **soma** permissões; para tirar algo da função-base, só com ajuste de negação por usuário. |
+| D2 | `docs/architecture.md` listava `gerente` como `User.role` global. | O admin só grava `admin` ou `member` ([admin.service.ts](../auth-service/src/admin/admin.service.ts)). O `register.dto.ts` ainda aceita `gerente`, mas a rota foi fechada na porta pública (ADR-059). Gerente é papel de projeto. | Corrigido nesta revisão da arquitetura. Avaliar tirar `gerente` do DTO. |
 | D3 | Negar uma permissão para um admin não tem efeito. | A resolução devolve tudo para o admin antes de olhar os ajustes. | Confirmar que é intencional e avisar na tela de ajustes do usuário. |
 | D4 | Operador que não é admin não abre a tela de instituições. | O layout de `/admin` exige `role = 'admin'` antes de conferir o operador. Hoje todo operador também é admin, então não aparece. | Decidir se o operador sempre será admin ou se a tela sai do layout de admin. |
 | D5 | Gerente não corrige lançamento de tempo da equipe. | Editar ou excluir tempo de outra pessoa exige `role = 'admin'`. | Decidir se o gerente pode corrigir horas no próprio projeto. |
