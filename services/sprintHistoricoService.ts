@@ -48,15 +48,16 @@ export function diferencasSprint(antes: CamposSprint | null, depois: CamposSprin
 /** Sprint "com dados": tem cards abertos ou tempo registrado neles. */
 export const sprintTemDados = (r: Pick<ResumoSprint, 'cards' | 'segundosRegistrados'>) => r.cards > 0 || r.segundosRegistrados > 0
 
-export async function camposDaSprint(sprintId: string, tx: Prisma.TransactionClient | typeof prisma = prisma): Promise<(CamposSprint & { projectId: string | null }) | null> {
+export async function camposDaSprint(sprintId: string, tx: Prisma.TransactionClient | typeof prisma = prisma, tenantId?: string): Promise<(CamposSprint & { projectId: string | null }) | null> {
   return tx.sprint.findFirst({
-    where: { id: sprintId },
+    where: { id: sprintId, ...(tenantId ? { project: { tenantId } } : {}) },
     select: { name: true, status: true, startDate: true, endDate: true, description: true, qualidade: true, dificuldade: true, projectId: true },
   })
 }
 
-export async function resumoDaSprint(sprintId: string, tx: Prisma.TransactionClient | typeof prisma = prisma): Promise<ResumoSprint | null> {
-  const sprint = await tx.sprint.findFirst({ where: { id: sprintId, deletedAt: null }, select: { id: true, name: true, projectId: true, status: true } })
+/** `tenantId`: só sprints de projetos da instituição (chamadas a partir de ações do usuário). */
+export async function resumoDaSprint(sprintId: string, tx: Prisma.TransactionClient | typeof prisma = prisma, tenantId?: string): Promise<ResumoSprint | null> {
+  const sprint = await tx.sprint.findFirst({ where: { id: sprintId, deletedAt: null, ...(tenantId ? { project: { tenantId } } : {}) }, select: { id: true, name: true, projectId: true, status: true } })
   if (!sprint) return null
   const [cards, tempo] = await Promise.all([
     tx.card.count({ where: { sprintId, deletedAt: null } }),

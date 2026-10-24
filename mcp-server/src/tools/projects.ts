@@ -1,3 +1,4 @@
+import { idSchema } from '../tool'
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { TenantContext, TenantRegistry } from '../tenants.js'
@@ -146,7 +147,7 @@ export function registerProjectTools(server: McpServer, registry: TenantRegistry
       title: 'Detalhar projeto',
       description:
         'Todos os campos do projeto: dados gerais, termo de abertura (charter), membros ativos (com nome/e-mail), macro-fases, stakeholders e sprints com suas colunas. Para as tarefas use operum_list_tasks.',
-      inputSchema: { project_id: z.string() },
+      inputSchema: { project_id: idSchema },
       entity: 'Projeto',
       annotations: { readOnlyHint: true },
     },
@@ -178,7 +179,7 @@ export function registerProjectTools(server: McpServer, registry: TenantRegistry
     {
       title: 'Atualizar projeto',
       description: 'Altera campos do projeto. Só os campos informados são alterados.',
-      inputSchema: { project_id: z.string(), name: z.string().min(1).optional(), status: z.enum(PROJECT_STATUSES).optional(), ...projectFieldsShape },
+      inputSchema: { project_id: idSchema, name: z.string().min(1).optional(), status: z.enum(PROJECT_STATUSES).optional(), ...projectFieldsShape },
       entity: 'Projeto',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
@@ -198,7 +199,7 @@ export function registerProjectTools(server: McpServer, registry: TenantRegistry
     {
       title: 'Arquivar projeto',
       description: 'Muda o status do projeto para ARCHIVED (reversível com operum_update_project).',
-      inputSchema: { project_id: z.string() },
+      inputSchema: { project_id: idSchema },
       entity: 'Projeto',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
@@ -216,7 +217,7 @@ export function registerProjectTools(server: McpServer, registry: TenantRegistry
     {
       title: 'Excluir projeto',
       description: 'Exclui o projeto (soft delete no Operum). Exige confirm: true — confirme com o usuário antes.',
-      inputSchema: { project_id: z.string(), ...confirmShape },
+      inputSchema: { project_id: idSchema, ...confirmShape },
       entity: 'Projeto',
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     },
@@ -236,8 +237,8 @@ export function registerProjectTools(server: McpServer, registry: TenantRegistry
       title: 'Adicionar membro ao projeto',
       description: 'Adiciona (ou reativa) um usuário do tenant como membro do projeto. user_id vem de operum_list_users.',
       inputSchema: {
-        project_id: z.string(),
-        user_id: z.string(),
+        project_id: idSchema,
+        user_id: idSchema,
         role: z.string().optional().describe('Papel/função do membro no projeto (texto livre).'),
         hourly_rate: z.number().nonnegative().optional(),
       },
@@ -262,7 +263,7 @@ export function registerProjectTools(server: McpServer, registry: TenantRegistry
     {
       title: 'Remover membro do projeto',
       description: 'Desativa o vínculo do usuário com o projeto. Exige confirm: true.',
-      inputSchema: { project_id: z.string(), user_id: z.string(), ...confirmShape },
+      inputSchema: { project_id: idSchema, user_id: idSchema, ...confirmShape },
       entity: 'Projeto ou membro',
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     },

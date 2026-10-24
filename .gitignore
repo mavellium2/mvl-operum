@@ -67,3 +67,5 @@ mcp-server/dist/
 # Binary artifacts
 *.deb
 *.tar.gz
+# Permissões pessoais do Claude Code: nunca versionar (liberavam node -e, docker exec, env...)
+.claude/settings.local.json

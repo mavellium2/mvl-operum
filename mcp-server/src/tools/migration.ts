@@ -39,7 +39,7 @@ export function registerMigrationTools(server: McpServer, registry: TenantRegist
       title: 'Exportar projeto',
       description:
         'Exporta o projeto inteiro num JSON (format operum-project/v1): dados e termo de abertura, macro-fases, membros e responsáveis (com e-mail), stakeholders, etiquetas, sprints com colunas, tarefas e comentários. Anexos vão só como referência. Para copiar entre tenants prefira operum_copy_project — o bundle não precisa passar pela conversa.',
-      inputSchema: { project_id: z.string(), include_comments: z.boolean().optional() },
+      inputSchema: { project_id: idSchema, include_comments: z.boolean().optional() },
       entity: 'Projeto',
       annotations: { readOnlyHint: true },
     },
@@ -61,7 +61,7 @@ export function registerMigrationTools(server: McpServer, registry: TenantRegist
       description:
         'Recria em outro tenant um projeto exportado por operum_export_project. Pessoas são casadas por e-mail (ou user_mapping); quem não existir no destino fica sem vínculo e aparece em unmapped_users. Retorna relatório com criados/pulados/erros e o mapa de ids origem→destino.',
       inputSchema: {
-        target_tenant_id: z.string().describe('Tenant de destino (precisa ter token configurado).'),
+        target_tenant_id: idSchema.describe('Tenant de destino (precisa ter token configurado).'),
         bundle: z.record(z.string(), z.unknown()).describe('JSON devolvido por operum_export_project (campo bundle).'),
         ...importOptionsShape,
       },
@@ -98,9 +98,9 @@ export function registerMigrationTools(server: McpServer, registry: TenantRegist
       description:
         'Exporta o projeto do tenant de origem e o recria no tenant de destino numa única chamada (sem o JSON passar pela conversa). dry_run=true (padrão) só mostra o plano. Pessoas casadas por e-mail. Relatório final com criados, pulados e erros.',
       inputSchema: {
-        source_tenant_id: z.string().optional().describe('Tenant de origem (padrão: tenant do token padrão).'),
-        project_id: z.string().describe('Projeto no tenant de origem.'),
-        target_tenant_id: z.string(),
+        source_tenant_id: idSchema.optional().describe('Tenant de origem (padrão: tenant do token padrão).'),
+        project_id: idSchema.describe('Projeto no tenant de origem.'),
+        target_tenant_id: idSchema,
         ...importOptionsShape,
       },
       entity: 'Projeto',

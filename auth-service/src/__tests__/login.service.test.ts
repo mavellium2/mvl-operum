@@ -6,7 +6,7 @@ import { UnauthorizedException } from '@nestjs/common'
 vi.mock('../prisma', () => ({
   prisma: {
     tenant: { findFirst: vi.fn() },
-    user: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
+    user: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
   },
 }))
 
@@ -213,6 +213,17 @@ describe('AuthService.login — resolução de tenant por subdomínio', () => {
     await expect(
       service.login({ email: 'ana@x.com', password: 'errada' }, undefined),
     ).rejects.toThrow('Credenciais inválidas')
+    // Conta a tentativa em todas as contas testadas (antes nenhuma chegava ao bloqueio).
+    expect(prisma.user.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['user-a', 'user-b'] } }, data: { loginAttempts: { increment: 1 } } })
+  })
+
+  it('conta inativa ou bloqueada com senha errada responde igual a credencial inválida', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([makeUser({ isActive: false })] as never)
+    vi.mocked(bcrypt.compare).mockResolvedValue(false as never)
+    await expect(makeService().login({ email: 'ana@x.com', password: 'errada' }, undefined)).rejects.toThrow('Credenciais inválidas')
+    vi.mocked(prisma.user.findMany).mockResolvedValue([makeUser({ loginAttempts: 10 })] as never)
+    await expect(makeService().login({ email: 'ana@x.com', password: 'errada' }, undefined)).rejects.toThrow('Credenciais inválidas')
+    expect(prisma.user.update).not.toHaveBeenCalled()
   })
 
   it('mesmo email em A e B com senhas diferentes: cada um loga só no seu tenant com sua própria senha', async () => {

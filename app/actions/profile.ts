@@ -6,6 +6,7 @@ import { verifySession } from '@/lib/dal'
 import { authApi } from '@/lib/api-client'
 import { s3, BUCKET, publicUrl } from '@/lib/minio'
 import { MeuPerfilSchema } from '@/lib/validation/userSchemas'
+import { lerImagemAssinatura } from '@/lib/imagemAssinatura'
 
 export async function getUserProfileAction() {
   try {
@@ -66,18 +67,16 @@ export async function changePasswordAction(prevState: ProfileActionState, formDa
 export async function uploadSignatureAction(formData: FormData) {
   try {
     const { userId } = await verifySession()
-    const file = formData.get('file') as File
-    if (!file || file.size === 0) throw new Error('Arquivo inválido')
-
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
-    const key = `signatures/${userId}/signature-${Date.now()}.${ext}`
+    const imagem = await lerImagemAssinatura(formData.get('file') as File | null)
+    if ('error' in imagem) throw new Error(imagem.error)
+    const key = `signatures/${userId}/signature-${Date.now()}.${imagem.ext}`
 
     await s3.send(
       new PutObjectCommand({
         Bucket: BUCKET,
         Key: key,
-        Body: Buffer.from(await file.arrayBuffer()),
-        ContentType: file.type,
+        Body: imagem.body,
+        ContentType: imagem.contentType,
       }),
     )
 

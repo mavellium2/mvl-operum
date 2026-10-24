@@ -13,6 +13,9 @@ vi.mock('../prisma', () => ({
       findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(),
       update: vi.fn(), updateMany: vi.fn(), create: vi.fn(),
     },
+    apiToken: { findMany: vi.fn(), updateMany: vi.fn() },
+    oAuthGrant: { findMany: vi.fn(), updateMany: vi.fn() },
+    oAuthToken: { findMany: vi.fn() },
     $transaction: vi.fn(async (ops: unknown[]) => ops),
   },
 }))
@@ -38,7 +41,12 @@ const conta = (o: Record<string, unknown> = {}) => ({
   platformOperator: false, ...o,
 })
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.mocked(prisma.apiToken.findMany).mockResolvedValue([])
+  vi.mocked(prisma.oAuthGrant.findMany).mockResolvedValue([])
+  vi.mocked(prisma.oAuthToken.findMany).mockResolvedValue([])
+})
 
 describe('PATCH /auth/me — só campos de perfil', () => {
   it.each(['role', 'tenantId', 'passwordHash', 'isActive', 'tokenVersion', 'platformOperator', 'identityId', 'hourlyRate', 'cargo'])(
@@ -143,5 +151,45 @@ describe('entrar/provisionar instituição — só operador da plataforma', () =
     vi.mocked(prisma.user.findFirst).mockResolvedValue(null)
     await expect(service().provisionTenantAdmin('u-1', 't-b')).resolves.toEqual({ ok: true })
     expect(prisma.user.create).toHaveBeenCalledWith({ data: expect.objectContaining({ tenantId: 't-b', identityId: 'u-1' }) })
+  })
+})
+
+describe('troca de senha sem a atual (password/alterar)', () => {
+  it('só vale na troca obrigatória', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ forcePasswordChange: false } as never)
+    await expect(service().alterarSenha('u-1', 'NovaSenha1!')).rejects.toThrow(ForbiddenException)
+    expect(prisma.user.update).not.toHaveBeenCalled()
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ forcePasswordChange: true } as never)
+    await service().alterarSenha('u-1', 'NovaSenha1!')
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ forcePasswordChange: false }) }))
+  })
+})
+
+describe('redefinição de senha — etapa final conta tentativas', () => {
+  it('passado o limite, invalida o código mesmo chamando só a etapa final', async () => {
+    const redisReset = { incrWithTTL: vi.fn().mockResolvedValue(6), delResetAttempts: vi.fn() }
+    const svc = new AuthService(jwt as never, redisReset as never, {} as never)
+    vi.mocked(prisma.tenant.findFirst).mockResolvedValue({ id: 't-a' } as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(conta({ resetToken: 'hash-codigo', resetTokenExpiry: new Date(Date.now() + 60_000) }) as never)
+    await expect(svc.resetPassword({ email: 'ana@x.com', code: 'ABCDEFGH', newPassword: 'NovaSenha1!' } as never)).rejects.toThrow()
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'u-1' }, data: { resetToken: null, resetTokenExpiry: null } })
+    expect(bcrypt.hash).not.toHaveBeenCalled()
+  })
+})
+
+describe('troca de senha derruba PATs e conexões OAuth', () => {
+  it('revoga e limpa o cache do gateway', async () => {
+    const redisCache = { deleteApiTokenCache: vi.fn(), deleteOAuthCache: vi.fn() }
+    const svc = new AuthService(jwt as never, redisCache as never, {} as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(conta() as never)
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+    vi.mocked(prisma.apiToken.findMany).mockResolvedValue([{ id: 'pat-1', tokenHash: 'h1' }] as never)
+    vi.mocked(prisma.oAuthGrant.findMany).mockResolvedValue([{ id: 'g-1' }] as never)
+    vi.mocked(prisma.oAuthToken.findMany).mockResolvedValue([{ tokenHash: 'oh1' }] as never)
+    await svc.changePassword('u-1', { currentPassword: 'atual', newPassword: 'NovaSenha1!' })
+    expect(prisma.apiToken.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['pat-1'] } }, data: { revokedAt: expect.any(Date) } })
+    expect(prisma.oAuthGrant.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['g-1'] } }, data: { revokedAt: expect.any(Date) } })
+    expect(redisCache.deleteApiTokenCache).toHaveBeenCalledWith('h1')
+    expect(redisCache.deleteOAuthCache).toHaveBeenCalledWith(['oh1'])
   })
 })

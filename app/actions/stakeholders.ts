@@ -7,6 +7,7 @@ import { stakeholdersApi, projectsApi } from '@/lib/api-client'
 import { s3, BUCKET, publicUrl } from '@/lib/minio'
 import prisma from '@/lib/prisma'
 import { normalizarContato } from '@/lib/contato'
+import { lerImagemAssinatura } from '@/lib/imagemAssinatura'
 
 interface StakeholderInput {
   name: string
@@ -129,9 +130,6 @@ export async function reorderMembersAction(projectId: string, orderedUserIds: st
   }
 }
 
-const SIGNATURE_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg']
-const SIGNATURE_MAX_BYTES = 2 * 1024 * 1024
-
 export async function uploadMemberSignatureAction(formData: FormData, userId: string) {
   try {
     const { role, userId: callerId, tenantId } = await verifySession()
@@ -140,20 +138,16 @@ export async function uploadMemberSignatureAction(formData: FormData, userId: st
     }
 
     if (!(await prisma.user.findFirst({ where: { id: userId, tenantId, deletedAt: null }, select: { id: true } }))) return { error: 'Usuário não encontrado' }
-    const file = formData.get('file') as File
-    if (!file || file.size === 0) return { error: 'Arquivo inválido' }
-    if (!SIGNATURE_ALLOWED_TYPES.includes(file.type)) return { error: 'Apenas PNG e JPEG são aceitos' }
-    if (file.size > SIGNATURE_MAX_BYTES) return { error: 'Arquivo excede 2 MB' }
-
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
-    const key = `signatures/${userId}/signature-${Date.now()}.${ext}`
+    const imagem = await lerImagemAssinatura(formData.get('file') as File | null)
+    if ('error' in imagem) return { error: imagem.error }
+    const key = `signatures/${userId}/signature-${Date.now()}.${imagem.ext}`
 
     await s3.send(
       new PutObjectCommand({
         Bucket: BUCKET,
         Key: key,
-        Body: Buffer.from(await file.arrayBuffer()),
-        ContentType: file.type,
+        Body: imagem.body,
+        ContentType: imagem.contentType,
       }),
     )
 

@@ -1,3 +1,4 @@
+import { idSchema } from '../tool'
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { TenantRegistry } from '../tenants.js'
@@ -17,7 +18,7 @@ export function registerSprintTools(server: McpServer, registry: TenantRegistry)
       title: 'Listar sprints',
       description:
         'Sprints do projeto com suas colunas (as colunas são as etapas/status do quadro). Tarefas fora de sprint ficam no backlog do projeto.',
-      inputSchema: { project_id: z.string(), status: z.enum(SPRINT_STATUSES).optional() },
+      inputSchema: { project_id: idSchema, status: z.enum(SPRINT_STATUSES).optional() },
       entity: 'Projeto',
       annotations: { readOnlyHint: true },
     },
@@ -36,7 +37,7 @@ export function registerSprintTools(server: McpServer, registry: TenantRegistry)
       title: 'Detalhar sprint',
       description: 'Sprint com colunas (ordenadas) e, opcionalmente, as tarefas de cada coluna.',
       inputSchema: {
-        sprint_id: z.string(),
+        sprint_id: idSchema,
         include_tasks: z.boolean().optional().describe('Inclui as tarefas agrupadas por coluna (padrão true).'),
       },
       entity: 'Sprint',
@@ -64,7 +65,7 @@ export function registerSprintTools(server: McpServer, registry: TenantRegistry)
       description:
         'Cria uma sprint no projeto. O Operum cria automaticamente 4 colunas padrão (A Fazer, Em andamento, Em teste, Concluído) — ajuste com as tools de coluna.',
       inputSchema: {
-        project_id: z.string(),
+        project_id: idSchema,
         name: z.string().min(1),
         description: z.string().optional(),
         status: z.enum(SPRINT_STATUSES).optional(),
@@ -98,7 +99,7 @@ export function registerSprintTools(server: McpServer, registry: TenantRegistry)
       title: 'Atualizar sprint',
       description: 'Altera nome, descrição, status, datas ou avaliação (qualidade/dificuldade) da sprint.',
       inputSchema: {
-        sprint_id: z.string(),
+        sprint_id: idSchema,
         name: z.string().min(1).optional(),
         description: z.string().optional(),
         status: z.enum(SPRINT_STATUSES).optional(),
@@ -130,7 +131,7 @@ export function registerSprintTools(server: McpServer, registry: TenantRegistry)
     {
       title: 'Excluir sprint',
       description: 'Exclui a sprint; as tarefas dela voltam para o backlog do projeto. Exige confirm: true.',
-      inputSchema: { sprint_id: z.string(), ...confirmShape },
+      inputSchema: { sprint_id: idSchema, ...confirmShape },
       entity: 'Sprint',
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     },
@@ -149,7 +150,7 @@ export function registerSprintTools(server: McpServer, registry: TenantRegistry)
     {
       title: 'Criar coluna',
       description: 'Cria uma coluna (etapa/status) na sprint. position define a ordem (0 = primeira); padrão: ao final.',
-      inputSchema: { sprint_id: z.string(), title: z.string().min(1), position: z.number().int().min(0).optional() },
+      inputSchema: { sprint_id: idSchema, title: z.string().min(1), position: z.number().int().min(0).optional() },
       entity: 'Sprint',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
@@ -173,8 +174,8 @@ export function registerSprintTools(server: McpServer, registry: TenantRegistry)
       title: 'Atualizar coluna',
       description: 'Renomeia ou reposiciona uma coluna da sprint.',
       inputSchema: {
-        sprint_id: z.string(),
-        column_id: z.string(),
+        sprint_id: idSchema,
+        column_id: idSchema,
         title: z.string().min(1).optional(),
         position: z.number().int().min(0).optional(),
       },
@@ -199,7 +200,7 @@ export function registerSprintTools(server: McpServer, registry: TenantRegistry)
     {
       title: 'Excluir coluna',
       description: 'Exclui uma coluna da sprint. Mova as tarefas dela antes (operum_move_task). Exige confirm: true.',
-      inputSchema: { sprint_id: z.string(), column_id: z.string(), ...confirmShape },
+      inputSchema: { sprint_id: idSchema, column_id: idSchema, ...confirmShape },
       entity: 'Coluna',
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     },
