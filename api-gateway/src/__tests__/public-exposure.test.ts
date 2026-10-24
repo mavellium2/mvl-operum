@@ -62,3 +62,13 @@ describe('createGatewayApp({ publicExposure: true })', () => {
     expect(res.status).toBe(401)
   })
 })
+
+describe('rate limit usa o IP real do cliente', () => {
+  it('confia só em proxies de rede privada', () => {
+    const app = createGatewayApp()
+    const trust = app.get('trust proxy fn') as (addr: string, i: number) => boolean
+    expect(trust('172.18.0.5', 0)).toBe(true)
+    expect(trust('127.0.0.1', 0)).toBe(true)
+    expect(trust('203.0.113.9', 0)).toBe(false)
+  })
+})

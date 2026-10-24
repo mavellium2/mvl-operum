@@ -65,8 +65,8 @@ export async function updateSprintAction(_prevState: unknown, id: string, data: 
 /** Dados da sprint antes de excluir: com cards ou tempo registrado, o motivo é obrigatório. */
 export async function getSprintExclusaoInfoAction(id: string) {
   try {
-    await verifySession()
-    const resumo = await resumoDaSprint(id)
+    const { tenantId } = await verifySession()
+    const resumo = await resumoDaSprint(id, undefined, tenantId)
     if (!resumo) return { error: 'Sprint não encontrada' }
     return { cards: resumo.cards, segundosRegistrados: resumo.segundosRegistrados, exigeMotivo: sprintTemDados(resumo) }
   } catch (err) {
@@ -77,7 +77,7 @@ export async function getSprintExclusaoInfoAction(id: string) {
 export async function deleteSprintAction(id: string, _projectId?: string, motivo?: string) {
   try {
     const { userId, tenantId } = await verifySession()
-    const resumo = await resumoDaSprint(id)
+    const resumo = await resumoDaSprint(id, undefined, tenantId)
     const justificativa = motivo?.trim() ?? ''
     if (resumo && sprintTemDados(resumo) && justificativa.length < MOTIVO_MINIMO) {
       return { error: `Esta sprint tem dados (cards ou horas registradas). Informe o motivo da exclusão (mín. ${MOTIVO_MINIMO} caracteres).` }

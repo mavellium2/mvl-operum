@@ -14,6 +14,10 @@ on:
 env:
   OWNER: ${{ github.repository_owner }}
 
+# Padrão mínimo para todos os jobs; quem precisa de mais declara no próprio job.
+permissions:
+  contents: read
+
 jobs:
   service-validation:
     if: github.event_name != 'pull_request'
@@ -30,8 +34,11 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Check confirmation
+        # Entrada do usuário via env, nunca interpolada no script (injeção de shell).
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm }}
         run: |
-          if [ "${{ github.event.inputs.confirm }}" != "deploy" ]; then
+          if [ "$CONFIRM" != "deploy" ]; then
             echo "Deployment not confirmed. Type 'deploy' in the confirm field."
             exit 1
           fi
@@ -44,12 +51,12 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
       - name: Scan for secrets (TruffleHog)
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9 # v3.99.2
         with:
           path: ./
           base: ${{ github.event.pull_request.base.sha || ((github.event.before != '' && github.event.before != '0000000000000000000000000000000000000000') && github.event.before) || 'HEAD~1' }}
@@ -57,12 +64,12 @@ jobs:
           extra_args: --exclude-paths=.trufflehogignore
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
         with:
           languages: javascript-typescript
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
 
   # ── Tests, lint, dependency audit ────────────────────────────────────────────
   test:
@@ -70,11 +77,11 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: 'pnpm'
@@ -109,24 +116,24 @@ jobs:
     outputs:
       owner: ${{ steps.meta.outputs.owner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Normalise owner to lowercase
         id: meta
         run: echo "owner=$(echo '${{ env.OWNER }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push app image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           push: true
@@ -137,7 +144,7 @@ jobs:
           cache-to: type=inline
 
       - name: Build and push notification-service image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./notification-service
           push: true
@@ -148,7 +155,7 @@ jobs:
           cache-to: type=inline
 
       - name: Build and push auth-service image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./auth-service
           push: true
@@ -159,7 +166,7 @@ jobs:
           cache-to: type=inline
 
       - name: Build and push api-gateway image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./api-gateway
           push: true
@@ -170,7 +177,7 @@ jobs:
           cache-to: type=inline
 
       - name: Build and push file-service image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./file-service
           push: true
@@ -181,7 +188,7 @@ jobs:
           cache-to: type=inline
 
       - name: Build and push project-service image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./project-service
           push: true
@@ -192,7 +199,7 @@ jobs:
           cache-to: type=inline
 
       - name: Build and push sprint-service image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./sprint-service
           push: true
@@ -203,7 +210,7 @@ jobs:
           cache-to: type=inline
 
       - name: Build and push mcp-server image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./mcp-server
           push: true
@@ -214,7 +221,7 @@ jobs:
           cache-to: type=inline
 
       - name: Scan app image for vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ghcr.io/${{ steps.meta.outputs.owner }}/app:${{ github.sha }}
           format: table
@@ -223,7 +230,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Scan notification-service image (Trivy)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ghcr.io/${{ steps.meta.outputs.owner }}/notification-service:${{ github.sha }}
           format: table
@@ -232,7 +239,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Scan auth-service image (Trivy)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ghcr.io/${{ steps.meta.outputs.owner }}/auth-service:${{ github.sha }}
           format: table
@@ -244,7 +251,7 @@ jobs:
         run: docker run --rm --network none -i ghcr.io/${{ steps.meta.outputs.owner }}/api-gateway:${{ github.sha }} node < api-gateway/scripts/verify-braces-patch.cjs
 
       - name: Scan api-gateway image (Trivy)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ghcr.io/${{ steps.meta.outputs.owner }}/api-gateway:${{ github.sha }}
           format: table
@@ -253,7 +260,7 @@ jobs:
           trivyignores: .trivyignore-gateway.yaml
 
       - name: Scan file-service image (Trivy)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ghcr.io/${{ steps.meta.outputs.owner }}/file-service:${{ github.sha }}
           format: table
@@ -262,7 +269,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Scan project-service image (Trivy)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ghcr.io/${{ steps.meta.outputs.owner }}/project-service:${{ github.sha }}
           format: table
@@ -271,7 +278,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Scan sprint-service image (Trivy)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ghcr.io/${{ steps.meta.outputs.owner }}/sprint-service:${{ github.sha }}
           format: table
@@ -280,7 +287,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Scan mcp-server image (Trivy)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ghcr.io/${{ steps.meta.outputs.owner }}/mcp-server:${{ github.sha }}
           format: table
@@ -303,7 +310,7 @@ jobs:
             printf '%s_IMAGE=%s@%s\n' "$key" "$image" "$digest" >> release.env
           done
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: approved-release
           path: release.env
@@ -333,7 +340,7 @@ jobs:
       packages: read
       deployments: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           sparse-checkout: |
             docker-compose.yml
@@ -342,7 +349,7 @@ jobs:
             observability
           sparse-checkout-cone-mode: false
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: approved-release
 

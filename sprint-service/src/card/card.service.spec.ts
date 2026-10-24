@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common'
 
 vi.mock('../prisma', () => ({
   prisma: {
@@ -12,7 +12,7 @@ vi.mock('../prisma', () => ({
     cardMovement: { create: vi.fn(), findMany: vi.fn() },
     cardTag: { upsert: vi.fn(), delete: vi.fn() },
     cardResponsible: { upsert: vi.fn(), delete: vi.fn(), count: vi.fn() },
-    tag: { delete: vi.fn() },
+    tag: { delete: vi.fn(), findFirst: vi.fn() },
     $transaction: vi.fn(),
   },
 }))
@@ -231,8 +231,17 @@ describe('CardService — escrita escopada por tenant', () => {
 
   it('deleteTag rejeita tag de outro tenant', async () => {
     assert.assertTag.mockImplementation(notFound)
-    await expect(service.deleteTag('t1', 'g-outra')).rejects.toThrow(NotFoundException)
+    await expect(service.deleteTag('t1', 'g-outra', { userId: 'u1', isAdmin: false })).rejects.toThrow(NotFoundException)
     expect(db.tag.delete).not.toHaveBeenCalled()
+  })
+
+  it('deleteTag: só a dona da etiqueta (ou admin) apaga', async () => {
+    assert.assertTag.mockResolvedValue(undefined)
+    db.tag.findFirst.mockResolvedValue(null)
+    await expect(service.deleteTag('t1', 'g1', { userId: 'u-outra', isAdmin: false })).rejects.toThrow(ForbiddenException)
+    expect(db.tag.delete).not.toHaveBeenCalled()
+    await service.deleteTag('t1', 'g1', { userId: 'u-admin', isAdmin: true })
+    expect(db.tag.delete).toHaveBeenCalledWith({ where: { id: 'g1' } })
   })
 })
 

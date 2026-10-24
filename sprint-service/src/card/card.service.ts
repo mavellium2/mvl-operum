@@ -1,6 +1,6 @@
 import { colunaExigeResponsavel, mensagemSemResponsavel, mensagemUltimoResponsavel } from './responsavel-obrigatorio'
 import { isTransactionConflict } from '../common/transaction-conflict'
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { prisma } from '../prisma'
 import type { Prisma } from '../../lib/generated/prisma'
 import { sprintInTenant } from '../common/tenant-scope'
@@ -386,8 +386,13 @@ export class CardService {
     })
   }
 
-  async deleteTag(tenantId: string, tagId: string) {
+  /** Etiquetas são pessoais: só a dona apaga (ou o admin da instituição). */
+  async deleteTag(tenantId: string, tagId: string, quem: { userId: string; isAdmin: boolean }) {
     await assertTag(tenantId, tagId)
+    if (!quem.isAdmin) {
+      const dona = await prisma.tag.findFirst({ where: { id: tagId, tenantId, userId: quem.userId }, select: { id: true } })
+      if (!dona) throw new ForbiddenException('Só quem criou a etiqueta pode apagá-la')
+    }
     await prisma.tag.delete({ where: { id: tagId } })
   }
 }

@@ -22,7 +22,7 @@ describe('internal authorization contract', () => {
   })
   it('aceita somente usuário ativo do tenant e obtém o papel no banco', async () => {
     expect((await POST(request())).status).toBe(200)
-    expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'user-A', tenantId: 'tenant-A', isActive: true, deletedAt: null } }))
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'user-A', tenantId: 'tenant-A', isActive: true, deletedAt: null, tenant: { status: 'ACTIVE', deletedAt: null } } }))
     expect(authorizeApi).toHaveBeenCalledWith({ userId: 'user-A', tenantId: 'tenant-A', role: 'member' }, 'PATCH', '/cards/card-A', { title: 'novo' })
   })
   it('não aceita papel fornecido no payload', async () => {

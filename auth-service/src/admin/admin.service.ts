@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException, ForbiddenException } 
 import { prisma } from '../prisma'
 import bcrypt from 'bcryptjs'
 import type { AdminCreateUserDto, AdminUpdateUserDto } from './admin.dto'
+import { revogarAcessosPersistentes } from '../auth/revogacao'
 
 const BCRYPT_ROUNDS = 12
 
@@ -91,7 +92,9 @@ export class AdminService {
       updateData.tokenVersion = { increment: 1 }
     }
 
-    return prisma.user.update({ where: { id: userId }, data: updateData, select: USER_SELECT })
+    const atualizado = await prisma.user.update({ where: { id: userId }, data: updateData, select: USER_SELECT })
+    if (password) await revogarAcessosPersistentes(userId)
+    return atualizado
   }
 
   async toggleActive(userId: string, callerTenantId: string, callerRole: string, active: boolean) {

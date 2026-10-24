@@ -167,7 +167,24 @@ function decodeURIComponentSafe(s: string): string {
   }
 }
 
+// Cada download pode ocupar até `maxBytes` (50 MB) de memória num container de
+// 256 MB: chamadas simultâneas acima do limite são recusadas, como em /uploads.
+export const MAX_DOWNLOADS_SIMULTANEOS = 2
+let downloadsEmAndamento = 0
+
 export const safeDownload: Downloader = async (raw, opts) => {
+  if (downloadsEmAndamento >= MAX_DOWNLOADS_SIMULTANEOS) {
+    throw new UserError('Outro anexo por URL ainda está sendo baixado. Tente de novo em instantes.')
+  }
+  downloadsEmAndamento++
+  try {
+    return await baixar(raw, opts)
+  } finally {
+    downloadsEmAndamento--
+  }
+}
+
+const baixar: Downloader = async (raw, opts) => {
   const allowed = opts.isAllowedAddress ?? isPublicAddress
   const deadline = Date.now() + TIMEOUT_MS
   let url = checkUrl(raw, allowed, opts.allowAnyPort)
