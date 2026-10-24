@@ -12,16 +12,16 @@ funcionalidade depois disso é uma versão MINOR.
 Correções da auditoria de segurança de 24/10 (críticas e altas).
 
 ### Segurança
-- **API pública:** o api-gateway passa a ter uma porta pública (4080, usada pelo Traefik) que só expõe `GET /auth/me`, `/auth/my-tenants` e `/auth/all-users` em `/auth/*`. Antes, por repassar a chave interna em toda requisição, rotas internas de conta (`/auth/register`, `/auth/join-tenant`, `/auth/admin/*`, `/auth/provision-tenant-admin`) ficavam acessíveis a qualquer usuário logado chamando a API direto (ADR-059).
-- **Perfil e admin:** `PATCH /auth/me` e as rotas de admin do auth-service aceitam só os campos permitidos (sem `role`, `tenantId`, hash de senha etc.), e as de admin ficam restritas à instituição de quem chama. A edição de membro no app e o vínculo de membro no project-service também deixam de gravar campos fora da lista (o `projectId` do vínculo não pode mais ser trocado pelo corpo da requisição).
-- **Troca de instituição:** contas de instituições diferentes só trocam entre si quando vinculadas. Uma conta com o mesmo e-mail e ainda não vinculada pede a senha dela na primeira troca. O consentimento OAuth mostra só as instituições vinculadas (ADR-061).
-- **Permissões por caminho:** maiúsculas no caminho (ex.: `/projects/x/Roles`) não contornam mais a regra que reserva papéis e cargos ao administrador.
-- **Notificações:** cada pessoa só lê, marca e apaga as próprias notificações pela API, e criar notificação pela API pública deixa de ser possível. O link "Ver" aceita só caminhos do próprio Operum.
-- **EAP:** o vínculo de um item com card ou sprint só vale para cards e sprints do mesmo projeto; editar propriedades não troca o card ligado; os responsáveis de um card não são copiados para itens de outro projeto.
+- API pública: o api-gateway passa a ter uma porta pública (4080, usada pelo Traefik) que só expõe `GET /auth/me`, `/auth/my-tenants` e `/auth/all-users` nas rotas de conta (`/auth`). Antes, por repassar a chave interna em toda requisição, rotas internas de conta (`/auth/register`, `/auth/join-tenant`, as rotas de admin (`/auth/admin`), `/auth/provision-tenant-admin`) ficavam acessíveis a qualquer usuário logado chamando a API direto (ADR-059).
+- Perfil e admin: `PATCH /auth/me` e as rotas de admin do auth-service aceitam só os campos permitidos (sem `role`, `tenantId`, hash de senha etc.), e as de admin ficam restritas à instituição de quem chama. A edição de membro no app e o vínculo de membro no project-service também deixam de gravar campos fora da lista (o `projectId` do vínculo não pode mais ser trocado pelo corpo da requisição).
+- Troca de instituição: contas de instituições diferentes só trocam entre si quando vinculadas. Uma conta com o mesmo e-mail e ainda não vinculada pede a senha dela na primeira troca. O consentimento OAuth mostra só as instituições vinculadas (ADR-061).
+- Permissões por caminho: maiúsculas no caminho (ex.: `/projects/x/Roles`) não contornam mais a regra que reserva papéis e cargos ao administrador.
+- Notificações: cada pessoa só lê, marca e apaga as próprias notificações pela API, e criar notificação pela API pública deixa de ser possível. O link "Ver" aceita só caminhos do próprio Operum.
+- EAP: o vínculo de um item com card ou sprint só vale para cards e sprints do mesmo projeto; editar propriedades não troca o card ligado; os responsáveis de um card não são copiados para itens de outro projeto.
 - Chave interna comparada em tempo constante em todos os serviços.
 
 ### Adicionado
-- **Operador da plataforma:** gerenciar instituições passa a exigir o papel de operador (`User.platformOperator`). O `admin` administra só a própria instituição. A migration concede o papel aos admins atuais das instituições da Mavellium (ADR-060).
+- Operador da plataforma: gerenciar instituições passa a exigir o papel de operador (`User.platformOperator`). O `admin` administra só a própria instituição. A migration concede o papel aos admins atuais das instituições da Mavellium (ADR-060).
 - Confirmação de senha em "Minhas instituições" na primeira troca para uma conta ainda não vinculada.
 
 ## [1.38.1] — 2026-10-24
