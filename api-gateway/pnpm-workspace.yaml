@@ -1,11 +1,8 @@
 packages: []
 patchedDependencies:
   braces@3.0.3: patches/braces@3.0.3.patch
-# Exceção somente para o código mitigado pelo patch acima (ADR-011).
-# Remover patch e exceção quando houver correção publicada; testes validam o limite.
-auditConfig:
-  ignoreGhsas:
-    - GHSA-vfj7-8cjw-p6xm
+# Patch de profundidade mantido como defesa extra (ADR-062); o advisory
+# GHSA-vfj7-8cjw-p6xm foi retirado em 23/10/2026 e o audit não precisa de exceção.
 overrides:
   # GHSA-27r3-jxmh-p828 (DoS no body-parser): correção dentro de cada major.
   "body-parser@<1.20.9": ">=1.20.9 <2.0.0"

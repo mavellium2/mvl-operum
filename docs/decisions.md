@@ -181,7 +181,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-011 — Mitigar profundidade de braces enquanto não há correção publicada
 
 - **Data do registro:** 2026-10-03.
-- **Status:** implementada nesta PR; sem validação em produção.
+- **Status:** substituída em parte pelo [ADR-062](#adr-062--manter-o-patch-de-braces-sem-exceção-depois-da-retirada-do-advisory) em 2026-10-24: o advisory foi retirado; o patch continua, a exceção do audit saiu.
 - **Contexto:** GHSA-vfj7-8cjw-p6xm afeta `braces <=3.0.3`, transitivo do lint e do proxy. Na consulta ao registro e ao advisory em 03/10/2026, não havia versão corrigida. O audit bloqueia o CI mesmo após corrigir Next.js.
 - **Escolha:** aplicar patch pnpm em parse e percursos recursivos de compile/expand/stringify, limitando a profundidade a 128, incluindo AST fornecida diretamente. Registrar somente esse GHSA na exceção do audit enquanto o patch estiver ativo. Espelhar o patch no gateway isolado e copiá-lo nos estágios Docker antes da instalação congelada. Executar instalação congelada, testes do patch e audit high nas PRs para main/develop, além da auditoria existente no deploy. Todos esses workflows usam a versão pnpm do `packageManager`, sem pin paralelo.
 - **Justificativa:** rejeitar entradas excessivamente aninhadas antes de esgotar a pilha, mantendo globs usuais e uma mudança de dependência rastreável por hash. O audit consulta a versão publicada e não inspeciona correções locais. Testes carregam os consumidores reais para impedir que a exceção mascare ausência do patch. Validar nas PRs antecipa falhas que antes só apareciam no deploy; usar a mesma versão pnpm elimina divergências com a validação local.
@@ -205,7 +205,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-013 — Verificar o patch na imagem antes da exceção Trivy de braces
 
 - **Data do registro:** 2026-10-04.
-- **Status:** implementada nesta PR; sem merge/deploy nesta tarefa.
+- **Status:** substituída em parte pelo [ADR-062](#adr-062--manter-o-patch-de-braces-sem-exceção-depois-da-retirada-do-advisory) em 2026-10-24: a regra do Trivy e os controles negativos saíram; a verificação do patch na imagem continua.
 - **Contexto:** o run de produção `37170296982` apontou CVE-2026-93687 no gateway, no caminho de `braces@3.0.3` que já contém o hash do patch da ADR-011. Trivy consulta metadados publicados e não interpreta o patch; a exceção do pnpm audit não se aplica ao scan de imagens. Advisory/registro consultados nesta data continuam sem versão corrigida.
 - **Escolha:** conferir dentro da imagem final o hash/código efetivamente carregado pelo proxy, parsing profundo, AST direta e globs usuais. Só depois usar um filtro YAML limitado a CVE-2026-93687 e ao caminho exato da cópia corrigida, com expiração em 2026-11-03. Compartilhar script e filtro entre PRs, staging e produção. Nas PRs, executar controles negativos com Trivy real para provar que o filtro não cobre a cópia sem patch nem outro hash. PR constrói apenas imagem local, sem publicação/deploy. Preservar a exceção picomatch já existente no gateway e manter `.trivyignore` nos demais serviços.
 - **Justificativa:** reconhecer a mitigação aplicada sem ocultar cópias não corrigidas ou depender somente de uma marca no nome da pasta. Detectar a falha do scan da imagem antes do merge, não apenas no deploy.
@@ -813,3 +813,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** quem tem contas não vinculadas confirma a senha uma vez em cada instituição. A lista ainda mostra o nome de instituições em que o mesmo e-mail tem conta, para quem está logado com aquele e-mail; não dá acesso sem a senha. Os workspaces de uma conexão OAuth ficam restritos às contas vinculadas.
 - **Condições de revisão:** se o Operum adotar verificação de e-mail ou identidade global; se o atrito da primeira troca for relevante.
 - **Referências:** `auth-service/src/auth/identity.ts`, `auth-service/src/auth/auth.service.ts` (`getMyTenants`, `switchTenant`, `joinTenant`, `provisionTenantAdmin`), `auth-service/src/oauth/oauth.service.ts` (`tenantsOf`), `app/actions/auth.ts`, `components/UserTenantsList.tsx`, `components/layout/TenantSwitcher.tsx`, `auth-service/src/__tests__/seguranca-contas.test.ts`.
+
+## ADR-062 — Manter o patch de braces sem exceção depois da retirada do advisory
+
+- **Data do registro:** 2026-10-24.
+- **Status:** implementada nesta entrega. O usuário pediu a correção do check "Gateway Image Security", que falhava em todas as PRs.
+- **Contexto:** o GitHub retirou o advisory GHSA-vfj7-8cjw-p6xm (CVE-2026-93687, `braces <=3.0.3`) em 23/10/2026, sem publicar versão corrigida. O Trivy deixou de acusar o `braces@3.0.3` sem patch, e o controle negativo de `scripts/security/verify-trivy-braces-filter.cjs` (que exigia esse alerta) passou a falhar em todas as PRs a partir de 24/10. A regra do Trivy também expirava em 03/11/2026.
+- **Escolha:** remover o que dependia do advisory: a exceção `ignoreGhsas` do `pnpm audit` (raiz e gateway), a regra de CVE-2026-93687 em `.trivyignore-gateway.yaml` e o script/etapa de controles negativos. Manter o patch de profundidade, seus testes (`bracesPatch.test.ts`) e a verificação do patch na imagem (`verify-braces-patch.cjs`).
+- **Justificativa:** um advisory retirado não é uma correção: o limite de profundidade continua útil contra globs maliciosos e não tem custo. Sem o advisory, as exceções não protegem nada e só mantêm um controle que falha.
+- **Alternativas consideradas:** remover também o patch (perde a defesa sem ganho; a versão do `braces` é a mesma); ajustar o script para aceitar o alerta ausente (mantém um controle sem objeto e a expiração de 03/11).
+- **Consequências:** o `pnpm audit` e o Trivy voltam a acusar o `braces` se o advisory for republicado; nesse caso, reavaliar se o patch ainda cobre o problema antes de recriar exceções.
+- **Condições de revisão:** atualização do `braces` (ou de quem o usa: micromatch, http-proxy-middleware, fast-glob) para uma versão com limite próprio; republicação do advisory.
+- **Referências:** ADR-011, ADR-013, `patches/braces@3.0.3.patch`, `api-gateway/patches/braces@3.0.3.patch`, `__tests__/unit/security/bracesPatch.test.ts`, `api-gateway/scripts/verify-braces-patch.cjs`, `.trivyignore-gateway.yaml`, `.github/workflows/gateway-image-security.yml`, [advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).

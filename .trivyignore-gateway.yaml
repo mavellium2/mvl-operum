@@ -2,12 +2,3 @@ vulnerabilities:
   # Mesma exceção picomatch já existente em .trivyignore.
   - id: CVE-2026-33671
     statement: Falso positivo de identificação do picomatch já registrado em .trivyignore.
-  # Não cobre braces sem patch, outro hash, outro caminho ou outro CVE.
-  - id: CVE-2026-93687
-    paths:
-      - app/node_modules/.pnpm/braces@3.0.3_patch_hash=09522a43f9ee4b8d0664494aa5202a8e7e2e26e31aec3caf6e52cc9f882b2637/node_modules/braces/package.json
-    expired_at: 2026-11-03
-    statement: >-
-      Patch pnpm de profundidade aplicado; metadados continuam em 3.0.3.
-      verify-braces-patch.cjs verifica hash, código carregado, parsing e AST
-      dentro desta imagem antes do scan. Remover ao sair correção upstream (ADR-013).

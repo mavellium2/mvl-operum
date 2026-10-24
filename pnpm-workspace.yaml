@@ -57,8 +57,6 @@ minimumReleaseAgeExclude:
   - next@16.3.6
 patchedDependencies:
   braces@3.0.3: patches/braces@3.0.3.patch
-# Exceção somente para o código mitigado pelo patch acima (ADR-011).
-# Remover patch e exceção quando houver correção publicada; testes validam o limite.
-auditConfig:
-  ignoreGhsas:
-    - GHSA-vfj7-8cjw-p6xm
+# Patch de profundidade mantido como defesa extra (ADR-062): o advisory
+# GHSA-vfj7-8cjw-p6xm foi retirado em 23/10/2026, então o audit não precisa mais
+# de exceção. Os testes de __tests__/unit/security/bracesPatch.test.ts validam o limite.
