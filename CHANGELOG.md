@@ -26,6 +26,7 @@ funcionalidade depois disso é uma versão MINOR.
 - Remuneração ou valor/hora inválidos eram descartados em silêncio; agora a action responde com o erro.
 - Escolher "Plano do Projeto" em "Enviar cópias para" da ata era recusado ao salvar, porque todas as cópias eram validadas como e-mail.
 
+
 ## [1.36.2] — 2026-10-23
 
 ### Segurança
