@@ -7,6 +7,19 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.38.0] — 2026-10-23
+
+Operum instalável como app no celular (PWA).
+
+### Adicionado
+- O Operum pode ser instalado na tela inicial do Android (Chrome: "Instalar app") e do iPhone (Safari: Compartilhar → "Adicionar à Tela de Início"). Abre em tela cheia, sem a barra do navegador, com nome e ícone próprios. Manifest em `/manifest.webmanifest` e ícones com a marca do Operum (comuns, maskable para Android e `apple-touch-icon` para iOS).
+- Service worker (`/sw.js`) que guarda só arquivos estáticos e a nova página **Sem conexão** (`/offline`), mostrada quando o app é aberto sem internet, com o botão "Tentar novamente". Nenhuma página com dados, resposta de API ou anexo fica guardada no aparelho.
+- Aviso "Nova versão do Operum disponível" com o botão **Atualizar**. A página só recarrega quando o usuário pede, para não perder uma edição em andamento.
+
+### Alterado
+- Favicon do navegador trocado pelo ícone do Operum (era o padrão do Next.js).
+- CSP com `manifest-src 'self'` e `worker-src 'self'`. Manifest, service worker, ícones e `/offline` passam a responder sem sessão; as demais rotas continuam protegidas.
+
 ## [1.37.0] — 2026-10-23
 
 ### Adicionado
@@ -25,7 +38,6 @@ funcionalidade depois disso é uma versão MINOR.
 - O total de custos do cadastro do projeto multiplicava custos salvos pelo Termo de Abertura (formato `1000.00`).
 - Remuneração ou valor/hora inválidos eram descartados em silêncio; agora a action responde com o erro.
 - Escolher "Plano do Projeto" em "Enviar cópias para" da ata era recusado ao salvar, porque todas as cópias eram validadas como e-mail.
-
 
 ## [1.36.2] — 2026-10-23
 

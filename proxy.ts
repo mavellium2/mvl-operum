@@ -90,8 +90,10 @@ export async function proxy(request: NextRequest) {
   return response
 }
 
+// Arquivos do PWA (manifest, service worker, ícones e /offline) são públicos:
+// o navegador os busca sem sessão para instalar o app.
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|login|register|recuperar-senha|api/internal/authorize|api/health|api/metrics|api/me|api/csv|api/uploads).*)',
+    '/((?!_next/static|_next/image|favicon.ico|login|register|recuperar-senha|api/internal/authorize|api/health|api/metrics|api/me|api/csv|api/uploads|manifest.webmanifest|sw.js|icons/|apple-touch-icon|offline).*)',
   ],
 }

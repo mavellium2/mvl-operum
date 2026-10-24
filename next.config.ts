@@ -17,6 +17,9 @@ const CSP = [
   `img-src 'self' data: blob: https://*.operum.adm.br https://i.ytimg.com ${isDev ? MINIO_PUBLIC : ''}`.trim(),
   "font-src 'self'",
   "connect-src 'self' https://*.operum.adm.br https://viacep.com.br",
+  // PWA: manifest e service worker só da própria origem.
+  "manifest-src 'self'",
+  "worker-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -78,6 +81,11 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-store" },
           { key: "Referrer-Policy", value: "no-referrer" },
         ],
+      },
+      {
+        // Service worker sempre revalidado, para a versão nova chegar logo.
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
       },
     ];
   },
