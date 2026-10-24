@@ -31,24 +31,25 @@ export class NotificationService {
     })
   }
 
-  async findById(id: string) {
-    const notification = await this.prisma.notification.findUnique({
-      where: { id, deletedAt: null },
+  /** Com `ownerId`, a notificação precisa ser dessa pessoa (senão 404, sem revelar que existe). */
+  async findById(id: string, ownerId?: string) {
+    const notification = await this.prisma.notification.findFirst({
+      where: { id, deletedAt: null, ...(ownerId ? { userId: ownerId } : {}) },
     })
     if (!notification) throw new NotFoundException('Notification not found')
     return notification
   }
 
-  async markAsRead(id: string) {
-    await this.findById(id)
+  async markAsRead(id: string, ownerId?: string) {
+    await this.findById(id, ownerId)
     return this.prisma.notification.update({
       where: { id },
       data: { status: 'READ', readAt: new Date() },
     })
   }
 
-  async markAsArchived(id: string) {
-    await this.findById(id)
+  async markAsArchived(id: string, ownerId?: string) {
+    await this.findById(id, ownerId)
     return this.prisma.notification.update({
       where: { id },
       data: { status: 'ARCHIVED' },
@@ -62,8 +63,8 @@ export class NotificationService {
     })
   }
 
-  async softDelete(id: string) {
-    await this.findById(id)
+  async softDelete(id: string, ownerId?: string) {
+    await this.findById(id, ownerId)
     return this.prisma.notification.update({
       where: { id },
       data: { deletedAt: new Date() },

@@ -17,7 +17,10 @@ export async function authorizeApi(s: SessaoAuthz, method: string, path: string,
   let p: string[]
   try { p = url.pathname.split('/').filter(Boolean).map(decodeURIComponent) } catch { return deny() }
   if (p.some(x => x.includes('/') || x.includes('\\'))) deny()
-  const [root, target, child] = p
+  // Express e Nest roteiam sem diferenciar maiúsculas ("/projects/x/Roles" chega
+  // em /roles): segmentos-chave são comparados em minúsculas; ids seguem como vieram.
+  const [root, target, child] = [p[0]?.toLowerCase(), p[1], p[2]?.toLowerCase()]
+  const targetKey = target?.toLowerCase()
   const read = method === 'GET' || method === 'HEAD'
   const require = async (projectId: unknown, permission: Permissao) => {
     const project = id(projectId)
@@ -34,12 +37,12 @@ export async function authorizeApi(s: SessaoAuthz, method: string, path: string,
   }
   const list = async (permission: Permissao): Promise<ApiAccess> => ({ allowed: true, projectIds: await projetosAutorizados(s, permission) })
   if (root === 'dashboard') {
-    if (!read || target !== 'global' || child) deny()
+    if (!read || targetKey !== 'global' || child) deny()
     const boards = await projetosAutorizados(s, 'quadro:ver')
     const costs = new Set(await projetosAutorizados(s, 'planilha:ver'))
     return { allowed: true, projectIds: boards.filter(project => costs.has(project)) }
   } else if (root === 'projects') {
-    if (read && (!target || target === 'user')) return list('projeto:ver')
+    if (read && (!target || targetKey === 'user')) return list('projeto:ver')
     if (!target) { if (method !== 'POST' || s.role !== 'admin') deny(); return { allowed: true } }
     if (child === 'roles' && !read && s.role !== 'admin') deny()
     if (child === 'members' && !read && s.role !== 'admin') {
@@ -66,7 +69,7 @@ export async function authorizeApi(s: SessaoAuthz, method: string, path: string,
     if (child === 'dashboard') { if (!read) deny(); await require(project, 'planilha:ver') }
     if (body.projectId) await require(body.projectId, 'quadro:sprints')
   } else if (root === 'cards') {
-    if (read && target === 'page') {
+    if (read && targetKey === 'page') {
       if (child) deny()
       const project = url.searchParams.get('projectId')
       const sprint = url.searchParams.get('sprintId')
@@ -79,9 +82,9 @@ export async function authorizeApi(s: SessaoAuthz, method: string, path: string,
       }
       return { allowed: true }
     }
-    if (read && target === 'search') return list('quadro:ver')
-    if (read && target === 'backlog') { await require(url.searchParams.get('projectId'), 'quadro:ver'); return { allowed: true } }
-    if (target === 'in-tenant' && method === 'POST') {
+    if (read && targetKey === 'search') return list('quadro:ver')
+    if (read && targetKey === 'backlog') { await require(url.searchParams.get('projectId'), 'quadro:ver'); return { allowed: true } }
+    if (targetKey === 'in-tenant' && method === 'POST') {
       if (!Array.isArray(body.ids) || body.ids.length > 500) deny()
       for (const card of body.ids as unknown[]) await require(await cardProject(card), 'quadro:ver')
       return { allowed: true }
@@ -103,7 +106,7 @@ export async function authorizeApi(s: SessaoAuthz, method: string, path: string,
       if (edits && moves) await require(destination, 'quadro:cards')
     }
   } else if (root === 'time-entries') {
-    if (target === 'running' && read) return { allowed: true }
+    if (targetKey === 'running' && read) return { allowed: true }
     const entry = await prisma.timeEntry.findFirst({ where: { id: id(target), deletedAt: null }, select: { cardId: true, userId: true } })
     if (!entry) return deny()
     // Encerrar trabalho próprio não exige permissão de edição; continua exigindo leitura e tenant válido.
@@ -112,8 +115,8 @@ export async function authorizeApi(s: SessaoAuthz, method: string, path: string,
     if (!read && entry.userId !== s.userId && s.role !== 'admin') deny()
   } else if (root === 'files') {
     let cards: unknown[]
-    if (target === 'by-cards' && read) cards = (url.searchParams.get('cardIds') ?? '').split(',').filter(Boolean)
-    else if ((target === 'upload' || target === 'link') && method === 'POST') cards = [url.searchParams.get('cardId')]
+    if (targetKey === 'by-cards' && read) cards = (url.searchParams.get('cardIds') ?? '').split(',').filter(Boolean)
+    else if ((targetKey === 'upload' || targetKey === 'link') && method === 'POST') cards = [url.searchParams.get('cardId')]
     else {
       const rows = await prisma.$queryRaw<{ cardId: string }[]>`SELECT "cardId" FROM files."Attachment" WHERE id = ${id(target)}`
       if (!rows[0]) return deny()
@@ -122,7 +125,7 @@ export async function authorizeApi(s: SessaoAuthz, method: string, path: string,
     if (cards.length > 500) deny()
     for (const card of cards) await require(await cardProject(card), read ? 'quadro:ver' : 'quadro:cards')
   } else if (root === 'stakeholders') {
-    const project = target === 'by-project' ? child : child === 'projects' ? p[3] : null
+    const project = targetKey === 'by-project' ? p[2] : child === 'projects' ? p[3] : null
     if (project) await require(project, read ? 'projeto:ver' : 'projeto:equipe')
     else if (!read && s.role !== 'admin') {
       const context = url.searchParams.get('projectId')
