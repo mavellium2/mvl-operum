@@ -7,6 +7,11 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.40.1] — 2026-10-24
+
+- Corrige o redirecionamento ao login das ferramentas de orçamento MCP: a rota interna `/api/internal/task-budget/:id` deixa de exigir cookie de sessão no proxy e continua validando chave interna, identidade e permissões financeiras no servidor.
+- Adiciona regressão com o matcher real do Next.js para a rota interna e para caminhos que devem continuar protegidos.
+
 ## [1.40.0] — 2026-10-24
 
 - **MCP:** ferramentas `operum_get_task_budget` e `operum_set_task_budget` consultam e alteram os minutos orçados na atividade da EAP/Planilha de Custos vinculada ao card. Exigem permissões financeiras, preservam o realizado e recusam vínculo ausente ou ambíguo.
