@@ -861,3 +861,16 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** linha com apontamentos tem tempo somente leitura na planilha; correções são feitas nos registros do card. Materiais e datas permanecem independentes. Segundos são preservados no cálculo e o custo segue a regra existente dos elaboradores, sem inferir salário. Consultas são escopadas por projeto/tenant/card/autor; histórico soft-deleted só identifica a origem, nunca soma tempo. Não conclui cards nem altera orçado. A leitura local de `TimeEntry` é uma projeção do domínio EAP ainda no app, não uma segunda escrita no domínio de tempo.
 - **Condições de revisão:** extração da EAP para outro serviço; mudança do custeio por elaborador para custeio por autor do apontamento; necessidade de desassociar explicitamente uma linha da fonte de tempo do card.
 - **Referências:** `services/realizadoDosCards.ts`, `services/wbsService.ts`, `lib/tempoRealizado.ts`, `lib/planilhaCustos.ts`, `lib/wbsRollup.ts`, `components/custos/PlanilhaCustosView.tsx`, `app/actions/time.ts`; card Operum `cmvmsu51q000001o9nj9gy786`.
+
+## ADR-066 — Auditar no app as ações de admin sobre usuários e instituições
+
+- **Data do registro:** 2026-10-24.
+- **Status:** implementada em código na 1.40.4; publicação pendente da entrega.
+- **Contexto:** ao preparar as consultas pós-deploy da auditoria de 24/10, constatou-se que criar, editar, mudar o papel e ativar/desativar usuários pela tela de admin não gravava nada em `AuditLog`, nem as ações do operador sobre instituições. Não havia como saber quem promoveu alguém a admin, nem quando.
+- **Escolha:** as Server Actions de `app/actions/admin.ts` gravam em `AuditLog` (entity `User` ou `Tenant`) o autor, o alvo, a ação (`USUARIO_*`, `INSTITUICAO_*`) e o "antes/depois" lido do banco, por `services/auditoriaAdminService.ts`. Senha, hash, MFA e tokens ficam fora; a troca de senha aparece só como `senhaRedefinida: true`. As ações do operador ficam na auditoria da instituição afetada, com `autorTenantId`.
+- **Justificativa:** desde o ADR-059 as rotas de admin do auth-service não ficam na porta pública; as Server Actions são o único caminho de escrita. A tabela `AuditLog` já existe no banco compartilhado e é a lida pela rota `/audit`.
+- **Alternativas consideradas:** gravar no auth-service (cobriria qualquer chamador, mas o auth-service não tem `AuditLog` no schema dele e exigiria migration e contrato novos); só registrar em log do container (não sobrevive à troca do container).
+- **Consequências:** a alteração no auth-service e o registro não são atômicos. Se a gravação da auditoria falhar, a alteração continua valendo e o erro vai para o log do servidor. Uma chamada interna direta ao auth-service, sem passar pelo app, não é auditada.
+- **Condições de revisão:** nova rota de escrita de usuários fora do app; extração da auditoria para um serviço próprio.
+- **Referências:** `services/auditoriaAdminService.ts`, `app/actions/admin.ts`, `__tests__/integration/actions/admin.actions.test.ts`; card Operum `cmvmvk8ev000p01ml07mn9kl5`.
+

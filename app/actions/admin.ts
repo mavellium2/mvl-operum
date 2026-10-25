@@ -7,6 +7,8 @@ import { createTenant, updateTenant, ConflictError } from '@/services/tenantServ
 import { normalizarContato } from '@/lib/contato'
 import { erroMoeda } from '@/lib/dinheiro'
 import { exigirOperadorDaPlataforma } from '@/lib/platformOperator'
+import prisma from '@/lib/prisma'
+import { auditarAdmin, comAuditoriaDeUsuario, dadosDoUsuario, diferencas } from '@/services/auditoriaAdminService'
 
 async function requireAdmin() {
   const session = await verifySession()
@@ -44,10 +46,18 @@ export async function adminCreateUserAction(data: {
   notes?: string
 }) {
   try {
-    await requireAdmin()
+    const session = await requireAdmin()
     const contato = normalizarContato(data, { emailObrigatorio: true })
     if (contato.error) return { error: contato.error }
     const user = await adminApi.createUser(contato.data as Record<string, unknown>)
+    const novoId = (user as { id?: string } | null)?.id
+    if (novoId) {
+      const depois = await dadosDoUsuario(novoId, session.tenantId).catch(() => null)
+      await auditarAdmin({
+        tenantId: session.tenantId, autorId: session.userId, action: 'USUARIO_CRIAR', entity: 'User', entityId: novoId,
+        details: { alteracoes: diferencas(null, depois) },
+      })
+    }
     revalidatePath('/admin/users')
     return { user }
   } catch (err) {
@@ -77,14 +87,17 @@ export async function adminUpdateUserAction(
   },
 ) {
   try {
-    await requireAdmin()
+    const session = await requireAdmin()
     const contato = normalizarContato(data)
     if (contato.error) return { error: contato.error }
     if (data.hourlyRate !== undefined) {
       const erroValor = erroMoeda(data.hourlyRate, { rotulo: 'Valor/hora' })
       if (erroValor) return { error: erroValor }
     }
-    const user = await adminApi.updateUser(userId, contato.data as Record<string, unknown>)
+    // A senha nova não entra na auditoria; só o fato de ter sido trocada.
+    const user = await comAuditoriaDeUsuario(session, 'USUARIO_EDITAR', userId,
+      () => adminApi.updateUser(userId, contato.data as Record<string, unknown>),
+      data.password ? { senhaRedefinida: true } : undefined)
     revalidatePath('/admin/users')
     return { user }
   } catch (err) {
@@ -94,8 +107,9 @@ export async function adminUpdateUserAction(
 
 export async function toggleUserActiveAction(userId: string, active: boolean) {
   try {
-    await requireAdmin()
-    const user = await adminApi.toggleActive(userId, active)
+    const session = await requireAdmin()
+    const user = await comAuditoriaDeUsuario(session, active ? 'USUARIO_ATIVAR' : 'USUARIO_DESATIVAR', userId,
+      () => adminApi.toggleActive(userId, active))
     revalidatePath('/admin/users')
     return { user }
   } catch (err) {
@@ -108,8 +122,8 @@ export async function setUserRoleAction(userId: string, role: string) {
     return { error: 'Role inválida. Apenas "admin" ou "member" são permitidas globalmente.' }
   }
   try {
-    await requireAdmin()
-    const user = await adminApi.setRole(userId, role)
+    const session = await requireAdmin()
+    const user = await comAuditoriaDeUsuario(session, 'USUARIO_PAPEL', userId, () => adminApi.setRole(userId, role))
     revalidatePath('/admin/users')
     return { user }
   } catch (err) {
@@ -124,10 +138,12 @@ export async function createTenantAction(data: { name: string; subdomain: string
   try {
     const session = await exigirOperadorDaPlataforma()
     const tenant = await createTenant(data)
+    await auditarAdmin({ tenantId: tenant.id, autorId: session.userId, action: 'INSTITUICAO_CRIAR', entity: 'Tenant', entityId: tenant.id, details: { name: data.name, subdomain: data.subdomain, autorTenantId: session.tenantId } })
     // Auto-provision creator as admin in the new tenant using their existing password hash.
     // Non-fatal: if this fails (e.g. already has access), the tenant was still created.
     try {
       await authApi.provisionTenantAdmin(tenant.id, session.role)
+      await auditarAdmin({ tenantId: tenant.id, autorId: session.userId, action: 'INSTITUICAO_PROVISIONAR_ADMIN', entity: 'Tenant', entityId: tenant.id, details: { autorTenantId: session.tenantId } })
     } catch { /* swallow — creator can join via "Entrar" button */ }
     revalidatePath('/admin/tenants')
     return { tenant }
@@ -141,6 +157,7 @@ export async function joinAsTenantAdminAction(tenantId: string) {
   try {
     const session = await exigirOperadorDaPlataforma()
     await authApi.provisionTenantAdmin(tenantId, session.role)
+    await auditarAdmin({ tenantId, autorId: session.userId, action: 'INSTITUICAO_PROVISIONAR_ADMIN', entity: 'Tenant', entityId: tenantId, details: { autorTenantId: session.tenantId } })
     revalidatePath('/admin/tenants')
     return {}
   } catch (err) {
@@ -153,8 +170,10 @@ export async function updateTenantStatusAction(id: string, status: TenantStatus)
     return { error: 'Status inválido' }
   }
   try {
-    await exigirOperadorDaPlataforma()
+    const session = await exigirOperadorDaPlataforma()
+    const antes = await prisma.tenant.findUnique({ where: { id }, select: { status: true } }).catch(() => null)
     await updateTenant(id, { status })
+    await auditarAdmin({ tenantId: id, autorId: session.userId, action: 'INSTITUICAO_STATUS', entity: 'Tenant', entityId: id, details: { alteracoes: diferencas(antes, { status }), autorTenantId: session.tenantId } })
     revalidatePath('/admin/tenants')
     return {}
   } catch (err) {
@@ -165,8 +184,10 @@ export async function updateTenantStatusAction(id: string, status: TenantStatus)
 export async function updateTenantNameAction(id: string, name: string) {
   if (!name?.trim()) return { error: 'Nome não pode ser vazio' }
   try {
-    await exigirOperadorDaPlataforma()
+    const session = await exigirOperadorDaPlataforma()
+    const antes = await prisma.tenant.findUnique({ where: { id }, select: { name: true } }).catch(() => null)
     await updateTenant(id, { name: name.trim() })
+    await auditarAdmin({ tenantId: id, autorId: session.userId, action: 'INSTITUICAO_RENOMEAR', entity: 'Tenant', entityId: id, details: { alteracoes: diferencas(antes, { name: name.trim() }), autorTenantId: session.tenantId } })
     revalidatePath('/admin/tenants')
     return {}
   } catch (err) {
@@ -176,8 +197,9 @@ export async function updateTenantNameAction(id: string, name: string) {
 
 export async function joinTenantAction(tenantId: string, password: string) {
   try {
-    await exigirOperadorDaPlataforma()
+    const session = await exigirOperadorDaPlataforma()
     await authApi.joinTenant(tenantId, password)
+    await auditarAdmin({ tenantId, autorId: session.userId, action: 'INSTITUICAO_ENTRAR', entity: 'Tenant', entityId: tenantId, details: { autorTenantId: session.tenantId } })
     revalidatePath('/admin/tenants')
     return {}
   } catch (err) {
