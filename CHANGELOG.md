@@ -7,6 +7,13 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.42.0] — 2026-10-26
+
+- **Sprint → Planilha de Custos:** a data realizada acompanha o movimento de conclusão do card, inclusive movimentos anteriores, no fuso de São Paulo. Reabertura remove a data automática; nova conclusão usa o novo movimento. Datas manuais são preservadas. Planilha, EAP, minicards e exportações usam a mesma origem; não são inventados tempo ou gastos.
+- **Planilha → Sprint:** mantém a conclusão pelo preenchimento de data realizada válida (inclusive com custo realizado zero) e o controle de reabertura por origem; valores sem data não concluem o card.
+- **MCP:** novas ferramentas `operum_get_task_costs` e `operum_set_task_costs` consultam/editam materiais orçados, realizados e data realizada pela atividade canônica da EAP, com autenticação interna, validação financeira por campo e auditoria. A data explícita propaga a conclusão ao card; o retorno informa pendências de sincronização.
+- Sem dependências novas ou migrations. A atualização precisa ser publicada no app, gateway e MCP para entrar em produção.
+
 ## [1.41.0] — 2026-10-26
 
 - **Integrações:** catálogo com logos locais e guias expansíveis para ChatGPT, Claude, Claude Code e Codex: requisitos, passos de conexão, URLs/comandos copiáveis, permissões, teste inicial, desconexão e solução de problemas.

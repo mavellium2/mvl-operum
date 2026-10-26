@@ -234,6 +234,9 @@ export async function moveCardInSprintAction(
     const bloqueio = await bloqueioDeConclusao(cardId, sprintColumnId)
     if (bloqueio) return { error: bloqueio }
     await cardsApi.update(cardId, { sprintColumnId, sprintPosition, ...(reason ? { reason } : {}) })
+    revalidatePath('/projetos/[projetoId]/planilha-custos', 'page')
+    revalidatePath('/projetos/[projetoId]/wbs', 'page')
+    revalidatePath('/sprints/[sprintId]', 'page')
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao mover card' }

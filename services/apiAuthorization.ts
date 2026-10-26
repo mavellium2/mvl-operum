@@ -90,6 +90,12 @@ export async function authorizeApi(s: SessaoAuthz, method: string, path: string,
       return { allowed: true }
     }
     const project = target ? await cardProject(target) : body.sprintId ? await sprintProject(body.sprintId) : body.projectId
+    if (child === 'costs') {
+      if (p.length !== 3 || !['GET', 'PATCH'].includes(method)) deny()
+      await require(project, 'planilha:ver')
+      // Field-level financial permissions and persisted ownership are checked by the app.
+      return { allowed: true }
+    }
     if (child === 'budget') {
       if (p.length !== 3 || !['GET', 'PATCH'].includes(method)) deny()
       await require(project, 'planilha:ver')

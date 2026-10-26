@@ -27,7 +27,7 @@ const cardEm = (coluna: string, extra: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
-  tx.wbsNode.findMany.mockResolvedValue([{ properties: { cardId: 'c', dataPrevista: '2026-10-20', dataRealizacao: '2026-10-19' } }])
+  tx.wbsNode.findMany.mockResolvedValue([{ properties: { cardId: 'c', dataPrevista: '2026-10-20', dataRealizacao: '2026-10-19', materiaisReal: 45 } }])
   tx.card.findMany.mockResolvedValue([{ ...cardEm('todo'), endDate: null }])
   tx.sprintColumn.findMany.mockResolvedValue(COLUNAS)
   tx.cardMovement.findMany.mockResolvedValue([])
@@ -37,6 +37,7 @@ beforeEach(() => {
 describe('Planilha de Custos → cards', () => {
   it('conclusão exige data válida ou percentual explícito; tempo gasto sozinho não conclui', () => {
     expect(concluidaNaPlanilha({ tempoRealMinutos: 120 })).toBe(false)
+    expect(concluidaNaPlanilha({ dataRealizacaoCard: '2026-10-26' })).toBe(false)
     expect(concluidaNaPlanilha({ dataRealizacao: '2026-02-30' })).toBe(false)
     expect(concluidaNaPlanilha({ percentualConclusao: 100 })).toBe(true)
     expect(diaDaPlanilha('2026-10-19')).toBe('2026-10-19')

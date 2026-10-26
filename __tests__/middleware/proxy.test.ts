@@ -22,12 +22,12 @@ const testing = nextProxyTesting as unknown as Record<string, (input: { config: 
 const doesProxyMatch = testing.unstable_doesProxyMatch ?? testing.unstable_doesMiddlewareMatch
 
 describe('orçamento MCP usa autenticação da rota interna, sem cookie de navegador', () => {
-  it.each(['/api/internal/task-budget/card1', '/api/internal/task-budget/card1?origem=mcp'])(
+  it.each(['/api/internal/task-budget/card1', '/api/internal/task-budget/card1?origem=mcp', '/api/internal/task-costs/card1'])(
     '%s chega à validação de chave/identidade da rota sem redirecionar ao login', url => {
       expect(doesProxyMatch({ config, nextConfig: {}, url })).toBe(false)
     },
   )
-  it.each(['/projetos/p1/planilha-custos', '/api/internal/task-budget-other/card1', '/api/internal/other'])(
+  it.each(['/projetos/p1/planilha-custos', '/api/internal/task-budget-other/card1', '/api/internal/task-costs-other/card1', '/api/internal/other'])(
     '%s continua exigindo sessão do navegador', url => {
       expect(doesProxyMatch({ config, nextConfig: {}, url })).toBe(true)
     },

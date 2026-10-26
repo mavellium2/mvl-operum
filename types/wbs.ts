@@ -43,6 +43,8 @@ export interface WbsNodeProperties {
   materiaisReal?: number;
   /** Planilha de Custos — folha: data de realização efetiva. */
   dataRealizacao?: string | null;
+  /** Read-only completion date derived from the card movement, never saved as a manual date. */
+  dataRealizacaoCard?: string | null;
   /** Planilha de Custos — folha: nome/identificação de quem elaborou. */
   elaboradoPor?: string;
   /** Planilha de Custos — folha: id do primeiro elaborador (formato antigo; = elaboradoPorUserIds[0]). */

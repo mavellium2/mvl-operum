@@ -11,7 +11,7 @@ import { minutosRealizados } from '@/lib/tempoRealizado'
 import type { WbsNodeClient } from '@/types/wbs'
 
 vi.mock('@/lib/prisma', () => ({ default: {
-  timeEntry: { groupBy: vi.fn() }, wbsNode: { findMany: vi.fn() },
+  card: { findMany: vi.fn().mockResolvedValue([]) }, timeEntry: { groupBy: vi.fn() }, wbsNode: { findMany: vi.fn() },
   $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
 } }))
 const n = (id: string, parentId: string | null, childrenIds: string[], properties: WbsNodeClient['properties'] = {}): WbsNodeClient => ({
@@ -28,7 +28,7 @@ function responses(seconds: number | null) {
   aggregate.mockResolvedValueOnce([{ cardId: 'c1', _count: { _all: 2 } }] as never)
   aggregate.mockResolvedValueOnce(seconds === null ? [] : [{ cardId: 'c1', _sum: { duration: seconds } }] as never)
 }
-beforeEach(() => { vi.clearAllMocks(); aggregate.mockReset() })
+beforeEach(() => { vi.clearAllMocks(); aggregate.mockReset(); vi.mocked(prisma.card.findMany).mockResolvedValue([]) })
 
 describe('apontamentos → realizado da planilha/EAP', () => {
   it('1h30 registrada substitui o manual, calcula custo e preserva orçamento/materiais', async () => {
@@ -91,5 +91,45 @@ describe('apontamentos → realizado da planilha/EAP', () => {
     const nodes = { root: n('root', null, []) }
     expect(await aplicarRealizadoDosCards(nodes, 'p1', 't1')).toBe(nodes)
     expect(aggregate).not.toHaveBeenCalled()
+  })
+})
+
+describe('conclusão na sprint → data realizada, sem inventar esforço ou gasto', () => {
+  const card = (columnId = 'done', at = '2026-10-27T01:30:00Z') => ({
+    id: 'c1', sprintColumnId: columnId,
+    sprint: { sprintColumns: [{ id: 'todo', title: 'A Fazer', position: 0 }, { id: 'done', title: 'Concluído', position: 1 }] },
+    movements: [{ fromColumnId: 'todo', toColumnId: columnId, movedAt: new Date(at) }],
+  })
+  it('usa a data do movimento em São Paulo, inclusive em cards concluídos antes da correção', async () => {
+    responses(null); vi.mocked(prisma.card.findMany).mockResolvedValue([card()] as never)
+    const original = fixture()
+    const nodes = await aplicarRealizadoDosCards(original, 'p1', 't1')
+    const sheet = computarPlanilhaCustos(nodes, 'root', { valorReferencia: 4000, horasPorDia: 8 })
+    expect(sheet.macrofases[0].atividades[0]).toMatchObject({ dataRealizacao: '2026-10-26', materiaisReal: 5, minReal: 0 })
+    expect(original.a.properties.dataRealizacaoCard).toBeUndefined()
+    expect(computeFinancialRollups(nodes, 'root', {}).a.dataRealizacao).toBe('2026-10-26')
+    expect(vi.mocked(prisma.card.findMany).mock.calls.at(-1)![0]).toMatchObject({ where: { sprint: { projectId: 'p1', project: { tenantId: 't1' } } } })
+    // Saving the EAP never persists a projected date as an explicit completion.
+    expect(WbsNodePropertiesSchema.parse(nodes.a.properties)).not.toHaveProperty('dataRealizacaoCard')
+  })
+  it('preserva uma data informada explicitamente na planilha', async () => {
+    responses(null); vi.mocked(prisma.card.findMany).mockResolvedValue([card()] as never)
+    const original = fixture(); original.a.properties.dataRealizacao = '2026-10-23'
+    const nodes = await aplicarRealizadoDosCards(original, 'p1', 't1')
+    expect(computarPlanilhaCustos(nodes, 'root', { valorReferencia: 4000, horasPorDia: 8 }).macrofases[0].atividades[0].dataRealizacao).toBe('2026-10-23')
+  })
+  it('reabrir remove a data automática e concluir novamente usa o novo movimento', async () => {
+    responses(null); vi.mocked(prisma.card.findMany).mockResolvedValue([card()] as never)
+    const first = await aplicarRealizadoDosCards(fixture(), 'p1', 't1')
+    responses(null); vi.mocked(prisma.card.findMany).mockResolvedValue([card('todo')] as never)
+    const reopened = await aplicarRealizadoDosCards(first, 'p1', 't1')
+    expect(reopened.a.properties.dataRealizacaoCard).toBeNull()
+    responses(null); vi.mocked(prisma.card.findMany).mockResolvedValue([card('done', '2026-10-28T12:00:00Z')] as never)
+    const finished = await aplicarRealizadoDosCards(reopened, 'p1', 't1')
+    expect(finished.a.properties.dataRealizacaoCard).toBe('2026-10-28')
+  })
+  it('não estima data sem movimento de conclusão nem usa updatedAt', async () => {
+    responses(null); vi.mocked(prisma.card.findMany).mockResolvedValue([{ ...card(), movements: [] }] as never)
+    expect((await aplicarRealizadoDosCards(fixture(), 'p1', 't1')).a.properties.dataRealizacaoCard).toBeNull()
   })
 })

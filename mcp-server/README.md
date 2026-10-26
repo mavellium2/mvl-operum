@@ -152,3 +152,10 @@ Parser: [API oficial do Busboy](https://github.com/mscdex/busboy), limites de ar
 O OAuth remoto também é compatível com o ChatGPT por CIMD, com PKCE S256 e método público `none`. A lista plural de capacidades do cliente prevalece sobre a preferência singular legada; os metadados anunciam suporte ao parâmetro `iss` já devolvido nos callbacks. Allowlists padrão incluem `chatgpt.com` e o callback DCR estável, mas ambientes com listas explícitas precisam atualizar o `.env` e recriar os serviços. Não há nova chave de API ou migration.
 
 Veja [guia do ChatGPT, configuração e homologação](../docs/tutoriais/integracao-mcp-chatgpt.md). A página **Configurações → Integrações** contém guias de ChatGPT, Claude, Claude Code e Codex. Compatibilidade implementada não representa homologação real de cada aplicativo ou superfície; validar em ambiente publicado antes de anunciar disponibilidade.
+
+### Materiais e data realizada (1.42.0)
+
+- `operum_get_task_costs`: lê a folha da Planilha de Custos vinculada ao card, incluindo a data efetiva de conclusão.
+- `operum_set_task_costs`: PATCH parcial de `estimated_materials`, `actual_materials` (R$) e `completed_on` (YYYY-MM-DD ou null). Zero é valor válido. A data explícita conclui o card pelas mesmas regras do painel; o resultado `synchronization` informa impedimentos, inclusive responsável ausente. Valor sem data não conclui. Reservas não são gastos realizados.
+- `operum_move_task` para Concluído faz a planilha refletir o dia do movimento em São Paulo, sem criar horas ou despesas. Reabertura remove apenas a data automática; datas manuais continuam tendo precedência.
+- As permissões de orçamento e realizado são verificadas por campo no domínio canônico do app. Para registrar tempo real, continue usando timer/apontamentos.

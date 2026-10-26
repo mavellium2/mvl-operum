@@ -887,3 +887,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** ambientes com allowlists explícitas devem atualizá-las e recriar serviços. Proteções SSRF, redirects na mesma origem, PKCE e escopos continuam exigidos. Sem dependências ou migrations. Guias não substituem a homologação dos aplicativos; permissões e disponibilidade dependem da conta externa.
 - **Condições de revisão:** mudança no contrato CIMD, adoção de clientes confidenciais ou alteração dos callbacks oficiais. Atualizar guias quando as interfaces externas mudarem.
 - **Referências:** `auth-service/src/oauth/cimd.ts`, `auth-service/src/oauth/oauth.config.ts`, `components/integracoes/IntegrationGuides.tsx`, `docs/tutoriais/integracao-mcp-chatgpt.md`, [autenticação OpenAI](https://developers.openai.com/plugins/build/auth). Complementa ADR-057, sem substituí-la.
+
+## ADR-068 — Data automática de conclusão por projeção e custos MCP canônicos
+
+- **Data:** 2026-10-26.
+- **Status:** implementada no código; pendente de publicação.
+- **Contexto:** concluir cards por UI/MCP não preenchia a data realizada da planilha. O conector só expunha esforço orçado; o agente dependia do navegador para materiais e data.
+- **Escolha:** derivar a data automática do movimento persistido e coluna atual, preservando a data manual da EAP, e expor custos por uma rota autenticada que reutiliza o domínio financeiro do app.
+- **Justificativa:** o histórico é a evidência temporal comum da UI e MCP; a projeção evita duplicar estados e permite reabertura sem converter uma conclusão automática em decisão manual da planilha. A data de negócio usa São Paulo, como as datas existentes da planilha.
+- **Alternativas consideradas:** editar planilha pelo navegador a cada alteração; permitir que sprint-service escreva diretamente nas tabelas WBS do app; criar outro registro de gastos em Card. As opções duplicariam trabalho/estado ou atravessariam a responsabilidade de serviços.
+- **Consequências:** leituras da EAP incluem movimento recente dos cards; conclusões anteriores com histórico passam a aparecer automaticamente. Sem movimento, a data continua ausente. Campos manuais conservam precedência. Nenhum tempo ou gasto é inferido. A edição de data pelo MCP pode esbarrar nas mesmas exigências de responsável do painel, devolvidas no resultado de sincronização.
+- **Referências:** `services/realizadoDosCards.ts`, `lib/dataRealizacao.ts`, `services/planilhaCardSync.ts`, `services/taskCostsService.ts`, `app/api/internal/task-costs/[cardId]/route.ts`, `mcp-server/src/tools/budgets.ts`. Complementa ADR-054, ADR-064 e ADR-065.
+- **Condições de revisão:** revisar o fuso se houver configuração por tenant e o carregamento de movimentos se a volumetria do projeto justificar outra projeção.

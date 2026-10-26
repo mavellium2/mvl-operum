@@ -1,3 +1,4 @@
+import { dataRealizacaoEfetiva } from '@/lib/dataRealizacao'
 import { elaboradoresDe, somaValoresPorMinuto } from './elaboradores'
 import { minutosRealizados } from './tempoRealizado'
 import type { WbsNodeClient, WbsRollup } from '@/types/wbs'
@@ -109,7 +110,7 @@ export function computeFinancialRollups(
         budgetCost: rate == null ? (p.materiais ? round2(p.materiais) : null) : custoFolhaPrevisto(p.tempoMinutos ?? 0, rate, p.materiais ?? 0),
         actualCost: rate == null ? (p.materiaisReal ? round2(p.materiaisReal) : null) : custoFolhaRealizado(minutosRealizados(p), rate, p.materiaisReal ?? 0),
         dataPrevista: p.dataPrevista ?? null,
-        dataRealizacao: p.dataRealizacao ?? null,
+        dataRealizacao: dataRealizacaoEfetiva(p),
       }
       folhas[id] = [result[id]]
     } else {
