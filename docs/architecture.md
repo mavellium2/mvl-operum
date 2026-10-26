@@ -531,7 +531,7 @@ Admin cria usuário com forcePasswordChange=true
 
 ### mcp-server (`/mcp`)
 
-Servidor MCP remoto e sem estado. Cada chamada usa o token do usuário (PAT ou, desde 1.36.0, token OAuth do conector do Claude) contra o api-gateway, e o mcp-server nunca fala direto com os serviços. A lista de tools e as regras estão em [`mcp-server/README.md`](../mcp-server/README.md).
+Servidor MCP remoto e sem estado. Cada chamada usa o token do usuário (PAT ou, desde 1.36.0, token OAuth de um cliente MCP) contra o api-gateway, e o mcp-server nunca fala direto com os serviços. A lista de tools e as regras estão em [`mcp-server/README.md`](../mcp-server/README.md).
 - **OAuth (1.36.0, ADR-057):** publica `/.well-known/oauth-protected-resource/mcp` (e na raiz), responde 401 com `resource_metadata` e escopos e valida o token OAuth na entrada (vencido vira HTTP 401 para o cliente renovar). Uma conexão cobre os workspaces autorizados: cada chamada ao gateway leva `X-Operum-Tenant` e a chave interna `X-Operum-Mcp-Key`. Desligado sem `OAUTH_ISSUER`, `MCP_RESOURCE_URL` e `MCP_GATEWAY_KEY`. Fluxo completo em [Conector OAuth do MCP](#conector-oauth-do-mcp-136).
 - **Tenant:** as tools de anexo (`operum_upload_attachment`, `operum_add_link`, `operum_delete_attachment`) também conferem a tarefa no tenant antes de chamar o file-service.
 - **SSRF:** o download por `url` é protegido (`mcp-server/src/download.ts`).
@@ -636,7 +636,7 @@ Tela de Configurações do usuário (1.37.0), aberta pelo item **Configurações
 | Conta → Perfil | `/configuracoes/perfil` | Resumo, dados pessoais, avatar e assinatura digital |
 | Conta → Segurança | `/configuracoes/seguranca` | Alterar senha |
 | Conta → Instituições | `/configuracoes/instituicoes` | Instituições do usuário e troca de tenant |
-| Conexões → Integrações | `/configuracoes/integracoes` | Apps conectados por OAuth (revogação imediata) e PATs usados pelo MCP e pela API |
+| Conexões → Integrações | `/configuracoes/integracoes` | Guias por app (ChatGPT, Claude, Claude Code e Codex), apps conectados por OAuth (revogação imediata) e PATs usados pelo MCP e pela API |
 
 Os endereços antigos `/perfil` e `/perfil/tokens` redirecionam (308) para Perfil e Integrações. O Perfil não edita cargo, departamento nem valor/hora (ficam com a gestão de membros e usuários); `updateProfileAction` valida com `MeuPerfilSchema` e não envia esses campos.
 
@@ -1225,9 +1225,9 @@ Versões legadas sem contexto/diff mostram a ausência; não recebem cabeçalho 
 
 O “hoje” do Gantt usa snapshot estável do servidor para hidratação e calendário local do navegador em seguida, atualizado por assinatura a cada minuto (`useCalendarToday`). As datas planejadas permanecem date-only; a linha de hoje não desloca datas do projeto nem assume que o calendário do usuário é UTC.
 
-### Conector OAuth do MCP (1.36)
+### Conector OAuth do MCP (1.36; ChatGPT na 1.41)
 
-Implementado na 1.36.0 (SDD [`SDD-mcp-oauth.md`](specs/SDD-mcp-oauth.md), ADR-057). Permite adicionar `https://api.operum.adm.br/mcp` como conector personalizado no claude.ai (web, Desktop e celular) e nas sessões do Claude Code na nuvem. A homologação em staging e no celular ainda está pendente.
+Implementado na 1.36.0 (SDD [`SDD-mcp-oauth.md`](specs/SDD-mcp-oauth.md), ADR-057). Permite adicionar `https://api.operum.adm.br/mcp` como conector personalizado no claude.ai (web, Desktop e celular) e nas sessões do Claude Code na nuvem. A homologação em staging e no celular ainda está pendente. Desde 1.41.0, inclui compatibilidade com ChatGPT por CIMD; a conexão real no ChatGPT permanece pendente de homologação no ambiente publicado.
 
 ```
 Claude ─POST /mcp sem token─────────────► mcp-server ── 401 + resource_metadata
@@ -1238,7 +1238,7 @@ Claude ─POST /mcp sem token─────────────► mcp-serv
        ─POST /mcp  Bearer opr_oat_… ──► mcp-server ─► gateway (+ X-Operum-Mcp-Key, X-Operum-Tenant)
 ```
 
-- **Clientes:** CIMD (`client_id` em URL, só hosts de `OAUTH_CIMD_ALLOWED_HOSTS`, leitura com proteção a SSRF, sem redirecionamento, 5 s, 64 KB, cache de 24 h; redirect que não é loopback precisa estar na origem do `client_id`) e DCR (`opr_dcr_…`, redirects só da allowlist ou loopback com qualquer porta). Só clientes públicos.
+- **Clientes:** CIMD (`client_id` em URL, só hosts de `OAUTH_CIMD_ALLOWED_HOSTS`, leitura com proteção a SSRF, sem redirecionamento, 5 s, 64 KB, cache de 24 h; redirect que não é loopback precisa estar na origem do `client_id`) e DCR (`opr_dcr_…`, redirects só da allowlist ou loopback com qualquer porta). Só clientes públicos. Desde 1.41.0 (ADR-067), a lista CIMD `token_endpoint_auth_methods_supported` tem precedência sobre a preferência singular legada: exige uma lista válida que inclua `none`, única interseção com o servidor. Sem a lista, preserva a validação singular anterior. Os metadados anunciam `authorization_response_iss_parameter_supported: true`, pois sucesso e erros redirecionados devolvem `iss`.
 - **Código:** `opr_oac_…`, 60 s, uso único (marcado antes de conferir o resto), ligado a cliente, redirect, `code_challenge` S256, `resource`, escopos e workspaces. Reuso revoga o grant gerado.
 - **Tokens:** access `opr_oat_…` de 1 h e refresh `opr_ort_…` de 30 dias com rotação. Teto de 90 dias por conexão. Reuso de refresh depois de 10 s revoga a conexão. Tudo guardado só como hash SHA-256.
 - **Gateway:** introspecção `oat:{hash}` com cache de 60 s, apagado na revogação. Só aceita o token com `X-Operum-Mcp-Key` correta e `resource` igual a `MCP_RESOURCE_URL`, e só no workspace pedido em `X-Operum-Tenant`, que precisa estar no grant (sem ele, vale o padrão). Mesma allowlist do PAT no auth-service; escrita exige `operum:write`. Injeta `x-auth-type: oauth`, `x-api-token-id: oauth:<grant>` (rate limit de 20 req/s e auditoria) e `x-oauth-tenants`, com o qual `/auth/my-tenants` devolve só os workspaces autorizados. Os cabeçalhos `x-operum-*` nunca seguem aos serviços.
@@ -1246,6 +1246,12 @@ Claude ─POST /mcp sem token─────────────► mcp-serv
 - **Rotas de conta:** `NoPatGuard` e as rotas de PAT recusam qualquer `x-auth-type` (PAT ou OAuth).
 - **Rate limit:** 30 registros/min e 300 tokens/min no gateway; como o IP visto é o do Traefik, o limite é global.
 - **Configuração:** `OAUTH_ISSUER`, `MCP_RESOURCE_URL`, `OAUTH_AUTHORIZE_URL`, `MCP_GATEWAY_KEY`, `OAUTH_CIMD_ALLOWED_HOSTS` e `OAUTH_DCR_ALLOWED_REDIRECTS` no `.env` (ver `.env.example`). O router `mcp-prod-api` do Traefik inclui `/.well-known/oauth-protected-resource`. Sem `OAUTH_ISSUER`, `MCP_RESOURCE_URL` e `MCP_GATEWAY_KEY`, o auth-service responde 404 nos metadados, no registro, no token e no consentimento (`OAuthEnabledGuard`, 1.36.1), a mesma condição que desliga o OAuth no mcp-server; revogação, introspecção e a lista de apps conectados seguem disponíveis. Os três serviços leem o mesmo `.env` da VPS e só pegam valores novos quando recriados.
+
+#### Configuração e guias de conexão (1.41.0)
+
+O padrão de `OAUTH_CIMD_ALLOWED_HOSTS` é `claude.ai,chatgpt.com`; a allowlist DCR inclui os callbacks exatos `https://claude.ai/api/mcp/auth_callback` e `https://chatgpt.com/connector_platform_oauth_redirect`. Configurações explícitas substituem esses padrões: atualizar o `.env` de instalações existentes e recriar os serviços. CIMD usa os redirects do documento verificado na mesma origem, sem exigir que constem na allowlist DCR. Para um callback DCR específico de uma conexão, adicionar a URL exata exibida pelo ChatGPT, nunca um curinga. Veja [operação e homologação](tutoriais/integracao-mcp-chatgpt.md).
+
+A página de Integrações renderiza `IntegrationGuides` no servidor com guias expansíveis nativos, logos SVG locais e um pequeno componente cliente para copiar a URL/comandos (com fallback manual). Usa `NEXT_PUBLIC_MCP_SERVER_URL`, com o mesmo padrão público do gerenciador de PATs. Não cria conexões nem clientes OAuth ao abrir o guia; a autorização começa no aplicativo externo. Não há novas dependências, tabelas, migrations ou alteração do fluxo de dados. Codex/Claude Code locais usam CIMD (quando disponível) ou DCR, com retorno loopback já existente; o catálogo não representa certificação nem homologação em cada superfície.
 
 ### MCP — importação incremental e uploads locais (fase 8)
 

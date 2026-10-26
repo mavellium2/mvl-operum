@@ -146,3 +146,9 @@ A rota revalida `/auth/me` e `/cards/:id` com o PAT original; revogação e perm
 Nonce e limites ficam em memória (uma réplica, como idempotência). Reinício invalida links pendentes; rotação da chave os invalida. Antes de escalar para várias réplicas, implementar reserva atômica no Redis. Criação/upload não registra PAT/link em auditoria nem URLs na telemetria.
 
 Parser: [API oficial do Busboy](https://github.com/mscdex/busboy), limites de arquivos/campos/partes e tratamento de streams.
+
+## ChatGPT e guias de conexão (1.41.0)
+
+O OAuth remoto também é compatível com o ChatGPT por CIMD, com PKCE S256 e método público `none`. A lista plural de capacidades do cliente prevalece sobre a preferência singular legada; os metadados anunciam suporte ao parâmetro `iss` já devolvido nos callbacks. Allowlists padrão incluem `chatgpt.com` e o callback DCR estável, mas ambientes com listas explícitas precisam atualizar o `.env` e recriar os serviços. Não há nova chave de API ou migration.
+
+Veja [guia do ChatGPT, configuração e homologação](../docs/tutoriais/integracao-mcp-chatgpt.md). A página **Configurações → Integrações** contém guias de ChatGPT, Claude, Claude Code e Codex. Compatibilidade implementada não representa homologação real de cada aplicativo ou superfície; validar em ambiente publicado antes de anunciar disponibilidade.

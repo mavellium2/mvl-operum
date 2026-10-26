@@ -136,6 +136,7 @@ describe('OAuthService', () => {
       { id: 'u-c', tenantId: 't-b', email: 'outro@x.com', role: 'member', isActive: true, deletedAt: null, forcePasswordChange: false },
     )
     delete process.env.OAUTH_CIMD_ALLOWED_HOSTS
+    delete process.env.OAUTH_DCR_ALLOWED_REDIRECTS
     delete process.env.MCP_RESOURCE_URL
     redis = makeRedis()
     service = new OAuthService(redis as any)
@@ -229,6 +230,29 @@ describe('OAuthService', () => {
   })
 
   describe('token', () => {
+    it('ChatGPT usa CIMD, PKCE e consentimento e recebe somente os acessos escolhidos', async () => {
+      const clientId = 'https://chatgpt.com/oauth/client.json'
+      const redirect = 'https://chatgpt.com/connector_platform_oauth_redirect'
+      service.fetchMetadata = vi.fn(async () => ({ name: 'ChatGPT', redirectUris: [redirect] }))
+      const { verifier, challenge } = pkce()
+      const req = authorizeRequest(challenge, { client_id: clientId, redirect_uri: redirect })
+      const approved = await service.approve(req, 'u-a', ['t-b'], false)
+      if (!('redirect' in approved) || !approved.redirect) throw new Error('aprovação falhou')
+      const callback = new URL(approved.redirect)
+      expect(callback.searchParams.get('iss')).toBe('https://api.operum.adm.br')
+      expect(callback.searchParams.get('state')).toBe(req.state)
+      const tokens = await service.exchangeCode({ code: codeFrom(approved.redirect), redirect_uri: redirect, client_id: clientId, code_verifier: verifier, resource: RESOURCE })
+      const info = await service.introspect(tokens.access_token)
+      expect(info.active).toBe(true)
+      expect(info.resource).toBe(RESOURCE)
+      expect(info.scopes).not.toContain('operum:write')
+      expect(info.tenants!.map(t => t.tenantId)).toEqual(['t-b'])
+      for (const failure of [await service.deny(req, 'u-a'), await service.checkAuthorize({ ...req, scope: 'unknown' }, 'u-a')]) {
+        if (!('redirect' in failure) || !failure.redirect) throw new Error('retorno ausente')
+        expect(new URL(failure.redirect).searchParams.get('iss')).toBe('https://api.operum.adm.br')
+      }
+    })
+
     it('troca o código por access e refresh com os escopos e workspaces escolhidos', async () => {
       const { tokens } = await connect()
       expect(tokens.access_token).toMatch(/^opr_oat_/)
@@ -370,6 +394,14 @@ describe('OAuthService', () => {
   })
 
   describe('registro dinâmico (DCR)', () => {
+    it('aceita o callback exato do ChatGPT e rejeita variações e hosts parecidos', async () => {
+      const redirect = 'https://chatgpt.com/connector_platform_oauth_redirect'
+      expect((await service.register({ redirect_uris: [redirect], client_name: 'ChatGPT' })).token_endpoint_auth_method).toBe('none')
+      for (const uri of [`${redirect}/`, `${redirect}?x=1`, 'https://chatgpt.com.evil.example/cb']) {
+        await expect(service.register({ redirect_uris: [uri] })).rejects.toMatchObject({ error: 'invalid_redirect_uri' })
+      }
+    })
+
     it('registra cliente público com o callback do Claude e loopback', async () => {
       const res = await service.register({ redirect_uris: [CALLBACK, 'http://localhost/callback'], client_name: 'Claude Code' })
       expect(res.client_id).toMatch(/^opr_dcr_/)

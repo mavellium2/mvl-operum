@@ -3,6 +3,7 @@ import { listApiTokensAction } from '@/app/actions/apiTokens'
 import { listOAuthGrantsAction } from '@/app/actions/oauth'
 import ApiTokensManager from '@/components/integracoes/ApiTokensManager'
 import ConnectedApps from '@/components/integracoes/ConnectedApps'
+import IntegrationGuides from '@/components/integracoes/IntegrationGuides'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,14 +17,12 @@ export default async function IntegracoesPage() {
 
   return (
     <>
-      <p className="text-sm text-gray-500">
-        Conecte ferramentas externas, como o Claude, para operar o Operum em seu nome.
-      </p>
+      <IntegrationGuides />
 
       <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-1">Apps conectados</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Apps que você autorizou com login, como o conector do Operum no app do Claude (web e celular).
+          Aplicativos que você autorizou com login no Operum. Desconectar revoga o acesso imediatamente.
         </p>
         <ConnectedApps grants={grants} />
       </section>
