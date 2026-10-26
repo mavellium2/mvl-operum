@@ -67,6 +67,8 @@ describe('OAuth HTTP', () => {
       const body = await res.json()
       expect(body.code_challenge_methods_supported).toEqual(['S256'])
       expect(body.client_id_metadata_document_supported).toBe(true)
+      expect(body.authorization_response_iss_parameter_supported).toBe(true)
+      expect(body.token_endpoint_auth_methods_supported).toEqual(['none'])
       expect(body.token_endpoint_auth_methods_supported).toContain('none')
       expect(body.scopes_supported).toContain('offline_access')
     }

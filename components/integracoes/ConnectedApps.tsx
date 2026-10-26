@@ -22,7 +22,7 @@ export default function ConnectedApps({ grants }: { grants: OAuthGrantSummary[] 
   }
 
   if (grants.length === 0) {
-    return <p className="text-sm text-gray-500">Nenhum app conectado. Ao conectar o Operum no app do Claude, a conexão aparece aqui.</p>
+    return <p className="text-sm text-gray-500">Nenhum app conectado. Escolha um aplicativo nos guias acima e autorize o acesso com seu login do Operum. A conexão aparecerá aqui.</p>
   }
 
   return (

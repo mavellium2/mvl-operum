@@ -874,3 +874,16 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Condições de revisão:** nova rota de escrita de usuários fora do app; extração da auditoria para um serviço próprio.
 - **Referências:** `services/auditoriaAdminService.ts`, `app/actions/admin.ts`, `__tests__/integration/actions/admin.actions.test.ts`; card Operum `cmvmvk8ev000p01ml07mn9kl5`.
 
+
+
+## ADR-067 — Reutilizar o OAuth MCP para ChatGPT e publicar guias por aplicativo
+
+- **Data do registro:** 2026-10-26.
+- **Status:** implementada em código na 1.41.0; configuração de produção e homologação real pendentes.
+- **Contexto:** o OAuth existente tinha padrões voltados ao Claude. O documento CIMD atual do ChatGPT anuncia vários métodos e prefere `private_key_jwt` no campo singular legado, enquanto o Operum aceita apenas clientes públicos `none`. A página de Integrações não ensinava a conectar cada aplicativo.
+- **Escolha:** negociar a interseção com a lista de métodos CIMD quando presente, exigindo `none`; preservar a regra singular quando ausente. Anunciar a identificação do emissor já devolvida em callbacks. Incluir ChatGPT nas allowlists padrão, preservar substituições explícitas e documentar sua atualização. Publicar guias por app na interface, com marcas locais e links oficiais.
+- **Justificativa:** reutiliza PKCE, consentimento, revogação e isolamento existentes, sem criar outro sistema de autenticação ou distribuir tokens pessoais para o ChatGPT. A negociação segue o formato documentado pela OpenAI e não implementa nem anuncia `private_key_jwt`.
+- **Alternativas consideradas:** exigir DCR para todo ChatGPT (mantido como alternativa, mas exige callback exato); aceitar qualquer método ou host (rejeitado); adicionar segredos de cliente ou provedor externo (fora da necessidade desta entrega).
+- **Consequências:** ambientes com allowlists explícitas devem atualizá-las e recriar serviços. Proteções SSRF, redirects na mesma origem, PKCE e escopos continuam exigidos. Sem dependências ou migrations. Guias não substituem a homologação dos aplicativos; permissões e disponibilidade dependem da conta externa.
+- **Condições de revisão:** mudança no contrato CIMD, adoção de clientes confidenciais ou alteração dos callbacks oficiais. Atualizar guias quando as interfaces externas mudarem.
+- **Referências:** `auth-service/src/oauth/cimd.ts`, `auth-service/src/oauth/oauth.config.ts`, `components/integracoes/IntegrationGuides.tsx`, `docs/tutoriais/integracao-mcp-chatgpt.md`, [autenticação OpenAI](https://developers.openai.com/plugins/build/auth). Complementa ADR-057, sem substituí-la.

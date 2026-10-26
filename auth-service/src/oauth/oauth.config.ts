@@ -15,6 +15,7 @@ export const SCOPE_OFFLINE = 'offline_access'
 export const SUPPORTED_SCOPES = [SCOPE_READ, SCOPE_WRITE, SCOPE_OFFLINE] as const
 
 export const HOSTED_CLAUDE_REDIRECT = 'https://claude.ai/api/mcp/auth_callback'
+export const HOSTED_CHATGPT_REDIRECT = 'https://chatgpt.com/connector_platform_oauth_redirect'
 
 function trimSlash(url: string): string {
   return url.replace(/\/+$/, '')
@@ -35,10 +36,10 @@ export function oauthConfig() {
     issuer: trimSlash(process.env.OAUTH_ISSUER ?? 'https://api.operum.adm.br'),
     authorizeUrl: process.env.OAUTH_AUTHORIZE_URL ?? 'https://operum.adm.br/oauth/autorizar',
     resource: trimSlash(process.env.MCP_RESOURCE_URL ?? 'https://api.operum.adm.br/mcp'),
-    cimdAllowedHosts: (process.env.OAUTH_CIMD_ALLOWED_HOSTS ?? 'claude.ai')
+    cimdAllowedHosts: (process.env.OAUTH_CIMD_ALLOWED_HOSTS ?? 'claude.ai,chatgpt.com')
       .split(',').map(h => h.trim().toLowerCase()).filter(Boolean),
     /** Redirects aceitos no registro dinâmico (DCR), além do loopback. */
-    dcrAllowedRedirects: (process.env.OAUTH_DCR_ALLOWED_REDIRECTS ?? HOSTED_CLAUDE_REDIRECT)
+    dcrAllowedRedirects: (process.env.OAUTH_DCR_ALLOWED_REDIRECTS ?? `${HOSTED_CLAUDE_REDIRECT},${HOSTED_CHATGPT_REDIRECT}`)
       .split(',').map(r => r.trim()).filter(Boolean),
   }
 }
@@ -48,6 +49,7 @@ export function authorizationServerMetadata() {
   const c = oauthConfig()
   return {
     issuer: c.issuer,
+    authorization_response_iss_parameter_supported: true,
     authorization_endpoint: c.authorizeUrl,
     token_endpoint: `${c.issuer}/oauth/token`,
     registration_endpoint: `${c.issuer}/oauth/register`,

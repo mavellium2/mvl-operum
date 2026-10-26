@@ -7,6 +7,13 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.41.0] — 2026-10-26
+
+- **Integrações:** catálogo com logos locais e guias expansíveis para ChatGPT, Claude, Claude Code e Codex: requisitos, passos de conexão, URLs/comandos copiáveis, permissões, teste inicial, desconexão e solução de problemas.
+- **OAuth/MCP:** compatibilidade com o ChatGPT por CIMD, negociando o método público `none` na lista de capacidades do cliente, inclusive quando a preferência legada é `private_key_jwt`. O servidor anuncia suporte a `iss` nas respostas de autorização.
+- Inclui `chatgpt.com` e o callback estável do ChatGPT nas configurações padrão; ambientes com allowlists explícitas precisam atualizar o `.env`. Mantém PKCE S256, proteção SSRF, isolamento de instituições e comparação exata dos callbacks.
+- Sem dependências novas ou migrations. A conexão real no ChatGPT depende da publicação, da configuração do ambiente e de homologação.
+
 ## [1.40.4] — 2026-10-24
 
 - **Segurança:** as ações de admin sobre usuários (criar, editar, mudar papel, ativar e desativar) passam a ficar registradas na auditoria da instituição, com quem fez e o que mudou. Senhas não entram no registro; a troca aparece só como "senha redefinida".

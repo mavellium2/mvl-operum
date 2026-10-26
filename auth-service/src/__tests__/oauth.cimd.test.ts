@@ -39,6 +39,22 @@ describe('CIMD', () => {
     }
     expect(isPublicAddress('160.79.104.10')).toBe(true)
   })
+
+  it('negocia none com a lista atual do ChatGPT, apesar da preferência legada', () => {
+    const id = 'https://chatgpt.com/oauth/client.json'
+    const doc = {
+      client_id: id, client_name: 'ChatGPT',
+      redirect_uris: ['https://chatgpt.com/connector_platform_oauth_redirect'],
+      token_endpoint_auth_methods_supported: ['none', 'private_key_jwt'],
+      token_endpoint_auth_method: 'private_key_jwt',
+    }
+    expect(parseClientMetadata(id, doc)).toEqual({ name: 'ChatGPT', redirectUris: doc.redirect_uris })
+    // A lista de capacidades tem precedência, mas nunca autoriza método sem interseção.
+    for (const methods of [[], ['private_key_jwt'], 'none', [false, 'none'], ['']]) {
+      expect(() => parseClientMetadata(id, { ...doc, token_endpoint_auth_methods_supported: methods })).toThrow('públicos')
+    }
+    expect(() => parseClientMetadata(id, { ...doc, redirect_uris: ['https://evil.example/cb'] })).toThrow('origem')
+  })
 })
 
 describe('redirect_uri', () => {

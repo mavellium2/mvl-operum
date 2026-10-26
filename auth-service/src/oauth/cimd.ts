@@ -133,8 +133,19 @@ export function parseClientMetadata(clientId: string, doc: unknown): ClientMetad
   if ((uris as string[]).some(u => !isLoopback(u) && new URL(u).origin !== origin)) {
     throw new CimdError('redirect_uris fora da origem do client_id')
   }
+  // SEP-3149: a lista anuncia capacidades; o campo singular é a preferência
+  // legada. Nosso servidor anuncia só "none", portanto essa é a interseção
+  // mesmo quando o cliente prefere private_key_jwt.
+  const methods = d.token_endpoint_auth_methods_supported
+  if (methods !== undefined && (
+    !Array.isArray(methods) || methods.length === 0 ||
+    !methods.every(m => typeof m === 'string' && m.length > 0) ||
+    !methods.includes('none')
+  )) {
+    throw new CimdError('só clientes públicos (token_endpoint_auth_methods_supported deve incluir "none") são aceitos')
+  }
   const method = d.token_endpoint_auth_method
-  if (method !== undefined && method !== 'none') {
+  if (methods === undefined && method !== undefined && method !== 'none') {
     throw new CimdError('só clientes públicos (token_endpoint_auth_method "none") são aceitos')
   }
   return { name, redirectUris: uris as string[] }
