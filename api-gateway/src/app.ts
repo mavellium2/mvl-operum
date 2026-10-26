@@ -141,6 +141,22 @@ app.all(/^\/cards\/[A-Za-z0-9_-]{1,64}\/budget\/?$/i, (req, res, next) => {
   budgetProxy(req, res, next)
 })
 
+const costsProxy = createProxyMiddleware({
+  target: process.env.AUTHORIZATION_SERVICE_URL ?? 'http://localhost:3000',
+  changeOrigin: true,
+  pathRewrite: path => path.replace(/^\/cards\/([A-Za-z0-9_-]{1,64})\/costs(?:\?.*)?$/i, '/api/internal/task-costs/$1'),
+  on: { proxyReq: (proxyReq, req) => {
+    proxyReq.setHeader('X-Internal-Api-Key', INTERNAL_API_KEY)
+    fixRequestBody(proxyReq, req)
+  } },
+})
+app.all(/^\/cards\/[A-Za-z0-9_-]{1,64}\/costs\/?$/i, (req, res, next) => {
+  if (!['GET', 'PATCH'].includes(req.method)) return res.sendStatus(405)
+  // Remove apenas a barra final para manter um único contrato no app.
+  req.url = req.url.replace(/\/costs\/(?=\?|$)/i, '/costs')
+  costsProxy(req, res, next)
+})
+
 function makeProxy(targetUrl: string, prefix: string) {
   return createProxyMiddleware({ target: targetUrl, changeOrigin: true, pathRewrite: { '^/': `${prefix}/` }, on: { proxyReq: (proxyReq, req) => { proxyReq.setHeader('X-Internal-Api-Key', INTERNAL_API_KEY); fixRequestBody(proxyReq, req) } } })
 }

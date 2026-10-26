@@ -16,4 +16,20 @@ export function registerBudgetTools(server: McpServer, registry: TenantRegistry)
     inputSchema: { task_id: idSchema, estimated_minutes: z.number().int().min(0).max(2_147_483_647) },
     entity: 'Orçamento da tarefa', annotations: { destructiveHint: false, idempotentHint: true },
   }, (args, ctx) => ctx.gw.patch<Record<string, unknown>>(`/cards/${args.task_id}/budget`, { estimated_minutes: args.estimated_minutes }))
+  defineTool(server, registry, 'operum_get_task_costs', {
+    title: 'Consultar custos e conclusão da tarefa',
+    description: 'Consulta materiais orçados, materiais realizados e data de realização da atividade vinculada ao card na Planilha de Custos. Exige planilha:ver.',
+    inputSchema: { task_id: idSchema }, entity: 'Custos da tarefa', annotations: { readOnlyHint: true },
+  }, (args, ctx) => ctx.gw.get<Record<string, unknown>>(`/cards/${args.task_id}/costs`))
+
+  defineTool(server, registry, 'operum_set_task_costs', {
+    title: 'Atualizar custos e conclusão da tarefa',
+    description: 'Atualiza apenas os campos informados: estimated_materials (R$ orçado), actual_materials (R$ efetivamente realizado), completed_on (YYYY-MM-DD ou null). Data realizada conclui o card vinculado; retirar a data só reabre uma conclusão originada na planilha. Exige as mesmas permissões financeiras e de realizado próprio/todos do painel. Não inventa nem registra horas; para tempo use os apontamentos. Não lançar reservas como gastos realizados.',
+    inputSchema: { task_id: idSchema, estimated_materials: z.number().min(0).max(99999999999.99).optional(), actual_materials: z.number().min(0).max(99999999999.99).optional(), completed_on: z.iso.date().nullable().optional() },
+    entity: 'Custos da tarefa', annotations: { destructiveHint: false, idempotentHint: true },
+  }, (args, ctx) => {
+    const { task_id, ...patch } = args
+    return ctx.gw.patch<Record<string, unknown>>(`/cards/${task_id}/costs`, patch)
+  })
+
 }

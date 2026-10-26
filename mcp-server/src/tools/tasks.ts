@@ -288,7 +288,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
     {
       title: 'Mover tarefa',
       description:
-        'Move a tarefa: para outra coluna da mesma sprint (column_id), para outra sprint (sprint_id [+ column_id]; padrão primeira coluna) ou para o backlog (to_backlog: true, opcionalmente project_id de outro projeto). A mudança de coluna fica registrada no histórico com o reason.',
+        'Move a tarefa: para outra coluna da mesma sprint (column_id), para outra sprint (sprint_id [+ column_id]; padrão primeira coluna) ou para o backlog (to_backlog: true, opcionalmente project_id de outro projeto). A mudança de coluna fica registrada no histórico com o reason. Ao entrar em Concluído, registra automaticamente a data de realização na atividade vinculada da Planilha de Custos, sem inventar tempo ou gastos.',
       inputSchema: {
         task_id: idSchema,
         sprint_id: idSchema.optional(),

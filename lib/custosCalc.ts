@@ -1,3 +1,4 @@
+import { dataRealizacaoEfetiva } from '@/lib/dataRealizacao'
 import type { WbsNodeClient } from '@/types/wbs'
 import { minutosRealizados } from './tempoRealizado'
 
@@ -168,8 +169,8 @@ export function computePlanilha(
         unidade: tempo > 0 ? 'h' : '—',
         quantidade: tempo > 0 ? round2(tempo / 60) : 0,
         situacao,
-        dataInicio: limparData(node.properties.dataRealizacao ?? node.properties.dataPrevista),
-        dataFim: limparData(node.properties.dataRealizacao ?? node.properties.dataPrevista),
+        dataInicio: limparData(dataRealizacaoEfetiva(node.properties) ?? node.properties.dataPrevista),
+        dataFim: limparData(dataRealizacaoEfetiva(node.properties) ?? node.properties.dataPrevista),
         custoPrevisto: f.prev,
         custoReal: f.real,
         éFolha: true,

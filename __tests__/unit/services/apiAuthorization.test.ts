@@ -190,3 +190,15 @@ describe('dashboards — escopo de quadros e custos', () => {
     expect(await authorizeApi(session, 'GET', '/sprints/s1/dashboard')).toEqual({ allowed: true })
   })
 })
+
+describe('custos pelo gateway', () => {
+  it('exige leitura financeira e reserva autorização de cada campo ao serviço canônico', async () => {
+    granted.delete('planilha:ver')
+    await expect(authorizeApi(session, 'GET', '/cards/card-A/costs')).rejects.toThrow()
+    granted.add('planilha:ver')
+    await expect(authorizeApi(session, 'GET', '/cards/card-A/costs')).resolves.toEqual({ allowed: true })
+    await expect(authorizeApi(session, 'PATCH', '/cards/card-A/costs', { actual_materials: 45 })).resolves.toEqual({ allowed: true })
+    await expect(authorizeApi(session, 'DELETE', '/cards/card-A/costs')).rejects.toThrow()
+    await expect(authorizeApi(session, 'PATCH', '/cards/card-A/costs/extra')).rejects.toThrow()
+  })
+})

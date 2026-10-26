@@ -1,3 +1,4 @@
+import { dataRealizacaoEfetiva } from '@/lib/dataRealizacao'
 import { elaboradoresDe, menorJornada, somaValoresPorMinuto } from './elaboradores'
 import { minutosRealizados } from './tempoRealizado'
 import type { WbsNodeClient } from '@/types/wbs'
@@ -234,10 +235,10 @@ export function computarPlanilhaCustos(
           minReal,
           tempoRealDosCards: p.tempoRealApontadoSegundos !== undefined,
           materiaisReal,
-          dataRealizacao: p.dataRealizacao ?? null,
+          dataRealizacao: dataRealizacaoEfetiva(p),
           rReal: vpm !== null ? round2(minReal * vpm) : null,
           totalReal: faturaReal(minReal, materiaisReal, vpm),
-          situacao: situacaoDe(p.dataPrevista ?? null, p.dataRealizacao ?? null),
+          situacao: situacaoDe(p.dataPrevista ?? null, dataRealizacaoEfetiva(p)),
         }
       })
 
