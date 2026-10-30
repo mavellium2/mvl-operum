@@ -18,6 +18,14 @@ async function disposePdf(resource: PdfResource | null) {
 }
 const fullCrop: PercentCrop = { unit: '%', x: 0, y: 0, width: 100, height: 100 }
 
+
+/**
+ * A prévia só aceita o arquivo local escolhido (blob:) ou a imagem gerada no
+ * próprio navegador (data:image/png|jpeg). Qualquer outro endereço vira vazio.
+ */
+function fonteDaPrevia(src: string): string {
+  return /^blob:/.test(src) || /^data:image\/(png|jpeg);base64,/.test(src) ? src : ''
+}
 export default function SignatureEditor({ onClose, onSave }: { onClose: () => void; onSave: (file: File) => Promise<void> }) {
   const [mode, setMode] = useState<'draw' | 'upload'>('draw')
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -182,7 +190,7 @@ export default function SignatureEditor({ onClose, onSave }: { onClose: () => vo
         {busy && <p role="status">Preparando prévia…</p>}
         {source && <><p className="text-sm">Arraste as bordas para selecionar apenas sua assinatura.</p><ReactCrop crop={crop} disabled={saving || busy} onChange={(_, percent) => setCrop(percent)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img ref={imageRef} src={source} alt="Prévia para recortar a assinatura" onError={() => { setSource(''); setError('Não foi possível exibir a imagem. Selecione outro arquivo.') }} style={{ maxHeight: 380, maxWidth: '100%' }} />
+          <img ref={imageRef} src={fonteDaPrevia(source)} alt="Prévia para recortar a assinatura" onError={() => { setSource(''); setError('Não foi possível exibir a imagem. Selecione outro arquivo.') }} style={{ maxHeight: 380, maxWidth: '100%' }} />
         </ReactCrop></>}
       </>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
