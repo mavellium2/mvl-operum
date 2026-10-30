@@ -83,6 +83,7 @@ export async function uploadSignatureAction(formData: FormData) {
     const signatureUrl = publicUrl(key)
     await authApi.updateProfile({ signatureUrl })
     revalidatePath('/configuracoes/perfil')
+    revalidatePath('/configuracoes/assinatura')
     return { signatureUrl }
   } catch (err) {
     console.error('[uploadSignatureAction]', err)

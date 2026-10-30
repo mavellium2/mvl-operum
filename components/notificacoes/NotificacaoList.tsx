@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { markNotificacaoAsReadAction, markAllAsReadAction, archiveNotificacaoAction } from '@/app/actions/notificacoes'
@@ -123,29 +124,27 @@ export default function NotificacaoList({ initialNotificacoes }: Props) {
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <select
+        <Select
+          ariaLabel="Filtrar por status"
+          className="sm:w-48"
+          searchable={false}
           value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos os status</option>
-          <option value="UNREAD">Não lidas</option>
-          <option value="READ">Lidas</option>
-          <option value="ARCHIVED">Arquivadas</option>
-        </select>
-        <select
+          onChange={setFilterStatus}
+          placeholder="Todos os status"
+          options={[{ value: '', label: 'Todos os status' }, { value: 'UNREAD', label: 'Não lidas' }, { value: 'READ', label: 'Lidas' }, { value: 'ARCHIVED', label: 'Arquivadas' }]}
+        />
+        <Select
+          ariaLabel="Filtrar por tipo"
+          className="sm:w-48"
+          searchable={false}
           value={filterType}
-          onChange={e => setFilterType(e.target.value)}
-          className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos os tipos</option>
-          <option value="COMMENT">Comentário</option>
-          <option value="ASSIGNMENT">Atribuição</option>
-          <option value="UPDATE">Atualização</option>
-          <option value="COMPLETION">Conclusão</option>
-          <option value="MENTIONED">Mencionado</option>
-          <option value="INVITATION">Convite</option>
-        </select>
+          onChange={setFilterType}
+          placeholder="Todos os tipos"
+          options={[
+            { value: '', label: 'Todos os tipos' }, { value: 'COMMENT', label: 'Comentário' }, { value: 'ASSIGNMENT', label: 'Atribuição' },
+            { value: 'UPDATE', label: 'Atualização' }, { value: 'COMPLETION', label: 'Conclusão' }, { value: 'MENTIONED', label: 'Mencionado' }, { value: 'INVITATION', label: 'Convite' },
+          ]}
+        />
         {unreadCount > 0 && (
           <button
             onClick={handleMarkAllRead}

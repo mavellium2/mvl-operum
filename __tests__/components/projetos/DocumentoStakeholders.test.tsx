@@ -110,7 +110,9 @@ describe('DocumentoStakeholders — localStorage', () => {
     const setSpy = vi.spyOn(Storage.prototype, 'setItem')
     renderComponent()
     await waitFor(() => expect(screen.getByLabelText('Elaborado por')).toBeInTheDocument())
-    await userEvent.selectOptions(screen.getByLabelText('Elaborado por'), 'joao')
+    await userEvent.click(screen.getByRole('combobox', { name: 'Elaborado por' }))
+    await userEvent.click(screen.getByRole('option', { name: 'João' }))
+    expect(screen.getByRole('combobox', { name: 'Elaborado por' })).toHaveTextContent('João')
     expect(setSpy).not.toHaveBeenCalled()
   })
 })
@@ -119,7 +121,7 @@ describe('DocumentoStakeholders — carga inicial da versão APPROVED', () => {
   it('popula os campos editáveis com o payload da versão APPROVED mais recente', async () => {
     renderComponent()
     await waitFor(() =>
-      expect(screen.getByLabelText('Elaborado por')).toHaveValue('ana'),
+      expect(screen.getByRole('combobox', { name: 'Elaborado por' })).toHaveTextContent('Ana'),
     )
     // Aprovador é sempre o gerente: campo automático (sem controle editável).
     const quadros = screen.getAllByTestId('quadro-identificacao')
@@ -157,7 +159,7 @@ describe('DocumentoStakeholders — responsáveis restritos a membros da equipe'
     fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
 
     // O nome da versão aprovada não resolve para um membro → select sem seleção
-    expect(screen.getByLabelText('Elaborado por')).toHaveValue('')
+    expect(screen.getByRole('combobox', { name: 'Elaborado por' })).toHaveTextContent('Selecionar membro da equipe')
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
 
@@ -172,7 +174,7 @@ describe('DocumentoStakeholders — fluxo de salvar (commit)', () => {
     renderComponent()
     // Sincroniza com o fim do loadVersions (campos inicializados a partir da
     // versão APPROVED) para que o clique atinja o botão do render mais recente.
-    await waitFor(() => expect(screen.getByLabelText('Elaborado por')).toHaveValue('ana'))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Elaborado por' })).toHaveTextContent('Ana'))
     expect(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' })).toBeEnabled()
 
     const callsBefore = fetchSpy.mock.calls.length
@@ -208,7 +210,7 @@ describe('DocumentoStakeholders — fluxo de salvar (commit)', () => {
     renderComponent()
     // Sincroniza com o fim do loadVersions antes de clicar em "Salvar Versão"
     // (evita o clique sobre um botão de um render intermediário).
-    await waitFor(() => expect(screen.getByLabelText('Elaborado por')).toHaveValue('ana'))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Elaborado por' })).toHaveTextContent('Ana'))
     expect(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' })).toBeEnabled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
@@ -231,7 +233,7 @@ describe('DocumentoStakeholders — fluxo de salvar (commit)', () => {
 
   it('cancelar o modal não dispara nenhum POST', async () => {
     renderComponent()
-    await waitFor(() => expect(screen.getByLabelText('Elaborado por')).toHaveValue('ana'))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Elaborado por' })).toHaveTextContent('Ana'))
     expect(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' })).toBeEnabled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))

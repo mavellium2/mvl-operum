@@ -10,6 +10,7 @@ vi.mock('@/app/actions/cardResponsible', () => ({
 }))
 
 import { addResponsibleAction, removeResponsibleAction, getResponsiblesAction } from '@/app/actions/cardResponsible'
+import { escolherOpcao, opcoesDo } from '../../helpers/select'
 
 const mockGetResponsibles = getResponsiblesAction as ReturnType<typeof vi.fn>
 const mockAdd = addResponsibleAction as ReturnType<typeof vi.fn>
@@ -31,8 +32,9 @@ describe('MultiUserSelector', () => {
   it('renders user options in dropdown', async () => {
     render(<MultiUserSelector cardId="c1" users={users} />)
     await waitFor(() => expect(screen.queryByText('Carregando...')).not.toBeInTheDocument())
-    expect(screen.getByRole('option', { name: /Ana/i })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /Bruno/i })).toBeInTheDocument()
+    const opcoes = opcoesDo(screen.getByRole('combobox', { name: /adicionar responsável/i }))
+    expect(opcoes.some(o => /Ana/.test(o))).toBe(true)
+    expect(opcoes.some(o => /Bruno/.test(o))).toBe(true)
   })
 
   it('shows existing responsibles as chips', async () => {
@@ -44,11 +46,10 @@ describe('MultiUserSelector', () => {
   })
 
   it('calls addResponsibleAction when user selected', async () => {
-    const user = userEvent.setup()
     render(<MultiUserSelector cardId="c1" users={users} />)
     await waitFor(() => screen.getByRole('combobox', { name: /adicionar responsável/i }))
-    await user.selectOptions(screen.getByRole('combobox', { name: /adicionar responsável/i }), 'u1')
-    expect(mockAdd).toHaveBeenCalledWith('c1', 'u1')
+    escolherOpcao(screen.getByRole('combobox', { name: /adicionar responsável/i }), /Ana/)
+    await waitFor(() => expect(mockAdd).toHaveBeenCalledWith('c1', 'u1'))
   })
 
   it('calls removeResponsibleAction when chip × clicked', async () => {
@@ -77,14 +78,13 @@ describe('MultiUserSelector', () => {
   })
 
   it('calls onResponsiblesChange callback after adding a member', async () => {
-    const user = userEvent.setup()
     const onResponsiblesChange = vi.fn()
     render(<MultiUserSelector cardId="c1" users={users} onResponsiblesChange={onResponsiblesChange} />)
     await waitFor(() => screen.getByRole('combobox', { name: /adicionar responsável/i }))
-    await user.selectOptions(screen.getByRole('combobox', { name: /adicionar responsável/i }), 'u1')
-    expect(onResponsiblesChange).toHaveBeenCalledWith(
+    escolherOpcao(screen.getByRole('combobox', { name: /adicionar responsável/i }), /Ana/)
+    await waitFor(() => expect(onResponsiblesChange).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ userId: 'u1' })])
-    )
+    ))
   })
 
   it('calls onResponsiblesChange callback after removing a member', async () => {

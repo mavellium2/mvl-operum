@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { parseMoeda as parseMoedaLib } from '@/lib/dinheiro'
 import Dica from '@/components/ui/Tooltip'
@@ -779,16 +780,14 @@ function AdicionarElaborador({
         <p className="text-xs text-gray-500">Todos os usuários da instituição já são membros deste projeto.</p>
       ) : (
         <div className="flex flex-wrap items-end gap-2">
-          <select
+          <Select
+            ariaLabel="Usuário"
+            className="min-w-[220px] flex-1"
             value={userId}
-            onChange={e => setUserId(e.target.value)}
-            className="min-w-[220px] flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Selecionar usuário…</option>
-            {disponiveis.map(u => (
-              <option key={u.id} value={u.id}>{u.name} — {u.email}</option>
-            ))}
-          </select>
+            onChange={setUserId}
+            placeholder="Selecionar usuário…"
+            options={disponiveis.map(u => ({ value: u.id, label: u.name, description: u.email }))}
+          />
           <button
             type="button"
             onClick={adicionar}

@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, forwardRef, useContext, useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
-import { ChevronDown, ExternalLink, Lock, Plus, X } from 'lucide-react'
+import { ChevronDown, Plus, X } from 'lucide-react'
 import DateInput from '@/components/ui/DateInput'
 import MembroEquipeSelect, { type MembroEquipeOption } from '@/components/projetos/documentacao/MembroEquipeSelect'
 import { formatDateBR } from '@/lib/date'
@@ -252,36 +252,16 @@ function useRegistrarLimpar(id: string, limpar: (() => void) | null) {
   }, [id, registrarLimpar])
 }
 
-/**
- * 1. AUTOMÁTICO — vem do cadastro do projeto; não edita aqui. Ao passar o
- * mouse mostra o cadeado e de onde vem.
- */
-export function CampoAutomatico({ children, origem = 'Automático: vem do cadastro do projeto', link, inline = false, padding = PAD }: {
+/** Dado compartilhado do cadastro. A alteração é feita por "Editar dados do projeto" na barra. */
+export function CampoAutomatico({ children, inline = false, padding = PAD }: {
   children: ReactNode
+  /** Mantido para compatibilidade com modelos existentes; não é exibido na folha. */
   origem?: string
-  /** Atalho para editar na origem (ex.: "Editar na EAP/WBS"). */
   link?: { rotulo: string; href: string }
   inline?: boolean
-  /** Espaço interno (tabelas densas usam menos). */
   padding?: string
 }) {
-  const { editavel } = useEditorFolha()
-  if (!editavel) return inline ? <>{children}</> : <div style={{ padding }}>{children}</div>
-  const Tag = inline ? 'span' : 'div'
-  return (
-    <Tag data-automatico="" className={`group/auto relative hover:bg-slate-100/70 ${inline ? 'inline-block rounded px-0.5' : 'block'}`} style={{ padding: inline ? undefined : padding }}>
-      {children}
-      <Lock aria-hidden="true" className={`absolute top-1/2 hidden h-3 w-3 -translate-y-1/2 text-slate-500 group-hover/auto:block ${inline ? 'left-full ml-1' : 'right-1.5'}`} />
-      <span role="tooltip" className="pointer-events-none absolute bottom-full right-0 z-20 mb-1 hidden items-center gap-3 whitespace-nowrap rounded-md bg-slate-900 px-3 py-1.5 font-sans text-xs text-white shadow-lg group-hover/auto:flex">
-        <Lock className="h-3 w-3" aria-hidden="true" /> {origem}
-        {link && (
-          <a href={link.href} className="pointer-events-auto inline-flex items-center gap-1 rounded bg-white/10 px-2 py-0.5 font-medium hover:bg-white/20">
-            {link.rotulo} <ExternalLink className="h-3 w-3" />
-          </a>
-        )}
-      </span>
-    </Tag>
-  )
+  return inline ? <>{children}</> : <div style={{ padding }}>{children}</div>
 }
 
 interface CampoBase { id: string; rotulo: string; ajuda?: string }
@@ -356,7 +336,7 @@ export function CampoPessoa({ id, rotulo, ajuda, projetoId, membros, valorId, no
   useRegistrarLimpar(id, editavel ? () => onChange(null) : null)
   if (!editavel) return <>{nome}</>
   return (
-    <span data-campo={id} data-vazio={valorId ? undefined : 'true'} className="relative inline-flex min-w-[45%] max-w-full items-center align-top" onFocus={e => focar({ id, rotulo, ajuda, el: (e.target as HTMLElement).closest('td') ?? e.currentTarget })} onBlur={() => focar(null)}>
+    <span data-campo={id} data-vazio={valorId ? undefined : 'true'} className="relative inline-flex min-w-[45%] max-w-full items-baseline align-baseline" onFocus={e => focar({ id, rotulo, ajuda, el: (e.target as HTMLElement).closest('td') ?? e.currentTarget })} onBlur={() => focar(null)}>
       <MembroEquipeSelect
         membros={membros}
         projetoId={projetoId}
@@ -364,11 +344,11 @@ export function CampoPessoa({ id, rotulo, ajuda, projetoId, membros, valorId, no
         onChange={onChange}
         onCriarMembro={onCriarMembro}
         semBotaoCriar
+        naFolha
         ariaLabel={rotulo}
         placeholder="Selecionar membro da equipe"
-        className="campo-pessoa w-full cursor-pointer appearance-none border-0 bg-transparent p-0 pr-5 outline-none focus:bg-[#f5f8ff] focus:outline focus:outline-2 focus:outline-blue-500"
+        className="w-full"
       />
-      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
     </span>
   )
 }
@@ -392,7 +372,7 @@ export function CampoData({ id, rotulo, ajuda, valor, onChange }: CampoBase & { 
 }
 
 /** Marca o input de data/pessoa como foco navegável (Tab do editor). */
-export const SELETOR_FOCO = '[data-campo-foco], [data-campo] input:not([type="hidden"]):not([tabindex="-1"]), [data-campo] select'
+export const SELETOR_FOCO = '[data-campo-foco], [data-campo] input:not([type="hidden"]):not([tabindex="-1"]), [data-campo] select, [data-campo] button[role="combobox"]'
 
 /**
  * 5. LISTA / TABELA — linhas repetíveis; o "+ Adicionar" fica no fim da

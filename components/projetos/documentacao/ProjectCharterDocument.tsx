@@ -5,6 +5,7 @@ import type { MacroFase } from './MacroFaseTable'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import { formatDateBR } from '@/lib/date'
 import { parseDocumentCost } from '@/lib/documentCost'
+import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import {
   Assinaturas, Cabecalho, CampoAutomatico, CampoData, CampoPessoa, CampoTexto, Folha, LinhaLista, Quadro,
   SecaoTabela, SecaoTexto, celula, celulaCampo, faixa, secao, useEditorFolha,
@@ -144,6 +145,7 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
                 : (dataAprovacao || '—')}
             </td>
           </tr>
+          <tr><td colSpan={2} style={{ ...celula, whiteSpace: 'nowrap' }}><AssinaturaEmLinha url={gerenteSignatureUrl} vazio={editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined} /></td></tr>
         </Quadro>
 
         <SecaoTexto titulo={titulo('Justificativa do projeto')}>

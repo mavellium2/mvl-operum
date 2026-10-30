@@ -1,5 +1,8 @@
 'use client'
 
+import Select from '@/components/ui/Select'
+import { useId } from 'react'
+
 interface User {
   id: string
   name: string
@@ -14,21 +17,18 @@ interface UserSelectorProps {
 }
 
 export default function UserSelector({ users, value, onChange, label }: UserSelectorProps) {
+  const id = useId()
   return (
     <div className="flex flex-col gap-1">
-      {label && <label className="text-sm font-medium text-gray-700">{label}</label>}
-      <select
-        value={value ?? ''}
-        onChange={e => onChange(e.target.value || null)}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition"
-      >
-        <option value="">— Nenhum responsável —</option>
-        {users.map(u => (
-          <option key={u.id} value={u.id}>
-            {u.name}
-          </option>
-        ))}
-      </select>
+      {label && <label htmlFor={id} className="text-sm font-medium text-gray-700">{label}</label>}
+      <Select
+        id={id}
+        ariaLabel={label ?? 'Responsável'}
+        value={value}
+        onChange={id => onChange(id || null)}
+        placeholder="Nenhum responsável"
+        options={[{ value: '', label: 'Nenhum responsável' }, ...users.map(u => ({ value: u.id, label: u.name, description: u.email }))]}
+      />
     </div>
   )
 }

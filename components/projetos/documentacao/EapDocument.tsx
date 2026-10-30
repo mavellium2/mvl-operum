@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { printPageStyle, rodapeDocumento } from '@/lib/printPageStyle'
 import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
 import { FOLHA_MARGEM_MM } from '@/components/documentos/editor/folha'
@@ -369,6 +370,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
   return (
     <>
       <EditorDocumento
+        editarProjetoHref={permissions.has('projeto:editar') ? `/projetos/${projetoId}/configuracoes` : undefined}
         documento="EAP"
         paisagem
         editavel={editavel}
@@ -541,18 +543,13 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
               </div>
               <div>
                 <label className={labelClass} htmlFor="eap-move-parent">Mover para (pai)</label>
-                <select
+                <Select
                   id="eap-move-parent"
-                  className={inputClass}
                   value={moveParentId}
-                  onChange={e => setMoveParentId(e.target.value)}
-                >
-                  <option value="">— Escolha um destino —</option>
-                  <option value="ROOT">Raiz (nível 1)</option>
-                  {candidates.map(c => (
-                    <option key={c.id} value={c.id}>{c.code} — {c.title || '(sem título)'}</option>
-                  ))}
-                </select>
+                  onChange={setMoveParentId}
+                  placeholder="— Escolha um destino —"
+                  options={[{ value: 'ROOT', label: 'Raiz (nível 1)' }, ...candidates.map(c => ({ value: c.id, label: `${c.code} — ${c.title || '(sem título)'}` }))]}
+                />
                 <button
                   onClick={() => {
                     if (!moveParentId) return

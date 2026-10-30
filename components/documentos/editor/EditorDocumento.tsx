@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   BookOpen, ChevronDown, ChevronUp, CircleHelp, Eraser, FileCheck2, FileText, FileType2, History, ListPlus,
-  Maximize2, Printer, Redo2, Save, Search, Undo2, ZoomIn, ZoomOut, ArrowDownToLine,
+  Maximize2, Printer, Redo2, Save, Search, Undo2, ZoomIn, ZoomOut, ArrowDownToLine, Pencil,
 } from 'lucide-react'
 import Tooltip from '@/components/ui/Tooltip'
 import Modal from '@/components/ui/Modal'
@@ -25,6 +25,8 @@ export interface EditorDocumentoProps {
   children: ReactNode
   /** Nome do documento (manual, rótulos de acessibilidade). */
   documento: string
+  /** Edita a origem dos dados compartilhados, que passam a valer para todos os documentos. */
+  editarProjetoHref?: string
   paisagem?: boolean
   editavel: boolean
   status: StatusSalvamento
@@ -92,7 +94,7 @@ const STATUS: Record<StatusSalvamento, { cor: string; texto: string }> = {
 
 export default function EditorDocumento(props: EditorDocumentoProps) {
   const {
-    children, documento, paisagem = false, editavel, status, mensagemStatus, versao, onSalvar, podeSalvar = true,
+    children, documento, editarProjetoHref, paisagem = false, editavel, status, mensagemStatus, versao, onSalvar, podeSalvar = true,
     onHistorico, pendentes, onImprimir, onPdf, onWord, desfazer, onAdicionarLinha, extrasEdicao, paginas, avisos, saida,
   } = props
   const { dialogo: dialogoSaida } = useGuardaSaida(saida)
@@ -269,6 +271,7 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
           </Grupo>
 
           <Grupo titulo="Edição">
+            {editarProjetoHref && <Tooltip label="Editar os dados compartilhados do projeto"><a href={editarProjetoHref} className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-slate-700 hover:bg-slate-100"><Pencil className={ICONE} />Editar dados do projeto</a></Tooltip>}
             <Botao rotulo="Desfazer (Ctrl+Z)" onClick={desfazer?.desfazer} disabled={!editavel || !desfazer?.podeDesfazer}><Undo2 className={ICONE} /></Botao>
             <Botao rotulo="Refazer (Ctrl+Shift+Z)" onClick={desfazer?.refazer} disabled={!editavel || !desfazer?.podeRefazer}><Redo2 className={ICONE} /></Botao>
             {onAdicionarLinha && <Botao rotulo="Adicionar linha na tabela" onClick={onAdicionarLinha} disabled={!editavel}><ListPlus className={ICONE} /></Botao>}
@@ -345,7 +348,7 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
             ['Ctrl+Z / Ctrl+Shift+Z', 'Desfazer / refazer'],
             ['Ctrl+S', 'Salvar versão (envia para aprovação)'],
             ['Ctrl+P', 'Imprimir'],
-            ['Cadeado', 'Campo automático: vem do cadastro do projeto'],
+            ['Editar dados do projeto', 'Corrige as informações compartilhadas entre documentos'],
           ].map(([k, v]) => (
             <div key={k} className="contents"><dt className="font-medium text-slate-800">{k}</dt><dd className="text-slate-600">{v}</dd></div>
           ))}
@@ -357,7 +360,7 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
           <p>O documento é editado direto na folha, que já é o que sai no PDF. O rascunho é salvo sozinho (indicador no fim da barra) e só você o vê até salvar uma versão.</p>
           <p><strong>Tipos de campo:</strong></p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Automático</strong> (cadeado): vem do cadastro do projeto e não é editado aqui.</li>
+            <li><strong>Dados do projeto:</strong> use “Editar dados do projeto” para corrigir nome e informações compartilhadas. Ao salvar no cadastro, a mudança vale para todos os documentos atuais.</li>
             <li><strong>Texto</strong>: clique e digite; vazio mostra a pergunta que orienta o preenchimento.</li>
             <li><strong>Pessoa</strong>: escolha um membro da equipe; o aprovador é sempre o gerente.</li>
             <li><strong>Data</strong>: digite ou abra o calendário; sai como dd/mm/aaaa.</li>

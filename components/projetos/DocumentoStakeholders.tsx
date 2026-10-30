@@ -2,6 +2,7 @@
 
 import { erroEmail, erroTelefone, formatEmail, formatTelefone } from '@/lib/contato'
 import { printPageStyle } from '@/lib/printPageStyle'
+import { acrescentarPartesDoCadastro } from '@/lib/partesInteressadas'
 import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
 import ProjetoStakeholdersClient from '@/components/projetos/ProjetoStakeholdersClient'
 import { useDesfazer } from '@/hooks/useDesfazer'
@@ -30,7 +31,7 @@ import { fetchWithSession } from '@/lib/clientFetch'
 import { formatDateBR, toDateInputValue } from '@/lib/date'
 import PaginasDaPrevia from '@/components/projetos/documentacao/PaginasDaPrevia'
 
-type DocumentData = { header: ProjetoHeader; stakeholders: Stakeholder[] }
+type DocumentData = { header: ProjetoHeader; stakeholders: Stakeholder[]; cadastrosExcluidos?: string[] }
 
 interface EditableFields {
   elaboradoPor: string
@@ -128,10 +129,11 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
 
   // Desfazer/refazer: quadro + linhas da tabela.
   const linhasAtuais = data?.stakeholders
-  const estadoEdicao = useMemo(() => ({ editable, linhas: linhasAtuais }), [editable, linhasAtuais])
-  const aplicarEstado = useCallback((e: { editable: EditableFields; linhas?: Stakeholder[] }) => {
+  const cadastrosExcluidos = data?.cadastrosExcluidos
+  const estadoEdicao = useMemo(() => ({ editable, linhas: linhasAtuais, cadastrosExcluidos }), [editable, linhasAtuais, cadastrosExcluidos])
+  const aplicarEstado = useCallback((e: { editable: EditableFields; linhas?: Stakeholder[]; cadastrosExcluidos?: string[] }) => {
     setEditable(e.editable)
-    setData(prev => prev && e.linhas ? { ...prev, stakeholders: e.linhas } : prev)
+    setData(prev => prev && e.linhas ? { ...prev, stakeholders: e.linhas, cadastrosExcluidos: e.cadastrosExcluidos } : prev)
     setAlterado(true)
   }, [])
   // O histórico recomeça quando o documento e o quadro da versão vigente terminam de carregar.
@@ -163,12 +165,13 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
       .then(r =>
         r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error)),
       )
-      .then((d: DocumentData) => {
+      .then((d: DocumentData & { cadastroAtualizado?: boolean }) => {
         contatosCarregados.current = {
           emails: new Set(d.stakeholders.map(s => s.email ?? '')),
           telefones: new Set(d.stakeholders.map(s => s.telefoneFax ?? '')),
         }
-        setData(d)
+        setData({ header: d.header, stakeholders: d.stakeholders, ...(d.cadastrosExcluidos ? { cadastrosExcluidos: d.cadastrosExcluidos } : {}) })
+        if (d.cadastroAtualizado) setAlterado(true)
         setCarregamentos(n => n + 1)
         // "Salvar mais tarde": volta de onde parou (rascunho privado, ainda sem versão).
         if (!canEdit) return
@@ -183,7 +186,7 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
             versao: salvo.header.versao || prev.versao,
             dataAprovacaoRaw: toDateInputValue(salvo.header.dataAprovacao) || prev.dataAprovacaoRaw,
           }))
-          setData(prev => prev ? { ...prev, stakeholders: salvo.stakeholders } : prev)
+          setData(prev => prev ? { ...prev, stakeholders: acrescentarPartesDoCadastro(salvo.stakeholders, prev.stakeholders, salvo.cadastrosExcluidos), cadastrosExcluidos: salvo.cadastrosExcluidos } : prev)
           setCarregamentos(n => n + 1)
           setRascunhoRestaurado(true)
         })
@@ -427,30 +430,39 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
       alterarLinhas(linhas => [...linhas, { ref: String(linhas.length + 1).padStart(2, '0'), nome: '', empresaEquipe: '', cargoCompetencia: '', email: '', telefoneFax: '', endereco: '', observacoes: '' }])
       requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(`[data-campo="ds-${data?.stakeholders.length ?? 0}-nome"] textarea`)?.focus())
     },
-    onRemover: indice => alterarLinhas(linhas => linhas.filter((_, i) => i !== indice)),
+    onRemover: indice => {
+      setData(prev => {
+        if (!prev) return prev
+        const cadastroId = prev.stakeholders[indice]?.cadastroId
+        return { ...prev, stakeholders: prev.stakeholders.filter((_, i) => i !== indice), ...(cadastroId ? { cadastrosExcluidos: [...new Set([...(prev.cadastrosExcluidos ?? []), cadastroId])] } : {}) }
+      })
+      setAlterado(true)
+    },
   }
   /**
    * Depois de vincular/criar/salvar no cadastro, busca o documento de novo e
    * acrescenta só as pessoas que ainda não estão na tabela (as edições feitas
    * nesta versão do documento são mantidas).
    */
-  async function incluirNovosDoCadastro() {
+  const incluirNovosDoCadastro = useCallback(async () => {
     try {
-      const r = await fetchWithSession(`/api/projects/${projetoId}/documento`)
-      if (!r.ok) return
+      const r = await fetchWithSession(`/api/projects/${projetoId}/documento?origem=cadastro`, { cache: 'no-store' })
+      if (!r.ok) throw new Error('Falha ao consultar o cadastro atualizado')
       const atual: DocumentData = await r.json()
-      const chave = (x: Stakeholder) => `${x.nome.trim().toLowerCase()}|${(x.email ?? '').trim().toLowerCase()}`
-      setData(prev => {
-        if (!prev) return prev
-        const existentes = new Set(prev.stakeholders.map(chave))
-        const novos = atual.stakeholders.filter(x => !existentes.has(chave(x)))
-        if (novos.length === 0) return prev
-        const base = prev.stakeholders.length
-        return { ...prev, stakeholders: [...prev.stakeholders, ...novos.map((x, i) => ({ ...x, ref: String(base + i + 1).padStart(2, '0') }))] }
-      })
+      setData(prev => prev ? { ...prev, stakeholders: acrescentarPartesDoCadastro(prev.stakeholders, atual.stakeholders, prev.cadastrosExcluidos) } : prev)
       setAlterado(true)
-    } catch { /* o cadastro foi salvo; a tabela atualiza ao recarregar */ }
-  }
+    } catch {
+      toast('A pessoa foi salva no projeto, mas não foi possível atualizar a tabela. Tente adicionar novamente para recarregar o cadastro.', 'error')
+    }
+  }, [projetoId, toast])
+
+  useEffect(() => {
+    const atualizar = (event: Event) => {
+      if ((event as CustomEvent<{ projetoId: string }>).detail?.projetoId === projetoId) void incluirNovosDoCadastro()
+    }
+    window.addEventListener("operum:project-members-updated", atualizar)
+    return () => window.removeEventListener("operum:project-members-updated", atualizar)
+  }, [incluirNovosDoCadastro, projetoId])
 
   // "Adicionar parte interessada": abre o cadastro da tela Stakeholders (interno ou externo) à direita.
   const menuAdicionar = cadastro ? {
@@ -481,6 +493,7 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
   return (
     <>
       <EditorDocumento
+        editarProjetoHref={permissions.has('projeto:editar') ? `/projetos/${projetoId}/configuracoes` : undefined}
         documento="Partes Interessadas"
         paisagem
         editavel={editavel}

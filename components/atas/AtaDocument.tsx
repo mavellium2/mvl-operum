@@ -2,6 +2,7 @@
 
 import { forwardRef, type ReactNode } from 'react'
 import { Users } from 'lucide-react'
+import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import {
   ATA_ASSINATURAS_POR_LINHA, ataAssinantes, ataComUmaLinhaVazia, ataCopias, ataData, ataNumero, ataPessoa,
   type AtaExportData,
@@ -114,6 +115,7 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
               : ataPessoa(d.aprovadoPor, d.aprovadoPorFuncao)}
           </td>
         </tr>
+        {(d.gerenteProjeto || d.assinaturaGerenteUrl) && <tr><td colSpan={2} style={{ ...celula, whiteSpace: 'nowrap' }}><AssinaturaEmLinha url={d.assinaturaGerenteUrl} rotulo="Assinatura do gerente:" vazio={editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined} /></td></tr>}
       </Quadro>
 
       <SecaoTabela

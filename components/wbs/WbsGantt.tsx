@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { useMemo, useState } from 'react'
 import type { WbsNodeClient } from '@/types/wbs'
 import { DAY_MS, dateLabel, ganttRows, plannedSchedule } from '@/lib/wbsGantt'
@@ -23,9 +24,8 @@ export default function WbsGantt({ nodes, rootId, today }: {
   const ticks = Array.from({ length: Math.ceil(days / step) }, (_, i) => start + i * step * DAY_MS)
   return <section className="flex-1 overflow-auto bg-white" aria-label="Gantt do projeto">
     <div className="p-3 flex flex-wrap items-center gap-3">
-      <label>Zoom <select aria-label="Zoom do Gantt" value={zoom} onChange={e => setZoom(e.target.value as typeof zoom)} className="border rounded p-1">
-        <option value="day">Dia</option><option value="week">Semana</option><option value="month">Mês</option>
-      </select></label>
+      <div className="flex items-center gap-2">Zoom <Select ariaLabel="Zoom do Gantt" className="w-32" searchable={false} value={zoom} onChange={v => setZoom(v as typeof zoom)}
+        options={[{ value: 'day', label: 'Dia' }, { value: 'week', label: 'Semana' }, { value: 'month', label: 'Mês' }]} /></div>
       <p className="text-xs text-gray-600">Somente leitura. O período estimado termina na data prevista e usa a duração em dias corridos. Nós sem data ficam sem barra.</p>
     </div>
     <div style={{ minWidth: width + 280 }}>

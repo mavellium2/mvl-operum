@@ -8,6 +8,7 @@ import AtaFormClient from '@/components/atas/AtaFormClient'
 import { cabecalhoDaAta, emailsParaCopia, proximoNumero } from '@/services/ataService'
 import type { MemberOption } from '@/components/atas/MemberSelect'
 import type { Metadata } from 'next'
+import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,7 @@ export default async function NovaAtaPage({ params }: { params: Promise<{ projet
 
   if (!(await canProjectPermission({ tenantId, role, userId }, projetoId, 'documentos:ver'))) notFound()
 
-  const [cabecalho, emailsSugeridos, numero] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId), proximoNumero(projetoId)])
+  const [cabecalho, emailsSugeridos, numero, gerente] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId), proximoNumero(projetoId), gerenteDoProjeto(projetoId)])
   const members: MemberOption[] = (
     await prisma.userProject.findMany({
       where: { projectId: projetoId, active: true },
@@ -52,7 +53,7 @@ export default async function NovaAtaPage({ params }: { params: Promise<{ projet
         <h1 className="text-sm font-semibold text-gray-900">Nova Ata de Reunião</h1>
       </div>
       <main className="min-h-0 flex-1">
-        <AtaFormClient projetoId={projetoId} mode="create" numero={numero} nomeProjeto={project.name} members={members} emailsSugeridos={emailsSugeridos} instituicaoProjeto={cabecalho.instituicao} logoUrl={cabecalho.logoUrl} />
+        <AtaFormClient gerenteProjeto={gerente.nome} assinaturaGerenteUrl={gerente.signatureUrl} projetoId={projetoId} mode="create" numero={numero} nomeProjeto={project.name} members={members} emailsSugeridos={emailsSugeridos} instituicaoProjeto={cabecalho.instituicao} logoUrl={cabecalho.logoUrl} />
       </main>
     </div>
   )

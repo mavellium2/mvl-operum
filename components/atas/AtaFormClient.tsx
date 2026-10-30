@@ -28,6 +28,8 @@ interface Acao { acao: string; prazo: string; responsavel: string; responsavelUs
 interface Anexo { nome: string; url: string }
 
 interface Props {
+  gerenteProjeto?: string
+  assinaturaGerenteUrl?: string | null
   nomeProjeto?: string
   /** Linha institucional do projeto (Editar projeto > Informações iniciais). */
   instituicaoProjeto?: string
@@ -71,7 +73,7 @@ export function semRepetir(lista: string[]): string[] {
 }
 
 
-export default function AtaFormClient({ projetoId, ataId, mode, members, emailsSugeridos = [], initial, nomeProjeto = '', numero, instituicaoProjeto, logoUrl = null }: Props) {
+export default function AtaFormClient({ projetoId, ataId, mode, members, emailsSugeridos = [], initial, nomeProjeto = '', numero, instituicaoProjeto, logoUrl = null, gerenteProjeto, assinaturaGerenteUrl }: Props) {
   const permissions = useProjectPermissions()
   const canEdit = permissions.has('documentos:editar')
   // Pessoas da ata: membros da equipe, com "+" para criar membro (padrão dos documentos).
@@ -111,7 +113,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
   const funcaoDe = (userId: string | null | undefined) => (userId ? todosMembros.find(m => m.id === userId)?.setor ?? null : null)
   // Mesmos dados na prévia/PDF e no Word (layout do modelo "01_Form Ata de Reunião").
   const dadosDocumento: AtaExportData = {
-    instituicao, numero: numero ?? 0, nomeProjeto, local, logoUrl,
+    instituicao, numero: numero ?? 0, nomeProjeto, local, logoUrl, gerenteProjeto, assinaturaGerenteUrl,
     data: data ? new Date(`${data}T12:00:00`) : null,
     elaboradoPor, elaboradoPorFuncao: funcaoDe(elaboradoPorUserId),
     aprovadoPor, aprovadoPorFuncao: funcaoDe(aprovadoPorUserId),
@@ -382,6 +384,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
   return (
     <>
       <EditorDocumento
+        editarProjetoHref={permissions.has('projeto:editar') ? `/projetos/${projetoId}/configuracoes` : undefined}
         documento="Ata de Reunião"
         editavel={editavel}
         status={!canEdit || versaoAberta ? 'leitura' : saving ? 'salvando' : alterado ? 'pendente' : 'salvo'}

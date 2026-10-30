@@ -52,7 +52,7 @@ export async function updateProjectAction(
     await verifySession()
     const project = await projectsApi.update(id, data)
     revalidatePath('/projetos')
-    revalidatePath(`/projetos/${id}`)
+    revalidatePath(`/projetos/${id}`, 'layout')
     return { project }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar projeto' }

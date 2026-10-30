@@ -15,6 +15,8 @@ export interface ProjetoInstitucional {
   location?: string | null
   departamentos?: string[] | null
   semestre?: string | null
+  /** Ano da turma do AMS (1º/2º), distinto de termo e ano calendário. */
+  anoAms?: string | null
   termo?: string | null
   turno?: string | null
   ano?: number | null
@@ -44,9 +46,10 @@ export function termoTurno(termo?: string | null, turno?: string | null): string
  * (projetos semestrais ou sem período). Projeto anual sem termo omite o segmento.
  */
 function segmentoTermo(p: ProjetoInstitucional): string {
+  if (p.semestre === 'ano') return p.anoAms === '1' || p.anoAms === '2' ? `${p.anoAms}° Ano` : ''
   const valor = termoTurno(p.termo, p.turno)
   if (valor) return valor
-  return p.semestre === 'ano' ? '' : TERMO_A_DEFINIR
+  return TERMO_A_DEFINIR
 }
 
 export function linhaInstitucional(p: ProjetoInstitucional): string {

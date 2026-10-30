@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef, useMemo } from 'react'
-import { ExternalLink, Lock } from 'lucide-react'
+import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import type { EapNode, EapDocumentMetadata } from '@/types/eap'
 import { computeEapColumnLayout, eapBoxLabel, eapWrapLines, fitScale, EAP_COL_LINE_H, EAP_COL_PAD_Y } from '@/lib/eapLayout'
 import { flattenTree } from '@/lib/eapCode'
@@ -107,14 +107,10 @@ function QuadroEap({ metadata, instituicao, assinaturaUrl, edicao }: { metadata:
       </tr>
       <tr><td colSpan={2} style={celulaCampo}><CampoAutomatico origem="Automático: o aprovador é sempre o gerente do projeto">Aprovado por: {aprovador}</CampoAutomatico></td></tr>
       <tr>
-        <td style={celula}>
-          Assinatura:{' '}
-          {assinaturaUrl
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={assinaturaUrl} alt="Assinatura" style={{ maxHeight: '8mm', maxWidth: '45mm', verticalAlign: 'middle', objectFit: 'contain' }} />
-            : <span style={{ color: editavel ? '#64748b' : undefined }}>{metadata.signature || (editavel ? 'entra quando o gerente aprovar' : '')}</span>}
+        <td style={{ ...celula, whiteSpace: 'nowrap' }}>
+          <AssinaturaEmLinha url={assinaturaUrl} vazio={metadata.signature || (editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined)} />
         </td>
-        <td style={celula}>
+        <td style={{ ...celula, whiteSpace: 'nowrap' }}>
           Data de aprovação:{' '}
           {editavel
             ? <CampoData id="eap-data-aprovacao" rotulo="Data de aprovação" ajuda="Dia em que o gerente aprovou esta versão." valor={metadata.approvalDate ?? ''} onChange={ed?.onDataAprovacao ?? nada} />
@@ -127,7 +123,6 @@ function QuadroEap({ metadata, instituicao, assinaturaUrl, edicao }: { metadata:
 
 const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
   function EapDocumentSheet({ metadata, nodes, instituicao, logoUrl, assinaturaUrl, arvore, interactive, selectedId, onSelectBlock, edicao, rodape }, ref) {
-    const { editavel } = useEditorFolha()
     const layout = useMemo(() => computeEapColumnLayout(nodes), [nodes])
     const flat = useMemo(() => flattenTree(nodes), [nodes])
 
@@ -232,15 +227,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
         <Folha paisagem fixa data-testid="eap-pagina-1" style={{ breakAfter: 'page' }}>
           <Cabecalho titulo={TITULO_EAP} logoUrl={logoUrl} />
           <QuadroEap metadata={metadata} instituicao={instituicao} assinaturaUrl={assinaturaUrl} edicao={edicao} />
-          {editavel && edicao && arvore?.rootId ? (
-            <div data-campo-automatico-eap="" className="group/auto relative mt-2 rounded-md border-2 border-dashed border-blue-300 bg-[#f6f8fc] p-3">
-              <span className="absolute right-2 top-2 z-10 flex items-center gap-3 rounded-md bg-slate-900 px-3 py-1.5 font-sans text-xs text-white shadow-lg">
-                <Lock className="h-3 w-3" aria-hidden="true" /> Automático: vem da aba EAP/WBS
-                <a href={edicao.linkWbs} className="inline-flex items-center gap-1 rounded bg-white/10 px-2 py-0.5 font-medium hover:bg-white/20">Editar na EAP/WBS <ExternalLink className="h-3 w-3" aria-hidden="true" /></a>
-              </span>
-              {grafica}
-            </div>
-          ) : grafica}
+          {grafica}
           <RodapeTela texto={rodape} pagina={1} total={2} />
         </Folha>
 

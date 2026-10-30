@@ -8,6 +8,8 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 
 function Tela({ saida }: { saida: SaidaDocumento }) {
   const { dialogo } = useGuardaSaida(saida)
+  // <a> de propósito: o aviso intercepta cliques em links comuns (o <Link> do Next renderiza um <a>).
+  // eslint-disable-next-line @next/next/no-html-link-for-pages
   return <><a href="/projetos/p1/sprints">Sprints</a>{dialogo}</>
 }
 

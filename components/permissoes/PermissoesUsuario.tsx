@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { useEffect, useState, useTransition } from 'react'
 import { listarAjustesUsuarioAction, salvarAjusteUsuarioAction } from '@/app/actions/permissoes'
 import { PERMISSOES, type Permissao } from '@/lib/permissoes'
@@ -49,9 +50,8 @@ export default function PermissoesUsuario({ userId, projectId }: { userId: strin
         <legend className="sr-only">Ajustes por permissão</legend>
         {PERMISSOES.map(p => <label key={p.chave} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 p-2">
           <span>{p.grupo} · {p.rotulo}<span className="block text-xs text-gray-500">Herdada: {dados.herdadas === null ? 'varia por projeto' : dados.herdadas.includes(p.chave) ? 'permitida' : 'negada'}</span></span>
-          <select aria-label={p.rotulo} value={dados.ajustes[p.chave] ?? ''} onChange={e => alterar(p.chave, (e.target.value || null) as EfeitoAjuste | null)} className="rounded border border-gray-300 bg-white p-2 text-gray-900">
-            <option value="">Herdar</option><option value="GRANT">Conceder</option><option value="DENY">Negar</option>
-          </select>
+          <Select ariaLabel={p.rotulo} className="w-40" searchable={false} disabled={pending} placeholder="Herdar" value={dados.ajustes[p.chave] ?? ''} onChange={v => alterar(p.chave, (v || null) as EfeitoAjuste | null)}
+            options={[{ value: '', label: 'Herdar' }, { value: 'GRANT', label: 'Conceder' }, { value: 'DENY', label: 'Negar' }]} />
         </label>)}
       </fieldset>}
   </section>

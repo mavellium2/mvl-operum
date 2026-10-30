@@ -34,15 +34,17 @@ export function infoDaImagem(b: Uint8Array): InfoImagem | null {
   return null
 }
 
+/** Imagem inline reduzida para caber na caixa, mantendo a proporção. */
+export function runDaImagem(bytes: Uint8Array, caixa: { maxW: number; maxH: number }): ImageRun | undefined {
+  const info = infoDaImagem(bytes)
+  if (!info || !info.largura || !info.altura) return undefined
+  const escala = Math.min(caixa.maxW / info.largura, caixa.maxH / info.altura, 1)
+  return new ImageRun({ type: info.tipo, data: bytes, transformation: { width: Math.round(info.largura * escala), height: Math.round(info.altura * escala) } })
+}
 /** Parágrafo com a imagem reduzida para caber em maxW × maxH (px), mantendo a proporção. */
 export function paragrafoDaImagem(bytes: Uint8Array, caixa: { maxW: number; maxH: number; centro?: boolean }): Paragraph[] {
-  const info = infoDaImagem(bytes)
-  if (!info || !info.largura || !info.altura) return []
-  const escala = Math.min(caixa.maxW / info.largura, caixa.maxH / info.altura, 1)
-  return [new Paragraph({
-    alignment: caixa.centro ? AlignmentType.CENTER : undefined,
-    children: [new ImageRun({ type: info.tipo, data: bytes, transformation: { width: Math.round(info.largura * escala), height: Math.round(info.altura * escala) } })],
-  })]
+  const run = runDaImagem(bytes, caixa)
+  return run ? [new Paragraph({ alignment: caixa.centro ? AlignmentType.CENTER : undefined, children: [run] })] : []
 }
 
 const LIMITE_BYTES = 5e6
@@ -77,3 +79,6 @@ export async function baixarImagem(url: string, init: RequestInit = {}): Promise
 /** Caixas usadas nos documentos (px a 96 dpi). */
 export const CAIXA_LOGO_ATA = { maxW: 125, maxH: 72 }
 export const CAIXA_ASSINATURA = { maxW: 150, maxH: 45, centro: true }
+
+/** Assinatura inline no quadro inicial, separada da grade dos presentes. */
+export const CAIXA_ASSINATURA_GERENTE = { maxW: 170, maxH: 30 }

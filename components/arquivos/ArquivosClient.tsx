@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { sprintPath } from '@/lib/sprintPath'
@@ -98,27 +99,23 @@ export default function ArquivosClient({ initialAttachments }: Props) {
           onChange={e => setSearch(e.target.value)}
           className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <select
+        <Select
+          ariaLabel="Filtrar por tipo"
+          className="sm:w-44"
+          searchable={false}
           value={filterType}
-          onChange={e => setFilterType(e.target.value)}
-          className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos os tipos</option>
-          <option value="imagem">Imagens</option>
-          <option value="pdf">PDFs</option>
-          <option value="link">Links</option>
-          <option value="outro">Outros</option>
-        </select>
-        <select
+          onChange={setFilterType}
+          placeholder="Todos os tipos"
+          options={[{ value: '', label: 'Todos os tipos' }, { value: 'imagem', label: 'Imagens' }, { value: 'pdf', label: 'PDFs' }, { value: 'link', label: 'Links' }, { value: 'outro', label: 'Outros' }]}
+        />
+        <Select
+          ariaLabel="Filtrar por sprint"
+          className="sm:w-52"
           value={filterSprint}
-          onChange={e => setFilterSprint(e.target.value)}
-          className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todas as sprints</option>
-          {sprints.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+          onChange={setFilterSprint}
+          placeholder="Todas as sprints"
+          options={[{ value: '', label: 'Todas as sprints' }, ...sprints.map(s => ({ value: s.id, label: s.name }))]}
+        />
       </div>
 
       <p className="text-sm text-gray-500 mb-3">

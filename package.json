@@ -1,11 +1,6 @@
 {
   "name": "kanban-board",
-
-
-
   "version": "1.43.0",
-
-
   "private": true,
   "packageManager": "pnpm@11.25.0",
   "scripts": {
@@ -39,12 +34,15 @@
     "mysql2": "^3.22.0",
     "next": "16.4.2",
     "papaparse": "^5.5.3",
+    "pdfjs-dist": "^6.4.299",
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-image-crop": "^11.1.2",
     "react-to-print": "^3.3.0",
     "recharts": "^3.8.1",
     "server-only": "^0.0.1",
+    "signature_pad": "^5.1.4",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
   },

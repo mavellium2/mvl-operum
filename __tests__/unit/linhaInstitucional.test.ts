@@ -45,3 +45,23 @@ describe('caixas de "Enviar cópias para"', () => {
     expect((ataCopias(Array.from({ length: 12 }, (_, i) => `P${i}`)).length + 1) % 4).toBe(0)
   })
 })
+
+
+describe('ano da turma AMS', () => {
+  it('mostra 1º/2º ano AMS separados do calendário, sem inventar termo', () => {
+    expect(linhaInstitucional({ location: 'Fatec Garça', departamentos: ['AMS'], semestre: 'ano', anoAms: '1', ano: 2026 }))
+      .toBe('Fatec Garça - AMS - 1° Ano - 2026')
+    expect(linhaInstitucional({ semestre: 'ano', anoAms: '2', termo: '5', turno: 'Noturno', ano: 2026 }))
+      .toBe('2° Ano - 2026')
+  })
+  it('ignora o ano AMS em períodos semestrais e preserva o termo', () => {
+    expect(linhaInstitucional({ semestre: '1', anoAms: '2', termo: '5', ano: 2026 }))
+      .toBe('5° termo - 1° Semestre 2026')
+  })
+})
+
+
+it('cabeçalho AMS segue o formato da Fatec com o ano da turma separado do calendário', () => {
+  expect(linhaInstitucional({ location: 'Fatec Garça', departamentos: ['ADS - AMS'], semestre: 'ano', anoAms: '2', ano: 2026 }))
+    .toBe('Fatec Garça - ADS - AMS - 2° Ano - 2026')
+})

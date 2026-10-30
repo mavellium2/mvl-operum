@@ -72,6 +72,8 @@ model Project {
   limitesAutoridade String? @db.Text
 
   semestre      String?
+  /// Ano da turma no AMS ("1" ou "2"), só para período anual; distinto de termo e ano calendário.
+  anoAms        String?
   termo         String?
   turno         String?
   ano           Int?

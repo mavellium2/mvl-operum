@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma'
 import AtaFormClient from '@/components/atas/AtaFormClient'
 import type { MemberOption } from '@/components/atas/MemberSelect'
 import type { Metadata } from 'next'
+import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,7 @@ export default async function EditarAtaPage({
   const ata = await buscarAta(tenantId, ataId)
   if (!ata || ata.projetoId !== projetoId) notFound()
 
-  const [cabecalho, emailsSugeridos] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId)])
+  const [cabecalho, emailsSugeridos, gerente] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId), gerenteDoProjeto(projetoId)])
   const members: MemberOption[] = (
     await prisma.userProject.findMany({
       where: { projectId: projetoId, active: true },
@@ -59,9 +60,11 @@ export default async function EditarAtaPage({
         <AtaFormClient key={ata.updatedAt?.toISOString()}
           projetoId={projetoId}
           ataId={ata.id}
-          nomeProjeto={ata.nomeProjeto}
+          nomeProjeto={cabecalho.nomeProjeto ?? ata.nomeProjeto}
           instituicaoProjeto={cabecalho.instituicao}
           logoUrl={cabecalho.logoUrl}
+          gerenteProjeto={gerente.nome}
+          assinaturaGerenteUrl={gerente.signatureUrl}
           numero={ata.numero}
           mode="edit"
           members={members}

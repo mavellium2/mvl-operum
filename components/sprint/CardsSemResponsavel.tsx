@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { useState } from 'react'
 import { UserX } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
@@ -70,15 +71,14 @@ export default function CardsSemResponsavel({ pendentes, users, onAtribuir, onAb
                 </span>
                 {erro[c.id] && <p role="alert" className="text-xs text-red-600">{erro[c.id]}</p>}
               </div>
-              <select
-                aria-label={`Responsável para ${c.title}`}
+              <Select
+                ariaLabel={`Responsável para ${c.title}`}
+                className="w-56"
                 value={escolha[c.id] ?? ''}
-                onChange={e => setEscolha(prev => ({ ...prev, [c.id]: e.target.value }))}
-                className="rounded border border-gray-300 px-2 py-1 text-sm"
-              >
-                <option value="">Escolher…</option>
-                {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
+                onChange={v => setEscolha(prev => ({ ...prev, [c.id]: v }))}
+                placeholder="Escolher…"
+                options={users.map(u => ({ value: u.id, label: u.name }))}
+              />
               <button
                 type="button"
                 disabled={!escolha[c.id] || salvando === c.id}

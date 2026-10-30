@@ -23,5 +23,6 @@ it('número da ata é automático: na ata nova mostra o próximo número, sem ca
   const titulo = screen.getAllByTestId('ata-titulo')[0]
   expect(titulo).toHaveTextContent('Ata de Reunião Nº 04')
   expect(titulo.querySelector('input, textarea')).toBeNull()
-  expect(titulo.querySelector('[role="tooltip"]')).toHaveTextContent('Automático: próximo número das atas do projeto (confirmado ao salvar)')
+  expect(titulo.querySelector('[role="tooltip"], svg')).toBeNull()
+  expect(titulo).not.toHaveTextContent('Automático:')
 })

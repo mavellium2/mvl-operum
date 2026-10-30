@@ -68,10 +68,13 @@ describe('EditorDocumento — tela de edição de documento', () => {
     expect(onSalvar).toHaveBeenCalledTimes(1)
   })
 
-  it('campo automático não é editável e explica de onde vem', () => {
+  it('campo automático exibe apenas texto, sem cadeado ou indicação de automático', () => {
     render(<Documento />)
-    expect(screen.getByText('Nome do projeto: Operum')).toBeInTheDocument()
-    expect(screen.getByRole('tooltip', { hidden: true })).toHaveTextContent('Automático: vem do cadastro do projeto')
+    const campo = screen.getByText('Nome do projeto: Operum')
+    expect(campo).toHaveTextContent(/^Nome do projeto: Operum$/)
+    expect(campo.querySelector('input, textarea, button, svg, [contenteditable="true"]')).toBeNull()
+    expect(screen.queryByText(/Automático:/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('tooltip', { hidden: true })).not.toBeInTheDocument()
   })
 
   it('fora do editor (PDF) os campos saem só como texto', () => {

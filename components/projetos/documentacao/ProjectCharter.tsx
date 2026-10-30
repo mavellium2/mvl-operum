@@ -477,15 +477,15 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
 
   const context = selectedVersion ? selectedVersion.payload?.documentContext : {
     nomeProjeto: data?.project.name ?? '', logoUrl: data?.project.logoUrl,
-    gerenteProjeto: data?.gerenteProjeto ?? '', gerenteSignatureUrl: null, membros: data?.membros ?? [],
+    gerenteProjeto: data?.gerenteProjeto ?? '', gerenteSignatureUrl: data?.gerente?.signatureUrl, membros: data?.membros ?? [],
   }
   const content = selectedVersion ? selectedVersion.payload : fields
   const documentProps: CharterDocumentProps = {
     nomeProjeto: context?.nomeProjeto ?? 'Nome não registrado nesta versão',
     logoUrl: context?.logoUrl, gerenteProjeto: context?.gerenteProjeto ?? '',
-    // Assinatura só em versão aprovada. Versões aprovadas antes de o gerente cadastrar a
-    // assinatura não a guardaram: usa a assinatura atual do gerente (card "assinatura ausente").
-    gerenteSignatureUrl: selectedVersion?.status === 'APPROVED' ? (context?.gerenteSignatureUrl || data?.gerente?.signatureUrl || null) : null,
+    // O documento atual usa a assinatura do perfil do gerente; versões abertas pelo histórico
+    // preservam a imagem registrada na aprovação (sem preencher propostas ainda pendentes).
+    gerenteSignatureUrl: selectedVersion ? (selectedVersion.status === 'APPROVED' ? context?.gerenteSignatureUrl || data?.gerente?.signatureUrl || null : null) : data?.gerente?.signatureUrl ?? null,
     membros: context?.membros ?? [], fases: selectedVersion ? selectedVersion.payload?.macroFases ?? [] : fases,
     elaboradoPor: selectedVersion?.elaboradoPor ?? versionMeta.elaboradoPor,
     aprovadoPor: selectedVersion?.aprovadoPor ?? versionMeta.aprovadoPor,
@@ -529,6 +529,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
   return (
     <>
       <EditorDocumento
+        editarProjetoHref={permissions.has('projeto:editar') ? `/projetos/${projetoId}/configuracoes` : undefined}
         documento="Termo de Abertura"
         editavel={editavel}
         status={statusSalvamento}

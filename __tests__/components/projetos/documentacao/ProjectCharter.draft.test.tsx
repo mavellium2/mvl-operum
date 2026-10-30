@@ -142,3 +142,12 @@ it('abre um snapshot histórico sem substituir conteúdo ou cabeçalho pelos atu
   fireEvent.click(screen.getByRole('button', { name: 'Voltar ao rascunho' }))
   expect(screen.getByDisplayValue('Vigente')).toBeInTheDocument()
 })
+
+it('a folha atual usa a assinatura do perfil do gerente sem exigir abrir o histórico', async () => {
+  vi.mocked(fetchWithSession).mockImplementation(async url => String(url).includes('/revisions') ? Response.json(null) : String(url).includes('/versions') ? Response.json([]) : Response.json({ ...published, gerenteProjeto: 'Gerente', gerente: { name: 'Gerente', signatureUrl: '/assinatura-gerente.png' } }))
+  const { container } = render(<ProjectCharter />)
+  await screen.findByDisplayValue('Vigente')
+  const assinaturas = container.querySelectorAll('[data-assinatura-em-linha] img')
+  expect(assinaturas.length).toBeGreaterThan(0)
+  for (const image of assinaturas) expect(image).toHaveAttribute('src', '/assinatura-gerente.png')
+})

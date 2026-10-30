@@ -3,6 +3,7 @@
 import { forwardRef } from 'react'
 import type { MembroEquipeOption } from './documentacao/MembroEquipeSelect'
 import { formatTelefone } from '@/lib/contato'
+import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import {
   CampoAutomatico, CampoData, CampoPessoa, CampoTexto, Folha, LinhaLista, SecaoTabela, useEditorFolha,
 } from '@/components/documentos/editor/folha'
@@ -23,6 +24,8 @@ export interface ProjetoHeader {
 }
 
 export interface Stakeholder {
+  /** Identificador do cadastro (estável quando nome/e-mail mudam). Versões antigas podem não tê-lo. */
+  cadastroId?: string
   ref: string
   nome: string
   empresaEquipe: string
@@ -146,12 +149,8 @@ const StakeholderDocument = forwardRef<HTMLDivElement, Props>(
               </td>
             </tr>
             <tr>
-              <td style={cel}>
-                <B>Assinatura:</B>{' '}
-                {header.signatureUrl
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={header.signatureUrl} alt="Assinatura" style={{ maxHeight: '10mm', maxWidth: '50mm', objectFit: 'contain', verticalAlign: 'middle' }} />
-                  : editavel ? <span style={{ color: '#64748b' }}>entra quando o gerente aprovar</span> : null}
+              <td style={{ ...cel, whiteSpace: 'nowrap' }}>
+                <AssinaturaEmLinha url={header.signatureUrl} rotulo={<B>Assinatura:</B>} vazio={editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined} />
               </td>
               <td style={{ ...cel, whiteSpace: 'nowrap' }}>
                 <B>Data de aprovação:</B>{' '}

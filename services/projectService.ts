@@ -35,9 +35,11 @@ export async function createProject(input: CreateProjectInput) {
     logoUrl, slogan, location, startDate, endDate,
     justificativa, objetivos, metodologia, descricaoProduto,
     premissas, restricoes, limitesAutoridade,
-    semestre, termo, turno, ano, departamentos,
+    semestre, anoAms, termo, turno, ano, departamentos,
     macroFases,
   } = parsed.data
+
+  if (anoAms && semestre !== 'ano') throw new Error('Ano do AMS só pode ser informado no período Ano')
 
   const existing = await prisma.project.findFirst({
     where: { name, tenantId, ...activeOnly },
@@ -64,6 +66,7 @@ export async function createProject(input: CreateProjectInput) {
       restricoes:        restricoes        ?? undefined,
       limitesAutoridade: limitesAutoridade ?? undefined,
       semestre:          semestre          ?? undefined,
+      anoAms:            semestre === 'ano' ? anoAms ?? null : null,
       termo:             termo             ?? undefined,
       turno:             turno             ?? undefined,
       ano:               ano               ?? undefined,
@@ -111,6 +114,8 @@ export async function updateProject(
     throw new NotFoundError('Project not found')
   }
 
+  if (parsed.data.anoAms && (parsed.data.semestre ?? existing.semestre) !== 'ano') throw new Error('Ano do AMS só pode ser informado no período Ano')
+
   if (existing.status === 'COMPLETED' || existing.status === 'ARCHIVED') {
     throw new Error('Cannot modify a completed or archived project')
   }
@@ -122,6 +127,7 @@ export async function updateProject(
       where: { id },
       data: {
         ...rest,
+        ...(rest.semestre !== undefined && rest.semestre !== 'ano' ? { anoAms: null } : {}),
         startDate:     startDate     ? new Date(startDate) : undefined,
         endDate:       endDate       ? new Date(endDate)   : undefined,
         ...(departamentos !== undefined && { departamentos }),

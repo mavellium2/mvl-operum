@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { useState, useTransition, useRef, useEffect } from 'react'
 import {
   createTenantAction,
@@ -251,17 +252,15 @@ export default function AdminTenantsClient({
                       </button>
                     )}
 
-                    <select
+                    <Select
+                      ariaLabel={`Status de ${t.name}`}
+                      compact
+                      searchable={false}
                       value={t.status}
                       disabled={isPending || editingId === t.id}
-                      onChange={e => handleStatusChange(t.id, e.target.value as Tenant['status'])}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-60"
-                    >
-                      <option value="ACTIVE">Ativo</option>
-                      <option value="INACTIVE">Inativo</option>
-                      <option value="SUSPENDED">Suspenso</option>
-                      <option value="REMOVED">Removido</option>
-                    </select>
+                      onChange={v => handleStatusChange(t.id, v as Tenant['status'])}
+                      options={[{ value: 'ACTIVE', label: 'Ativo' }, { value: 'INACTIVE', label: 'Inativo' }, { value: 'SUSPENDED', label: 'Suspenso' }, { value: 'REMOVED', label: 'Removido' }]}
+                    />
                   </div>
                 </div>
               </div>

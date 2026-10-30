@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { erroMoeda, parseMoeda } from '@/lib/dinheiro'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
@@ -75,6 +76,7 @@ export type StakeholderUnificado = {
   horasDiarias?: number | null
   startDate?: string
   userRole?: string
+  forcePasswordChange?: boolean
   signatureUrl?: string | null
   // Externo (Stakeholder)
   stakeholderId?: string
@@ -129,7 +131,7 @@ interface Props {
    * (usado pelo "Adicionar parte interessada" do documento). `onAlterado` avisa
    * quando alguém foi vinculado/criado/salvo; `onFechar` fecha o painel.
    */
-  painel?: { modo: 'interno' | 'externo'; onFechar: () => void; onAlterado: () => void }
+  painel?: { modo: 'interno' | 'externo'; onFechar: () => void; onAlterado: () => void; iniciarCriacao?: boolean; onSelecionado?: (pessoa: StakeholderUnificado) => void }
 }
 
 type FormState = {
@@ -456,18 +458,20 @@ export default function ProjetoStakeholdersClient({
    * Modo painel: depois de salvar, avisa o documento, mostra o sucesso e fecha
    * o painel. Fora dele não faz nada (a tela Stakeholders segue como antes).
    */
-  function concluirNoPainel(mensagem?: string): boolean {
+  function concluirNoPainel(mensagem?: string, pessoa?: StakeholderUnificado): boolean {
     if (!painel) return false
     if (mensagem) toast(mensagem, 'success')
     painel.onAlterado()
+    const salva = pessoa ?? (selected ? { ...selected, name: formState.name.trim() || selected.name, cargos: formState.cargos, departamento: formState.departamento } : null)
+    if (salva) painel.onSelecionado?.(salva)
     painel.onFechar()
     return true
   }
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [selected, setSelected] = useState<StakeholderUnificado | null>(null)
-  const [isCreating, setIsCreating] = useState(false)
+  const [isCreating, setIsCreating] = useState(!!painel?.iniciarCriacao)
 
-  const [formState, setFormState] = useState<FormState>(emptyForm)
+  const [formState, setFormState] = useState<FormState>(painel?.iniciarCriacao ? { ...emptyForm, forcePasswordChange: true } : emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
@@ -1164,10 +1168,11 @@ export default function ProjetoStakeholdersClient({
         hourlyRate: null,
         startDate: new Date().toISOString(),
         userRole: novoUsuario.role,
+        forcePasswordChange: formState.forcePasswordChange,
       }
       setProjeto(prev => [...prev, unified])
       toast('Usuário criado e vinculado ao projeto!', 'success')
-      if (concluirNoPainel()) return
+      if (concluirNoPainel(undefined, unified)) return
       // Já abre o cadastro do membro, com o que foi salvo, em vez de fechar o formulário.
       handleOpenEdit(unified)
       return
@@ -1226,7 +1231,7 @@ export default function ProjetoStakeholdersClient({
       }
       setProjeto(prev => (prev.some(x => x.id === unified.id) ? prev : [...prev, unified]))
       toast(`Stakeholder "${unified.name}" criado e adicionado ao projeto!`, 'success')
-      if (concluirNoPainel()) return
+      if (concluirNoPainel(undefined, unified)) return
       handleOpenEdit(unified)
       return
     }
@@ -1993,18 +1998,16 @@ export default function ProjetoStakeholdersClient({
               className={`${inputCls} mt-2 text-base sm:text-sm`}
             />
           </label>
-          <label className="flex-1 basis-28 min-w-0 text-sm font-medium text-gray-700">
-            Vínculo
-            <select value={vinculo} onChange={e => { setVinculo(e.target.value); setReorderMode(false) }} className={`${inputCls} mt-2 text-base sm:text-sm`}>
-              <option value="">Todos os vínculos</option><option value="interno">Equipe</option><option value="externo">Externos</option>
-            </select>
-          </label>
-          <label className="flex-1 basis-28 min-w-0 text-sm font-medium text-gray-700">
-            Área ou empresa
-            <select value={area} onChange={e => { setArea(e.target.value); setReorderMode(false) }} className={`${inputCls} mt-2 text-base sm:text-sm`}>
-              <option value="">Todas as áreas e empresas</option>{areas.map(value => <option key={value} value={value}>{value}</option>)}
-            </select>
-          </label>
+          <div className="flex-1 basis-28 min-w-0 text-sm font-medium text-gray-700">
+            <span className="mb-2 block">Vínculo</span>
+            <Select ariaLabel="Vínculo" searchable={false} placeholder="Todos os vínculos" value={vinculo} onChange={v => { setVinculo(v); setReorderMode(false) }}
+              options={[{ value: '', label: 'Todos os vínculos' }, { value: 'interno', label: 'Equipe' }, { value: 'externo', label: 'Externos' }]} />
+          </div>
+          <div className="flex-1 basis-28 min-w-0 text-sm font-medium text-gray-700">
+            <span className="mb-2 block">Área ou empresa</span>
+            <Select ariaLabel="Área ou empresa" placeholder="Todas as áreas e empresas" value={area} onChange={v => { setArea(v); setReorderMode(false) }}
+              options={[{ value: '', label: 'Todas as áreas e empresas' }, ...areas.map(value => ({ value, label: value }))]} />
+          </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
           <p role="status" className="text-sm text-gray-600">{isReordering ? 'Salvando ordem…' : `${filteredProjeto.length} de ${projeto.length} pessoas`}</p>

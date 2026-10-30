@@ -1,6 +1,5 @@
 import { getUserProfileAction } from '@/app/actions/profile'
 import ProfileForm from '@/components/profile/ProfileForm'
-import SignatureUpload from '@/components/profile/SignatureUpload'
 import { formatTelefone } from '@/lib/contato'
 import type { Metadata } from 'next'
 
@@ -70,10 +69,6 @@ export default async function PerfilPage() {
         />
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Assinatura digital</h2>
-        <SignatureUpload signatureUrl={profile.signatureUrl} />
-      </div>
     </>
   )
 }
