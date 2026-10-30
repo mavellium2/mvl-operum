@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { useActionState, useState, useTransition } from 'react'
 import { createApiTokenAction, revokeApiTokenAction, type CreateApiTokenState } from '@/app/actions/apiTokens'
 import Button from '@/components/ui/Button'
@@ -29,6 +30,7 @@ export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[]
   const [revokeTarget, setRevokeTarget] = useState<ApiTokenSummary | null>(null)
   const [isRevoking, startRevoke] = useTransition()
   const [copied, setCopied] = useState(false)
+  const [validade, setValidade] = useState('90')
 
   const active = tokens.filter(t => !t.revokedAt)
 
@@ -70,16 +72,14 @@ export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[]
 
         <div>
           <label htmlFor="token-expires" className="block text-sm font-medium text-gray-700 mb-1">Validade</label>
-          <select
+          <Select
             id="token-expires"
             name="expiresInDays"
-            defaultValue="90"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="30">30 dias</option>
-            <option value="90">90 dias</option>
-            <option value="180">180 dias</option>
-          </select>
+            searchable={false}
+            value={validade}
+            onChange={setValidade}
+            options={[{ value: '30', label: '30 dias' }, { value: '90', label: '90 dias' }, { value: '180', label: '180 dias' }]}
+          />
         </div>
 
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}

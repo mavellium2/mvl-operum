@@ -5,6 +5,7 @@ import { createCardInSprintAction, updateCardInSprintAction, moveCardInSprintAct
 import { fetchWithSession } from '@/lib/clientFetch'
 import { useSearchParams } from 'next/navigation'
 import { ToastProvider } from '@/components/ui/Toast'
+import { escolherOpcao } from '../../helpers/select'
 
 function renderWithProviders(ui: React.ReactElement) {
   return render(<ToastProvider>{ui}</ToastProvider>)
@@ -223,7 +224,7 @@ describe('SprintBoard', () => {
     it('filtro "Atrasados" mostra só os cards com prazo vencido; limpar volta tudo', () => {
       renderWithProviders(<SprintBoard sprint={sprint} columns={colunasComPrazo} projectId="proj1" backlogCards={[]} />)
       fireEvent.click(screen.getByRole('button', { name: /Filtros/ }))
-      fireEvent.change(screen.getByLabelText('Prazo'), { target: { value: 'atrasados' } })
+      escolherOpcao(screen.getByLabelText('Prazo'), 'Atrasados')
       expect(screen.getByText('Tarefa vencida')).toBeInTheDocument()
       expect(screen.queryByText('Tarefa livre')).not.toBeInTheDocument()
 
@@ -234,7 +235,7 @@ describe('SprintBoard', () => {
     it('filtro por etiqueta', () => {
       renderWithProviders(<SprintBoard sprint={sprint} columns={colunasComPrazo} projectId="proj1" backlogCards={[]} tags={tags} />)
       fireEvent.click(screen.getByRole('button', { name: /Filtros/ }))
-      fireEvent.change(screen.getByLabelText('Etiqueta'), { target: { value: 't1' } })
+      escolherOpcao(screen.getByLabelText('Etiqueta'), 'Bug')
       expect(screen.getByText('Tarefa livre')).toBeInTheDocument()
       expect(screen.queryByText('Tarefa vencida')).not.toBeInTheDocument()
     })

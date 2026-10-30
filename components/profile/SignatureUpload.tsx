@@ -1,84 +1,50 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { uploadSignatureAction } from '@/app/actions/profile'
 
-interface SignatureUploadProps {
-  signatureUrl?: string | null
-}
+const SignatureEditor = dynamic(() => import('@/components/assinatura/SignatureEditor'), {
+  ssr: false,
+  loading: () => <p role="status">Carregando editor de assinatura…</p>,
+})
 
-export default function SignatureUpload({ signatureUrl: initial }: SignatureUploadProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
+export default function SignatureUpload({ signatureUrl: initial }: { signatureUrl?: string | null }) {
   const [signatureUrl, setSignatureUrl] = useState(initial)
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    setError(null)
-
-    const fd = new FormData()
-    fd.append('file', file)
-
-    const result = await uploadSignatureAction(fd)
-    if ('signatureUrl' in result && result.signatureUrl) {
-      setSignatureUrl(result.signatureUrl)
-    } else if ('error' in result) {
-      setError(result.error || 'Erro ao fazer upload')
-    }
-    setUploading(false)
-    e.target.value = ''
+  async function save(file: File) {
+    const form = new FormData()
+    form.append('file', file)
+    const result = await uploadSignatureAction(form)
+    if (!('signatureUrl' in result) || !result.signatureUrl) throw new Error(result.error || 'Não foi possível salvar a assinatura.')
+    setImageError(false)
+    setSignatureUrl(result.signatureUrl)
+    setSuccess(true)
+    setOpen(false)
   }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm text-gray-500">
-        Sua assinatura aparecerá no formulário de stakeholders do projeto. Aceita PNG, JPG ou PDF.
-      </p>
-
-      {signatureUrl && (
-        <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 inline-block">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={signatureUrl}
-            alt="Assinatura atual"
-            className="max-h-16 max-w-xs object-contain"
-          />
+  return <div className="flex flex-col gap-3">
+    <p className="text-sm text-gray-500">Desenhe sua assinatura ou envie PNG, JPG ou PDF e recorte a área desejada. Ela aparecerá nos documentos do projeto.</p>
+    {signatureUrl ? (
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <p className="mb-3 text-sm font-medium text-gray-700">Sua assinatura atual</p>
+        <div className="flex min-h-32 items-center justify-center rounded-lg border border-gray-200 bg-white p-3">
+          {imageError ? (
+            <p role="alert" className="text-sm text-red-600">Não foi possível carregar a assinatura salva. Recarregue a página para tentar novamente.</p>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={signatureUrl} alt="Assinatura atual" onError={() => setImageError(true)} className="max-h-48 w-full object-contain" />
+          )}
         </div>
-      )}
-
-      <div className="flex gap-3 items-center">
-        <button
-          type="button"
-          disabled={uploading}
-          onClick={() => inputRef.current?.click()}
-          className="px-4 py-2 text-sm font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {uploading ? 'Enviando…' : signatureUrl ? 'Alterar assinatura' : 'Enviar assinatura'}
-        </button>
-        {signatureUrl && (
-          <a
-            href={signatureUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Visualizar
-          </a>
-        )}
       </div>
+    ) : <p className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">Você ainda não cadastrou sua assinatura.</p>}
+    <div className="flex flex-wrap gap-3">
+      <button type="button" onClick={() => { setSuccess(false); setOpen(true) }} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">{signatureUrl ? 'Alterar assinatura' : 'Criar assinatura'}</button>
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*,.pdf"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-
-      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
     </div>
-  )
+    {success && <p role="status" className="text-sm text-green-700">Assinatura salva com sucesso.</p>}
+    {open && <SignatureEditor onSave={save} onClose={() => setOpen(false)} />}
+  </div>
 }

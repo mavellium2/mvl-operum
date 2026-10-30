@@ -2,8 +2,14 @@
 
 import { forwardRef } from 'react'
 import type { MacroFase } from './MacroFaseTable'
+import type { MembroEquipeOption } from './MembroEquipeSelect'
 import { formatDateBR } from '@/lib/date'
 import { parseDocumentCost } from '@/lib/documentCost'
+import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
+import {
+  Assinaturas, Cabecalho, CampoAutomatico, CampoData, CampoPessoa, CampoTexto, Folha, LinhaLista, Quadro,
+  SecaoTabela, SecaoTexto, celula, celulaCampo, faixa, secao, useEditorFolha,
+} from '@/components/documentos/editor/folha'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -32,15 +38,32 @@ export interface CharterDocumentProps {
   fases: MacroFase[]
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+export type CampoTermo = 'justificativa' | 'objetivos' | 'metodologia' | 'descricaoProduto' | 'premissas' | 'restricoes' | 'limitesAutoridade' | 'principaisEnvolvidos'
 
-function parseCusto(value: string | null | undefined): number {
-  return parseDocumentCost(value)
+/** Ligações da folha com o estado do editor (só usadas dentro do EditorDocumento). */
+export interface EdicaoTermo {
+  projetoId: string
+  membros: MembroEquipeOption[]
+  onCriarMembro: (membro: MembroEquipeOption) => void
+  onCampo: (campo: CampoTermo, valor: string) => void
+  elaboradoPorUserId: string | null
+  onElaboradoPor: (membro: MembroEquipeOption | null) => void
+  onVersao: (versao: string) => void
+  dataAprovacaoRaw: string
+  onDataAprovacao: (data: string) => void
+  onFase: (id: string, campo: keyof Omit<MacroFase, 'id'>, valor: string) => void
+  onAdicionarFase: () => void
+  onRemoverFase: (id: string) => void
 }
 
+export const TITULO_TERMO = 'Termo de Abertura do Projeto'
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+const moeda = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 function formatCusto(value: string | null | undefined): string {
-  const n = parseCusto(value)
-  return n === 0 ? '–' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const n = parseDocumentCost(value)
+  return n === 0 ? '–' : moeda(n)
 }
 
 /** "Rótulo: valor" por linha → grupos (o mesmo rótulo repetido junta os valores). */
@@ -57,221 +80,174 @@ function agruparEnvolvidos(texto: string): { rotulo: string; valores: string[] }
   return grupos
 }
 
-// ── Estilos (Termo de Abertura do professor: caixas simples, sem sublinhado) ──
-
-const BORDA = '1px solid #000'
-const FONTE = 'Arial, Helvetica, sans-serif'
-
-const celula: React.CSSProperties = {
-  border: BORDA,
-  padding: '2px 5px',
-  verticalAlign: 'top',
-  fontSize: '9.5pt',
-  lineHeight: 1.3,
-}
-
-const tabela: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' }
-
-const titulo: React.CSSProperties = {
-  fontSize: '9pt',
-  fontWeight: 'bold',
-  margin: '18px 0 4px 28px',
-}
-
-/** Caixa de texto corrido, justificado, com borda em volta (justificativa, objetivos, produto). */
-const caixa: React.CSSProperties = {
-  border: BORDA,
-  padding: '2px 4px',
-  fontSize: '10pt',
-  lineHeight: 1.3,
-  textAlign: 'justify',
-  whiteSpace: 'pre-wrap',
-  margin: 0,
-}
-
-const vazio: React.CSSProperties = { color: '#6b7280', fontStyle: 'italic' }
-
-function Rotulo({ children }: { children: React.ReactNode }) {
-  return <span style={{ fontWeight: 'bold' }}>{children}</span>
-}
-
-function Texto({ valor }: { valor: string }) {
-  return <p style={caixa}>{valor || <span style={vazio}>Não informado.</span>}</p>
-}
+const nada = () => {}
 
 // ── Componente ─────────────────────────────────────────────────────────────────
 
-const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps>(
+/**
+ * Termo de Abertura na folha padrão dos documentos. Dentro do editor os campos
+ * são editados direto na folha; fora dele (PDF) sai só o texto.
+ */
+const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps & { edicao?: EdicaoTermo }>(
   function ProjectCharterDocument(props, ref) {
     const {
       categoria, nomeProjeto, logoUrl, gerenteProjeto, gerenteSignatureUrl,
       elaboradoPor, aprovadoPor, versao, dataAprovacao,
       justificativa, objetivos, metodologia, descricaoProduto,
       premissas, restricoes, limitesAutoridade,
-      principaisEnvolvidos, membros, fases,
+      principaisEnvolvidos, membros, fases, edicao,
     } = props
+    const { editavel } = useEditorFolha()
+    const ed = edicao
+    const campo = (c: CampoTermo) => (v: string) => ed?.onCampo(c, v)
 
-    const total = fases.reduce((sum, f) => sum + parseCusto(f.custo), 0)
-
+    const total = fases.reduce((sum, f) => sum + parseDocumentCost(f.custo), 0)
     const grupos = agruparEnvolvidos(principaisEnvolvidos)
-    const instituicao = grupos.find(g => /^institui[cç][aã]o/i.test(g.rotulo))?.valores.join(' / ') ?? ''
+    const instituicao = categoria || grupos.find(g => /^institui[cç][aã]o/i.test(g.rotulo))?.valores.join(' / ') || ''
     const integrantes = membros.filter(m => m.name).map(m => (m.papel?.trim() ? `${m.name} – ${m.papel.trim()}` : m.name))
     // "Integrantes do Grupo" (a equipe do projeto) entra depois do professor, como no modelo.
     const idxProfessor = grupos.findIndex(g => /^professor/i.test(g.rotulo))
     const blocos: { rotulo: string; valores: string[] }[] = [...grupos]
     if (integrantes.length > 0) blocos.splice(idxProfessor + 1, 0, { rotulo: 'Integrantes do Grupo', valores: integrantes })
+    const aprovador = aprovadoPor || gerenteProjeto
+
+    let n = 0
+    const titulo = (t: string) => secao(++n, t)
 
     return (
-      <div
-        ref={ref}
-        data-print-sheet
-        className="bg-white text-black"
-        style={{
-          width: '210mm',
-          minHeight: '297mm',
-          padding: '15mm 18mm 20mm',
-          fontFamily: FONTE,
-          fontSize: '9.5pt',
-          lineHeight: 1.3,
-          boxSizing: 'border-box',
-          color: '#000',
-        }}
-      >
-        {/* ── Cabeçalho: logo + título ──────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 22, marginBottom: 22 }}>
-          <div style={{ width: 110, height: 62, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: logoUrl ? 'none' : '1px solid #4a6fa5', background: logoUrl ? 'transparent' : '#6f93c8' }}>
-            {logoUrl
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={logoUrl} alt="Logo" style={{ maxHeight: 62, maxWidth: 110, objectFit: 'contain' }} />
-              : <span style={{ color: '#fff', fontSize: '12pt', textAlign: 'center', lineHeight: 1.15 }}>Logo do<br />Projeto</span>}
-          </div>
-          <h1 style={{ margin: 0, fontSize: '15pt', fontWeight: 'bold' }}>
-            Termo de Abertura de Projeto - <em>project charter</em>
-          </h1>
-        </div>
+      <Folha ref={ref} data-testid="termo-folha">
+        <Cabecalho titulo={TITULO_TERMO} logoUrl={logoUrl} />
 
-        {/* ── Quadro de identificação ──────────────────────────────────────── */}
-        <table style={tabela}>
-          <tbody>
+        <Quadro testId="quadro-identificacao">
+          <tr><td colSpan={2} style={{ ...faixa, padding: 0 }}><CampoAutomatico>{instituicao}</CampoAutomatico></td></tr>
+          <tr><td colSpan={2} style={celulaCampo}><CampoAutomatico>Nome do projeto: {nomeProjeto}</CampoAutomatico></td></tr>
+          <tr>
+            <td style={celula}>
+              Elaborado por:{' '}
+              <CampoPessoa
+                id="elaborado-por" rotulo="Elaborado por" ajuda="Quem escreveu este documento. Escolha um membro da equipe."
+                projetoId={ed?.projetoId ?? ''} membros={ed?.membros ?? []} valorId={ed?.elaboradoPorUserId} nome={elaboradoPor}
+                onChange={ed?.onElaboradoPor ?? nada} onCriarMembro={ed?.onCriarMembro}
+              />
+            </td>
+            <td style={celulaCampo}>
+              {editavel
+                ? <div className="flex items-start" style={{ paddingLeft: 6 }}><span style={{ padding: '2px 0' }}>Versão:</span><div className="flex-1"><CampoTexto id="versao" rotulo="Versão" ajuda="Número desta versão do documento (ex.: 1.0, 1.1)." pergunta="1.0" valor={versao} onChange={ed?.onVersao ?? nada} max={20} linha /></div></div>
+                : <div style={{ padding: '2px 6px' }}>Versão: {versao}</div>}
+            </td>
+          </tr>
+          <tr>
+            <td style={celulaCampo}><CampoAutomatico origem="Automático: o aprovador é sempre o gerente do projeto">Aprovado por: {aprovador}{aprovador ? ' — Gerente do projeto' : ''}</CampoAutomatico></td>
+            <td style={celula}>
+              Data:{' '}
+              {editavel
+                ? <CampoData id="data-aprovacao" rotulo="Data de aprovação" ajuda="Dia em que o gerente aprovou esta versão." valor={ed?.dataAprovacaoRaw ?? ''} onChange={ed?.onDataAprovacao ?? nada} />
+                : (dataAprovacao || '—')}
+            </td>
+          </tr>
+          <tr><td colSpan={2} style={{ ...celula, whiteSpace: 'nowrap' }}><AssinaturaEmLinha url={gerenteSignatureUrl} vazio={editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined} /></td></tr>
+        </Quadro>
+
+        <SecaoTexto titulo={titulo('Justificativa do projeto')}>
+          <CampoTexto id="justificativa" rotulo="Justificativa" ajuda="Explique o problema ou a oportunidade que motiva o projeto." pergunta="por que este projeto existe?" valor={justificativa} onChange={campo('justificativa')} />
+        </SecaoTexto>
+
+        <SecaoTexto titulo={titulo('Objetivo(s) do projeto')} alturaMinima="16mm">
+          <CampoTexto id="objetivos" rotulo="Objetivos" ajuda="O que o projeto vai alcançar — de preferência com prazo e custo." pergunta="o que o projeto vai alcançar?" valor={objetivos} onChange={campo('objetivos')} />
+        </SecaoTexto>
+
+        <SecaoTexto titulo={titulo('Descrição do produto do projeto')} alturaMinima="16mm">
+          <CampoTexto id="descricao-produto" rotulo="Descrição do produto" ajuda="Descreva o produto, serviço ou resultado entregue no fim do projeto." pergunta="o que será entregue ao final do projeto?" valor={descricaoProduto} onChange={campo('descricaoProduto')} />
+        </SecaoTexto>
+
+        <SecaoTabela titulo={titulo('Premissas (hipóteses) e restrições para o projeto')} colunas={[{ rotulo: 'Premissas (hipóteses)', largura: '50%' }, { rotulo: 'Restrições', largura: '50%' }]}>
+          <tr>
+            <td style={{ ...celulaCampo, height: '20mm' }}>
+              <CampoTexto id="premissas" rotulo="Premissas" ajuda="O que se assume como verdadeiro para o projeto dar certo. Uma por linha." pergunta="o que estamos assumindo como certo?" valor={premissas} onChange={campo('premissas')} />
+            </td>
+            <td style={celulaCampo}>
+              <CampoTexto id="restricoes" rotulo="Restrições" ajuda="Limites impostos ao projeto: prazo, orçamento, recursos. Uma por linha." pergunta="quais limites o projeto tem?" valor={restricoes} onChange={campo('restricoes')} />
+            </td>
+          </tr>
+        </SecaoTabela>
+
+        <SecaoTabela
+          testId="tabela-macro-fases"
+          titulo={titulo('Macro fases, prazos e custo')}
+          colunas={[{ rotulo: 'Macro fase', largura: '60%' }, { rotulo: 'Data limite', largura: '20%' }, { rotulo: 'Custo', largura: '20%' }]}
+          onAdicionar={ed?.onAdicionarFase}
+          rotuloAdicionar="Adicionar fase"
+          rodape={
             <tr>
-              <td colSpan={2} style={{ ...celula, background: '#bfbfbf', fontWeight: 'bold', height: '1.6em' }}>{categoria || instituicao}</td>
+              <td style={{ ...celula, fontWeight: 'bold' }}>Custo total</td>
+              <td style={celula} />
+              <td style={{ ...celula, fontWeight: 'bold' }}>{moeda(total)}</td>
             </tr>
-            <tr>
-              <td colSpan={2} style={celula}><Rotulo>Nome do projeto:</Rotulo> {nomeProjeto}</td>
-            </tr>
-            <tr>
-              <td style={{ ...celula, width: '75%' }}><Rotulo>Elaborado por:</Rotulo> {elaboradoPor}</td>
-              <td style={celula}><Rotulo>Versão:</Rotulo> {versao}</td>
-            </tr>
-            <tr>
-              <td colSpan={2} style={celula}><Rotulo>Aprovado por:</Rotulo> {aprovadoPor}</td>
-            </tr>
-            <tr>
-              <td style={celula}>
-                <Rotulo>Assinatura:</Rotulo>
-                {gerenteSignatureUrl
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={gerenteSignatureUrl} alt="Assinatura" style={{ maxHeight: 34, maxWidth: 160, marginLeft: 6, verticalAlign: 'middle', objectFit: 'contain' }} />
-                  : null}
+          }
+        >
+          {fases.length === 0 && !editavel && <tr><td colSpan={3} style={{ ...celula, color: '#6b7280', fontStyle: 'italic' }}>Nenhuma macro fase cadastrada.</td></tr>}
+          {fases.map((f, i) => (
+            <LinhaLista key={f.id} onRemover={ed ? () => ed.onRemoverFase(f.id) : undefined} rotuloRemover={`Remover fase ${f.fase || i + 1}`}>
+              <td style={celulaCampo}><CampoTexto id={`fase-${f.id}`} rotulo="Macro fase" ajuda="Grande etapa do projeto." pergunta="nome da fase" valor={f.fase} onChange={v => ed?.onFase(f.id, 'fase', v)} max={200} linha /></td>
+              <td style={celula}>{editavel ? <CampoData id={`fase-data-${f.id}`} rotulo="Data limite" ajuda="Até quando a fase precisa terminar." valor={f.dataLimite ?? ''} onChange={v => ed?.onFase(f.id, 'dataLimite', v)} /> : formatDateBR(f.dataLimite)}</td>
+              <td style={celulaCampo}>
+                {editavel
+                  ? <CampoTexto id={`fase-custo-${f.id}`} rotulo="Custo" ajuda="Custo previsto da fase, em reais (ex.: 900,00)." pergunta="0,00" valor={f.custo ?? ''} onChange={v => ed?.onFase(f.id, 'custo', v)} max={30} linha />
+                  : <div style={{ padding: '2px 6px' }}>{formatCusto(f.custo)}</div>}
               </td>
-              <td style={celula}><Rotulo>Data de aprovação:</Rotulo> {dataAprovacao}</td>
-            </tr>
-          </tbody>
-        </table>
+            </LinhaLista>
+          ))}
+        </SecaoTabela>
 
-        <p style={titulo}>Justificativa do projeto</p>
-        <Texto valor={justificativa} />
-
-        <p style={titulo}>Objetivo(s) do Projeto</p>
-        <Texto valor={objetivos} />
-
-        <p style={titulo}>Descrição do produto do projeto</p>
-        <Texto valor={descricaoProduto} />
-
-        <p style={titulo}>Premissas (hipóteses) e restrições para o projeto</p>
-        <table style={tabela}>
-          <thead>
-            <tr>
-              <th style={{ ...celula, width: '50%', textAlign: 'center', borderBottom: BORDA }}>Premissas (hipóteses)</th>
-              <th style={{ ...celula, width: '50%', textAlign: 'center', borderBottom: BORDA }}>Restrições</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style={{ ...celula, whiteSpace: 'pre-wrap' }}>{premissas || <span style={vazio}>Não informado.</span>}</td>
-              <td style={{ ...celula, whiteSpace: 'pre-wrap' }}>{restricoes || <span style={vazio}>Não informado.</span>}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <p style={titulo}>Macro Fases, prazos e custo</p>
-        <table style={tabela}>
-          <thead>
-            <tr>
-              <th style={{ ...celula, width: '64%', fontWeight: 'normal', textAlign: 'center' }}>Macro fase</th>
-              <th style={{ ...celula, width: '16%', fontWeight: 'normal', textAlign: 'center' }}>Data limite</th>
-              <th style={{ ...celula, width: '20%', fontWeight: 'normal', textAlign: 'center' }}>Custo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fases.length === 0 ? (
-              <tr><td colSpan={3} style={{ ...celula, ...vazio }}>Nenhuma macro fase cadastrada.</td></tr>
-            ) : fases.map(f => (
-              <tr key={f.id}>
-                <td style={{ ...celula, borderTop: 'none', borderBottom: 'none' }}>{f.fase || '–'}</td>
-                <td style={{ ...celula, borderTop: 'none', borderBottom: 'none', textAlign: 'center' }}>{formatDateBR(f.dataLimite)}</td>
-                <td style={{ ...celula, borderTop: 'none', borderBottom: 'none', textAlign: 'right' }}>{formatCusto(f.custo)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={2} style={{ ...celula, textAlign: 'right', fontWeight: 'bold' }}>Custo total</td>
-              <td style={{ ...celula, textAlign: 'right' }}>
-                {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-
-        <p style={titulo}>Principais envolvidos</p>
-        <div style={{ border: BORDA, padding: '14px 18px 10px', minHeight: 60, fontSize: '9.5pt', lineHeight: 1.35 }}>
-          {blocos.length === 0 ? (
-            <span style={vazio}>Não informado.</span>
-          ) : blocos.map((g, i) => (
-            <div key={i} style={{ marginBottom: 14 }}>
-              {g.rotulo && <div style={{ fontWeight: 'bold' }}>{g.rotulo}</div>}
-              {g.valores.map((v, j) => (
-                <div key={j} style={{ marginLeft: g.rotulo ? '32mm' : 0 }}>{v}</div>
+        <SecaoTexto titulo={titulo('Principais envolvidos')} alturaMinima="16mm">
+          {editavel ? (
+            <>
+              <CampoTexto id="principais-envolvidos" rotulo="Principais envolvidos" ajuda="Uma linha por pessoa ou grupo, no formato “Papel: Nome” (ex.: Professor: Fábio). A equipe entra sozinha." pergunta="quem participa ou apoia o projeto? (Papel: Nome)" valor={principaisEnvolvidos} onChange={campo('principaisEnvolvidos')} preencher={false} />
+              {integrantes.length > 0 && (
+                <CampoAutomatico origem="Automático: vem da equipe do projeto">
+                  <strong>Integrantes do Grupo:</strong> {integrantes.join(' · ')}
+                </CampoAutomatico>
+              )}
+            </>
+          ) : blocos.length === 0 ? null : (
+            <div style={{ padding: '2mm 3mm 0' }}>
+              {blocos.map((g, i) => (
+                <div key={i} style={{ marginBottom: '2.5mm', breakInside: 'avoid' }}>
+                  {g.rotulo && <div style={{ fontWeight: 'bold' }}>{g.rotulo}</div>}
+                  {g.valores.map((v, j) => <div key={j} style={{ marginLeft: g.rotulo ? '32mm' : 0 }}>{v}</div>)}
+                </div>
               ))}
             </div>
-          ))}
-        </div>
+          )}
+        </SecaoTexto>
 
-        <p style={titulo}>Designação de gerente</p>
-        <table style={tabela}>
-          <tbody>
-            <tr>
-              <td style={{ ...celula, width: '22%' }}>Gerente do projeto</td>
-              <td style={celula}>{gerenteProjeto ? `A gerência do projeto será de responsabilidade de ${gerenteProjeto}.` : <span style={vazio}>Não informado.</span>}</td>
-            </tr>
-            <tr>
-              <td style={celula}>Limites de autoridade</td>
-              <td style={{ ...celula, whiteSpace: 'pre-wrap', minHeight: 60 }}>{limitesAutoridade || <span style={vazio}>Não informado.</span>}</td>
-            </tr>
-          </tbody>
-        </table>
+        <SecaoTabela titulo={titulo('Designação de gerente')} colunas={[{ largura: '24%' }, {}]}>
+          <tr>
+            <td style={{ ...celula, fontWeight: 'bold' }}>Gerente do projeto</td>
+            <td style={celulaCampo}><CampoAutomatico origem="Automático: vem do gerente do projeto">{gerenteProjeto ? `A gerência do projeto será de responsabilidade de ${gerenteProjeto}.` : 'Nenhum gerente definido no projeto.'}</CampoAutomatico></td>
+          </tr>
+          <tr>
+            <td style={{ ...celula, fontWeight: 'bold' }}>Limites de autoridade</td>
+            <td style={{ ...celulaCampo, height: '16mm' }}>
+              <CampoTexto id="limites-autoridade" rotulo="Limites de autoridade" ajuda="O que o gerente pode decidir sozinho: equipe, orçamento, prazos." pergunta="o que o gerente pode decidir sem consultar ninguém?" valor={limitesAutoridade} onChange={campo('limitesAutoridade')} />
+            </td>
+          </tr>
+        </SecaoTabela>
 
-        {/* Metodologia não existe no modelo do professor; fica no fim, no mesmo estilo. */}
-        {metodologia && (
-          <>
-            <p style={titulo}>Metodologia do projeto</p>
-            <Texto valor={metodologia} />
-          </>
+        {/* Metodologia não existe no modelo do professor: no PDF só sai se preenchida. */}
+        {(editavel || metodologia) && (
+          <SecaoTexto titulo={titulo(editavel ? 'Metodologia do projeto (opcional)' : 'Metodologia do projeto')} alturaMinima="12mm">
+            <CampoTexto id="metodologia" rotulo="Metodologia" ajuda="Opcional: como o trabalho será organizado (ex.: Scrum, sprints de 2 semanas)." pergunta="como o trabalho será conduzido? (opcional)" valor={metodologia} onChange={campo('metodologia')} />
+          </SecaoTexto>
         )}
 
-        <p style={{ margin: '10px 0 0 28px', fontSize: '7.5pt' }}>© 02_Project Charter</p>
-      </div>
+        <Assinaturas
+          assinantes={[
+            { nome: elaboradoPor, funcao: 'Elaborado por' },
+            { nome: aprovador, funcao: 'Aprovado por — Gerente do projeto', assinaturaUrl: gerenteSignatureUrl },
+          ]}
+        />
+      </Folha>
     )
   },
 )

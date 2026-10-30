@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { Packer } from 'docx'
 import { createRequire } from 'node:module'
 import { buildAtaDocx, ataComUmaLinhaVazia, ataAssinantes, type AtaExportData } from '@/lib/exports/ataDocx'
-import { infoDaImagem, paragrafoDaImagem, CAIXA_ASSINATURA } from '@/lib/exports/imagemDocx'
+import { infoDaImagem, paragrafoDaImagem, CAIXA_ASSINATURA, CAIXA_ASSINATURA_GERENTE, CAIXA_LOGO_ATA, runDaImagem } from '@/lib/exports/imagemDocx'
 import { imagemDoStorage } from '@/lib/exports/imagemServidor'
 
 const testRequire = createRequire(import.meta.url)
@@ -80,5 +80,40 @@ describe('Word da ata', () => {
     const xml = await xmlDo(buildAtaDocx(base, paragrafoDaImagem(PNG, { maxW: 125, maxH: 72 })))
     expect(xml).not.toContain('Logo do Projeto')
     expect((xml.match(/<pic:pic/g) ?? []).length).toBe(1)
+  })
+})
+
+
+describe('assinatura do gerente no quadro inicial da ata Word', () => {
+  it('inclui gerente ausente dos presentes, com rótulo e imagem no mesmo parágrafo', async () => {
+    const data = { ...base, gerenteProjeto: 'Gerente externo aos presentes', assinaturaGerenteUrl: 'https://storage.operum.test/gerente.png' }
+    const xml = await xmlDo(buildAtaDocx(data, paragrafoDaImagem(PNG, CAIXA_LOGO_ATA), [paragrafoDaImagem(PNG, CAIXA_ASSINATURA), []], runDaImagem(PNG, CAIXA_ASSINATURA_GERENTE)))
+    const signature = (xml.match(/<w:p(?: [^>]*)?>[\s\S]*?<\/w:p>/g) || []).filter(p => p.includes('Assinatura do gerente:'))
+    expect(signature).toHaveLength(1)
+    expect(signature[0]).toContain('<wp:inline')
+    expect(signature[0]).toContain('<w:drawing>')
+    expect(signature[0]).not.toContain('<w:br')
+    expect(xml.indexOf('Assinatura do gerente:')).toBeLessThan(xml.indexOf('I. Relação dos presentes'))
+    expect((xml.match(/<pic:pic/g) || []).length).toBe(3)
+    expect(xml).not.toContain('Logo do Projeto')
+    expect(xml).toContain('Ana'); expect(xml).toContain('Bia')
+  })
+  it.each([{ gerenteProjeto: 'Gerente' }, { assinaturaGerenteUrl: 'https://storage.operum.test/gerente.png' }])('mantém rótulo se imagem indisponível: %j', async fields => {
+    const xml = await xmlDo(buildAtaDocx({ ...base, ...fields }))
+    expect(xml).toContain('Assinatura do gerente:')
+    expect(xml).not.toContain('<pic:pic')
+  })
+  it('não acrescenta linha do gerente em dados legados sem gerente nem assinatura', async () => {
+    expect(await xmlDo(buildAtaDocx(base))).not.toContain('Assinatura do gerente:')
+  })
+  it.each([[600, 100, 170, 28], [100, 600, 5, 30]])('imagem inline cabe em 170×30 e mantém proporção %i×%i', async (width, height, expectedWidth, expectedHeight) => {
+    const bytes = PNG.slice()
+    const view = new DataView(bytes.buffer)
+    view.setUint32(16, width); view.setUint32(20, height)
+    const xml = await xmlDo(buildAtaDocx({ ...base, gerenteProjeto: 'Gerente', presentes: [] }, [], [], runDaImagem(bytes, CAIXA_ASSINATURA_GERENTE)))
+    const extent = /<wp:extent cx="(\d+)" cy="(\d+)"/.exec(xml)!
+    expect(Number(extent[1]) / 9525).toBe(expectedWidth)
+    expect(Number(extent[2]) / 9525).toBe(expectedHeight)
+    expect(Math.abs(Number(extent[1]) / 9525 - Number(extent[2]) / 9525 * width / height)).toBeLessThanOrEqual(width / height / 2)
   })
 })

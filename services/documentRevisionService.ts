@@ -79,6 +79,20 @@ export async function rascunhoDocumento(
     where: whereDraft(s, projectId, documentType, resourceId),
   })
 }
+/** Descarta o rascunho privado do usuário ("Descartar alterações" ao sair do documento). */
+export async function descartarRascunho(
+  s: SessaoAuthz,
+  projectId: string,
+  documentType: DocumentType,
+  resourceId = '',
+) {
+  await acesso(s, projectId, 'documentos:editar')
+  validarRecurso(documentType, resourceId, true)
+  const { count } = await prisma.documentDraft.deleteMany({
+    where: { projectId, userId: s.userId, documentType, resourceId, tenantId: s.tenantId },
+  })
+  return { descartado: count > 0 }
+}
 export async function salvarRascunho(
   s: SessaoAuthz,
   projectId: string,

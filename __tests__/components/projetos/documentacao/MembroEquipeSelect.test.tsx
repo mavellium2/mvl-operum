@@ -1,16 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { useState } from 'react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MembroEquipeSelect from '@/components/projetos/documentacao/MembroEquipeSelect'
 import { ToastProvider } from '@/components/ui/Toast'
 
-// ── Server action de criação de membro — mockada (não exercita auth-service) ──
-vi.mock('@/app/actions/membros', () => ({
-  criarMembroEquipeAction: vi.fn(),
+// Preserve the actual lateral form while loading it without Next's runtime.
+vi.mock('next/dynamic', async () => {
+  const { default: CadastroMembroLateral } = await import('@/components/projetos/cadastro/CadastroMembroLateral')
+  return { default: () => CadastroMembroLateral }
+})
+vi.mock('@/app/actions/cadastroStakeholders', () => ({ carregarCadastroStakeholdersAction: vi.fn() }))
+vi.mock('@/app/actions/stakeholders', () => ({
+  createStakeholderAction: vi.fn(),
+  updateStakeholderAction: vi.fn(),
+  bindStakeholderAction: vi.fn(),
+  unbindStakeholderAction: vi.fn(),
+  reorderStakeholdersAction: vi.fn().mockResolvedValue({ success: true }),
+  reorderMembersAction: vi.fn().mockResolvedValue({ success: true }),
+  uploadMemberSignatureAction: vi.fn().mockResolvedValue({ error: 'noop' }),
 }))
-import { criarMembroEquipeAction } from '@/app/actions/membros'
+vi.mock('@/app/actions/projects', () => ({ addMemberAction: vi.fn(), removeMemberAction: vi.fn() }))
+vi.mock('@/app/actions/projetos', () => ({ updateProjetoMemberAction: vi.fn() }))
+vi.mock('@/app/actions/admin', () => ({ adminCreateUserAction: vi.fn() }))
+vi.mock('@/components/profile/AvatarUpload', () => ({ default: () => null }))
+vi.mock('@/components/ui/AddressFields', () => ({
+  default: () => null,
+  emptyAddress: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' },
+}))
+vi.mock('@/components/permissoes/ProjectPermissions', () => ({ useProjectPermissions: () => new Set(['projeto:equipe']) }))
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+
+import { carregarCadastroStakeholdersAction } from '@/app/actions/cadastroStakeholders'
+import { adminCreateUserAction } from '@/app/actions/admin'
+import { addMemberAction } from '@/app/actions/projects'
 
 const MEMBROS = [
   { id: 'ana', name: 'Ana', setor: null },
@@ -20,86 +43,88 @@ const MEMBROS = [
 function renderSelect() {
   const onChange = vi.fn()
   const onCriarMembro = vi.fn()
-  const utils = render(
-    <ToastProvider>
-      <MembroEquipeSelect
-        membros={MEMBROS}
-        projetoId="p1"
-        onChange={onChange}
-        onCriarMembro={onCriarMembro}
-      />
-    </ToastProvider>,
-  )
-  return { onChange, onCriarMembro, ...utils }
+  function Tela() {
+    const [value, setValue] = useState<string | null>(null)
+    return <ToastProvider>
+      <MembroEquipeSelect membros={MEMBROS} projetoId="p1" value={value} ariaLabel="Elaborado por"
+        onChange={membro => { onChange(membro); setValue(membro?.id ?? null) }} onCriarMembro={onCriarMembro} />
+    </ToastProvider>
+  }
+  return { ...render(<Tela />), onChange, onCriarMembro }
 }
 
-const preencherFormulario = async () => {
-  await userEvent.type(screen.getByPlaceholderText('Nome completo'), 'Pedro')
-  await userEvent.type(screen.getByPlaceholderText('email@exemplo.com'), 'pedro@test.com')
-  await userEvent.type(screen.getByPlaceholderText('Mínimo de 8 caracteres'), 'senha1234')
+async function preencherFormulario() {
+  await userEvent.type(await screen.findByPlaceholderText('Nome completo ou razão social'), 'Pedro')
+  await userEvent.type(screen.getByPlaceholderText('usuario@empresa.com.br'), 'pedro@test.com')
+  await userEvent.type(screen.getByPlaceholderText('Mínimo 8 caracteres'), 'senha1234')
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(carregarCadastroStakeholdersAction).mockResolvedValue({ dados: {
+    stakeholders: [], stakeholdersDisponiveis: [], usuariosDisponiveis: [], userRole: 'admin',
+  } } as Awaited<ReturnType<typeof carregarCadastroStakeholdersAction>>)
+  vi.mocked(addMemberAction).mockResolvedValue({ success: true } as never)
 })
 
-// ── Testes ───────────────────────────────────────────────────────────────────
-
 describe('MembroEquipeSelect', () => {
-  it('lista os membros da equipe e marca os de cadastro pendente', () => {
-    renderSelect()
-    expect(screen.getByRole('combobox')).toBeInTheDocument()
+  it('lista membros no novo Select e mostra a pendência como descrição', async () => {
+    const { onChange } = renderSelect()
+    await userEvent.click(screen.getByRole('combobox', { name: 'Elaborado por' }))
     expect(screen.getByRole('option', { name: 'Ana' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'João — Pendente' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /João\s*Cadastro pendente/ })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('option', { name: 'Ana' }))
+    expect(onChange).toHaveBeenCalledWith(MEMBROS[0])
+    expect(screen.getByRole('combobox', { name: 'Elaborado por' })).toHaveTextContent('Ana')
   })
 
-  it('abre o modal de criação pela opção "＋ Criar novo membro…" do select', async () => {
+  it('criar pelo rodapé abre o cadastro interno lateral diretamente no formulário', async () => {
     renderSelect()
-    await userEvent.selectOptions(
-      screen.getByRole('combobox'),
-      screen.getByRole('option', { name: '＋ Criar novo membro…' }),
-    )
-    await waitFor(() =>
-      expect(screen.getByText('Criar novo membro da equipe')).toBeInTheDocument(),
-    )
+    await userEvent.click(screen.getByRole('combobox', { name: 'Elaborado por' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Criar novo membro' }))
+    const painel = await screen.findByRole('dialog', { name: 'Adicionar membro da equipe' })
+    expect(within(painel).getByPlaceholderText('usuario@empresa.com.br')).toBeInTheDocument()
+    expect(within(painel).getByPlaceholderText('Mínimo 8 caracteres')).toBeInTheDocument()
+    expect(within(painel).getByRole('checkbox', { name: /Obrigar atualizar a senha/ })).toBeChecked()
+    expect(screen.queryByRole('dialog', { name: 'Adicionar stakeholder externo' })).not.toBeInTheDocument()
+    expect(carregarCadastroStakeholdersAction).toHaveBeenCalledWith('p1')
   })
 
-  it('cria um novo membro de forma simples, seleciona-o e exibe sucesso com pendência', async () => {
+  it('devolve o novo membro a onCriarMembro e onChange e mantém a pessoa selecionada', async () => {
+    vi.mocked(adminCreateUserAction).mockResolvedValue({ user: {
+      id: 'pedro', name: 'Pedro', email: 'pedro@test.com', avatarUrl: null, role: 'user',
+    } } as never)
     const { onChange, onCriarMembro } = renderSelect()
-    vi.mocked(criarMembroEquipeAction).mockResolvedValue({
-      membro: { id: 'pedro', name: 'Pedro' },
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Criar novo membro da equipe' }))
-    await preencherFormulario()
-    fireEvent.click(screen.getByRole('button', { name: 'Criar membro' }))
-
-    await waitFor(() => {
-      expect(onCriarMembro).toHaveBeenCalledWith({
-        id: 'pedro', name: 'Pedro', setor: null, pendente: true,
-      })
-      expect(onChange).toHaveBeenCalledWith({
-        id: 'pedro', name: 'Pedro', setor: null, pendente: true,
-      })
-    })
-    // Notificação de sucesso menciona a pendência de cadastro
-    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
-    expect(screen.getByRole('alert').textContent).toContain('pendente')
+    const atualizado = vi.fn()
+    window.addEventListener('operum:project-members-updated', atualizado)
+    try {
+      await userEvent.click(screen.getByRole('button', { name: 'Criar novo membro da equipe' }))
+      await preencherFormulario()
+      await userEvent.click(screen.getByRole('button', { name: 'Criar Stakeholder' }))
+      const membro = { id: 'pedro', name: 'Pedro', setor: null, pendente: true }
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith(membro))
+      expect(onCriarMembro).toHaveBeenCalledExactlyOnceWith(membro)
+      expect(addMemberAction).toHaveBeenCalledWith('p1', 'pedro')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Elaborado por' })).toHaveTextContent('Pedro')
+      await userEvent.click(screen.getByRole('combobox', { name: 'Elaborado por' }))
+      expect(screen.getByRole('option', { name: /Pedro\s*Cadastro pendente/ })).toHaveAttribute('aria-selected', 'true')
+      expect(atualizado).toHaveBeenCalledWith(expect.objectContaining({ detail: { projetoId: 'p1' } }))
+    } finally {
+      window.removeEventListener('operum:project-members-updated', atualizado)
+    }
   })
 
-  it('exibe notificação de falha e mantém o modal aberto quando a criação falha', async () => {
-    renderSelect()
-    vi.mocked(criarMembroEquipeAction).mockResolvedValue({
-      error: 'Somente administradores podem criar novos membros da equipe. Solicite a um administrador que crie o usuário.',
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Criar novo membro da equipe' }))
+  it('falha na criação mantém o painel e não devolve uma pessoa inexistente', async () => {
+    vi.mocked(adminCreateUserAction).mockResolvedValue({ error: 'Sem permissão para criar usuário' } as never)
+    const { onChange, onCriarMembro } = renderSelect()
+    await userEvent.click(screen.getByRole('button', { name: 'Criar novo membro da equipe' }))
     await preencherFormulario()
-    fireEvent.click(screen.getByRole('button', { name: 'Criar membro' }))
-
-    // Modal permanece aberto com a mensagem de erro inline + toast de falha
-    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
-    expect(screen.getByRole('alert').textContent).toContain('Somente administradores')
-    expect(screen.getByText('Criar novo membro da equipe')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Criar Stakeholder' }))
+    expect(await screen.findByText('Sem permissão para criar usuário')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Adicionar membro da equipe' })).toBeInTheDocument()
+    expect(onCriarMembro).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+    expect(addMemberAction).not.toHaveBeenCalled()
   })
 })

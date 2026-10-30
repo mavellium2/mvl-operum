@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import WbsPropertiesPanel from '@/components/wbs/WbsPropertiesPanel'
 import type { WbsNodeClient } from '@/types/wbs'
+import { escolherOpcao } from '../../helpers/select'
 
 const S = { backgroundColor: '#fff', borderColor: '#000', textColor: '#000', borderWidth: 1, fontSize: 14, borderRadius: 4 }
 const no = (id: string, parentId: string | null, layout: WbsNodeClient['layout'], childrenIds: string[] = []): WbsNodeClient =>
@@ -23,17 +24,17 @@ function abrir(selectedNodeIds: string[]) {
 describe('formato no painel de propriedades da EAP', () => {
   it('raiz: formato da EAP inteira, com as fases voltando a seguir a EAP', async () => {
     const dispatch = abrir(['r'])
-    const campo = screen.getByText('Formato da EAP').parentElement!.querySelector('select')!
-    expect(campo).toHaveValue('LADO_A_LADO')
-    await userEvent.selectOptions(campo, 'HORIZONTAL')
+    const campo = screen.getByRole('combobox', { name: 'Formato da EAP' })
+    expect(campo).toHaveTextContent('Padrão')
+    escolherOpcao(campo, 'Horizontal')
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_EAP_FORMAT', payload: { layout: 'HORIZONTAL' } })
   })
 
   it('fases: formato da fase, com "—" quando diferem; aplica a todas as selecionadas', async () => {
     const dispatch = abrir(['f1', 'f2'])
-    const campo = screen.getByText('Formato da fase').parentElement!.querySelector('select')!
-    expect(campo).toHaveValue('')
-    await userEvent.selectOptions(campo, 'DIREITA')
+    const campo = screen.getByRole('combobox', { name: 'Formato da fase' })
+    expect(campo).toHaveTextContent('—')
+    escolherOpcao(campo, 'Direita')
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_LAYOUT', payload: { nodeId: 'f1', layout: 'DIREITA' } })
     expect(dispatch).toHaveBeenCalledWith({ type: 'SET_LAYOUT', payload: { nodeId: 'f2', layout: 'DIREITA' } })
   })

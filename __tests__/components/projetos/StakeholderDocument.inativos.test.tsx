@@ -37,3 +37,25 @@ describe('Formulário de partes interessadas — inativos em vermelho', () => {
     expect(observacaoDaLinha(linha({ inativo: true, motivoInativo: 'Saiu', observacoes: 'x' }))).toBe('Inativo: Saiu\nx')
   })
 })
+
+describe('Formulário de partes interessadas — layout do modelo 03_Form Stakeholders', () => {
+  it('quadro com rótulos em negrito, tabela sem faixa de seção, telefone formatado e sem o rodapé do modelo', () => {
+    const { container } = render(
+      <StakeholderDocument
+        header={{ ...header, elaboradoPor: 'Ana', dataAprovacao: '13/03/2026' }}
+        stakeholders={[linha({ telefoneFax: '14998592681' }), linha({ ref: '02', telefoneFax: '1434714723' })]}
+      />,
+    )
+    expect(screen.getByText('Formulário de Stakeholder – Partes Interessadas')).toBeInTheDocument()
+    const quadro = screen.getByTestId('quadro-identificacao')
+    expect([...quadro.querySelectorAll('strong')].map(b => b.textContent)).toEqual([
+      'Nome do projeto:', 'Gerente do projeto:', 'Elaborado por:', 'Aprovado por:', 'Versão:', 'Assinatura:', 'Data de aprovação:',
+    ])
+    const cabecalho = [...container.querySelectorAll('table')[1].querySelectorAll('thead th')].map(th => th.textContent)
+    expect(cabecalho).toEqual(['Ref.', 'Nome', 'Empresa/Equipe', 'Cargo/Competência', 'e-mail', 'Telefone/Fax', 'Endereço', 'Observações'])
+    expect(screen.getByText('(14) 99859-2681')).toBeInTheDocument()
+    expect(screen.getByText('(14) 3471-4723')).toBeInTheDocument()
+    expect(screen.queryByText(/03_Form Stakeholders/)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('bloco-assinaturas')).not.toBeInTheDocument()
+  })
+})

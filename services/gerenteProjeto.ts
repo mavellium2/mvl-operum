@@ -5,7 +5,7 @@ export interface GerenteDoProjeto {
   /** Nome(s) do(s) gerente(s), como sai nos documentos ("Ana e Bruno"). Vazio sem gerente. */
   userIds?: string[]
   nome: string
-  /** Assinatura do primeiro gerente, para documentos aprovados. */
+  /** Imagem de assinatura cadastrada no perfil do primeiro gerente. */
   signatureUrl: string | null
 }
 

@@ -82,6 +82,7 @@ export async function createProjetoAction(
     premissas?: string
     restricoes?: string
     limitesAutoridade?: string
+    anoAms?: string | null
     semestre?: string
     termo?: string
     turno?: string
@@ -98,11 +99,13 @@ export async function createProjetoAction(
     const erroCusto = erroCustosMacroFases(macroFases)
     if (erroCusto) throw new Error(erroCusto)
     const ano = anoStr ? Number(anoStr) : undefined
+    const anoAms = rest.semestre === 'ano' ? rest.anoAms || null : null
     const toISO = (d?: string) => d ? new Date(d).toISOString() : undefined
 
     const projeto = await projectsApi.create({
       ...rest,
       tenantId,
+      anoAms,
       macroFases,
       ano,
       startDate: toISO(startDate),
@@ -282,7 +285,7 @@ export async function updateProjetoAction(
       await submeterDocumento(session, id, 'CHARTER', { ...((previous?.payload as object) ?? {}), ...complementares }, { commitTitle: 'Dados complementares atualizados na edição do projeto', versao: previous?.versao ?? '1.0', elaboradoPor: '', aprovadoPor: '', dataAprovacao: '' })
     }
     revalidatePath('/projetos')
-    revalidatePath(`/projetos/${id}`)
+    revalidatePath(`/projetos/${id}`, 'layout')
     revalidatePath(`/projetos/${id}/wbs`)
     revalidatePath(`/projetos/${id}/planilha-custos`)
     return { projeto, macroFasesSync }

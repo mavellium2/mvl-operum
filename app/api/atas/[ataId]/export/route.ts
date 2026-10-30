@@ -4,8 +4,9 @@ import { canProjectPermission } from '@/services/projectAccess'
 import { buscarAta, cabecalhoDaAta, funcoesNoProjeto } from '@/services/ataService'
 import { Packer } from 'docx'
 import { ataAssinantes, buildAtaDocx, type AtaExportData } from '@/lib/exports/ataDocx'
-import { imagemDoStorage } from '@/lib/exports/imagemServidor'
+import { imagemDoStorage, imagemInlineDoStorage } from '@/lib/exports/imagemServidor'
 import { CAIXA_ASSINATURA, CAIXA_LOGO_ATA } from '@/lib/exports/imagemDocx'
+import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,18 +25,21 @@ export async function GET(
 
     if (!(await canProjectPermission(session, ata.projetoId, 'documentos:ver'))) return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
 
-    const [cabecalho, funcoes] = await Promise.all([
+    const [cabecalho, funcoes, gerente] = await Promise.all([
       cabecalhoDaAta(session.tenantId, ata.projetoId),
       funcoesNoProjeto(ata.projetoId, [ata.elaboradoPorUserId, ata.aprovadoPorUserId]),
+      gerenteDoProjeto(ata.projetoId),
     ])
     // Layout do modelo, com a logo do projeto e as assinaturas cadastradas dos presentes.
     const data: AtaExportData = {
       logoUrl: cabecalho.logoUrl,
+      gerenteProjeto: gerente.nome,
+      assinaturaGerenteUrl: gerente.signatureUrl,
       instituicao: cabecalho.instituicao || ata.instituicao,
       elaboradoPorFuncao: ata.elaboradoPorUserId ? funcoes.get(ata.elaboradoPorUserId) ?? null : null,
       aprovadoPorFuncao: ata.aprovadoPorUserId ? funcoes.get(ata.aprovadoPorUserId) ?? null : null,
       numero: ata.numero,
-      nomeProjeto: ata.nomeProjeto,
+      nomeProjeto: cabecalho.nomeProjeto ?? ata.nomeProjeto,
       local: ata.local,
       data: ata.data,
       elaboradoPor: ata.elaboradoPor,
@@ -53,7 +57,8 @@ export async function GET(
       imagemDoStorage(data.logoUrl, CAIXA_LOGO_ATA),
       ...ataAssinantes(data.presentes).map(p => imagemDoStorage(p.assinaturaUrl, CAIXA_ASSINATURA)),
     ])
-    const buffer = await Packer.toBuffer(buildAtaDocx(data, logo, assinaturas))
+    const assinaturaGerente = await imagemInlineDoStorage(data.assinaturaGerenteUrl, { maxW: 160, maxH: 30 })
+    const buffer = await Packer.toBuffer(buildAtaDocx(data, logo, assinaturas, assinaturaGerente))
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,

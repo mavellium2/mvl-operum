@@ -1,5 +1,5 @@
 import {
-  AlignmentType, BorderStyle, Document, Footer, HeightRule, Paragraph, ShadingType,
+  AlignmentType, BorderStyle, Document, Footer, HeightRule, ImageRun, Paragraph, ShadingType,
   Table, TableCell, TableRow, TextRun, VerticalAlign, WidthType,
 } from 'docx'
 
@@ -28,6 +28,8 @@ export interface AtaExportData {
   acoes: Acao[]
   anexos: Anexo[]
   logoUrl?: string | null
+  gerenteProjeto?: string | null
+  assinaturaGerenteUrl?: string | null
 }
 
 // ── Regras do modelo (compartilhadas com a prévia em components/atas/AtaDocument.tsx) ──
@@ -129,9 +131,10 @@ const espaco = () => new Paragraph({ spacing: { before: 0, after: 0, line: ATA_E
 /**
  * Ata no layout do modelo "01_Form Ata de Reunião". `logo`: parágrafo com a imagem;
  * `assinaturas`: imagem da assinatura de cada assinante (mesma ordem de `ataAssinantes`).
+ * `assinaturaGerente`: imagem inline do gerente, independente dos presentes.
  * As imagens são carregadas por quem chama (navegador ou servidor).
  */
-export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinaturas: Paragraph[][] = []): Document {
+export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinaturas: Paragraph[][] = [], assinaturaGerente?: ImageRun): Document {
   const W1 = 7654, W2 = LARGURA - W1
   const A1 = 4592, A2 = 1531, A3 = LARGURA - A1 - A2
   const presentes = ataComUmaLinhaVazia(d.presentes, p => !!p.nome?.trim(), { nome: '', setorEmpresa: null })
@@ -160,6 +163,10 @@ export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinatur
     { cells: [celula(rotulo('Local:', d.local), W1), celula(rotulo('Data:', ataData(d.data)), W2)] },
     { cells: [celula(rotulo('Elaborado por:', ataPessoa(d.elaboradoPor, d.elaboradoPorFuncao)), LARGURA, { span: 2 })] },
     { cells: [celula(rotulo('Aprovado por:', ataPessoa(d.aprovadoPor, d.aprovadoPorFuncao)), LARGURA, { span: 2 })] },
+    ...(d.gerenteProjeto || d.assinaturaGerenteUrl ? [{ cells: [celula([new Paragraph({ children: [
+      new TextRun({ text: 'Assinatura do gerente: ', bold: true, size: 18 }),
+      ...(assinaturaGerente ? [assinaturaGerente] : []),
+    ] })], LARGURA, { span: 2 })] }] : []),
     { cells: [celula(titulo('I. Relação dos presentes'), LARGURA, { span: 2, cinza: CINZA })] },
     { cells: [celula(titulo('Nome:'), W1), celula(titulo('Setor/Empresa:'), W2)] },
     ...presentes.map(p => ({ cells: [celula(texto([{ t: p.nome }]), W1), celula(texto([{ t: p.setorEmpresa ?? '' }]), W2)] })),

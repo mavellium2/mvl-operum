@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma'
 import AtaFormClient from '@/components/atas/AtaFormClient'
 import type { MemberOption } from '@/components/atas/MemberSelect'
 import type { Metadata } from 'next'
+import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,7 @@ export default async function EditarAtaPage({
   const ata = await buscarAta(tenantId, ataId)
   if (!ata || ata.projetoId !== projetoId) notFound()
 
-  const [cabecalho, emailsSugeridos] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId)])
+  const [cabecalho, emailsSugeridos, gerente] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId), gerenteDoProjeto(projetoId)])
   const members: MemberOption[] = (
     await prisma.userProject.findMany({
       where: { projectId: projetoId, active: true },
@@ -46,30 +47,24 @@ export default async function EditarAtaPage({
     })
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between">
-          <Link href={`/projetos/${projetoId}/documentacao?doc=atas`} className="text-sm text-blue-600 hover:underline">
-            ← Voltar às atas
-          </Link>
-          <a
-            href={`/api/atas/${ataId}/export`}
-            download
-            className="px-3 py-1.5 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg"
-          >
-            Exportar .docx
-          </a>
-        </div>
-        <h1 className="text-xl font-bold text-gray-900 mt-3 mb-1">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
+        <Link href={`/projetos/${projetoId}/documentacao?doc=atas`} className="text-sm text-blue-600 hover:underline">
+          ← Voltar às atas
+        </Link>
+        <h1 className="text-sm font-semibold text-gray-900">
           Ata {String(ata.numero).padStart(2, '0')} — {ata.nomeProjeto}
         </h1>
-        <p className="text-sm text-gray-500 mb-6">Edite os campos abaixo e salve as alterações.</p>
+      </div>
+      <main className="min-h-0 flex-1">
         <AtaFormClient key={ata.updatedAt?.toISOString()}
           projetoId={projetoId}
           ataId={ata.id}
-          nomeProjeto={ata.nomeProjeto}
+          nomeProjeto={cabecalho.nomeProjeto ?? ata.nomeProjeto}
           instituicaoProjeto={cabecalho.instituicao}
           logoUrl={cabecalho.logoUrl}
+          gerenteProjeto={gerente.nome}
+          assinaturaGerenteUrl={gerente.signatureUrl}
           numero={ata.numero}
           mode="edit"
           members={members}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import ArquivosClient from '@/components/arquivos/ArquivosClient'
+import { escolherOpcao, opcoesDo } from '../../helpers/select'
 
 const card = { id: 'c1', title: 'EAP', sprintId: 's1', sprintName: 'Sprint 1', projectId: 'p1' }
 const base = { isCover: false, uploadedAt: '2026-09-28T12:00:00.000Z', card, uploadedBy: null }
@@ -26,9 +26,8 @@ describe('ArquivosClient — links', () => {
   })
 
   it('filtro "Links" mostra só os links', async () => {
-    const user = userEvent.setup()
     render(<ArquivosClient initialAttachments={anexos} />)
-    await user.selectOptions(screen.getByDisplayValue('Todos os tipos'), 'link')
+    escolherOpcao(screen.getByRole('combobox', { name: 'Filtrar por tipo' }), 'Links')
     expect(screen.queryByText('eap.png')).not.toBeInTheDocument()
     expect(screen.getByText('Aula da EAP')).toBeInTheDocument()
     expect(screen.getByText('Link estranho')).toBeInTheDocument()

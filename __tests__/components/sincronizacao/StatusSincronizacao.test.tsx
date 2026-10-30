@@ -37,7 +37,8 @@ describe('StatusSincronizacao', () => {
     render(<StatusSincronizacao projectId="p" inicial={ok} podeSincronizar />)
     fireEvent.click(screen.getByRole('button', { name: 'Sincronizar agora' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('A sincronização falhou.')
-    expect(screen.getByRole('status')).toHaveTextContent('Falha na última sincronização')
+    // O status atualiza logo depois do alerta; espera em vez de checar no mesmo instante.
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Falha na última sincronização'))
   })
 
   it('sem permissão não oferece o botão', () => {

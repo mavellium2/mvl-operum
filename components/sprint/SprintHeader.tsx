@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import { useState, useRef, useEffect } from 'react'
@@ -223,41 +224,33 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
                   <div className="space-y-3">
                     <div>
                       <label htmlFor="filtro-responsavel" className="text-sm font-medium text-gray-700 mb-1.5 block">Responsável</label>
-                      <select
+                      <Select
                         id="filtro-responsavel"
+                        searchable={false}
                         value={filters.responsavel}
-                        onChange={e => onFiltersChange({ ...filters, responsavel: e.target.value as CardFilters['responsavel'] })}
-                        className="w-full text-sm border border-gray-200 rounded-lg p-2"
-                      >
-                        <option value="todos">Qualquer um</option>
-                        <option value="meus" disabled={!currentUser}>Atribuídos a mim</option>
-                      </select>
+                        onChange={v => onFiltersChange({ ...filters, responsavel: v as CardFilters['responsavel'] })}
+                        options={[{ value: 'todos', label: 'Qualquer um' }, { value: 'meus', label: 'Atribuídos a mim', disabled: !currentUser }]}
+                      />
                     </div>
                     <div>
                       <label htmlFor="filtro-tag" className="text-sm font-medium text-gray-700 mb-1.5 block">Etiqueta</label>
-                      <select
+                      <Select
                         id="filtro-tag"
                         value={filters.tagId ?? ''}
-                        onChange={e => onFiltersChange({ ...filters, tagId: e.target.value || null })}
-                        className="w-full text-sm border border-gray-200 rounded-lg p-2"
-                      >
-                        <option value="">Qualquer etiqueta</option>
-                        {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
+                        onChange={v => onFiltersChange({ ...filters, tagId: v || null })}
+                        placeholder="Qualquer etiqueta"
+                        options={[{ value: '', label: 'Qualquer etiqueta' }, ...tags.map(t => ({ value: t.id, label: t.name }))]}
+                      />
                     </div>
                     <div>
                       <label htmlFor="filtro-prazo" className="text-sm font-medium text-gray-700 mb-1.5 block">Prazo</label>
-                      <select
+                      <Select
                         id="filtro-prazo"
+                        searchable={false}
                         value={filters.prazo}
-                        onChange={e => onFiltersChange({ ...filters, prazo: e.target.value as FiltroPrazo })}
-                        className="w-full text-sm border border-gray-200 rounded-lg p-2"
-                      >
-                        <option value="todos">Qualquer prazo</option>
-                        <option value="semana">Vence esta semana</option>
-                        <option value="atrasados">Atrasados</option>
-                        <option value="sem_prazo">Sem prazo</option>
-                      </select>
+                        onChange={v => onFiltersChange({ ...filters, prazo: v as FiltroPrazo })}
+                        options={[{ value: 'todos', label: 'Qualquer prazo' }, { value: 'semana', label: 'Vence esta semana' }, { value: 'atrasados', label: 'Atrasados' }, { value: 'sem_prazo', label: 'Sem prazo' }]}
+                      />
                     </div>
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                       <input

@@ -32,7 +32,8 @@ export async function buscarAta(tenantId: string, ataId: string) {
   })
 }
 
-async function proximoNumero(projetoId: string): Promise<number> {
+/** Número da próxima ata do projeto (o mesmo que a criação vai usar). */
+export async function proximoNumero(projetoId: string): Promise<number> {
   const last = await prisma.ata.findFirst({
     where: { projetoId },
     orderBy: { numero: 'desc' },
@@ -167,14 +168,14 @@ export async function removerAta(tenantId: string, ataId: string) {
 }
 
 /** Cabeçalho da Ata a partir do projeto: linha institucional (Editar projeto > Informações iniciais) e logo. */
-export async function cabecalhoDaAta(tenantId: string, projectId: string): Promise<{ instituicao: string; logoUrl: string | null }> {
+export async function cabecalhoDaAta(tenantId: string, projectId: string): Promise<{ instituicao: string; logoUrl: string | null; nomeProjeto?: string }> {
   const p = await prisma.project.findFirst({
     where: { id: projectId, tenantId, deletedAt: null },
-    select: { location: true, departamentos: true, semestre: true, termo: true, turno: true, ano: true, logoUrl: true },
+    select: { name: true, location: true, departamentos: true, semestre: true, anoAms: true, termo: true, turno: true, ano: true, logoUrl: true },
   })
   if (!p) return { instituicao: '', logoUrl: null }
   const departamentos = await departamentosDoProjeto(projectId, tenantId, p.departamentos)
-  return { instituicao: linhaInstitucional({ ...p, departamentos }), logoUrl: p.logoUrl ?? null }
+  return { instituicao: linhaInstitucional({ ...p, departamentos }), logoUrl: p.logoUrl ?? null, nomeProjeto: p.name }
 }
 
 /** Função (primeiro cargo do cadastro no projeto, ou departamento) de cada membro, para "nome e função". */

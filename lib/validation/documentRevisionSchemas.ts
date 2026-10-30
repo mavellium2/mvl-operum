@@ -64,11 +64,15 @@ const headerSchema = z
 export const stakeholderSchema = z
   .object({
     header: headerSchema,
+    cadastrosExcluidos: z.array(z.string().regex(/^(interno|externo):[a-zA-Z0-9_-]{1,128}$/)).max(1000).optional(),
     stakeholders: z
       .array(
         z
           .object({
             ref: z.string().max(100),
+            cadastroId: z.string().regex(/^(interno|externo):[a-zA-Z0-9_-]{1,128}$/).optional(),
+            inativo: z.boolean().optional(),
+            motivoInativo: z.string().max(1000).optional(),
             nome: z.string().max(300),
             empresaEquipe: z.string().max(500),
             cargoCompetencia: z.string().max(500),

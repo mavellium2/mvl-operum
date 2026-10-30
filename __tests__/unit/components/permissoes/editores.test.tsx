@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PermissoesFuncoes from '@/components/permissoes/PermissoesFuncoes'
 import PermissoesUsuario from '@/components/permissoes/PermissoesUsuario'
 import { listarPermissoesFuncoesAction, salvarPermissoesFuncaoAction, restaurarPadraoFuncaoAction, listarAjustesUsuarioAction, salvarAjusteUsuarioAction } from '@/app/actions/permissoes'
+import { escolherOpcao } from '../../../helpers/select'
 
 vi.mock('@/app/actions/permissoes', () => ({
   listarPermissoesFuncoesAction: vi.fn(), salvarPermissoesFuncaoAction: vi.fn(), restaurarPadraoFuncaoAction: vi.fn(),
@@ -45,20 +46,22 @@ describe('editores de permissões', () => {
     vi.mocked(salvarAjusteUsuarioAction).mockResolvedValue({ success: true })
     render(<PermissoesUsuario userId="u1" projectId="p1" />)
     const select = await screen.findByRole('combobox', { name: 'Ver o projeto' })
-    fireEvent.change(select, { target: { value: 'DENY' } })
-    await waitFor(() => expect(select).toHaveValue('DENY'))
+    escolherOpcao(select, 'Negar')
+    await waitFor(() => expect(select).toHaveTextContent('Negar'))
+    // Enquanto salva, o seletor fica desabilitado; espera liberar antes da próxima escolha.
+    await waitFor(() => expect(select).toBeEnabled())
     expect(salvarAjusteUsuarioAction).toHaveBeenLastCalledWith({ userId: 'u1', projectId: 'p1', permissao: 'projeto:ver', efeito: 'DENY' })
-    fireEvent.change(select, { target: { value: '' } })
-    await waitFor(() => expect(select).toHaveValue(''))
+    escolherOpcao(select, 'Herdar')
+    await waitFor(() => expect(select).toHaveTextContent('Herdar'))
     expect(salvarAjusteUsuarioAction).toHaveBeenLastCalledWith(expect.objectContaining({ efeito: null }))
   })
   it('ajuste global falho preserva valor confirmado', async () => {
     vi.mocked(salvarAjusteUsuarioAction).mockResolvedValue({ error: 'Sem acesso' })
     render(<PermissoesUsuario userId="u1" projectId={null} />)
     const select = await screen.findByRole('combobox', { name: 'Ver o projeto' })
-    fireEvent.change(select, { target: { value: 'GRANT' } })
+    escolherOpcao(select, 'Conceder')
     expect(await screen.findByRole('alert')).toHaveTextContent('Sem acesso')
-    expect(select).toHaveValue('')
+    expect(select).toHaveTextContent('Herdar')
     expect(salvarAjusteUsuarioAction).toHaveBeenCalledWith(expect.objectContaining({ projectId: null }))
   })
 })

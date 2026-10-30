@@ -38,6 +38,8 @@ export const CreateProjectSchema = z.object({
   restricoes: z.string().optional(),
   limitesAutoridade: z.string().optional(),
   semestre: z.string().optional(),
+  /** Ano da turma AMS, independente de termo e ano calendário. */
+  anoAms: z.enum(["1", "2"]).nullable().optional(),
   /** Termo do curso (ex.: "5") e turno — usados quando o período não é anual. */
   termo: z.string().max(20).optional(),
   turno: z.string().max(30).optional(),
@@ -106,6 +108,7 @@ export class ProjectService {
   }
 
   async create(dto: CreateProjectDto) {
+    if (dto.anoAms && dto.semestre !== 'ano') throw new BadRequestException('Ano do AMS só pode ser informado no período Ano')
     const existing = await prisma.project.findFirst({
       where: { name: dto.name, tenantId: dto.tenantId, deletedAt: null },
     })
@@ -116,6 +119,7 @@ export class ProjectService {
     return this.transaction(async tx => {
       const project = await tx.project.create({ data: {
         ...fields,
+        ...(dto.semestre !== undefined && dto.semestre !== 'ano' ? { anoAms: null } : {}),
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         departamentos: dto.departamentos ?? [],
@@ -129,9 +133,12 @@ export class ProjectService {
     const { macroFases, ...fields } = dto
     const validated = macroFases === undefined ? undefined : this.validateMacroFases(macroFases)
     return this.transaction(async tx => {
-      if (!await tx.project.findFirst({ where: { id, tenantId, deletedAt: null }, select: { id: true } })) throw new NotFoundException('Projeto não encontrado')
+      const existing = await tx.project.findFirst({ where: { id, tenantId, deletedAt: null }, select: { id: true, semestre: true } })
+      if (!existing) throw new NotFoundException('Projeto não encontrado')
+      if (dto.anoAms && (dto.semestre ?? existing.semestre) !== 'ano') throw new BadRequestException('Ano do AMS só pode ser informado no período Ano')
       await tx.project.update({ where: { id }, data: {
         ...fields,
+        ...(dto.semestre !== undefined && dto.semestre !== 'ano' ? { anoAms: null } : {}),
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
       } })

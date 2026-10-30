@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { parseMoeda } from '@/lib/dinheiro'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
@@ -145,7 +146,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     logoUrl: '', initialMemberId: '',
     justificativa: '', objetivos: '', metodologia: '', descricaoProduto: '',
     premissas: '', restricoes: '', limitesAutoridade: '',
-    semestre: '', termo: '', turno: '', ano: '',
+    semestre: '', termo: '', turno: '', ano: '', anoAms: '',
     departamentos: [] as string[],
   })
 
@@ -196,6 +197,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         termo: p.termo ?? '',
         turno: p.turno ?? '',
         ano: p.ano ? String(p.ano) : '',
+        anoAms: p.semestre === 'ano' ? p.anoAms ?? '' : '',
         // Fonte da verdade: associações reais (ProjetoDepartamento). Fallback para
         // as strings legadas de projetos anteriores à sincronização.
         departamentos: associados?.length ? associados.map(d => d.name) : (p.departamentos ?? []),
@@ -210,10 +212,12 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
+  const alterarCampo = (name: string, value: string) => {
+    setForm(prev => ({ ...prev, [name]: value, ...(name === 'semestre' && value !== 'ano' ? { anoAms: '' } : {}) }))
     if (error && name === 'name') setError('')
+  }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    alterarCampo(e.target.name, e.target.value)
   }
 
   const addMacroFase = () => { if (!canEditCosts) return; setMacroFases([...macroFases, { fase: '', dataLimite: '', custo: '' }]) }
@@ -250,7 +254,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     }
 
     startTransition(async () => {
-      const update: Record<string, unknown> = { ...form }
+      const update: Record<string, unknown> = { ...form, anoAms: form.semestre === 'ano' ? form.anoAms || null : null }
       // Termo/turno só valem para período semestral; ao mudar para anual, limpa.
       if (!periodoEhSemestral(form.semestre)) { update.termo = ''; update.turno = '' }
       if (!canAssignRoles) delete update.initialMemberId
@@ -438,16 +442,9 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
 
                   <div className="grid grid-cols-2 gap-5">
                     <div>
-                      <label className={labelClass}>Período</label>
-                      <div className="relative">
-                        <select name="semestre" value={form.semestre} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer pr-10`}>
-                          <option value="">Selecione</option>
-                          <option value="1">1º Semestre</option>
-                          <option value="2">2º Semestre</option>
-                          <option value="ano">Ano</option>
-                        </select>
-                        <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                      </div>
+                      <label htmlFor="projeto-periodo" className={labelClass}>Período</label>
+                      <Select id="projeto-periodo" name="semestre" searchable={false} placeholder="Selecione" value={form.semestre} onChange={v => alterarCampo('semestre', v)}
+                        options={[{ value: '1', label: '1º Semestre' }, { value: '2', label: '2º Semestre' }, { value: 'ano', label: 'Ano' }]} />
                     </div>
                     <div>
                       <label className={labelClass}>Ano</label>
@@ -468,6 +465,15 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                     </div>
                   </div>
 
+                  {form.semestre === 'ano' && (
+                    <div>
+                      <label htmlFor="projeto-ano-ams" className={labelClass}>Ano do AMS</label>
+                      <Select id="projeto-ano-ams" name="anoAms" searchable={false} placeholder="Selecione" value={form.anoAms} onChange={v => alterarCampo('anoAms', v)}
+                        options={[{ value: '1', label: '1º' }, { value: '2', label: '2º' }]} />
+                      <p className="mt-1 text-xs text-slate-500">Ano da turma no AMS. É diferente do termo e do ano calendário (ex.: 2026).</p>
+                    </div>
+                  )}
+
                   {periodoEhSemestral(form.semestre) && (
                     <div className="grid grid-cols-2 gap-5">
                       <div>
@@ -486,13 +492,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                       </div>
                       <div>
                         <label htmlFor="projeto-turno" className={labelClass}>Turno</label>
-                        <div className="relative">
-                          <select id="projeto-turno" name="turno" value={form.turno} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer pr-10`}>
-                            <option value="">Selecione</option>
-                            {[...new Set([...TURNOS, ...(form.turno ? [form.turno] : [])])].map(t => <option key={t} value={t}>{t}</option>)}
-                          </select>
-                          <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                        </div>
+                        <Select id="projeto-turno" name="turno" searchable={false} placeholder="Selecione" value={form.turno} onChange={v => alterarCampo('turno', v)}
+                          options={[...new Set([...TURNOS, ...(form.turno ? [form.turno] : [])])].map(t => ({ value: t, label: t }))} />
                       </div>
                       <p className="col-span-2 -mt-3 text-xs text-slate-500">
                         Aparece nos documentos como “{termoTurno(form.termo, form.turno) || '5° termo Noturno'}”.
@@ -501,14 +502,9 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                   )}
 
                   <div className="pt-5 border-t border-slate-100">
-                    <label className={labelClass}>Gerente do Projeto (Responsável)</label>
-                    <div className="relative">
-                      <select disabled={!canAssignRoles} name="initialMemberId" value={form.initialMemberId} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer pr-10`}>
-                        <option value="">Ainda não definido (Designar depois)</option>
-                        {usuarios.filter(u => u.isActive !== false).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                      </select>
-                      <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </div>
+                    <label htmlFor="projeto-gerente" className={labelClass}>Gerente do Projeto (Responsável)</label>
+                    <Select id="projeto-gerente" disabled={!canAssignRoles} name="initialMemberId" placeholder="Ainda não definido (Designar depois)" value={form.initialMemberId} onChange={v => alterarCampo('initialMemberId', v)}
+                      options={[{ value: '', label: 'Ainda não definido (Designar depois)' }, ...usuarios.filter(u => u.isActive !== false).map(u => ({ value: u.id, label: u.name }))]} />
                   </div>
                 </div>
               </div>

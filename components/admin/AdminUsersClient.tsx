@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { formatReais } from '@/lib/dinheiro'
 import Modal from '@/components/ui/Modal'
 import PermissoesUsuario from '@/components/permissoes/PermissoesUsuario'
@@ -77,24 +78,24 @@ export default function AdminUsersClient({ initialUsers }: Props) {
           onChange={e => setSearch(e.target.value)}
           className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <select
+        <Select
+          ariaLabel="Filtrar por papel"
+          className="sm:w-48"
+          searchable={false}
           value={filterRole}
-          onChange={e => setFilterRole(e.target.value)}
-          className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos os papéis</option>
-          <option value="admin">Admin</option>
-          <option value="member">Membro</option>
-        </select>
-        <select
+          onChange={setFilterRole}
+          placeholder="Todos os papéis"
+          options={[{ value: '', label: 'Todos os papéis' }, { value: 'admin', label: 'Admin' }, { value: 'member', label: 'Membro' }]}
+        />
+        <Select
+          ariaLabel="Filtrar por status"
+          className="sm:w-48"
+          searchable={false}
           value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos os status</option>
-          <option value="active">Ativo</option>
-          <option value="inactive">Inactive</option>
-        </select>
+          onChange={setFilterStatus}
+          placeholder="Todos os status"
+          options={[{ value: '', label: 'Todos os status' }, { value: 'active', label: 'Ativo' }, { value: 'inactive', label: 'Inativo' }]}
+        />
         <button
           onClick={() => setShowCreate(true)}
           className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 whitespace-nowrap"

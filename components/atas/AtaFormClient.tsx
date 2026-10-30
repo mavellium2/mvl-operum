@@ -1,19 +1,24 @@
 'use client'
 
 import { emailValido, formatEmail } from '@/lib/contato'
-import { printPageStyle } from '@/lib/printPageStyle'
+import { printPageStyle, rodapeDocumento } from '@/lib/printPageStyle'
+import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
+import { FOLHA_MARGEM_MM } from '@/components/documentos/editor/folha'
+import Drawer from '@/components/ui/Drawer'
+import { useDesfazer } from '@/hooks/useDesfazer'
+import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
+import { ROTULO_STATUS, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import HistoricoDocumento from '@/components/projetos/documentacao/HistoricoDocumento'
-import { useState, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
-import AtaDocument from './AtaDocument'
+import AtaDocument, { TITULO_ATA, type EdicaoAta } from './AtaDocument'
 import { ATA_PLANO_DO_PROJETO, type AtaExportData } from '@/lib/exports/ataDocx'
 import { useRouter } from 'next/navigation'
 import { criarAtaAction, atualizarAtaAction, enviarAnexoAtaAction } from '@/app/actions/atas'
 import { type MemberOption } from '@/components/atas/MemberSelect'
-import MembroEquipeSelect, { useMembrosEquipe } from '@/components/projetos/documentacao/MembroEquipeSelect'
-import DateInput from '@/components/ui/DateInput'
+import { useMembrosEquipe } from '@/components/projetos/documentacao/MembroEquipeSelect'
 import { toDateInputValue } from '@/lib/date'
 import PaginasDaPrevia from '@/components/projetos/documentacao/PaginasDaPrevia'
 import MultiCreatableSelect from '@/components/ui/MultiCreatableSelect'
@@ -23,6 +28,8 @@ interface Acao { acao: string; prazo: string; responsavel: string; responsavelUs
 interface Anexo { nome: string; url: string }
 
 interface Props {
+  gerenteProjeto?: string
+  assinaturaGerenteUrl?: string | null
   nomeProjeto?: string
   /** Linha institucional do projeto (Editar projeto > Informações iniciais). */
   instituicaoProjeto?: string
@@ -65,10 +72,8 @@ export function semRepetir(lista: string[]): string[] {
   })
 }
 
-const inputCls =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
-export default function AtaFormClient({ projetoId, ataId, mode, members, emailsSugeridos = [], initial, nomeProjeto = '', numero, instituicaoProjeto, logoUrl = null }: Props) {
+export default function AtaFormClient({ projetoId, ataId, mode, members, emailsSugeridos = [], initial, nomeProjeto = '', numero, instituicaoProjeto, logoUrl = null, gerenteProjeto, assinaturaGerenteUrl }: Props) {
   const permissions = useProjectPermissions()
   const canEdit = permissions.has('documentos:editar')
   // Pessoas da ata: membros da equipe, com "+" para criar membro (padrão dos documentos).
@@ -77,9 +82,10 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
 
   // Vem sempre do projeto (Localização - Departamentos - termo - Período Ano); não é digitada.
   const instituicao = instituicaoProjeto ?? initial?.instituicao ?? ''
-  const [preview, setPreview] = useState(false)
+  const [historicoAberto, setHistoricoAberto] = useState(false)
   const documentRef = useRef<HTMLDivElement>(null)
-  const print = useReactToPrint({ contentRef: documentRef, documentTitle: 'Ata de Reunião', pageStyle: printPageStyle() })
+  const tituloImpressao = `${TITULO_ATA} Nº ${String(numero ?? '').padStart(2, '0') || '__'}`
+  const print = useReactToPrint({ contentRef: documentRef, documentTitle: tituloImpressao, pageStyle: printPageStyle({ marginMm: FOLHA_MARGEM_MM, rodape: rodapeDocumento(tituloImpressao) }) })
   const [local, setLocal] = useState(initial?.local ?? '')
   const [data, setData] = useState(initial?.data ? toDateOnly(initial.data) : '')
   const [elaboradoPor, setElaboradoPor] = useState(initial?.elaboradoPor ?? '')
@@ -107,7 +113,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
   const funcaoDe = (userId: string | null | undefined) => (userId ? todosMembros.find(m => m.id === userId)?.setor ?? null : null)
   // Mesmos dados na prévia/PDF e no Word (layout do modelo "01_Form Ata de Reunião").
   const dadosDocumento: AtaExportData = {
-    instituicao, numero: numero ?? 0, nomeProjeto, local, logoUrl,
+    instituicao, numero: numero ?? 0, nomeProjeto, local, logoUrl, gerenteProjeto, assinaturaGerenteUrl,
     data: data ? new Date(`${data}T12:00:00`) : null,
     elaboradoPor, elaboradoPorFuncao: funcaoDe(elaboradoPorUserId),
     aprovadoPor, aprovadoPorFuncao: funcaoDe(aprovadoPorUserId),
@@ -175,22 +181,12 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
     setAcoes(next)
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!canEdit) return
-    setError(null)
-    setSaving(true)
-
-    if (!data) {
-      setError('Informe a data da reunião.')
-      setSaving(false)
-      return
-    }
-
-    const payload = {
+  /** Conteúdo da ata como vai para o servidor (salvar e "salvar mais tarde"). */
+  function montarPayload() {
+    return {
       instituicao: instituicao || null,
       local: local || null,
-      data: new Date(`${data}T00:00:00Z`).toISOString(),
+      data: data ? new Date(`${data}T00:00:00Z`).toISOString() : null,
       elaboradoPor,
       elaboradoPorUserId: elaboradoPorUserId || null,
       aprovadoPor: aprovadoPor || null,
@@ -218,6 +214,20 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
         .map(a => ({ nome: a.nome.trim(), url: a.url.trim() || null }))
         .filter(a => a.nome),
     }
+  }
+
+  async function salvar() {
+    if (!canEdit || saving) return
+    setError(null)
+    setSaving(true)
+
+    if (!data) {
+      setError('Informe a data da reunião.')
+      setSaving(false)
+      return
+    }
+
+    const payload = { ...montarPayload(), data: new Date(`${data}T00:00:00Z`).toISOString() }
 
     const result =
       mode === 'create'
@@ -233,242 +243,117 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
     router.refresh()
   }
 
-  return (
-    <form onSubmit={handleSubmit}>
-      <p className="mb-4 rounded bg-blue-50 p-3 text-sm text-blue-800">Salvar envia uma nova versão para aprovação. A ata vigente permanece disponível até a aprovação.</p>
-      {ataId && <HistoricoDocumento projetoId={projetoId} type="ATA" resourceId={ataId} />}
-      <div className="mb-4 flex gap-3">
-        <button type="button" className="rounded border px-3 py-2" onClick={() => setPreview(value => !value)}>{preview ? 'Voltar ao formulário' : 'Gerar documento'}</button>
-        {preview && <button type="button" className="rounded bg-blue-600 px-3 py-2 text-white" onClick={() => print()}>Baixar PDF</button>}
-        {preview && <button type="button" className="rounded bg-gray-800 px-3 py-2 text-white" onClick={baixarWord}>Baixar Word</button>}
-      </div>
-      {preview && <><p className="mb-2 text-sm">Prévia do rascunho — ainda não publicada</p><div role="region" aria-label="Prévia da ata" tabIndex={0} className="max-w-full overflow-x-auto mb-4"><PaginasDaPrevia><AtaDocument ref={documentRef} data={dadosDocumento} /></PaginasDaPrevia></div></>}
-    <fieldset hidden={preview} disabled={!canEdit} className="space-y-6 min-w-0">
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+  // ── Desfazer / refazer: todo o conteúdo da ata ─────────────────────────────
+  const estadoEdicao = useMemo(
+    () => ({ local, data, elaboradoPor, elaboradoPorUserId, aprovadoPor, aprovadoPorUserId, assuntos, decisoes, observacoes, copias, presentes, acoes, anexos }),
+    [local, data, elaboradoPor, elaboradoPorUserId, aprovadoPor, aprovadoPorUserId, assuntos, decisoes, observacoes, copias, presentes, acoes, anexos],
+  )
+  const aplicarEstado = useCallback((e: typeof estadoEdicao) => {
+    setLocal(e.local); setData(e.data); setElaboradoPor(e.elaboradoPor); setElaboradoPorUserId(e.elaboradoPorUserId)
+    setAprovadoPor(e.aprovadoPor); setAprovadoPorUserId(e.aprovadoPorUserId); setAssuntos(e.assuntos); setDecisoes(e.decisoes)
+    setObservacoes(e.observacoes); setCopias(e.copias); setPresentes(e.presentes); setAcoes(e.acoes); setAnexos(e.anexos)
+  }, [])
+  const [carregamentos, setCarregamentos] = useState(0)
+  const historicoEdicao = useDesfazer(estadoEdicao, aplicarEstado, { ativo: canEdit, chave: carregamentos })
+  // Alterações que ainda não viraram versão: compara com o que foi aberto (ou com o rascunho restaurado).
+  const estadoAtual = JSON.stringify(estadoEdicao)
+  const [base, setBase] = useState(estadoAtual)
+  const alterado = estadoAtual !== base
+  const estadoAtualRef = useRef(estadoAtual)
+  useEffect(() => { estadoAtualRef.current = estadoAtual })
+  useEffect(() => { if (carregamentos > 0) setBase(estadoAtualRef.current) }, [carregamentos])
 
-      <label className="block text-sm font-medium">Instituição / curso / termo / semestre
-        <input className={`${inputCls} bg-gray-100 cursor-not-allowed`} value={instituicao} readOnly title="Preenchido com os dados do projeto (Editar projeto > Informações iniciais)" />
-        <span className="mt-1 block text-xs text-gray-500">Vem de Editar projeto &gt; Informações iniciais (localização, departamentos, período e ano).</span>
-      </label>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data da reunião *</label>
-          <DateInput required value={data} onChange={setData} className={inputCls} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Local</label>
-          <input type="text" value={local} onChange={e => setLocal(e.target.value)} className={inputCls} placeholder="Sala / online" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Elaborado por *</label>
-          <MembroEquipeSelect membros={todosMembros} projetoId={projetoId} onCriarMembro={registrarCriado} value={elaboradoPorUserId} onChange={pickElaborador} placeholder="Selecionar membro" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Aprovado por</label>
-          <MembroEquipeSelect membros={todosMembros} projetoId={projetoId} onCriarMembro={registrarCriado} value={aprovadoPorUserId} onChange={pickAprovador} placeholder="Selecionar membro" />
-        </div>
-      </div>
+  // "Salvar mais tarde": rascunho privado da ata (só de atas já criadas).
+  const rascunho = useRascunhoDocumento(projetoId, 'ATA', ataId ?? '')
+  const [rascunhoRestaurado, setRascunhoRestaurado] = useState(false)
+  useEffect(() => {
+    if (!ataId || !canEdit) return
+    let ativo = true
+    void rascunho.recuperar<{
+      local?: string | null; data?: string | null; elaboradoPor?: string; elaboradoPorUserId?: string | null; aprovadoPor?: string | null; aprovadoPorUserId?: string | null
+      assuntosTratados?: string | null; decisoesTomadas?: string | null; observacoes?: string | null; copiasPara?: string[]
+      presentes?: { nome: string; setorEmpresa?: string | null; userId?: string | null }[]
+      acoes?: { acao: string; prazo?: string | null; responsavel?: string | null; responsavelUserId?: string | null }[]
+      anexos?: { nome: string; url?: string | null }[]
+    }>().then(salvo => {
+      if (!ativo || !salvo) return
+      setLocal(salvo.local ?? ''); setData(salvo.data ? toDateOnly(salvo.data) : '')
+      setElaboradoPor(salvo.elaboradoPor ?? ''); setElaboradoPorUserId(salvo.elaboradoPorUserId ?? null)
+      setAprovadoPor(salvo.aprovadoPor ?? ''); setAprovadoPorUserId(salvo.aprovadoPorUserId ?? null)
+      setAssuntos(salvo.assuntosTratados ?? ''); setDecisoes(salvo.decisoesTomadas ?? ''); setObservacoes(salvo.observacoes ?? '')
+      setCopias(semRepetir(salvo.copiasPara ?? []))
+      setPresentes((salvo.presentes ?? []).map(p => ({ nome: p.nome, setorEmpresa: p.setorEmpresa ?? '', userId: p.userId ?? '' })))
+      setAcoes((salvo.acoes ?? []).map(x => ({ acao: x.acao, prazo: x.prazo ? toDateOnly(x.prazo) : '', responsavel: x.responsavel ?? '', responsavelUserId: x.responsavelUserId ?? '' })))
+      setAnexos((salvo.anexos ?? []).map(x => ({ nome: x.nome, url: x.url ?? '' })))
+      setCarregamentos(n => n + 1)
+      setRascunhoRestaurado(true)
+    })
+    return () => { ativo = false }
+  }, [ataId, canEdit, rascunho])
 
-      <section aria-labelledby="ata-presentes">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <h2 id="ata-presentes" className="text-sm font-medium text-gray-700">
-            I. Relação dos presentes <span className="font-normal text-gray-500">({presentes.filter(p => p.nome.trim()).length} incluído{presentes.filter(p => p.nome.trim()).length === 1 ? '' : 's'})</span>
-          </h2>
-          <button
-            type="button"
-            onClick={adicionarEquipe}
-            disabled={todosMembros.every(m => presentes.some(p => p.userId === m.id))}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
-          >
-            Incluir toda a equipe
-          </button>
-        </div>
-        {presentes.length === 0 && (
-          <p className="mb-2 rounded-lg border border-dashed border-gray-300 px-3 py-3 text-sm text-gray-500">Nenhum presente incluído ainda.</p>
-        )}
-        <ol className="space-y-2 mb-2">
-          {presentes.map((p, i) => (
-            <li key={i} className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg border border-gray-200 bg-white p-2">
-              <span className="hidden sm:block w-6 shrink-0 text-right text-xs font-semibold text-gray-400" aria-hidden="true">{i + 1}.</span>
-              {/* Nome com 2/3 da linha: o setor (w-full) espremia o seletor até ficar ilegível. */}
-              <div className="min-w-0 sm:flex-[2]">
-                <MembroEquipeSelect
-                  membros={todosMembros.filter(m => m.id === p.userId || !presentes.some(x => x.userId === m.id))}
-                  projetoId={projetoId}
-                  onCriarMembro={registrarCriado}
-                  value={p.userId}
-                  onChange={m => pickPresente(i, m)}
-                  placeholder="Selecionar presente"
-                />
-              </div>
-              <div className="min-w-0 sm:flex-1">
-                <input
-                  type="text"
-                  value={p.setorEmpresa}
-                  onChange={e => {
-                    const next = [...presentes]; next[i] = { ...next[i], setorEmpresa: e.target.value }; setPresentes(next)
-                  }}
-                  placeholder="Setor (auto pela função)"
-                  aria-label={`Setor/Empresa de ${p.nome || `presente ${i + 1}`}`}
-                  className={inputCls}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => { setAvisoPresente(null); setPresentes(presentes.filter((_, j) => j !== i)) }}
-                aria-label={`Remover ${p.nome || `presente ${i + 1}`}`}
-                title="Remover da lista"
-                className="self-end sm:self-auto inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-red-600 hover:bg-red-50"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                <span className="sm:hidden">Remover</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        {avisoPresente && <p role="alert" className="mb-2 text-sm text-amber-700">{avisoPresente}</p>}
-        <button
-          type="button"
-          onClick={() => setPresentes([...presentes, { nome: '', setorEmpresa: '', userId: '' }])}
-          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
-        >
-          + Adicionar presente
-        </button>
-      </section>
+  const { versoes, vigente, pendentes } = useVersoesDocumento(projetoId, 'ATA', ataId ?? '')
+  const [versaoSelecionada, setVersaoSelecionada] = useState<string | null>(null)
+  const versaoAberta = versaoSelecionada ? versoes.find(v => v.id === versaoSelecionada) ?? null : null
+  const conteudoVersao = versaoAberta?.payload as (Partial<AtaExportData> & { data?: string | null; acoes?: { prazo?: string | null }[] }) | null | undefined
+  const dadosExibidos: AtaExportData = conteudoVersao
+    ? {
+      ...dadosDocumento,
+      ...conteudoVersao,
+      data: conteudoVersao.data ? new Date(conteudoVersao.data) : null,
+      presentes: (conteudoVersao.presentes ?? []) as AtaExportData['presentes'],
+      acoes: ((conteudoVersao.acoes ?? []) as { acao: string; prazo?: string | null; responsavel?: string | null }[]).map(x => ({ acao: x.acao, responsavel: x.responsavel ?? null, prazo: x.prazo ? new Date(x.prazo) : null })),
+      anexos: (conteudoVersao.anexos ?? []) as AtaExportData['anexos'],
+      copiasPara: (conteudoVersao.copiasPara ?? []) as string[],
+    }
+    : dadosDocumento
+  const editavel = canEdit && !versaoAberta && !saving
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">II. Assuntos tratados</label>
-        <p className="mb-2 text-xs text-gray-500">Registre os assuntos da reunião; as 11 etapas do documento de ajustes são uma referência de pauta.</p>
-        <textarea rows={8} value={assuntos} onChange={e => setAssuntos(e.target.value)} className={inputCls} />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">III. Decisões tomadas</label>
-        <textarea rows={3} value={decisoes} onChange={e => setDecisoes(e.target.value)} className={inputCls} />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">IV. Ações a serem empreendidas</label>
-        {acoes.map((a, i) => (
-          <div key={i} className="flex flex-col gap-2 mb-3 p-3 rounded-lg border border-gray-200">
-            <textarea
-              rows={2}
-              value={a.acao}
-              onChange={e => {
-                const next = [...acoes]; next[i].acao = e.target.value; setAcoes(next)
-              }}
-              placeholder="Ação"
-              className={inputCls}
-            />
-            <div className="flex flex-col sm:flex-row gap-2 items-stretch">
-              <div className="sm:w-44">
-                <DateInput
-                  value={a.prazo}
-                  onChange={v => {
-                    const next = [...acoes]; next[i].prazo = v; setAcoes(next)
-                  }}
-                  className={inputCls}
-                />
-              </div>
-              <div className="flex-1">
-                <MembroEquipeSelect
-                  membros={todosMembros}
-                  projetoId={projetoId}
-                  onCriarMembro={registrarCriado}
-                  value={a.responsavelUserId}
-                  onChange={m => pickResponsavel(i, m)}
-                  placeholder="Responsável (membro)"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => setAcoes(acoes.filter((_, j) => j !== i))}
-                className="px-2 text-red-500 hover:bg-red-50 rounded-lg"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => setAcoes([...acoes, { acao: '', prazo: '', responsavel: '', responsavelUserId: '' }])}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-        >
-          + Adicionar ação
-        </button>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Documentos anexos</label>
+  const tituloAta = `${TITULO_ATA} Nº ${String(numero ?? '').padStart(2, '0') || '__'}`
+  const edicao: EdicaoAta = {
+    projetoId,
+    numeroPrevisto: mode === 'create',
+    membros: todosMembros,
+    onCriarMembro: registrarCriado,
+    onTexto: (campo, valor) => ({ local: setLocal, assuntosTratados: setAssuntos, decisoesTomadas: setDecisoes, observacoes: setObservacoes })[campo](valor),
+    dataRaw: data,
+    onData: setData,
+    elaboradoPorUserId,
+    onElaboradoPor: pickElaborador,
+    aprovadoPorUserId,
+    onAprovadoPor: pickAprovador,
+    presentes: presentes.map(p => ({ userId: p.userId, setorEmpresa: p.setorEmpresa })),
+    onPresente: pickPresente,
+    onSetor: (i, v) => setPresentes(prev => prev.map((p, j) => j === i ? { ...p, setorEmpresa: v } : p)),
+    onAdicionarPresente: () => setPresentes(prev => [...prev, { nome: '', setorEmpresa: '', userId: '' }]),
+    onRemoverPresente: i => { setAvisoPresente(null); setPresentes(prev => prev.filter((_, j) => j !== i)) },
+    onIncluirEquipe: todosMembros.every(m => presentes.some(p => p.userId === m.id)) ? undefined : adicionarEquipe,
+    avisoPresente,
+    acoes: acoes.map(a => ({ acao: a.acao, prazoRaw: a.prazo, responsavelUserId: a.responsavelUserId })),
+    onAcao: (i, v) => setAcoes(prev => prev.map((a, j) => j === i ? { ...a, acao: v } : a)),
+    onPrazo: (i, v) => setAcoes(prev => prev.map((a, j) => j === i ? { ...a, prazo: v } : a)),
+    onResponsavel: pickResponsavel,
+    onAdicionarAcao: () => setAcoes(prev => [...prev, { acao: '', prazo: '', responsavel: '', responsavelUserId: '' }]),
+    onRemoverAcao: i => setAcoes(prev => prev.filter((_, j) => j !== i)),
+    anexos: (
+      <div className="mt-1 flex flex-col gap-1 font-sans">
         {anexos.map((a, i) => (
-          <div key={i} className="flex gap-2 mb-2">
-            <input
-              type="text"
-              value={a.nome}
-              onChange={e => {
-                const next = [...anexos]; next[i].nome = e.target.value; setAnexos(next)
-              }}
-              placeholder="Nome do documento"
-              className={inputCls}
-            />
-            <input
-              type="text"
-              value={a.url}
-              onChange={e => {
-                const next = [...anexos]; next[i].url = e.target.value; setAnexos(next)
-              }}
-              placeholder="URL (opcional)"
-              className={inputCls}
-            />
-            {a.url && /^https?:\/\//i.test(a.url) && (
-              <a href={a.url} target="_blank" rel="noopener noreferrer" className="self-center whitespace-nowrap text-sm text-blue-600 hover:underline">Abrir</a>
-            )}
-            <button
-              type="button"
-              onClick={() => setAnexos(anexos.filter((_, j) => j !== i))}
-              className="px-2 text-red-500 hover:bg-red-50 rounded-lg"
-            >
-              ×
-            </button>
+          <div key={i} className="group/anexo flex items-center gap-2">
+            <input type="text" value={a.nome} aria-label={`Nome do anexo ${i + 1}`} placeholder="Nome do documento" onChange={e => setAnexos(prev => prev.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} className="min-w-0 flex-1 border-0 border-b border-slate-300 bg-transparent px-0 py-0.5 text-[9pt] outline-none focus:border-blue-500" />
+            <input type="text" value={a.url} aria-label={`Link do anexo ${i + 1}`} placeholder="URL (opcional)" onChange={e => setAnexos(prev => prev.map((x, j) => j === i ? { ...x, url: e.target.value } : x))} className="min-w-0 flex-1 border-0 border-b border-slate-300 bg-transparent px-0 py-0.5 text-[9pt] outline-none focus:border-blue-500" />
+            {a.url && /^https?:\/\//i.test(a.url) && <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Abrir</a>}
+            <button type="button" aria-label={`Remover anexo ${a.nome || i + 1}`} onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))} className="rounded px-1 text-slate-400 hover:bg-red-50 hover:text-red-600">×</button>
           </div>
         ))}
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            ref={arquivoAnexo}
-            type="file"
-            className="sr-only"
-            aria-label="Arquivo do anexo"
-            accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx"
-            onChange={e => void enviarAnexo(e.target.files?.[0])}
-          />
-          <button
-            type="button"
-            onClick={() => arquivoAnexo.current?.click()}
-            disabled={enviandoAnexo}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-            {enviandoAnexo ? 'Enviando...' : 'Enviar arquivo'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setAnexos([...anexos, { nome: '', url: '' }])}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-          >
-            + Adicionar link
-          </button>
-          <span className="text-xs text-gray-500">PDF, imagem, Word ou Excel até 10 MB.</span>
+        <div className="flex flex-wrap items-center gap-3 pt-1 text-[12px]">
+          <input ref={arquivoAnexo} type="file" className="sr-only" aria-label="Arquivo do anexo" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx" onChange={e => void enviarAnexo(e.target.files?.[0])} />
+          <button type="button" onClick={() => arquivoAnexo.current?.click()} disabled={enviandoAnexo} className="font-medium text-blue-600 hover:underline disabled:opacity-60">{enviandoAnexo ? 'Enviando…' : '+ Enviar arquivo'}</button>
+          <button type="button" onClick={() => setAnexos(prev => [...prev, { nome: '', url: '' }])} className="font-medium text-blue-600 hover:underline">+ Adicionar link</button>
+          <span className="text-slate-500">PDF, imagem, Word ou Excel até 10 MB.</span>
         </div>
       </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Enviar cópias para</label>
-        <p className="mb-2 text-xs text-gray-500">Escolha os e-mails cadastrados dos stakeholders ou digite outro e tecle Enter. Revise a lista antes de salvar.</p>
+    ),
+    copias: (
+      <div className="mt-1 font-sans text-sm">
         <MultiCreatableSelect
           values={copias}
           onChange={v => {
@@ -488,34 +373,74 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
         />
         {erroCopia && <p role="alert" className="mt-1 text-xs text-red-600">{erroCopia}</p>}
         {copias.length > 0 && (
-          <p className="mt-1 text-xs text-gray-500" data-testid="ata-copias-resumo">
+          <p className="mt-1 text-xs text-slate-500" data-testid="ata-copias-resumo">
             {copias.length} destinatário{copias.length === 1 ? '' : 's'}: {copias.map(c => emailsSugeridos.find(e => e.email.toLowerCase() === c.toLowerCase())?.nome ? `${emailsSugeridos.find(e => e.email.toLowerCase() === c.toLowerCase())!.nome} <${c}>` : c).join(', ')}
           </p>
         )}
       </div>
+    ),
+  }
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-        <textarea rows={3} value={observacoes} onChange={e => setObservacoes(e.target.value)} className={inputCls} />
+  return (
+    <>
+      <EditorDocumento
+        editarProjetoHref={permissions.has('projeto:editar') ? `/projetos/${projetoId}/configuracoes` : undefined}
+        documento="Ata de Reunião"
+        editavel={editavel}
+        status={!canEdit || versaoAberta ? 'leitura' : saving ? 'salvando' : alterado ? 'pendente' : 'salvo'}
+        mensagemStatus={!canEdit || versaoAberta ? undefined : saving ? 'Salvando…' : alterado ? 'Alterações ainda não salvas — use “Salvar versão”' : 'Tudo salvo'}
+        versao={ataId ? {
+          rotulo: versaoAberta ? `${versaoAberta.versao ?? '—'} · ${ROTULO_STATUS[versaoAberta.status] ?? ''}` : vigente ? `${vigente.versao ?? '1.0'} · vigente` : 'Rascunho',
+          rotuloAtual: 'Ata atual (editável)',
+          selecionada: versaoSelecionada,
+          opcoes: versoes.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao ?? '—'} · ${v.id === vigente?.id ? 'vigente' : ROTULO_STATUS[v.status] ?? ''}`, detalhe: v.commitTitle })),
+          onSelecionar: setVersaoSelecionada,
+        } : undefined}
+        onSalvar={() => void salvar()}
+        podeSalvar={editavel}
+        onHistorico={ataId ? () => setHistoricoAberto(true) : undefined}
+        pendentes={ataId ? { total: pendentes, onRevisar: () => setHistoricoAberto(true) } : undefined}
+        onImprimir={() => print()}
+        onPdf={() => print()}
+        onWord={() => void baixarWord()}
+        desfazer={historicoEdicao}
+        onAdicionarLinha={() => setAcoes(prev => [...prev, { acao: '', prazo: '', responsavel: '', responsavelUserId: '' }])}
+        saida={{
+          pendente: canEdit && alterado && !versaoAberta && !saving,
+          salvar: () => void salvar(),
+          // Ata nova ainda não existe no servidor: só dá para salvar (criar) ou descartar.
+          salvarDepois: ataId ? () => rascunho.guardar(montarPayload()) : undefined,
+          descartar: () => (ataId ? rascunho.descartar() : undefined),
+        }}
+        avisos={<>
+          <p className="text-xs text-slate-500">Salvar envia uma nova versão para aprovação. A ata vigente permanece disponível até a aprovação.</p>
+          {rascunhoRestaurado && !versaoAberta && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve para enviá-lo à aprovação.</p>}
+          {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+          {versaoAberta && (
+            <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+              Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
+              <button type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar à ata atual</button>
+            </div>
+          )}
+        </>}
+      >
+        <PaginasDaPrevia marginTopMm={FOLHA_MARGEM_MM.top} folha={{ rodape: rodapeDocumento(tituloAta) }}>
+          <div className="shadow-[0_1px_3px_rgba(15,23,42,0.12)]">
+            <AtaDocument data={dadosExibidos} edicao={edicao} />
+          </div>
+        </PaginasDaPrevia>
+      </EditorDocumento>
+
+      {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
+      <div hidden>
+        <AtaDocument ref={documentRef} data={dadosExibidos} />
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-60"
-        >
-          {saving ? 'Salvando...' : mode === 'create' ? 'Criar Ata' : 'Salvar alterações'}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push(`/projetos/${projetoId}/documentacao?doc=atas`)}
-          className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg"
-        >
-          Cancelar
-        </button>
-      </div>
-    </fieldset>
-    </form>
+      {ataId && (
+        <Drawer isOpen={historicoAberto} onClose={() => setHistoricoAberto(false)} title="Propostas e registro da ata" width="w-[480px]">
+          {historicoAberto && <HistoricoDocumento projetoId={projetoId} type="ATA" resourceId={ataId} embutido />}
+        </Drawer>
+      )}
+    </>
   )
 }

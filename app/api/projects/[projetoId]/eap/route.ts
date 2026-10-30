@@ -32,7 +32,7 @@ async function requireProjectAccess(userId: string, role: string, tenantId: stri
 async function loadProject(tenantId: string, projetoId: string) {
   const project = await prisma.project.findFirst({
     where: { id: projetoId, tenantId, deletedAt: null },
-    select: { id: true, name: true, location: true, departamentos: true, semestre: true, termo: true, turno: true, ano: true, logoUrl: true },
+    select: { id: true, name: true, location: true, departamentos: true, semestre: true, anoAms: true, termo: true, turno: true, ano: true, logoUrl: true },
   })
   if (!project) return null
   // Nome atual do cadastro (a lista gravada fica desatualizada ao renomear).
@@ -94,7 +94,7 @@ export async function GET(_: Request, { params }: RouteCtx) {
     const [wbs, gerente] = await Promise.all([nodesDaWbs(projetoId, tenantId), gerenteDoProjeto(projetoId)])
     const document = {
       ...salvo,
-      projectName: salvo.projectName || project.name,
+      projectName: project.name,
       // Gerente do projeto é sempre o do cadastro, nunca digitado.
       projectManager: gerente.nome,
       ...(wbs ? { nodes: wbs.nodes } : {}),
@@ -105,8 +105,8 @@ export async function GET(_: Request, { params }: RouteCtx) {
       logoUrl: project.logoUrl ?? null,
       origemWbs: Boolean(wbs),
       arvore: wbs?.arvore ?? null,
-      // Assinatura do gerente só em documento com versão aprovada (mesma regra do Termo).
-      assinaturaUrl: vigente ? gerente.signatureUrl : null,
+      // Imagem cadastrada no perfil do gerente para preencher a folha atual.
+      assinaturaUrl: gerente.signatureUrl,
     })
   } catch (err) {
     return errorResponse(err, 'GET', projetoId)

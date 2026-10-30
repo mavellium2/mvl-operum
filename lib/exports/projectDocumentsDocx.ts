@@ -5,8 +5,8 @@ import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
 import { heading, modelDocument, modelTable, paragraphs, redParagraphs } from './documentModel'
 import { parseDocumentCost } from '@/lib/documentCost'
 export { parseDocumentCost } from '@/lib/documentCost'
-async function image(url?: string | null): Promise<Paragraph[]> {
-  if (!url) return []
+async function imageRun(url: string | null | undefined, box = { width: 100, height: 75 }): Promise<ImageRun | undefined> {
+  if (!url) return undefined
   if (typeof window === 'undefined') throw new Error('Images are loaded only by the browser')
   const safe = safeAvatarUrl(url); if (!safe) throw new Error('Invalid image URL')
   const response = await fetch(safe, { signal: AbortSignal.timeout(5000), credentials: 'same-origin' })
@@ -19,7 +19,15 @@ async function image(url?: string | null): Promise<Paragraph[]> {
   const bytes = new Uint8Array(size); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length }
   const bitmap = await createImageBitmap(new Blob([bytes], { type: mime })), ratio = bitmap.width / bitmap.height
   bitmap.close()
-  return [new Paragraph({ children: [new ImageRun({ type, data: bytes, transformation: { width: Math.min(100,75*ratio), height: Math.min(75,100/ratio) } })] })]
+  return new ImageRun({ type, data: bytes, transformation: { width: Math.min(box.width, box.height * ratio), height: Math.min(box.height, box.width / ratio) } })
+}
+async function image(url?: string | null): Promise<Paragraph[]> {
+  const run = await imageRun(url)
+  return run ? [new Paragraph({ children: [run] })] : []
+}
+async function signature(url?: string | null): Promise<Paragraph[]> {
+  const run = await imageRun(url, { width: 170, height: 30 })
+  return [new Paragraph({ spacing: { after: 60 }, children: [new TextRun({ text: 'Assinatura: ', size: 18 }), ...(run ? [run] : [])] })]
 }
 const money = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const date = (raw?: string | null) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw ?? ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : raw || '—' }
@@ -30,15 +38,15 @@ async function save(doc: Parameters<typeof Packer.toBlob>[0], name: string) {
 }
 export async function buildStakeholderDocx(h: ProjetoHeader, rows: Stakeholder[]) {
   return modelDocument('Formulário de Stakeholders', [ ...await image(h.logoUrl), title('Formulário de Stakeholders'),
-    modelTable([11353,3785], [[h.categoria,''],[`Nome do projeto: ${h.nomeProjeto}`,''],[`Gerente do projeto: ${h.gerenteProjeto}`,''],[`Elaborado por: ${h.elaboradoPor}`,''],[`Aprovado por: ${h.aprovadoPor}`,[...paragraphs('Assinatura:'), ...await image(h.signatureUrl)]],[`Versão: ${h.versao}`,`Data de aprovação: ${h.dataAprovacao}`]], false, true),
+    modelTable([11353,3785], [[h.categoria,''],[`Nome do projeto: ${h.nomeProjeto}`,''],[`Gerente do projeto: ${h.gerenteProjeto}`,''],[`Elaborado por: ${h.elaboradoPor}`,''],[`Aprovado por: ${h.aprovadoPor}`,await signature(h.signatureUrl)],[`Versão: ${h.versao}`,`Data de aprovação: ${h.dataAprovacao}`]], false, true),
     heading('Partes interessadas'),
     modelTable([650,2000,1700,2300,2200,1800,2300,2188], [['Ref','Nome','Empresa/Equipe','Cargo/Competência','e-mail','Telefone/Celular','Endereço','Observação'], ...rows.map(s => { const cells = [s.ref,s.nome,s.empresaEquipe,s.cargoCompetencia,s.email,s.telefoneFax,s.endereco,observacaoDaLinha(s)]; return s.inativo ? cells.map(redParagraphs) : cells })], true)
-  ], '© 03_Form Stakeholders', true)
+  ], '', true)
 }
 export async function buildCharterDocx(p: CharterDocumentProps) {
   const total = p.fases.reduce((sum,f) => sum+parseDocumentCost(f.custo),0)
   return modelDocument('Termo de Abertura de Projeto - project charter', [ ...await image(p.logoUrl), title('Termo de Abertura de Projeto - project charter'),
-    modelTable([7144,3062], [[p.categoria ?? '',''],[`Nome do projeto: ${p.nomeProjeto}`,''],[`Elaborado por: ${p.elaboradoPor}`,`Versão: ${p.versao}`],[`Aprovado por: ${p.aprovadoPor}`,''],[[...paragraphs('Assinatura:'), ...await image(p.gerenteSignatureUrl)],`Data de aprovação: ${p.dataAprovacao}`]], false, true),
+    modelTable([7144,3062], [[p.categoria ?? '',''],[`Nome do projeto: ${p.nomeProjeto}`,''],[`Elaborado por: ${p.elaboradoPor}`,`Versão: ${p.versao}`],[`Aprovado por: ${p.aprovadoPor}`,''],[await signature(p.gerenteSignatureUrl),`Data de aprovação: ${p.dataAprovacao}`]], false, true),
     heading('Justificativa do projeto'), ...paragraphs(p.justificativa), heading('Objetivo(s) do projeto'), ...paragraphs(p.objetivos),
     heading('Descrição do produto do projeto'), ...p.descricaoProduto.split('\n').filter(Boolean).map(text => new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text, size: 18 })] })),
     heading('Premissas (hipóteses) e restrições para o projeto'), modelTable([5103,5103],[['Premissas (hipóteses)','Restrições'],[p.premissas,p.restricoes]],true),
@@ -62,10 +70,12 @@ async function imagemNoNavegador(url: string | null | undefined, caixa: { maxW: 
 /** Ata no layout do modelo, gerada no navegador com a logo do projeto e as assinaturas dos presentes. */
 export async function downloadAtaDocx(d: import('./ataDocx').AtaExportData) {
   const { buildAtaDocx, ataNumero, ataAssinantes } = await import('./ataDocx')
-  const { CAIXA_LOGO_ATA, CAIXA_ASSINATURA } = await import('./imagemDocx')
-  const [logo, ...assinaturas] = await Promise.all([
+  const { CAIXA_LOGO_ATA, CAIXA_ASSINATURA, CAIXA_ASSINATURA_GERENTE, baixarImagem, runDaImagem } = await import('./imagemDocx')
+  const gerenteUrl = safeAvatarUrl(d.assinaturaGerenteUrl)
+  const [assinaturaGerente, logo, ...assinaturas] = await Promise.all([
+    gerenteUrl ? baixarImagem(gerenteUrl, { credentials: 'same-origin' }).then(bytes => bytes ? runDaImagem(bytes, CAIXA_ASSINATURA_GERENTE) : undefined) : undefined,
     imagemNoNavegador(d.logoUrl, CAIXA_LOGO_ATA),
     ...ataAssinantes(d.presentes).map(p => imagemNoNavegador(p.assinaturaUrl, CAIXA_ASSINATURA)),
   ])
-  await save(buildAtaDocx(d, logo, assinaturas), `ata-${ataNumero(d.numero)}.docx`)
+  await save(buildAtaDocx(d, logo, assinaturas, assinaturaGerente), `ata-${ataNumero(d.numero)}.docx`)
 }

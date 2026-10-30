@@ -220,3 +220,52 @@ describe('GET /api/projects/[projetoId]/documento', () => {
   })
 })
 
+
+
+it('categoria automática usa o ano AMS atual sem regravar o cabeçalho histórico', async () => {
+  mockPrisma.project.findFirst.mockResolvedValue({ ...MOCK_PROJECT, location: 'Fatec Garça', departamentos: ['ADS - AMS'], semestre: 'ano', anoAms: '2', ano: 2026 })
+  const snapshot = { header: { categoria: 'Fatec Garça - ADS - AMS - ano 2026', versao: '1.0', elaboradoPor: 'Autor' }, stakeholders: [] }
+  vi.mocked(documentoVigente).mockResolvedValueOnce({ payload: snapshot } as never)
+  const response = await GET(makeRequest('p1') as never, { params: Promise.resolve({ projetoId: 'p1' }) })
+  const data = await response.json()
+  expect(data.header).toMatchObject({ categoria: 'Fatec Garça - ADS - AMS - 2° Ano - 2026', versao: '1.0', elaboradoPor: 'Autor' })
+  expect(snapshot.header.categoria).toBe('Fatec Garça - ADS - AMS - ano 2026')
+})
+
+it('preenche assinatura do gerente atual mesmo se a versão vigente guardava null', async () => {
+  mockPrisma.userProjectRole.findMany.mockResolvedValue([{ userId: 'g1' }])
+  mockPrisma.user.findMany.mockResolvedValue([{ name: 'Gerente', signatureUrl: 'https://storage/gerente-atual.png' }])
+  const snapshot = { header: { signatureUrl: null, versao: '1.0' }, stakeholders: [] }
+  vi.mocked(documentoVigente).mockResolvedValueOnce({ payload: snapshot } as never)
+  const response = await GET(makeRequest('p1') as never, { params: Promise.resolve({ projetoId: 'p1' }) })
+  expect((await response.json()).header.signatureUrl).toBe('https://storage/gerente-atual.png')
+  expect(snapshot.header.signatureUrl).toBeNull()
+})
+
+it('após adicionar ao projeto, origem=cadastro retorna as pessoas atuais mesmo havendo versão antiga', async () => {
+  vi.mocked(documentoVigente).mockResolvedValueOnce({ payload: { header: {}, stakeholders: [] } } as never)
+  const response = await GET(new Request('http://localhost/api/projects/p1/documento?origem=cadastro') as never, { params: Promise.resolve({ projetoId: 'p1' }) })
+  const data = await response.json()
+  expect(data.stakeholders).toHaveLength(MOCK_USER_PROJECTS.length + MOCK_PROJECT_STAKEHOLDERS.length)
+  expect(data.stakeholders[0].cadastroId).toBe('interno:u1')
+})
+
+
+it('inclui no documento atual um membro do cadastro que não existia no snapshot, sem alterar o histórico', async () => {
+  const snapshot = { header: { versao: '1.0' }, stakeholders: [] }
+  vi.mocked(documentoVigente).mockResolvedValueOnce({ payload: snapshot } as never)
+  const response = await GET(makeRequest('p1') as never, { params: Promise.resolve({ projetoId: 'p1' }) })
+  const data = await response.json()
+  expect(data.stakeholders).toContainEqual(expect.objectContaining({ cadastroId: 'interno:u1' }))
+  expect(data.cadastroAtualizado).toBe(true)
+  expect(snapshot.stakeholders).toEqual([])
+})
+
+it('corrigir o cadastro muda o nome na folha atual sem reescrever o nome histórico', async () => {
+  const snapshot = { header: { nomeProjeto: 'Nome antigo', versao: '1.0' }, stakeholders: [] }
+  vi.mocked(documentoVigente).mockResolvedValueOnce({ payload: snapshot } as never)
+  const response = await GET(makeRequest('p1'), { params: Promise.resolve({ projetoId: 'p1' }) })
+  expect(response.status).toBe(200)
+  expect((await response.json()).header.nomeProjeto).toBe(MOCK_PROJECT.name)
+  expect(snapshot.header.nomeProjeto).toBe('Nome antigo')
+})

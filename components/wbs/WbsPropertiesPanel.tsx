@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { OPCOES_FASE, OPCOES_ORGANIZAR } from './OrganizarIcons'
 import { formatoDaEap, formatoDaFase } from '@/lib/wbsLayout'
 
@@ -279,16 +280,18 @@ export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, di
 
           {(ehRaiz || soFases) && (
             <FieldRow label={ehRaiz ? 'Formato da EAP' : 'Formato da fase'}>
-              <select
-                value={formatoC.same ? formatoC.value : ''}
-                disabled={!canEdit || (!ehRaiz && formatoEap === 'HORIZONTAL')}
-                title={!ehRaiz && formatoEap === 'HORIZONTAL' ? 'No Horizontal, todas as fases seguem a EAP' : undefined}
-                onChange={e => updateLayout(e.target.value as WbsLayoutOrientation)}
-                className="text-[11px] border border-gray-200 rounded px-1.5 py-1 text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-gray-50 disabled:text-gray-400 cursor-pointer"
-              >
-                {!formatoC.same && <option value="">—</option>}
-                {(ehRaiz ? OPCOES_ORGANIZAR : OPCOES_FASE).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              <span title={!ehRaiz && formatoEap === 'HORIZONTAL' ? 'No Horizontal, todas as fases seguem a EAP' : undefined}>
+                <Select
+                  ariaLabel={ehRaiz ? 'Formato da EAP' : 'Formato da fase'}
+                  compact
+                  searchable={false}
+                  value={formatoC.same ? formatoC.value : ''}
+                  disabled={!canEdit || (!ehRaiz && formatoEap === 'HORIZONTAL')}
+                  onChange={v => { if (v) updateLayout(v as WbsLayoutOrientation) }}
+                  placeholder="—"
+                  options={(ehRaiz ? OPCOES_ORGANIZAR : OPCOES_FASE).map(o => ({ value: o.value, label: o.label }))}
+                />
+              </span>
             </FieldRow>
           )}
 

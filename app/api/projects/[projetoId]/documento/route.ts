@@ -6,6 +6,8 @@ import { canProjectPermission as can } from '@/services/projectAccess'
 import { documentoVigente } from '@/services/documentRevisionService'
 import type { ProjetoHeader, Stakeholder } from '@/components/projetos/StakeholderDocument'
 import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
+import { linhaInstitucional } from '@/lib/linhaInstitucional'
+import { acrescentarPartesDoCadastro, identificarPartesDoCadastro } from '@/lib/partesInteressadas'
 
 function buildAddress(e: {
   logradouro?: string | null
@@ -32,7 +34,7 @@ function formatDate(d: Date): string {
 }
 
 export async function GET(
-  _: Request,
+  request: Request,
   { params }: { params: Promise<{ projetoId: string }> },
 ) {
   const { projetoId } = await params
@@ -92,7 +94,9 @@ export async function GET(
       project.semestre === '2' ? '2º Semestre' :
       (project.semestre ?? '')
     const semestreAno = [semestreLabel, project.ano].filter(Boolean).join(' ')
-    const categoria = [project.location ?? 'Stakeholder externo', dept, semestreAno].filter(Boolean).join(' - ')
+    const categoria = project.semestre === 'ano'
+      ? linhaInstitucional({ ...project, departamentos: dept ? [dept] : [] })
+      : [project.location ?? 'Stakeholder externo', dept, semestreAno].filter(Boolean).join(' - ')
 
     const header: ProjetoHeader = {
       categoria,
@@ -111,6 +115,7 @@ export async function GET(
       .filter(up => up.user.deletedAt === null && up.user.isActive)
       .map((up, i) => ({
         ref: String(i + 1).padStart(2, '0'),
+        cadastroId: `interno:${up.userId}`,
         nome: up.user.name,
         empresaEquipe: up.department?.name ?? project.name,
         cargoCompetencia: up.role ?? '',
@@ -123,6 +128,7 @@ export async function GET(
 
     const externos: Stakeholder[] = projectStakeholders.map((ps, i) => ({
       ref: String(membros.length + i + 1).padStart(2, '0'),
+      cadastroId: `externo:${ps.stakeholder.id}`,
       nome: ps.stakeholder.name,
       empresaEquipe: ps.stakeholder.company ?? '',
       cargoCompetencia: ps.stakeholder.competence ?? '',
@@ -135,6 +141,11 @@ export async function GET(
         : {}),
     }))
 
+    // Após adicionar ao projeto, a tabela precisa do cadastro atual, não da versão aprovada antiga.
+    if (new URL(request.url).searchParams.get('origem') === 'cadastro') {
+      return NextResponse.json({ header, stakeholders: [...membros, ...externos] })
+    }
+
     // Snapshots antigos não têm a marca de inativo: cruza pelo nome com os inativos atuais.
     const inativosPorNome = new Map([
       ...projectStakeholders
@@ -146,7 +157,7 @@ export async function GET(
     ])
 
     const vigente = await documentoVigente({ tenantId, role, userId }, projetoId, 'STAKEHOLDER')
-    const payload = vigente?.payload as { stakeholders?: Stakeholder[] } | null | undefined
+    const payload = vigente?.payload as { header?: Partial<ProjetoHeader>; stakeholders?: Stakeholder[]; cadastrosExcluidos?: string[] } | null | undefined
     if (payload && Array.isArray(payload.stakeholders)) {
       payload.stakeholders = payload.stakeholders.map(row =>
         row.inativo === undefined && inativosPorNome.has(row.nome.trim().toLowerCase())
@@ -154,7 +165,14 @@ export async function GET(
           : row,
       )
     }
-    return NextResponse.json(payload ?? { header, stakeholders: [...membros, ...externos] })
+    // A categoria é automática e vem do cadastro atual (inclusive o ano AMS).
+    // Atualiza só a leitura de trabalho; os snapshots históricos não são regravados.
+    const cadastro = [...membros, ...externos]
+    const linhasSalvas = payload?.stakeholders ?? []
+    const atuais = acrescentarPartesDoCadastro(identificarPartesDoCadastro(linhasSalvas, cadastro), cadastro, payload?.cadastrosExcluidos)
+    return NextResponse.json(payload
+      ? { ...payload, header: { ...payload.header, nomeProjeto: header.nomeProjeto, gerenteProjeto: header.gerenteProjeto, logoUrl: header.logoUrl, categoria: header.categoria, signatureUrl: header.signatureUrl }, stakeholders: atuais, cadastroAtualizado: atuais.length > linhasSalvas.length }
+      : { header, stakeholders: cadastro })
   } catch (err) {
     console.error('[documento/route]', err)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })

@@ -4,13 +4,13 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/lib/dal', () => ({ verifySession: vi.fn() }))
 vi.mock('@/services/projectAccess', () => ({ canProjectPermission: vi.fn(), requireProjectPermission: vi.fn() }))
 vi.mock('@/lib/prisma', () => ({ default: { documentVersion: { findMany: vi.fn() }, auditLog: { findMany: vi.fn() }, user: { findMany: vi.fn() } } }))
-vi.mock('@/services/documentRevisionService', () => ({ submeterDocumento: vi.fn(), revisarDocumento: vi.fn(), salvarRascunho: vi.fn(), rascunhoDocumento: vi.fn(), excluirVersao: vi.fn() }))
+vi.mock('@/services/documentRevisionService', () => ({ submeterDocumento: vi.fn(), revisarDocumento: vi.fn(), salvarRascunho: vi.fn(), rascunhoDocumento: vi.fn(), excluirVersao: vi.fn(), descartarRascunho: vi.fn() }))
 import { verifySession } from '@/lib/dal'
 import { requireProjectPermission } from '@/services/projectAccess'
 import { SemPermissaoError } from '@/services/authz'
 import prisma from '@/lib/prisma'
 import { GET, POST, PATCH, DELETE } from '@/app/api/projects/[projetoId]/revisions/route'
-import { rascunhoDocumento, excluirVersao, submeterDocumento, revisarDocumento } from '@/services/documentRevisionService'
+import { rascunhoDocumento, excluirVersao, submeterDocumento, revisarDocumento, descartarRascunho } from '@/services/documentRevisionService'
 const session = { tenantId: 't1', userId: 'u1', role: 'member' }
 const ctx = { params: Promise.resolve({ projetoId: 'p1' }) }
 function req(method: string, body: unknown) { return new Request('http://localhost/api/projects/p1/revisions', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) }
@@ -55,6 +55,14 @@ describe('API de revisões unificada', () => {
     vi.mocked(rascunhoDocumento).mockResolvedValue(null)
     expect((await GET(new Request('http://localhost/revisions?type=CHARTER&draft=1'), ctx)).status).toBe(200)
     expect(rascunhoDocumento).toHaveBeenCalledWith(session, 'p1', 'CHARTER', '')
+  })
+  it('"Descartar alterações" apaga só o rascunho do usuário da sessão, sem excluir versão', async () => {
+    vi.mocked(descartarRascunho).mockResolvedValue({ descartado: true })
+    const response = await DELETE(req('DELETE', { draft: true, type: 'ATA', resourceId: 'a1' }), ctx)
+    expect(response.status).toBe(200)
+    expect(descartarRascunho).toHaveBeenCalledWith(session, 'p1', 'ATA', 'a1')
+    expect(excluirVersao).not.toHaveBeenCalled()
+    expect((await DELETE(req('DELETE', { draft: true, type: 'INVALID' }), ctx)).status).toBe(400)
   })
   it('encaminha submissão, revisão e exclusão ao serviço com escopo da sessão', async () => {
     vi.mocked(submeterDocumento).mockResolvedValue({ status: 'PENDING' } as never)

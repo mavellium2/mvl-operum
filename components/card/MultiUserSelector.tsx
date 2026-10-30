@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import { useState, useEffect } from 'react'
 import UserAvatar from '@/components/user/UserAvatar'
 import { addResponsibleAction, removeResponsibleAction, getResponsiblesAction } from '@/app/actions/cardResponsible'
@@ -113,19 +114,15 @@ export default function MultiUserSelector({ cardId, users, onResponsiblesChange,
           ))}
         </div>
       )}
-      <select
-        onChange={e => { if (e.target.value) { handleToggle(e.target.value); e.target.value = '' } }}
-        defaultValue=""
-        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        aria-label="Adicionar responsável"
-      >
-        <option value="" disabled>Adicionar responsável...</option>
-        {users
+      <Select
+        ariaLabel="Adicionar responsável"
+        value=""
+        onChange={v => { if (v) handleToggle(v) }}
+        placeholder="Adicionar responsável..."
+        options={users
           .filter(u => !responsibles.some(r => r.userId === u.id))
-          .map(u => (
-            <option key={u.id} value={u.id}>{u.name}{u.cargo ? ` — ${u.cargo}` : ''}</option>
-          ))}
-      </select>
+          .map(u => ({ value: u.id, label: u.name, description: u.cargo ?? undefined }))}
+      />
     </div>
   )
 }

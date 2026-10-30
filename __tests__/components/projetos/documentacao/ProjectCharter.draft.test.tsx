@@ -3,14 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchWithSession } from '@/lib/clientFetch'
 import ProjectCharter from '@/components/projetos/documentacao/ProjectCharter'
 const { toast, members } = vi.hoisted(() => ({ toast: vi.fn(), members: [] }))
-vi.mock('next/navigation', () => ({ useParams: () => ({ projetoId: 'p1' }) }))
+vi.mock('next/navigation', () => ({ useParams: () => ({ projetoId: 'p1' }), useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('react-to-print', () => ({ useReactToPrint: () => vi.fn() }))
 vi.mock('@/lib/clientFetch', () => ({ fetchWithSession: vi.fn() }))
 vi.mock('@/components/permissoes/ProjectPermissions', () => ({ useProjectPermissions: () => new Set(['documentos:ver', 'documentos:editar']) }))
 vi.mock('@/components/ui/Toast', () => ({ useToast: () => ({ toast }) }))
 vi.mock('@/components/projetos/documentacao/MembroEquipeSelect', () => ({ default: () => null, useMembrosEquipe: () => ({ todos: members, registrarCriado: vi.fn() }) }))
-vi.mock('@/components/projetos/documentacao/ProjectCharterDocument', () => ({ default: (props: { nomeProjeto: string; justificativa: string }) => <div>Prévia do Termo · {props.nomeProjeto} · {props.justificativa}</div> }))
-vi.mock('@/components/projetos/documentacao/MacroFaseTable', () => ({ default: () => null }))
 const published = { project: { id: 'p1', name: 'Projeto', logoUrl: null, startDate: null, justificativa: 'Vigente', objetivos: '', metodologia: '', descricaoProduto: '', premissas: '', restricoes: '', limitesAutoridade: '' }, macroFases: [], gerente: null, gerenteProjeto: '', membros: [] }
 beforeEach(() => { vi.resetAllMocks(); sessionStorage.clear() })
 describe('rascunho privado do Termo', () => {
@@ -24,7 +22,9 @@ describe('rascunho privado do Termo', () => {
       return Response.json(published)
     })
     render(<ProjectCharter />)
-    await screen.findByDisplayValue('Vigente')
+    // Enquanto o rascunho é recuperado, a folha mostra o vigente só para leitura.
+    expect((await screen.findAllByText('Vigente')).length).toBeGreaterThan(0)
+    expect(screen.queryByDisplayValue('Vigente')).not.toBeInTheDocument()
     await waitFor(() => expect(fetchWithSession).toHaveBeenCalledWith('/api/projects/p1/revisions?type=CHARTER&draft=1'))
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 1300)) })
     expect(vi.mocked(fetchWithSession).mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(0)
@@ -42,9 +42,12 @@ describe('rascunho privado do Termo', () => {
       ? Response.json({ error: 'Indisponível' }, { status: 503 })
       : String(url).includes('/versions') ? Response.json([]) : Response.json(published))
     render(<ProjectCharter />)
-    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível recuperar seu rascunho')
+    expect(await screen.findByText(/Não foi possível recuperar seu rascunho/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tentar novamente' })).toBeEnabled()
-    expect(screen.getByDisplayValue('Vigente')).toBeDisabled()
+    // Sem o rascunho, a folha fica só para leitura: o texto aparece, mas não há campo editável.
+    expect(screen.getAllByText('Vigente').length).toBeGreaterThan(0)
+    expect(screen.queryByDisplayValue('Vigente')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' })).toBeDisabled()
   })
 })
 
@@ -59,7 +62,7 @@ it('flush rejeitado preserva texto e não cria versão', async () => {
   const field = await screen.findByDisplayValue('Vigente')
   await waitFor(() => expect(field).toBeEnabled())
   fireEvent.change(field, { target: { value: 'Não perder' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Salvar Versão' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
   fireEvent.change(await screen.findByPlaceholderText('Ex: Inclusão da metodologia ágil'), { target: { value: 'Alteração' } })
   fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
   await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringContaining('rascunho não foi salvo'), 'error'))
@@ -80,7 +83,7 @@ it('aguarda PATCH lento antes de criar uma única versão com os campos atuais',
   const field = await screen.findByDisplayValue('Vigente')
   await waitFor(() => expect(field).toBeEnabled())
   fireEvent.change(field, { target: { value: 'Último texto' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Salvar Versão' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
   fireEvent.change(await screen.findByPlaceholderText('Ex: Inclusão da metodologia ágil'), { target: { value: 'Alteração' } })
   const confirm = screen.getByRole('button', { name: 'Confirmar' })
   fireEvent.click(confirm); fireEvent.click(confirm)
@@ -111,18 +114,20 @@ it('restaura explicitamente a cópia local do autor sem substituir silenciosamen
   expect(screen.queryByRole('button', { name: 'Restaurar cópia local' })).not.toBeInTheDocument()
 })
 
- it('gera a prévia e retorna ao formulário sem perder o rascunho', async () => {
+it('edita direto na folha e a cópia usada no PDF mostra o mesmo texto', async () => {
   vi.mocked(fetchWithSession).mockImplementation(async url => String(url).includes('/revisions') ? Response.json(null) : String(url).includes('/versions') ? Response.json([]) : Response.json(published))
-  render(<ProjectCharter />)
+  const { container } = render(<ProjectCharter />)
   const field = await screen.findByDisplayValue('Vigente')
   await waitFor(() => expect(field).toBeEnabled())
-  expect(screen.queryByRole('region', { name: 'Prévia A4 do Termo de Abertura' })).not.toBeInTheDocument()
+  expect(field).toHaveAccessibleName('Justificativa')
   fireEvent.change(field, { target: { value: 'Texto da sessão' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Gerar documento' }))
-  expect(screen.getByRole('region')).toHaveTextContent('Texto da sessão')
-  expect(screen.queryByRole('button', { name: 'Salvar Versão' })).not.toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Voltar ao formulário' }))
-  expect(screen.getByDisplayValue('Texto da sessão')).toBeInTheDocument()
+  const copiaDoPdf = container.querySelector('[hidden]')!
+  expect(copiaDoPdf).toHaveTextContent('Texto da sessão')
+  expect(copiaDoPdf.querySelector('textarea')).toBeNull()
+  // Ctrl+Z na folha desfaz a edição.
+  field.focus()
+  fireEvent.keyDown(field, { key: 'z', ctrlKey: true })
+  await waitFor(() => expect(screen.getByDisplayValue('Vigente')).toBeInTheDocument())
 })
 it('abre um snapshot histórico sem substituir conteúdo ou cabeçalho pelos atuais', async () => {
   const version = { id: 'v1', status: 'APPROVED', versao: '1', commitTitle: 'Inicial', elaboradoPor: 'Autor', aprovadoPor: 'Gerente', createdAt: '2026-10-01', payload: { justificativa: 'Texto histórico', documentContext: { nomeProjeto: 'Nome histórico', gerenteProjeto: 'Gerente', membros: [] } }, changes: [] }
@@ -131,8 +136,18 @@ it('abre um snapshot histórico sem substituir conteúdo ou cabeçalho pelos atu
   await screen.findByDisplayValue('Vigente')
   fireEvent.click(screen.getByRole('button', { name: 'Histórico de versões' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Abrir documento desta versão' }))
-  expect(screen.getByRole('region')).toHaveTextContent('Nome histórico · Texto histórico')
-  expect(screen.getByRole('region')).not.toHaveTextContent('Vigente')
-  fireEvent.click(screen.getByRole('button', { name: 'Voltar ao formulário' }))
+  expect(screen.getAllByText('Texto histórico').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('Nome do projeto: Nome histórico').length).toBeGreaterThan(0)
+  expect(screen.queryByDisplayValue('Vigente')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Voltar ao rascunho' }))
   expect(screen.getByDisplayValue('Vigente')).toBeInTheDocument()
+})
+
+it('a folha atual usa a assinatura do perfil do gerente sem exigir abrir o histórico', async () => {
+  vi.mocked(fetchWithSession).mockImplementation(async url => String(url).includes('/revisions') ? Response.json(null) : String(url).includes('/versions') ? Response.json([]) : Response.json({ ...published, gerenteProjeto: 'Gerente', gerente: { name: 'Gerente', signatureUrl: '/assinatura-gerente.png' } }))
+  const { container } = render(<ProjectCharter />)
+  await screen.findByDisplayValue('Vigente')
+  const assinaturas = container.querySelectorAll('[data-assinatura-em-linha] img')
+  expect(assinaturas.length).toBeGreaterThan(0)
+  for (const image of assinaturas) expect(image).toHaveAttribute('src', '/assinatura-gerente.png')
 })

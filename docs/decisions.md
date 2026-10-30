@@ -899,3 +899,51 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** leituras da EAP incluem movimento recente dos cards; conclusões anteriores com histórico passam a aparecer automaticamente. Sem movimento, a data continua ausente. Campos manuais conservam precedência. Nenhum tempo ou gasto é inferido. A edição de data pelo MCP pode esbarrar nas mesmas exigências de responsável do painel, devolvidas no resultado de sincronização.
 - **Referências:** `services/realizadoDosCards.ts`, `lib/dataRealizacao.ts`, `services/planilhaCardSync.ts`, `services/taskCostsService.ts`, `app/api/internal/task-costs/[cardId]/route.ts`, `mcp-server/src/tools/budgets.ts`. Complementa ADR-054, ADR-064 e ADR-065.
 - **Condições de revisão:** revisar o fuso se houver configuração por tenant e o carregamento de movimentos se a volumetria do projeto justificar outra projeção.
+
+## ADR-069 — Editar os documentos direto na folha com um kit comum de campos
+
+- **Data:** 2026-10-30.
+- **Status:** implementada no código; pendente de publicação.
+- **Contexto:** Termo, Partes Interessadas, EAP e Atas eram editados em formulários separados da prévia ("Gerar documento"), cada um com layout e controles próprios; ajustes de quadro, assinatura, prévia diferente do PDF e quebras de página se repetiam em vários cards. O usuário desenhou no Penpot a tela "Edição de documento" (barra por grupos, folha editável e kit de 5 campos).
+- **Escolha:** um editor comum (`components/documentos/editor/`) e uma única folha por documento, usada para editar (dentro do editor) e para imprimir (fora dele). Campos do cadastro aparecem como Automático (não editáveis no documento); o aprovador é o gerente do projeto (exceto na Ata, que mantém a escolha atual). Desfazer/refazer é local à tela (`hooks/useDesfazer.ts`).
+- **Justificativa:** a prévia passa a ser a própria exportação, o padrão visual fica num só lugar e um documento novo vira só um modelo de seções e campos.
+- **Alternativas consideradas:** manter formulário + prévia e só restilizar a prévia (mantinha a duplicação e a diferença entre o que se edita e o que sai no PDF).
+- **Consequências:** os formulários antigos saíram (`CamposQuadroDocumento` removido). A tela de prévia na tela ainda é uma folha contínua com marcas de quebra; as páginas reais só existem no PDF. Exportações em Word seguem os modelos do professor. Sem mudança de API pública, além do campo `instituicao` no GET `/charter`.
+- **Referências:** `components/documentos/editor/EditorDocumento.tsx`, `components/documentos/editor/folha.tsx`, `hooks/useDesfazer.ts`, `hooks/useVersoesDocumento.ts`, `components/projetos/documentacao/ProjectCharter.tsx`, `components/projetos/DocumentoStakeholders.tsx`, `components/projetos/documentacao/EapDocument.tsx`, `components/atas/AtaFormClient.tsx`. Desenho: Penpot, página "Tela — Edição de documento".
+- **Condições de revisão:** se surgirem documentos novos com campos fora do kit, ou se o professor exigir o PDF idêntico aos modelos originais.
+
+## ADR-070 — Capturar a assinatura manuscrita no navegador
+
+- **Data:** 2026-10-30.
+- **Status:** implementada localmente; pendente de homologação e publicação.
+- **Contexto:** o usuário precisava desenhar a assinatura no próprio perfil e importar assinatura de imagem/PDF; o backend já armazenava imagens PNG/JPEG validadas.
+- **Escolha:** componente cliente reutilizável com Signature Pad (desenho), PDF.js com worker local (PDF) e React Image Crop (recorte). Converter a seleção em PNG e reutilizar a action e o storage existentes.
+- **Justificativa:** bibliotecas open source evitam recriar a suavização dos traços e a renderização de PDF; o arquivo de origem fica no navegador e os documentos continuam recebendo uma imagem.
+- **Alternativas consideradas:** desenhar um motor próprio; processar PDF no servidor; serviço externo de assinatura. Acrescentariam manutenção ou alterariam o fluxo de persistência sem necessidade para a assinatura manuscrita solicitada.
+- **Consequências:** novas dependências no app, carregadas sob demanda; limites de entrada/renderização/saída e cleanup de worker/URLs. Não cria assinatura com certificado nem altera o contrato de upload do servidor.
+- **Referências:** `components/assinatura/SignatureEditor.tsx`, `components/assinatura/imagem.ts`, `components/profile/SignatureUpload.tsx`, `app/actions/profile.ts`, `lib/imagemAssinatura.ts`.
+- **Condições de revisão:** documentos com certificado digital ou outro método de assinatura exigem fluxo próprio.
+
+## ADR-071 — Separar o ano da turma AMS do termo e do calendário
+
+- **Data:** 2026-10-30.
+- **Status:** implementada localmente; migration aplicada no banco de desenvolvimento, pendente de publicação.
+- **Contexto:** o período anual também representa turmas do primeiro ou segundo ano do AMS na Fatec; o usuário confirmou que essa classificação é diferente do termo.
+- **Escolha:** coluna opcional `Project.anoAms` com valores `1`/`2`, exclusiva de `semestre="ano"`; manter `ano` para o calendário e `termo` para períodos semestrais. Não inferir o ano AMS em projetos existentes. Limpar o campo ao trocar para semestre; validar também no serviço e banco.
+- **Justificativa:** evita sobrecarregar campos de significados diferentes e mantém os documentos e a edição consistentes.
+- **Alternativas consideradas:** reutilizar `termo` ou `ano`; contrariaria os significados confirmados pelo usuário.
+- **Consequências:** migration aditiva e atualização dos contratos de projeto (incluindo MCP `ano_ams`); projetos anuais antigos continuam válidos sem preencher o novo campo.
+- **Referências:** `prisma/migrations/20261030210000_project_ano_ams/migration.sql`, `components/projetos/ProjetoFormPage.tsx`, `project-service/src/project/project.service.ts`, `lib/linhaInstitucional.ts`, `mcp-server/src/tools/projects.ts`.
+- **Condições de revisão:** ampliar a enumeração apenas se a instituição confirmar outros anos ou modalidades.
+
+## ADR-072 — Um único componente de seleção no sistema
+
+- **Data:** 2026-10-30.
+- **Status:** implementada no código; pendente de publicação.
+- **Contexto:** cada tela usava o `<select>` nativo com estilos próprios; nos documentos o "Elaborado por" destoava da folha e o usuário pediu um seletor bonito reaproveitado em todo o sistema, sem recriar a cada pedido.
+- **Escolha:** `components/ui/Select.tsx` (lista estilizada com busca, teclado, descrição por opção, ação "Criar novo" e variantes `compact` e `inline` para dentro do texto da folha) substitui todos os `<select>` do app. Seleção de pessoas usa `MembroEquipeSelect` sobre ele, com "Criar novo membro" abrindo o cadastro interno de Stakeholders no painel lateral.
+- **Justificativa:** um ponto único de aparência, acessibilidade e comportamento; telas novas só montam as opções.
+- **Alternativas consideradas:** manter o `<select>` nativo com CSS (não permite busca, descrição nem a ação de criar) ou adotar biblioteca externa de combobox (mais uma dependência para um componente pequeno).
+- **Consequências:** formulários enviam o valor por campo oculto (`name`); testes escolhem opções pelo helper `__tests__/helpers/select.ts`. Novos campos de escolha devem usar este componente.
+- **Referências:** `components/ui/Select.tsx`, `components/projetos/documentacao/MembroEquipeSelect.tsx`, `components/projetos/cadastro/CadastroMembroLateral.tsx`.
+

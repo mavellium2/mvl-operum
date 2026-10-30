@@ -1,5 +1,6 @@
 'use client'
 
+import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { erroMoeda, formatReais, moedaParaCampo, parseMoeda } from '@/lib/dinheiro'
 import { useState, useEffect, useTransition } from 'react'
@@ -213,14 +214,13 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
             <Field label="Nova senha (deixe em branco para manter)" type="password" value={form.password} onChange={v => setForm(f => ({ ...f, password: v }))} />
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Role global</label>
-              <select
+              <Select
+                ariaLabel="Role global"
+                searchable={false}
                 value={form.role}
-                onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="member">Membro</option>
-                <option value="admin">Administrador</option>
-              </select>
+                onChange={v => setForm(f => ({ ...f, role: v }))}
+                options={[{ value: 'member', label: 'Membro' }, { value: 'admin', label: 'Administrador' }]}
+              />
             </div>
 
             <div className="pt-1 border-t border-gray-100">
@@ -258,16 +258,14 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
 
           {showAddProject && (
             <div className="mb-3 flex gap-2">
-              <select
+              <Select
+                ariaLabel="Projeto"
+                className="flex-1"
                 value={selectedProjetoId}
-                onChange={e => setSelectedProjetoId(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Selecionar projeto…</option>
-                {projetosNaoMembro.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+                onChange={setSelectedProjetoId}
+                placeholder="Selecionar projeto…"
+                options={projetosNaoMembro.map(p => ({ value: p.id, label: p.name }))}
+              />
               <button
                 onClick={handleAddProject}
                 disabled={!selectedProjetoId || isPending}
