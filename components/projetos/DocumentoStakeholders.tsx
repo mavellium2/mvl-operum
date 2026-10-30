@@ -526,10 +526,9 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
             Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
             <button type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar ao documento atual</button>
           </div>
-        ) : canEdit ? (<>
-          {rascunhoRestaurado && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve uma versão para enviá-lo à aprovação.</p>}
-          <p className="text-xs text-slate-500">As alterações nesta folha pertencem ao documento; o cadastro de Stakeholders do projeto não muda. Salve uma versão para enviar à aprovação.</p>
-        </>) : null}
+        ) : canEdit && rascunhoRestaurado ? (
+          <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve uma versão para enviá-lo à aprovação.</p>
+        ) : null}
       >
         <PaginasDaPrevia landscape marginTopMm={MARGEM_STAKEHOLDERS_MM.top} folha={{ margemLateralMm: MARGEM_STAKEHOLDERS_MM.x }}>
           <div className="shadow-[0_1px_3px_rgba(15,23,42,0.12)]">
