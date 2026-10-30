@@ -19,13 +19,6 @@ async function disposePdf(resource: PdfResource | null) {
 const fullCrop: PercentCrop = { unit: '%', x: 0, y: 0, width: 100, height: 100 }
 
 
-/**
- * A prévia só aceita o arquivo local escolhido (blob:) ou a imagem gerada no
- * próprio navegador (data:image/png|jpeg). Qualquer outro endereço vira vazio.
- */
-function fonteDaPrevia(src: string): string {
-  return /^blob:/.test(src) || /^data:image\/(png|jpeg);base64,/.test(src) ? src : ''
-}
 export default function SignatureEditor({ onClose, onSave }: { onClose: () => void; onSave: (file: File) => Promise<void> }) {
   const [mode, setMode] = useState<'draw' | 'upload'>('draw')
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -35,8 +28,9 @@ export default function SignatureEditor({ onClose, onSave }: { onClose: () => vo
     setCanvasReady(Boolean(canvas))
   }, [])
   const pad = useRef<SignaturePad | null>(null)
-  const imageRef = useRef<HTMLImageElement>(null)
-  const [source, setSource] = useState('')
+  // Prévia desenhada em canvas: a imagem/página escolhida nunca vira endereço (src) no DOM.
+  const previewRef = useRef<HTMLCanvasElement>(null)
+  const [source, setSource] = useState<HTMLCanvasElement | null>(null)
   const [crop, setCrop] = useState<PercentCrop>(fullCrop)
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
   const [page, setPage] = useState(1)
@@ -83,9 +77,12 @@ export default function SignatureEditor({ onClose, onSave }: { onClose: () => vo
     observer.observe(canvas)
     return () => { observer.disconnect(); instance.off(); pad.current = null }
   }, [mode, canvasReady])
+  // Copia a imagem escolhida para o canvas visível da prévia.
   useEffect(() => {
-    if (!source.startsWith('blob:')) return
-    return () => URL.revokeObjectURL(source)
+    const destino = previewRef.current
+    if (!source || !destino) return
+    destino.width = source.width; destino.height = source.height
+    destino.getContext('2d')?.drawImage(source, 0, 0)
   }, [source])
 
   async function showPage(doc: PDFDocumentProxy, number: number, id: number) {
@@ -100,14 +97,14 @@ export default function SignatureEditor({ onClose, onSave }: { onClose: () => vo
     render.current = task
     await task.promise
     if (id !== sequence.current) return
-    setSource(canvas.toDataURL('image/png')); setCrop(fullCrop)
+    setSource(canvas); setCrop(fullCrop)
     pdfPage.cleanup()
   }
 
   async function selectFile(file: File) {
     const id = ++sequence.current
     render.current?.cancel()
-    setBusy(true); setError(''); setSource(''); setPdf(null)
+    setBusy(true); setError(''); setSource(null); setPdf(null)
     try {
       const previous = resource.current
       resource.current = null
@@ -134,18 +131,23 @@ export default function SignatureEditor({ onClose, onSave }: { onClose: () => vo
         validateImageHeader(new Uint8Array(await file.arrayBuffer()), file.type)
         if (id !== sequence.current) return
         const bitmap = await createImageBitmap(file)
-        try { validateDimensions(bitmap.width, bitmap.height) } finally { bitmap.close() }
+        const canvas = document.createElement('canvas')
+        try {
+          validateDimensions(bitmap.width, bitmap.height)
+          canvas.width = bitmap.width; canvas.height = bitmap.height
+          canvas.getContext('2d')?.drawImage(bitmap, 0, 0)
+        } finally { bitmap.close() }
         if (id !== sequence.current) return
-        setSource(URL.createObjectURL(file)); setCrop(fullCrop)
+        setSource(canvas); setCrop(fullCrop)
       }
     } catch (e) {
-      if (id === sequence.current) { setPdf(null); setSource(''); setError(e instanceof Error ? e.message : 'Não foi possível abrir o arquivo.'); void disposePdf(resource.current); resource.current = null }
+      if (id === sequence.current) { setPdf(null); setSource(null); setError(e instanceof Error ? e.message : 'Não foi possível abrir o arquivo.'); void disposePdf(resource.current); resource.current = null }
     } finally { if (id === sequence.current) setBusy(false) }
   }
   async function changePage(number: number) {
     if (!pdf) return
     const id = ++sequence.current
-    render.current?.cancel(); setPage(number); setSource(''); setBusy(true); setError('')
+    render.current?.cancel(); setPage(number); setSource(null); setBusy(true); setError('')
     try { await showPage(pdf, number, id) }
     catch { if (id === sequence.current) setError('Não foi possível abrir essa página.') }
     finally { if (id === sequence.current) setBusy(false) }
@@ -158,12 +160,12 @@ export default function SignatureEditor({ onClose, onSave }: { onClose: () => vo
         if (!pad.current || pad.current.isEmpty() || !canvasRef.current) throw new Error('Desenhe sua assinatura antes de salvar.')
         canvas = canvasRef.current
       } else {
-        const image = imageRef.current
-        if (!image || !image.complete || !image.naturalWidth || !crop.width || !crop.height) throw new Error('Selecione e recorte a assinatura antes de salvar.')
+        const image = source
+        if (!image || !image.width || !image.height || !crop.width || !crop.height) throw new Error('Selecione e recorte a assinatura antes de salvar.')
         canvas = document.createElement('canvas')
-        const x = Math.round(image.naturalWidth * crop.x / 100), y = Math.round(image.naturalHeight * crop.y / 100)
-        const width = Math.min(image.naturalWidth - x, Math.round(image.naturalWidth * crop.width / 100))
-        const height = Math.min(image.naturalHeight - y, Math.round(image.naturalHeight * crop.height / 100))
+        const x = Math.round(image.width * crop.x / 100), y = Math.round(image.height * crop.y / 100)
+        const width = Math.min(image.width - x, Math.round(image.width * crop.width / 100))
+        const height = Math.min(image.height - y, Math.round(image.height * crop.height / 100))
         validateDimensions(width, height)
         canvas.width = width; canvas.height = height
         canvas.getContext('2d')!.drawImage(image, x, y, width, height, 0, 0, width, height)
@@ -189,8 +191,7 @@ export default function SignatureEditor({ onClose, onSave }: { onClose: () => vo
         {pdf && <div className="flex items-center gap-2 text-sm">Página <Select ariaLabel="Página do PDF" className="w-24" searchable={pdf.numPages > 10} value={String(page)} disabled={busy || saving} onChange={v => void changePage(Number(v))} options={Array.from({ length: pdf.numPages }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))} /> de {pdf.numPages}</div>}
         {busy && <p role="status">Preparando prévia…</p>}
         {source && <><p className="text-sm">Arraste as bordas para selecionar apenas sua assinatura.</p><ReactCrop crop={crop} disabled={saving || busy} onChange={(_, percent) => setCrop(percent)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img ref={imageRef} src={fonteDaPrevia(source)} alt="Prévia para recortar a assinatura" onError={() => { setSource(''); setError('Não foi possível exibir a imagem. Selecione outro arquivo.') }} style={{ maxHeight: 380, maxWidth: '100%' }} />
+          <canvas ref={previewRef} role="img" aria-label="Prévia para recortar a assinatura" style={{ display: 'block', maxHeight: 380, maxWidth: '100%' }} />
         </ReactCrop></>}
       </>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

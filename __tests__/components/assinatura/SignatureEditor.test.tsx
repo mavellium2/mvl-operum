@@ -63,7 +63,7 @@ describe('editor reutilizável de assinatura', () => {
   it('renderiza PDF no navegador, permite escolher página e libera worker ao sair', async () => {
     const { unmount } = render(<SignatureEditor onClose={vi.fn()} onSave={vi.fn()} />)
     uploadPdf()
-    await screen.findByAltText('Prévia para recortar a assinatura')
+    await screen.findByRole('img', { name: 'Prévia para recortar a assinatura' })
     escolherOpcao(screen.getByRole('combobox', { name: 'Página do PDF' }), '2')
     await waitFor(() => expect(mocks.getPage).toHaveBeenCalledWith(2))
     unmount()
@@ -90,15 +90,15 @@ describe('editor reutilizável de assinatura', () => {
     resolve({ numPages: 2, getPage: mocks.getPage })
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Selecione PNG, JPG ou PDF'))
     expect(mocks.getPage).not.toHaveBeenCalled()
-    expect(screen.queryByAltText('Prévia para recortar a assinatura')).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Prévia para recortar a assinatura' })).not.toBeInTheDocument()
   })
 
   it('envia o recorte do PDF como PNG, nunca o PDF original', async () => {
     const save = vi.fn().mockResolvedValue(undefined)
     render(<SignatureEditor onClose={vi.fn()} onSave={save} />)
     uploadPdf()
-    const image = await screen.findByAltText('Prévia para recortar a assinatura')
-    Object.defineProperties(image, { naturalWidth: { value: 600 }, naturalHeight: { value: 800 }, complete: { value: true } })
+    // A prévia é um canvas com a página renderizada (sem endereço de arquivo no DOM).
+    expect((await screen.findByRole('img', { name: 'Prévia para recortar a assinatura' })).tagName).toBe('CANVAS')
     fireEvent.click(screen.getByText('Salvar assinatura'))
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
     expect(save.mock.calls[0][0].type).toBe('image/png')
