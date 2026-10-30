@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { fetchWithSession } from '@/lib/clientFetch'
 
@@ -111,10 +111,13 @@ export default function HistoricoDocumento({
   projetoId,
   type,
   resourceId = '',
+  embutido = false,
 }: {
   projetoId: string
   type: string
   resourceId?: string
+  /** Dentro de um painel (Revisar proposta pendente): sem o <details>, carrega ao abrir. */
+  embutido?: boolean
 }) {
   const router = useRouter()
   const [versions, setVersions] = useState<Version[]>([])
@@ -160,6 +163,12 @@ export default function HistoricoDocumento({
     window.addEventListener('operum:document-version', refresh)
     return () => window.removeEventListener('operum:document-version', refresh)
   }, [load, projetoId])
+  const carregouEmbutido = useRef(false)
+  useEffect(() => {
+    if (!embutido || carregouEmbutido.current) return
+    carregouEmbutido.current = true
+    void load('historico')
+  }, [embutido, load])
   async function review(versionId: string, action: 'approve' | 'reject') {
     setBusy(true)
     setError('')
@@ -206,16 +215,21 @@ export default function HistoricoDocumento({
       setBusy(false)
     }
   }
+  const Raiz = embutido ? 'div' : 'details'
   return (
-    <details
-      className="m-4 rounded-xl border border-gray-200 bg-white p-4"
-      onToggle={(e) => {
-        if (e.currentTarget.open) void load()
-      }}
+    <Raiz
+      className={embutido ? 'p-4' : 'm-4 rounded-xl border border-gray-200 bg-white p-4'}
+      {...(embutido ? {} : {
+        onToggle: (e: React.SyntheticEvent<HTMLElement>) => {
+          if ((e.currentTarget as HTMLDetailsElement).open) void load()
+        },
+      })}
     >
-      <summary className="cursor-pointer font-semibold">
-        Histórico e registro — {labels[type] ?? type}
-      </summary>
+      {!embutido && (
+        <summary className="cursor-pointer font-semibold">
+          Histórico e registro — {labels[type] ?? type}
+        </summary>
+      )}
       <p className="my-3 text-sm text-gray-600">
         Versões pendentes não alteram o documento vigente. Abra o conteúdo para
         conferir a proposta antes de aprovar.
@@ -321,6 +335,6 @@ export default function HistoricoDocumento({
           ))}
         </ul>
       )}
-    </details>
+    </Raiz>
   )
 }

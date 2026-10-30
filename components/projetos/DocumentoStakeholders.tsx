@@ -1,15 +1,21 @@
 'use client'
 
-import { EmailInput, TelefoneInput } from '@/components/ui/ContatoInputs'
-import { erroEmail, erroTelefone } from '@/lib/contato'
+import { erroEmail, erroTelefone, formatEmail, formatTelefone } from '@/lib/contato'
 import { printPageStyle } from '@/lib/printPageStyle'
+import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
+import ProjetoStakeholdersClient from '@/components/projetos/ProjetoStakeholdersClient'
+import { useDesfazer } from '@/hooks/useDesfazer'
+import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
+import { abrirPropostas, ROTULO_STATUS, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { useReactToPrint } from 'react-to-print'
-import { Download, Save, History, Check, X } from 'lucide-react'
+import { Save, Check, X } from 'lucide-react'
 import StakeholderDocument, {
+  MARGEM_STAKEHOLDERS_MM,
+  type EdicaoStakeholders,
   type ProjetoHeader,
   type Stakeholder,
 } from './StakeholderDocument'
@@ -19,7 +25,6 @@ import {
 } from './documentacao/MembroEquipeSelect'
 import Modal from '@/components/ui/Modal'
 import Drawer from '@/components/ui/Drawer'
-import CamposQuadroDocumento from './documentacao/CamposQuadroDocumento'
 import { useToast } from '@/components/ui/Toast'
 import { fetchWithSession } from '@/lib/clientFetch'
 import { formatDateBR, toDateInputValue } from '@/lib/date'
@@ -87,7 +92,10 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced
 }
 
-export default function DocumentoStakeholders({ membros = [] }: { membros?: MembroEquipeOption[] }) {
+/** Dados do cadastro de Stakeholders (para adicionar interno/externo pelo documento). */
+export type CadastroStakeholders = NonNullable<Awaited<ReturnType<typeof import('@/services/stakeholdersDoProjeto').carregarStakeholdersDoProjeto>>> & { userRole: 'admin' | 'gerente' }
+
+export default function DocumentoStakeholders({ membros = [], cadastro }: { membros?: MembroEquipeOption[]; cadastro?: CadastroStakeholders | null }) {
   const permissions = useProjectPermissions()
   const canEdit = permissions.has('documentos:editar')
   const { projetoId } = useParams<{ projetoId: string }>()
@@ -110,6 +118,25 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
 
   // Campos editáveis — inicializados a partir da versão APPROVED mais recente (carregada no useEffect)
   const [editable, setEditable] = useState<EditableFields>(DEFAULTS)
+  const [alterado, setAlterado] = useState(false)
+  const [menuAberto, setMenuAberto] = useState(false)
+  const rascunho = useRascunhoDocumento(projetoId, 'STAKEHOLDER')
+  const [rascunhoRestaurado, setRascunhoRestaurado] = useState(false)
+  const [painel, setPainel] = useState<null | 'interno' | 'externo'>(null)
+  const [versaoSelecionada, setVersaoSelecionada] = useState<string | null>(null)
+  const { versoes, vigente, pendentes } = useVersoesDocumento(projetoId, 'STAKEHOLDER')
+
+  // Desfazer/refazer: quadro + linhas da tabela.
+  const linhasAtuais = data?.stakeholders
+  const estadoEdicao = useMemo(() => ({ editable, linhas: linhasAtuais }), [editable, linhasAtuais])
+  const aplicarEstado = useCallback((e: { editable: EditableFields; linhas?: Stakeholder[] }) => {
+    setEditable(e.editable)
+    setData(prev => prev && e.linhas ? { ...prev, stakeholders: e.linhas } : prev)
+    setAlterado(true)
+  }, [])
+  // O histórico recomeça quando o documento e o quadro da versão vigente terminam de carregar.
+  const [carregamentos, setCarregamentos] = useState(0)
+  const historicoEdicao = useDesfazer(estadoEdicao, aplicarEstado, { ativo: !!data, chave: carregamentos })
 
   // Histórico
   const [versions, setVersions] = useState<DocumentVersion[]>([])
@@ -142,9 +169,28 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
           telefones: new Set(d.stakeholders.map(s => s.telefoneFax ?? '')),
         }
         setData(d)
+        setCarregamentos(n => n + 1)
+        // "Salvar mais tarde": volta de onde parou (rascunho privado, ainda sem versão).
+        if (!canEdit) return
+        return rascunho.recuperar<DocumentData>().then(salvo => {
+          if (!salvo?.header || !Array.isArray(salvo.stakeholders)) return
+          initializedFromDB.current = true
+          const atuais = todosMembrosRef.current
+          setEditable(prev => ({
+            ...prev,
+            elaboradoPor: salvo.header.elaboradoPor ?? prev.elaboradoPor,
+            elaboradoPorUserId: atuais.find(m => m.name === salvo.header.elaboradoPor)?.id ?? prev.elaboradoPorUserId,
+            versao: salvo.header.versao || prev.versao,
+            dataAprovacaoRaw: toDateInputValue(salvo.header.dataAprovacao) || prev.dataAprovacaoRaw,
+          }))
+          setData(prev => prev ? { ...prev, stakeholders: salvo.stakeholders } : prev)
+          setCarregamentos(n => n + 1)
+          setRascunhoRestaurado(true)
+        })
       })
       .catch(e => setError(typeof e === 'string' ? e : 'Erro ao carregar documento'))
       .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- carrega uma vez por projeto
   }, [projetoId])
 
   const loadVersions = useCallback(
@@ -176,6 +222,7 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
               versao: approved.versao,
               dataAprovacaoRaw: toDateInputValue(approved.dataAprovacao),
             })
+            setCarregamentos(n => n + 1)
           }
         }
       } catch {
@@ -202,7 +249,8 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
     documentTitle: 'Formulário de parte interessada',
     onBeforePrint: async () => { document.title = 'Formulário de parte interessada' },
     onAfterPrint: () => { document.title = 'Documentação' },
-    pageStyle: printPageStyle({ landscape: true }),
+    // Layout do modelo "03_Form Stakeholders": margens menores e só a numeração no rodapé.
+    pageStyle: printPageStyle({ landscape: true, marginMm: MARGEM_STAKEHOLDERS_MM }),
   })
 
   // ── Commit (salvar versão) ──────────────────────────────────────────────────
@@ -234,12 +282,9 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
     }))
   }
 
-  function handleSelectAprovado(membro: MembroEquipeOption | null) {
-    setEditable(prev => ({
-      ...prev,
-      aprovadoPor: membro?.name ?? '',
-      aprovadoPorUserId: membro?.id ?? null,
-    }))
+  /** Conteúdo do documento como vai para a versão (e para o rascunho de "salvar mais tarde"). */
+  function payloadDocumento() {
+    return { ...data, header: { ...data?.header, elaboradoPor: editable.elaboradoPor, aprovadoPor: editable.aprovadoPor, versao: editable.versao, dataAprovacao: editable.dataAprovacaoRaw } }
   }
 
   function openCommitModal() {
@@ -268,7 +313,7 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          payload: { ...data, header: { ...data?.header, elaboradoPor: editable.elaboradoPor, aprovadoPor: editable.aprovadoPor, versao: editable.versao, dataAprovacao: editable.dataAprovacaoRaw } },
+          payload: payloadDocumento(),
           commitTitle: commitTitle.trim(),
           versao: editable.versao,
           elaboradoPor: editable.elaboradoPor,
@@ -278,6 +323,8 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
       })
       if (r.ok) {
         setCommitModalOpen(false)
+        setAlterado(false)
+        setRascunhoRestaurado(false)
         await loadVersions()
         window.dispatchEvent(new CustomEvent('operum:document-version', { detail: { projetoId } }))
         const saved = await r.json()
@@ -351,123 +398,151 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
       : null,
   ].filter(Boolean) as string[]
 
-  return (
-    <div className="min-h-screen bg-gray-300 flex flex-col items-center py-8 gap-6">
-      <div className="w-full max-w-[297mm] flex flex-col gap-3">
-        {/* Campos editáveis */}
-        {!loading && !error && data && (
-          <div className="bg-white rounded-xl shadow-md p-5 grid grid-cols-2 gap-4">
-            <CamposQuadroDocumento
-              idPrefix="ds"
-              projetoId={projetoId}
-              membros={todosMembros}
-              onCriarMembro={registrarCriado}
-              gerenteProjeto={data.header.gerenteProjeto ?? ''}
-              elaboradoPorUserId={editable.elaboradoPorUserId}
-              onElaboradoPor={handleSelectElaborado}
-              aprovadoPorUserId={editable.aprovadoPorUserId}
-              onAprovadoPor={handleSelectAprovado}
-              versao={editable.versao}
-              onVersao={v => update('versao', v)}
-              dataAprovacao={editable.dataAprovacaoRaw}
-              onDataAprovacao={v => update('dataAprovacaoRaw', v)}
-              labelClass={labelClass}
-              inputClass={inputClass}
-            />
-          </div>
-        )}
+  // Versão aberta pelo seletor: só leitura, com o conteúdo salvo nela.
+  const versaoAberta = versaoSelecionada ? versoes.find(v => v.id === versaoSelecionada) ?? null : null
+  const conteudoVersao = versaoAberta?.payload as Partial<DocumentData> | null | undefined
+  const headerExibido: ProjetoHeader | null = conteudoVersao?.header && mergedHeader
+    ? { ...mergedHeader, ...conteudoVersao.header, dataAprovacao: formatDateBR(conteudoVersao.header.dataAprovacao, '') }
+    : mergedHeader
+  const linhasExibidas = conteudoVersao?.stakeholders ?? data?.stakeholders ?? []
+  const editavel = canEdit && !versaoAberta && !savingVersion && !!data
+  const alterarLinhas = (fn: (linhas: Stakeholder[]) => Stakeholder[]) => {
+    setData(prev => prev ? { ...prev, stakeholders: fn(prev.stakeholders) } : prev)
+    setAlterado(true)
+  }
+  const edicao: EdicaoStakeholders = {
+    projetoId,
+    membros: todosMembros,
+    onCriarMembro: registrarCriado,
+    elaboradoPorUserId: editable.elaboradoPorUserId,
+    onElaboradoPor: m => { handleSelectElaborado(m); setAlterado(true) },
+    onVersao: v => { update('versao', v); setAlterado(true) },
+    dataAprovacaoRaw: editable.dataAprovacaoRaw,
+    onDataAprovacao: v => { update('dataAprovacaoRaw', v); setAlterado(true) },
+    onCelula: (indice, campo, valor) => alterarLinhas(linhas => linhas.map((row, i) => i === indice
+      ? { ...row, [campo]: campo === 'telefoneFax' ? formatTelefone(valor) : campo === 'email' ? formatEmail(valor) : valor }
+      : row)),
+    onAdicionar: () => {
+      // Sem acesso ao cadastro de Stakeholders: só uma linha em branco nesta versão do documento.
+      alterarLinhas(linhas => [...linhas, { ref: String(linhas.length + 1).padStart(2, '0'), nome: '', empresaEquipe: '', cargoCompetencia: '', email: '', telefoneFax: '', endereco: '', observacoes: '' }])
+      requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(`[data-campo="ds-${data?.stakeholders.length ?? 0}-nome"] textarea`)?.focus())
+    },
+    onRemover: indice => alterarLinhas(linhas => linhas.filter((_, i) => i !== indice)),
+  }
+  /**
+   * Depois de vincular/criar/salvar no cadastro, busca o documento de novo e
+   * acrescenta só as pessoas que ainda não estão na tabela (as edições feitas
+   * nesta versão do documento são mantidas).
+   */
+  async function incluirNovosDoCadastro() {
+    try {
+      const r = await fetchWithSession(`/api/projects/${projetoId}/documento`)
+      if (!r.ok) return
+      const atual: DocumentData = await r.json()
+      const chave = (x: Stakeholder) => `${x.nome.trim().toLowerCase()}|${(x.email ?? '').trim().toLowerCase()}`
+      setData(prev => {
+        if (!prev) return prev
+        const existentes = new Set(prev.stakeholders.map(chave))
+        const novos = atual.stakeholders.filter(x => !existentes.has(chave(x)))
+        if (novos.length === 0) return prev
+        const base = prev.stakeholders.length
+        return { ...prev, stakeholders: [...prev.stakeholders, ...novos.map((x, i) => ({ ...x, ref: String(base + i + 1).padStart(2, '0') }))] }
+      })
+      setAlterado(true)
+    } catch { /* o cadastro foi salvo; a tabela atualiza ao recarregar */ }
+  }
 
-        {/* Barra de ações */}
-        <button type="button" disabled={!mergedHeader || !data} className="self-end rounded bg-blue-600 px-4 py-2 text-white" onClick={async () => {
-          if (!mergedHeader || !data) return
-          try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadStakeholderDocx(mergedHeader, data.stakeholders) }
-          catch { toast('Não foi possível gerar o Word. Verifique as imagens do documento.', 'error') }
-        }}>Baixar Word</button>
-        <div className="flex justify-end gap-2">
-          {/* Botão de histórico — ícone discreto */}
-          <button
-            aria-label="Histórico de versões"
-            onClick={() => setHistoryOpen(true)}
-            className="relative flex items-center gap-1.5 px-3 py-2 text-slate-600 text-sm rounded-xl hover:bg-white hover:shadow transition-all"
-          >
-            <History className="w-4 h-4" />
-            {versions.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                {versions.length > 99 ? '99+' : versions.length}
-              </span>
-            )}
-          </button>
+  // "Adicionar parte interessada": abre o cadastro da tela Stakeholders (interno ou externo) à direita.
+  const menuAdicionar = cadastro ? {
+    aberto: menuAberto,
+    onAbrir: setMenuAberto,
+    opcoes: [
+      { rotulo: 'Stakeholder interno', descricao: 'Membro da equipe (usuário do sistema)', onClick: () => setPainel('interno') },
+      { rotulo: 'Stakeholder externo', descricao: 'Pessoa ou organização de fora da equipe', onClick: () => setPainel('externo') },
+    ],
+  } : undefined
 
-          <button
-            onClick={openCommitModal}
-            disabled={loading || !!error || !data || savingVersion}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            Salvar Versão
-          </button>
+  async function baixarWord() {
+    if (!headerExibido) return
+    try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadStakeholderDocx(headerExibido, linhasExibidas) }
+    catch { toast('Não foi possível gerar o Word. Verifique as imagens do documento.', 'error') }
+  }
 
-          <button
-            onClick={() => handlePrint()}
-            disabled={loading || !!error || !data}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="w-4 h-4" />
-            Baixar PDF
-          </button>
-        </div>
+  if (loading || error || !headerExibido) {
+    return (
+      <div className="flex h-full items-start justify-center bg-[#eef0f3] p-8">
+        {loading
+          ? <div className="bg-white animate-pulse shadow" style={{ width: '297mm', minHeight: '210mm' }} />
+          : <div className="w-full max-w-[297mm] rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm">{error ?? 'Erro ao carregar documento'}</div>}
       </div>
+    )
+  }
 
-      {canEdit && data && !loading && !error && (
-        <details className="w-full max-w-4xl rounded-xl border border-gray-200 bg-white p-5">
-          <summary className="cursor-pointer font-semibold">Editar partes interessadas desta versão</summary>
-          <p className="my-3 text-sm text-gray-600">Estas alterações pertencem ao documento. O cadastro da equipe permanece independente. Salve uma versão para enviar à aprovação.</p>
-          <div className="space-y-4">
-            {data.stakeholders.map((person, index) => (
-              <fieldset key={index} className="grid grid-cols-1 gap-3 rounded-lg border p-3 sm:grid-cols-2">
-                <legend className="px-1 text-sm font-semibold">Parte interessada {index + 1}</legend>
-                {([
-                  ['nome', 'Nome'], ['empresaEquipe', 'Empresa / equipe'], ['cargoCompetencia', 'Cargo / competência'],
-                  ['email', 'E-mail'], ['telefoneFax', 'Telefone'], ['endereco', 'Endereço'], ['observacoes', 'Observações'],
-                ] as const).map(([field, label]) => {
-                  const alterar = (value: string) =>
-                    setData(prev => prev ? { ...prev, stakeholders: prev.stakeholders.map((row, i) => i === index ? { ...row, [field]: value } : row) } : prev)
-                  return (
-                    <label key={field} className="text-sm">{label}
-                      {field === 'email' ? (
-                        <EmailInput className={inputClass} value={person[field] ?? ''} onValueChange={alterar} />
-                      ) : field === 'telefoneFax' ? (
-                        <TelefoneInput className={inputClass} value={person[field] ?? ''} onValueChange={alterar} />
-                      ) : (
-                        <input className={inputClass} value={person[field] ?? ''} onChange={event => alterar(event.target.value)} />
-                      )}
-                    </label>
-                  )
-                })}
-                <button type="button" className="text-left text-sm text-red-700" onClick={() => setData(prev => prev ? { ...prev, stakeholders: prev.stakeholders.filter((_, i) => i !== index) } : prev)}>Remover desta versão</button>
-              </fieldset>
-            ))}
-            <button type="button" className="rounded border border-blue-300 px-3 py-2 text-sm text-blue-700" onClick={() => setData(prev => prev ? { ...prev, stakeholders: [...prev.stakeholders, { ref: String(prev.stakeholders.length + 1).padStart(2, '0'), nome: '', empresaEquipe: '', cargoCompetencia: '', email: '', telefoneFax: '', endereco: '', observacoes: '' }] } : prev)}>Adicionar parte interessada ao documento</button>
+  return (
+    <>
+      <EditorDocumento
+        documento="Partes Interessadas"
+        paisagem
+        editavel={editavel}
+        status={!canEdit || versaoAberta ? 'leitura' : savingVersion ? 'salvando' : alterado ? 'pendente' : 'salvo'}
+        mensagemStatus={!canEdit || versaoAberta ? undefined : alterado ? 'Alterações ainda não salvas — use “Salvar versão”' : 'Tudo salvo'}
+        versao={{
+          rotulo: versaoAberta ? `${versaoAberta.versao ?? '—'} · ${ROTULO_STATUS[versaoAberta.status] ?? ''}` : `${editable.versao || '1.0'} · ${vigente ? 'vigente' : 'rascunho'}`,
+          rotuloAtual: 'Documento atual (editável)',
+          selecionada: versaoSelecionada,
+          opcoes: versoes.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao ?? '—'} · ${v.id === vigente?.id ? 'vigente' : ROTULO_STATUS[v.status] ?? ''}`, detalhe: v.commitTitle })),
+          onSelecionar: setVersaoSelecionada,
+        }}
+        onSalvar={openCommitModal}
+        podeSalvar={editavel}
+        onHistorico={() => setHistoryOpen(true)}
+        pendentes={{ total: pendentes, onRevisar: () => abrirPropostas(projetoId) }}
+        onImprimir={() => handlePrint()}
+        onPdf={() => handlePrint()}
+        onWord={() => void baixarWord()}
+        desfazer={historicoEdicao}
+        onAdicionarLinha={cadastro ? () => setMenuAberto(true) : edicao.onAdicionar}
+        saida={{
+          pendente: canEdit && alterado && !versaoAberta,
+          salvar: openCommitModal,
+          salvarDepois: () => rascunho.guardar(payloadDocumento()),
+          descartar: () => rascunho.descartar(),
+        }}
+        avisos={versaoAberta ? (
+          <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+            Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
+            <button type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar ao documento atual</button>
           </div>
-        </details>
+        ) : canEdit ? (<>
+          {rascunhoRestaurado && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve uma versão para enviá-lo à aprovação.</p>}
+          <p className="text-xs text-slate-500">As alterações nesta folha pertencem ao documento; o cadastro de Stakeholders do projeto não muda. Salve uma versão para enviar à aprovação.</p>
+        </>) : null}
+      >
+        <PaginasDaPrevia landscape marginTopMm={MARGEM_STAKEHOLDERS_MM.top} folha={{ margemLateralMm: MARGEM_STAKEHOLDERS_MM.x }}>
+          <div className="shadow-[0_1px_3px_rgba(15,23,42,0.12)]">
+            <StakeholderDocument header={headerExibido} stakeholders={linhasExibidas} edicao={edicao} menuAdicionar={menuAdicionar} />
+          </div>
+        </PaginasDaPrevia>
+      </EditorDocumento>
+
+      {cadastro && painel && (
+        <ProjetoStakeholdersClient
+          key={painel}
+          projetoId={projetoId}
+          stakeholders={cadastro.stakeholders}
+          stakeholdersDisponiveis={cadastro.stakeholdersDisponiveis}
+          usuariosDisponiveis={cadastro.usuariosDisponiveis}
+          funcoesExistentes={cadastro.funcoesExistentes}
+          departamentosExistentes={cadastro.departamentosExistentes}
+          userRole={cadastro.userRole}
+          painel={{ modo: painel, onFechar: () => setPainel(null), onAlterado: () => void incluirNovosDoCadastro() }}
+        />
       )}
 
-      {/* States */}
-      {loading && (
-        <div className="bg-white animate-pulse rounded shadow-2xl" style={{ width: '297mm', minHeight: '210mm' }} />
-      )}
-      {error && (
-        <div className="w-full max-w-[297mm] rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm">
-          {error}
-        </div>
-      )}
-      {mergedHeader && !loading && (
-        <div role="region" aria-label="Prévia em paisagem das partes interessadas" tabIndex={0} className="w-full max-w-[297mm] overflow-x-auto shadow-2xl">
-          <PaginasDaPrevia landscape>
-            <StakeholderDocument ref={documentRef} header={mergedHeader} stakeholders={data!.stakeholders} />
-          </PaginasDaPrevia>
-        </div>
-      )}
+      {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
+      <div hidden>
+        <StakeholderDocument ref={documentRef} header={headerExibido} stakeholders={linhasExibidas} />
+      </div>
 
       {/* ── Modal de commit ───────────────────────────────────────────────── */}
       <Modal
@@ -582,6 +657,6 @@ export default function DocumentoStakeholders({ membros = [] }: { membros?: Memb
           </div>
         </div>
       </Drawer>
-    </div>
+    </>
   )
 }

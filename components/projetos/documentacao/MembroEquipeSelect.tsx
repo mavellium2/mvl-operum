@@ -29,6 +29,10 @@ interface Props {
   name?: string
   id?: string
   disabled?: boolean
+  /** Nome acessível quando não há <label> ligado ao campo (ex.: dentro da folha). */
+  ariaLabel?: string
+  /** Sem o botão "+" ao lado (o "＋ Criar novo membro…" continua na lista). Usado dentro da folha. */
+  semBotaoCriar?: boolean
 }
 
 const CREATE_SENTINEL = '__criar_novo_membro__'
@@ -53,6 +57,8 @@ export default function MembroEquipeSelect({
   name,
   id,
   disabled,
+  semBotaoCriar = false,
+  ariaLabel,
 }: Props) {
   const { toast } = useToast()
   const selectRef = useRef<HTMLSelectElement>(null)
@@ -126,6 +132,7 @@ export default function MembroEquipeSelect({
         <select
           ref={selectRef}
           id={id}
+          aria-label={ariaLabel}
           name={name}
           value={value ?? ''}
           onChange={handleSelectChange}
@@ -141,7 +148,7 @@ export default function MembroEquipeSelect({
           ))}
           <option value={CREATE_SENTINEL}>＋ Criar novo membro…</option>
         </select>
-        <button
+        {!semBotaoCriar && <button
           type="button"
           onClick={openModal}
           disabled={disabled}
@@ -150,7 +157,7 @@ export default function MembroEquipeSelect({
           className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg border border-slate-300 text-slate-600 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-colors disabled:opacity-50"
         >
           <Plus className="w-4 h-4" />
-        </button>
+        </button>}
       </div>
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Criar novo membro da equipe" maxWidth="max-w-sm">

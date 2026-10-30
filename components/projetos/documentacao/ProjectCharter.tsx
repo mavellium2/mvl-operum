@@ -1,22 +1,25 @@
 'use client'
 
-import { printPageStyle } from '@/lib/printPageStyle'
+import { printPageStyle, rodapeDocumento } from '@/lib/printPageStyle'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import { useDesfazer } from '@/hooks/useDesfazer'
+import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
+import EditorDocumento, { type StatusSalvamento } from '@/components/documentos/editor/EditorDocumento'
+import { FOLHA_MARGEM_MM } from '@/components/documentos/editor/folha'
 import { useRecoverableDraft } from '@/hooks/useRecoverableDraft'
 import { useAutosave } from '@/hooks/useAutosave'
 import { useParams } from 'next/navigation'
 import { useReactToPrint } from 'react-to-print'
-import { Save, History } from 'lucide-react'
+import { Save } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import Drawer from '@/components/ui/Drawer'
-import CamposQuadroDocumento from './CamposQuadroDocumento'
 import { useToast } from '@/components/ui/Toast'
 import { fetchWithSession } from '@/lib/clientFetch'
 import { formatDateBR, toDateInputValue } from '@/lib/date'
-import MacroFaseTable, { type MacroFase } from './MacroFaseTable'
-import ProjectCharterDocument, { type CharterDocumentProps } from './ProjectCharterDocument'
+import type { MacroFase } from './MacroFaseTable'
+import ProjectCharterDocument, { TITULO_TERMO, type CharterDocumentProps, type EdicaoTermo } from './ProjectCharterDocument'
 import type { CharterChange } from '@/lib/charterChanges'
 import {
   type MembroEquipeOption,
@@ -52,6 +55,8 @@ interface CharterData {
   gerente: Gerente | null
   gerenteProjeto: string
   membros: { name: string; papel?: string }[]
+  /** Linha institucional do cadastro do projeto (automática no quadro). */
+  instituicao?: string
 }
 
 interface DocumentVersion {
@@ -109,8 +114,6 @@ const labelClass = 'block text-xs font-semibold text-slate-500 uppercase trackin
 const inputClass =
   'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 bg-white ' +
   ' focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-const textareaClass = inputClass + ' resize-none leading-relaxed'
-const sectionTitle = 'text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 pb-1 border-b border-slate-200'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -147,12 +150,10 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
   // MacroFases (local state, synced with server)
   const [fases, setFases] = useState<MacroFase[]>([])
   const savedFases = useRef<MacroFase[]>([])
-  const [newestFaseId, setNewestFaseId] = useState<string | undefined>(undefined)
 
   // Versioning
   const [versions, setVersions] = useState<DocumentVersion[]>([])
   const [isManager, setIsManager] = useState(false)
-  const [screenMode, setScreenMode] = useState<'form' | 'document'>('form')
   const [selectedVersion, setSelectedVersion] = useState<DocumentVersion | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historySearch, setHistorySearch] = useState('')
@@ -167,6 +168,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     elaboradoPor: '', elaboradoPorUserId: null, aprovadoPor: '', aprovadoPorUserId: null, versao: '1.0', dataAprovacaoRaw: '',
   })
   const initializedMeta = useRef(false)
+  const [metaCarregada, setMetaCarregada] = useState(false)
 
   // Membros da equipe (responsável/aprovador devem ser membros) + criados na sessão (pendência)
   const { todos: todosMembros, registrarCriado } = useMembrosEquipe(membros)
@@ -179,7 +181,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: payload,
     })
     if (!response.ok) throw new Error('Não foi possível salvar o rascunho')
-  }, { delay: 1200, enabled: canEdit && draftReady, guardNavigation: true })
+  }, { delay: 1200, enabled: canEdit && draftReady })
   const resetDraft = draftAutosave.reset
   const recovery = useRecoverableDraft(projetoId, draftPayload, draftAutosave.status, canEdit && draftReady)
   function restoreLocalDraft() {
@@ -275,6 +277,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
             versao: approved.versao,
             dataAprovacaoRaw: toDateInputValue(approved.dataAprovacao),
           })
+          setMetaCarregada(true)
         }
       }
     } catch {/* non-critical */}
@@ -293,7 +296,8 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     if (!canEdit) return
     const id = crypto.randomUUID()
     setFases(prev => [...prev, { id, fase: '', dataLimite: '', custo: '' }])
-    setNewestFaseId(id)
+    // A nova linha já recebe o foco para digitar o nome da fase.
+    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(`[data-campo="fase-${CSS.escape(id)}"] textarea`)?.focus())
   }
   function handleFaseChange(id: string, field: keyof Omit<MacroFase, 'id'>, value: string) {
     if (canEdit) setFases(prev => prev.map(f => f.id === id ? { ...f, [field]: value } : f))
@@ -304,10 +308,11 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
 
   // ── Print ──────────────────────────────────────────────────────────────────
 
+  const rodape = rodapeDocumento(TITULO_TERMO, selectedVersion?.versao ?? versionMeta.versao)
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: 'Termo de Abertura de Projeto',
-    pageStyle: printPageStyle({ marginMm: { top: 15, x: 20 } }),
+    documentTitle: TITULO_TERMO,
+    pageStyle: printPageStyle({ marginMm: FOLHA_MARGEM_MM, rodape }),
   })
 
   // ── Commit (save version) ──────────────────────────────────────────────────
@@ -339,14 +344,6 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
       ...m,
       elaboradoPor: membro?.name ?? '',
       elaboradoPorUserId: membro?.id ?? null,
-    }))
-  }
-
-  function handleSelectAprovado(membro: MembroEquipeOption | null) {
-    setVersionMeta(m => ({
-      ...m,
-      aprovadoPor: membro?.name ?? '',
-      aprovadoPorUserId: membro?.id ?? null,
     }))
   }
 
@@ -386,6 +383,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
         window.dispatchEvent(new CustomEvent('operum:document-version', { detail: { projetoId } }))
         savedFields.current = fields
         savedFases.current = fases
+        setBase(JSON.stringify({ fields, fases, versionMeta }))
         const saved = await r.json()
         toast(saved.status === 'PENDING' ? 'Versão enviada para aprovação. O documento vigente foi preservado.' : 'Versão aprovada e publicada.')
         if (saved.status === 'APPROVED') window.dispatchEvent(new CustomEvent('operum:document-published', { detail: { projetoId } }))
@@ -433,25 +431,38 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     }
   }
 
+  // ── Desfazer / refazer (campos, macro fases e quadro) ──────────────────────
+
+  const estadoEdicao = useMemo(() => ({ fields, fases, versionMeta }), [fields, fases, versionMeta])
+  const aplicarEstado = useCallback((e: typeof estadoEdicao) => { setFields(e.fields); setFases(e.fases); setVersionMeta(e.versionMeta) }, [])
+  // O histórico começa depois de carregar o documento, o rascunho e o quadro da versão vigente.
+  const historicoEdicao = useDesfazer(estadoEdicao, aplicarEstado, { ativo: draftReady && !selectedVersion, chave: `${draftReady}-${metaCarregada}` })
+
+  // Alterações desta sessão que ainda não viraram versão (aviso ao sair do documento).
+  const estadoAtual = JSON.stringify(estadoEdicao)
+  const [base, setBase] = useState<string | null>(null)
+  const estadoAtualRef = useRef(estadoAtual)
+  useEffect(() => { estadoAtualRef.current = estadoAtual })
+  useEffect(() => { if (draftReady) setBase(estadoAtualRef.current) }, [draftReady, metaCarregada])
+  const rascunho = useRascunhoDocumento(projetoId, 'CHARTER')
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-300 flex items-center justify-center">
-        <div className="bg-white animate-pulse rounded shadow-2xl" style={{ width: '210mm', minHeight: '297mm' }} />
+      <div className="flex h-full items-center justify-center bg-[#eef0f3] p-8">
+        <div className="bg-white animate-pulse shadow" style={{ width: '210mm', minHeight: '297mm' }} />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-300 flex items-center justify-center p-8">
+      <div className="flex h-full items-center justify-center bg-[#eef0f3] p-8">
         <div className="w-full max-w-[210mm] rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm">{error}</div>
       </div>
     )
   }
-
-  const autoSaving = draftAutosave.status === 'saving'
 
   const pendenciasResponsaveis = [
     versionMeta.elaboradoPorUserId &&
@@ -480,7 +491,9 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     aprovadoPor: selectedVersion?.aprovadoPor ?? versionMeta.aprovadoPor,
     versao: selectedVersion?.versao ?? versionMeta.versao,
     dataAprovacao: formatDateBR(selectedVersion?.dataAprovacao ?? versionMeta.dataAprovacaoRaw, ''),
-    categoria: content?.categoria ?? '', justificativa: content?.justificativa ?? '',
+    // Linha institucional: automática, do cadastro do projeto (versões antigas guardaram a digitada).
+    categoria: (selectedVersion ? content?.categoria : data?.instituicao) || content?.categoria || '',
+    justificativa: content?.justificativa ?? '',
     objetivos: content?.objetivos ?? '', metodologia: content?.metodologia ?? '',
     descricaoProduto: content?.descricaoProduto ?? '', premissas: content?.premissas ?? '',
     restricoes: content?.restricoes ?? '', limitesAutoridade: content?.limitesAutoridade ?? '',
@@ -490,156 +503,98 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadCharterDocx(documentProps) }
     catch { toast('Não foi possível gerar o Word. Verifique as imagens do documento.', 'error') }
   }
+
+  const editavel = canEdit && draftReady && !selectedVersion && !savingVersion
+  const edicao: EdicaoTermo = {
+    projetoId,
+    membros: todosMembros,
+    onCriarMembro: registrarCriado,
+    onCampo: (campo, valor) => setFields(f => ({ ...f, [campo]: valor })),
+    elaboradoPorUserId: versionMeta.elaboradoPorUserId,
+    onElaboradoPor: handleSelectElaborado,
+    onVersao: v => setVersionMeta(m => ({ ...m, versao: v })),
+    dataAprovacaoRaw: versionMeta.dataAprovacaoRaw,
+    onDataAprovacao: v => setVersionMeta(m => ({ ...m, dataAprovacaoRaw: v })),
+    onFase: handleFaseChange,
+    onAdicionarFase: handleAddFase,
+    onRemoverFase: handleRemoveFase,
+  }
+  const vigente = versions.filter(v => v.status === 'APPROVED').sort((a, b) => new Date(b.approvedAt ?? b.createdAt).getTime() - new Date(a.approvedAt ?? a.createdAt).getTime())[0]
+  const pendentes = versions.filter(v => v.status === 'PENDING').length
+  const statusSalvamento: StatusSalvamento = !canEdit || selectedVersion ? 'leitura'
+    : draftAutosave.status === 'saving' ? 'salvando'
+    : draftAutosave.status === 'error' ? 'erro'
+    : draftAutosave.status === 'pending' ? 'pendente' : 'salvo'
+
   return (
-    <div className="min-h-screen bg-gray-300 flex flex-col items-center py-8 px-3 sm:px-6 gap-6">
-      {recovery.backup && <div role="alert" className="w-full max-w-[210mm] rounded border bg-amber-50 p-3 text-sm">Há uma cópia local de alterações não confirmadas nesta aba.
-        <button type="button" onClick={restoreLocalDraft} className="ml-2 underline">Restaurar cópia local</button>
-        <button type="button" onClick={recovery.discard} className="ml-2 underline">Descartar cópia local</button>
-      </div>}
-      {/* ── Version meta ──────────────────────────────────────────────────── */}
-      {screenMode === 'form' && <div inert={savingVersion} className="w-full max-w-[210mm] bg-white rounded-xl shadow-md p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <CamposQuadroDocumento
-          idPrefix="pc"
-          projetoId={projetoId}
-          membros={todosMembros}
-          onCriarMembro={registrarCriado}
-          gerenteProjeto={data?.gerenteProjeto ?? ''}
-          elaboradoPorUserId={versionMeta.elaboradoPorUserId}
-          onElaboradoPor={handleSelectElaborado}
-          aprovadoPorUserId={versionMeta.aprovadoPorUserId}
-          onAprovadoPor={handleSelectAprovado}
-          versao={versionMeta.versao}
-          onVersao={v => setVersionMeta(m => ({ ...m, versao: v }))}
-          dataAprovacao={versionMeta.dataAprovacaoRaw}
-          onDataAprovacao={v => setVersionMeta(m => ({ ...m, dataAprovacaoRaw: v }))}
-          labelClass={labelClass}
-          inputClass={inputClass}
-        />
-      </div>}
-
-      {draftError && (
-        <div role="alert" className="w-full max-w-[210mm] rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {draftError}
-          <button type="button" className="ml-3 font-medium underline" onClick={() => { setDraftError(''); setDraftAttempt(value => value + 1) }}>
-            Tentar novamente
-          </button>
-        </div>
-      )}
-
-      {/* ── Action bar ────────────────────────────────────────────────────── */}
-      <div className="w-full max-w-[210mm] flex flex-wrap justify-end gap-2">
-        <div role="status" className="self-center text-xs mr-2">
-          {autoSaving ? 'Salvando…' : draftAutosave.status === 'pending' ? 'Alterações pendentes' : draftAutosave.status === 'error' ? 'Falha ao salvar o rascunho. Seu texto foi preservado.' : draftReady ? 'Rascunho salvo' : ''}
-          {draftAutosave.status === 'error' && <button type="button" onClick={() => void draftAutosave.flush()} className="ml-2 underline">Tentar salvar novamente</button>}
-        </div>
-        <button
-          aria-label="Histórico de versões"
-          onClick={() => setHistoryOpen(true)}
-          className="relative flex items-center gap-1.5 px-3 py-2 text-slate-600 text-sm rounded-xl hover:bg-white hover:shadow transition-all"
-        >
-          <History className="w-4 h-4" />
-          {versions.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-              {versions.length > 99 ? '99+' : versions.length}
-            </span>
+    <>
+      <EditorDocumento
+        documento="Termo de Abertura"
+        editavel={editavel}
+        status={statusSalvamento}
+        versao={{
+          rotulo: selectedVersion ? `${selectedVersion.versao} · ${STATUS_LABEL[selectedVersion.status].toLowerCase()}` : vigente ? `${vigente.versao} · vigente` : 'Rascunho',
+          rotuloAtual: vigente ? `Rascunho sobre a ${vigente.versao} (editável)` : 'Rascunho (editável)',
+          selecionada: selectedVersion?.id ?? null,
+          opcoes: versions.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao} · ${v.id === vigente?.id ? 'vigente' : STATUS_LABEL[v.status].toLowerCase()}`, detalhe: v.commitTitle })),
+          onSelecionar: id => setSelectedVersion(versions.find(v => v.id === id) ?? null),
+        }}
+        onSalvar={openCommitModal}
+        podeSalvar={canEdit && draftReady && !savingVersion && !selectedVersion}
+        onHistorico={() => setHistoryOpen(true)}
+        pendentes={{ total: pendentes, onRevisar: () => window.dispatchEvent(new CustomEvent('operum:revisar-propostas', { detail: { projetoId } })) }}
+        onImprimir={() => handlePrint()}
+        onPdf={() => handlePrint()}
+        onWord={() => void exportWord()}
+        desfazer={historicoEdicao}
+        onAdicionarLinha={handleAddFase}
+        saida={{
+          pendente: canEdit && draftReady && !selectedVersion && base !== null && estadoAtual !== base,
+          salvar: openCommitModal,
+          // O Termo já guarda o rascunho sozinho: "salvar mais tarde" só garante o último texto.
+          salvarDepois: () => draftAutosave.flush(),
+          descartar: async () => {
+            draftAutosave.reset(draftPayload)
+            await rascunho.descartar()
+          },
+        }}
+        avisos={<>
+          {recovery.backup && <div role="alert" className="rounded border bg-amber-50 p-3 text-sm">Há uma cópia local de alterações não confirmadas nesta aba.
+            <button type="button" onClick={restoreLocalDraft} className="ml-2 underline">Restaurar cópia local</button>
+            <button type="button" onClick={recovery.discard} className="ml-2 underline">Descartar cópia local</button>
+          </div>}
+          {draftError && (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {draftError}
+              <button type="button" className="ml-3 font-medium underline" onClick={() => { setDraftError(''); setDraftAttempt(value => value + 1) }}>Tentar novamente</button>
+            </div>
           )}
-        </button>
-        {screenMode === 'form' && <button
-          onClick={openCommitModal}
-          disabled={!canEdit || !draftReady || savingVersion}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
-        >
-          <Save className="w-4 h-4" />
-          Salvar Versão
-        </button>}
-        {screenMode === 'form' ? <button className="rounded-xl bg-blue-600 px-4 py-2 text-white" onClick={() => { setSelectedVersion(null); setScreenMode('document') }}>Gerar documento</button> : <>
-          <button className="rounded-xl border px-4 py-2" onClick={() => setScreenMode('form')}>Voltar ao formulário</button>
-          <button className="rounded-xl bg-blue-600 px-4 py-2 text-white" onClick={() => handlePrint()}>Baixar PDF</button>
-          <button className="rounded-xl bg-blue-600 px-4 py-2 text-white" onClick={() => void exportWord()}>Baixar Word</button>
+          {draftAutosave.status === 'error' && (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              Falha ao salvar o rascunho. Seu texto foi preservado.
+              <button type="button" onClick={() => void draftAutosave.flush()} className="ml-2 underline">Tentar salvar novamente</button>
+            </div>
+          )}
+          {selectedVersion && (
+            <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+              Versão {selectedVersion.versao} · {STATUS_LABEL[selectedVersion.status]} — somente leitura.
+              {!context && <span role="alert">Esta versão antiga não registrou cabeçalho e equipe. Os dados atuais não substituem o histórico.</span>}
+              <button type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setSelectedVersion(null)}>Voltar ao rascunho</button>
+            </div>
+          )}
         </>}
-      </div>
-      {screenMode === 'document' && <>
-        <p role="status">{selectedVersion ? `Versão ${selectedVersion.versao} · ${STATUS_LABEL[selectedVersion.status]}` : 'Prévia do rascunho — ainda não publicada'}</p>
-        {selectedVersion && !context && <p role="alert">Esta versão antiga não registrou cabeçalho e equipe. Os dados atuais não substituem o histórico.</p>}
-        <div role="region" aria-label="Prévia A4 do Termo de Abertura" tabIndex={0} className="w-full max-w-[210mm] overflow-x-auto shadow-2xl">
-          <PaginasDaPrevia marginTopMm={15}>
-            <ProjectCharterDocument ref={printRef} {...documentProps} />
-          </PaginasDaPrevia>
-        </div>
-      </>}
-
-      {/* ── Editable form (screen only) ───────────────────────────────────── */}
-      {screenMode === 'form' && <div className="w-full max-w-[210mm] flex flex-col gap-4 print:hidden">
-
-        <fieldset disabled={!canEdit || !draftReady || savingVersion} className="min-w-0">
-        <FormSection title="Instituição / curso / termo / semestre">
-          <textarea aria-label="Instituição / curso / termo / semestre" rows={2} className={textareaClass} value={fields.categoria} onChange={e => setFields(f => ({ ...f, categoria: e.target.value }))} />
-        </FormSection>
-        <FormSection title="Justificativa do projeto">
-          <textarea rows={5} className={textareaClass} value={fields.justificativa}
-            onChange={e => setFields(f => ({ ...f, justificativa: e.target.value }))}
-            placeholder="Descreva a justificativa do projeto…" />
-        </FormSection>
-
-        <FormSection title="Objetivo(s) do projeto">
-          <textarea rows={5} className={textareaClass} value={fields.objetivos}
-            onChange={e => setFields(f => ({ ...f, objetivos: e.target.value }))}
-            placeholder="Liste os objetivos do projeto…" />
-        </FormSection>
-
-        <FormSection title="Descrição do produto do projeto">
-          <textarea rows={4} className={textareaClass} value={fields.descricaoProduto}
-            onChange={e => setFields(f => ({ ...f, descricaoProduto: e.target.value }))}
-            placeholder="Descreva o produto que será entregue…" />
-        </FormSection>
-
-        <FormSection title="Premissas (hipóteses) e restrições para o projeto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>Premissas (Hipóteses)</label>
-              <textarea rows={4} className={textareaClass} value={fields.premissas}
-                onChange={e => setFields(f => ({ ...f, premissas: e.target.value }))}
-                placeholder="Liste as premissas assumidas…" />
-            </div>
-            <div>
-              <label className={labelClass}>Restrições (Imposições)</label>
-              <textarea rows={4} className={textareaClass} value={fields.restricoes}
-                onChange={e => setFields(f => ({ ...f, restricoes: e.target.value }))}
-                placeholder="Liste as restrições do projeto…" />
-            </div>
+      >
+        <PaginasDaPrevia marginTopMm={FOLHA_MARGEM_MM.top} folha={{ rodape }}>
+          <div className="shadow-[0_1px_3px_rgba(15,23,42,0.12)]">
+            <ProjectCharterDocument {...documentProps} edicao={edicao} />
           </div>
-        </FormSection>
+        </PaginasDaPrevia>
+      </EditorDocumento>
 
-        <FormSection title="Macro fases, prazos e custo">
-          <MacroFaseTable
-            fases={fases}
-            onChange={handleFaseChange}
-            onAdd={handleAddFase}
-            onRemove={handleRemoveFase}
-            autoFocusId={newestFaseId}
-          />
-        </FormSection>
-
-        <FormSection title="Principais envolvidos">
-          <label className={labelClass}>Instituição / Professores / Outros (manual, uma linha por pessoa)</label>
-          <textarea rows={3} className={textareaClass} value={fields.principaisEnvolvidos}
-            onChange={e => setFields(f => ({ ...f, principaisEnvolvidos: e.target.value }))}
-            placeholder="Ex: Prof. João Silva – Orientador&#10;FATEC São Paulo" />
-        </FormSection>
-
-        <FormSection title="Designação de gerente: limites de autoridade">
-          <textarea rows={4} className={textareaClass} value={fields.limitesAutoridade}
-            onChange={e => setFields(f => ({ ...f, limitesAutoridade: e.target.value }))}
-            placeholder="Descreva os limites de autoridade do gerente…" />
-        </FormSection>
-
-        <FormSection title="Metodologia do projeto (opcional, fora do modelo)">
-          <textarea rows={4} className={textareaClass} value={fields.metodologia}
-            onChange={e => setFields(f => ({ ...f, metodologia: e.target.value }))}
-            placeholder="Descreva a metodologia utilizada…" />
-        </FormSection>
-        </fieldset>
-      </div>}
+      {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
+      <div hidden>
+        <ProjectCharterDocument ref={printRef} {...documentProps} />
+      </div>
 
       {/* ── Commit modal ──────────────────────────────────────────────────── */}
       <Modal isOpen={commitModalOpen} onClose={() => { if (!savingVersionRef.current) setCommitModalOpen(false) }} title="Salvar alteração" maxWidth="max-w-sm">
@@ -708,7 +663,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
                   <div className="text-xs text-slate-500">
                     v{v.versao} · {v.author?.name ?? 'Desconhecido'} · {new Date(v.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  <button disabled={!v.payload} className="text-left text-sm text-blue-700 disabled:opacity-50" onClick={() => { setSelectedVersion(v); setScreenMode('document'); setHistoryOpen(false) }}>Abrir documento desta versão</button>
+                  <button disabled={!v.payload} className="text-left text-sm text-blue-700 disabled:opacity-50" onClick={() => { setSelectedVersion(v); setHistoryOpen(false) }}>Abrir documento desta versão</button>
                   <details><summary className="text-xs cursor-pointer">Alterações desta versão</summary>
                     {v.changes ? v.changes.length ? v.changes.map(change => <div key={change.field} className="my-2 text-xs"><strong>{change.field}</strong><p>Antes</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap">{JSON.stringify(change.before, null, 2)}</pre><p>Depois</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap">{JSON.stringify(change.after, null, 2)}</pre></div>) : <p>Sem alterações de conteúdo.</p> : <p>Diff não registrado nesta versão antiga.</p>}
                   </details>
@@ -736,17 +691,6 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
           </div>
         </div>
       </Drawer>
-    </div>
-  )
-}
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-xl shadow-md p-5">
-      <p className={`${sectionTitle}`}>{title}</p>
-      {children}
-    </div>
+    </>
   )
 }

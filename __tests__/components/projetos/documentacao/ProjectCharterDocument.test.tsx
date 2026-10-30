@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import ProjectCharterDocument from '@/components/projetos/documentacao/ProjectCharterDocument'
 
 const base = {
@@ -10,42 +10,53 @@ const base = {
   fases: [{ id: 'f1', fase: '1.1 Requisitos', dataLimite: '2010-02-06', custo: '124,4' }],
 }
 
-describe('ProjectCharterDocument — igual ao modelo do professor', () => {
-  it('títulos sem numeração nem sublinhado, e justificativa/objetivos/produto dentro de caixa com borda', () => {
+describe('ProjectCharterDocument — folha do Termo (PDF)', () => {
+  it('seções numeradas em romano na faixa cinza, na ordem do modelo', () => {
     render(<ProjectCharterDocument {...base} />)
-    const titulo = screen.getByText('Justificativa do projeto')
-    expect(titulo.style.borderBottom).toBe('')
-    expect(titulo.style.textTransform).toBe('')
-    for (const t of ['Porque sim', 'Facilitar', 'Site']) {
-      expect(screen.getByText(t).style.border).toContain('1px solid')
-    }
+    const titulos = screen.getAllByRole('columnheader').map(th => th.textContent).filter(t => /^[IVX]+\. /.test(t ?? ''))
+    expect(titulos).toEqual([
+      'I. Justificativa do projeto', 'II. Objetivo(s) do projeto', 'III. Descrição do produto do projeto',
+      'IV. Premissas (hipóteses) e restrições para o projeto', 'V. Macro fases, prazos e custo',
+      'VI. Principais envolvidos', 'VII. Designação de gerente',
+    ])
   })
 
-  it('cabeçalho: instituição na linha cinza, rótulos do quadro e custos sem símbolo de moeda', () => {
+  it('quadro de identificação: instituição na faixa, elaborado + versão, aprovado (gerente) + data', () => {
     render(<ProjectCharterDocument {...base} />)
-    expect(screen.getByText('Fatec', { selector: 'td' })).toBeInTheDocument()
-    expect(screen.getByText('Nome do projeto:')).toBeInTheDocument()
-    expect(screen.getAllByText('124,40').length).toBeGreaterThan(0)
-    expect(screen.queryAllByText(/R\$/)).toHaveLength(0)
+    const quadro = within(screen.getByTestId('quadro-identificacao'))
+    expect(quadro.getByText('Fatec')).toBeInTheDocument()
+    expect(quadro.getByText('Nome do projeto: Projeto Operum')).toBeInTheDocument()
+    expect(quadro.getByText(/Elaborado por:/)).toHaveTextContent('Elaborado por: Agnes')
+    expect(quadro.getByText('Versão: 1.0')).toBeInTheDocument()
+    expect(quadro.getByText('Aprovado por: Marcelo — Gerente do projeto')).toBeInTheDocument()
+    expect(quadro.getByText(/Data:/)).toHaveTextContent('Data: 15/02/2010')
+  })
+
+  it('custos em reais, total calculado e assinaturas no fim', () => {
+    const { container } = render(<ProjectCharterDocument {...base} />)
+    expect(screen.getAllByText('R$ 124,40').length).toBe(2)
+    expect(container.firstElementChild!.lastElementChild).toBe(screen.getByTestId('bloco-assinaturas'))
+    expect(screen.getAllByTestId('assinatura').map(a => a.textContent)).toEqual([
+      'AgnesElaborado por', 'MarceloAprovado por — Gerente do projeto',
+    ])
   })
 
   it('principais envolvidos agrupados, com os integrantes depois do professor', () => {
     const { container } = render(<ProjectCharterDocument {...base} />)
     const rotulos = [...container.querySelectorAll('div[style*="bold"]')].map(e => e.textContent)
+      .filter(t => ['Instituição', 'Professor', 'Integrantes do Grupo', 'Patrocinador'].includes(t ?? ''))
     expect(rotulos).toEqual(['Instituição', 'Professor', 'Integrantes do Grupo', 'Patrocinador'])
   })
 
-  it('metodologia só aparece se preenchida (não existe no modelo)', () => {
+  it('metodologia só aparece no PDF se preenchida (não existe no modelo)', () => {
     const { rerender } = render(<ProjectCharterDocument {...base} />)
-    expect(screen.queryByText('Metodologia do projeto')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Metodologia do projeto/)).not.toBeInTheDocument()
     rerender(<ProjectCharterDocument {...base} metodologia="Scrum" />)
-    expect(screen.getByText('Metodologia do projeto')).toBeInTheDocument()
+    expect(screen.getByText('VIII. Metodologia do projeto')).toBeInTheDocument()
   })
 
-  it('integrantes saem como "Nome – Papel", puxando a função do cadastro', () => {
-    render(<ProjectCharterDocument {...base} membros={[{ name: 'Ana', papel: 'Dev, Tech Lead' }, { name: 'Bia' }]} />)
-    expect(screen.getByText('Ana – Dev, Tech Lead')).toBeInTheDocument()
-    expect(screen.getByText('Bia')).toBeInTheDocument()
+  it('fora do editor não há campos editáveis', () => {
+    const { container } = render(<ProjectCharterDocument {...base} />)
+    expect(container.querySelectorAll('textarea, input, select')).toHaveLength(0)
   })
 })
-

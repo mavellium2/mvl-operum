@@ -154,7 +154,7 @@ export default function ProjectSidebar({ projetoId, canManageMembers, canManageG
             <span className="truncate">{label}</span>
           </Link>
         ))}
-        {permissions.has('documentos:ver') && isActive(`/projetos/${projetoId}/documentacao`) && <DocumentSidebar embedded activeDoc={searchParams.get('doc') ?? 'stakeholder'} onSelect={doc => router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)} />}
+        {permissions.has('documentos:ver') && isActive(`/projetos/${projetoId}/documentacao`) && <DocumentSidebar embedded projetoId={projetoId} activeDoc={searchParams.get('doc') ?? 'stakeholder'} onSelect={doc => router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)} />}
         <Link href="/projetos" className="mt-4 block border-t border-gray-200 px-3 py-3 text-sm text-gray-600 hover:text-gray-900">Todos os projetos</Link>
       </SidebarLayout>
 

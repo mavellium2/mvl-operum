@@ -6,6 +6,7 @@ import { canProjectPermission as can } from '@/services/projectAccess'
 import { documentoVigente, salvarRascunho } from '@/services/documentRevisionService'
 import { documentRevisionErrorResponse } from '@/lib/documentRevisionHttp'
 import { getTree } from '@/services/wbsService'
+import { cabecalhoDaAta } from '@/services/ataService'
 
 export async function GET(
   _: Request,
@@ -66,13 +67,15 @@ export async function GET(
       }))
     }
 
-    const [gerente, userProjects] = await Promise.all([
+    const [gerente, userProjects, cabecalho] = await Promise.all([
       gerenteDoProjeto(projetoId),
       prisma.userProject.findMany({
         where: { projectId: projetoId, active: true },
         include: { user: { select: { name: true, signatureUrl: true } } },
         orderBy: { order: 'asc' },
       }),
+      // Linha institucional do cadastro (Editar projeto > Informações iniciais), igual à da Ata.
+      cabecalhoDaAta(tenantId, projetoId),
     ])
 
     const membros = userProjects
@@ -89,6 +92,7 @@ export async function GET(
       gerente: gerente.nome ? { name: gerente.nome, signatureUrl: gerente.signatureUrl } : null,
       gerenteProjeto: gerente.nome,
       membros,
+      instituicao: cabecalho.instituicao,
     })
   } catch (err) {
     console.error('[charter GET]', err)

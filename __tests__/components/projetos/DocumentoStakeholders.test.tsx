@@ -15,10 +15,6 @@ vi.mock('react-to-print', () => ({
   useReactToPrint: vi.fn(() => vi.fn()),
 }))
 
-// ── StakeholderDocument — renderização pesada desnecessária para estes testes
-vi.mock('@/components/projetos/StakeholderDocument', () => ({
-  default: vi.fn(() => <div data-testid="stakeholder-document" />),
-}))
 
 // ── Server action de criação de membro — não exercitada nestes testes
 vi.mock('@/app/actions/membros', () => ({
@@ -106,7 +102,7 @@ describe('DocumentoStakeholders — localStorage', () => {
   it('não chama localStorage.getItem durante a inicialização', async () => {
     const getSpy = vi.spyOn(Storage.prototype, 'getItem')
     renderComponent()
-    await waitFor(() => expect(screen.getByTestId('stakeholder-document')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByTestId('stakeholders-folha').length).toBeGreaterThan(0))
     expect(getSpy).not.toHaveBeenCalled()
   })
 
@@ -125,8 +121,10 @@ describe('DocumentoStakeholders — carga inicial da versão APPROVED', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Elaborado por')).toHaveValue('ana'),
     )
-    expect(screen.getByLabelText('Aprovado por')).toHaveValue('João')
-    expect(screen.getByLabelText('Aprovado por')).toHaveAttribute('readonly')
+    // Aprovador é sempre o gerente: campo automático (sem controle editável).
+    const quadros = screen.getAllByTestId('quadro-identificacao')
+    expect(quadros[0]).toHaveTextContent('Aprovado por: João')
+    expect(screen.queryByLabelText('Aprovado por')).not.toBeInTheDocument()
   })
 })
 
@@ -161,12 +159,11 @@ describe('DocumentoStakeholders — responsáveis restritos a membros da equipe'
     // O nome da versão aprovada não resolve para um membro → select sem seleção
     expect(screen.getByLabelText('Elaborado por')).toHaveValue('')
 
-    fireEvent.click(screen.getByText('Salvar Versão'))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
 
     // Modal NÃO abre e exibe notificação de falha
     expect(screen.queryByText('Salvar alteração')).not.toBeInTheDocument()
-    expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(screen.getByRole('alert').textContent).toContain('membro da equipe')
+    expect((await screen.findAllByText(/não é um membro do projeto/)).length).toBeGreaterThan(0)
   })
 })
 
@@ -176,10 +173,10 @@ describe('DocumentoStakeholders — fluxo de salvar (commit)', () => {
     // Sincroniza com o fim do loadVersions (campos inicializados a partir da
     // versão APPROVED) para que o clique atinja o botão do render mais recente.
     await waitFor(() => expect(screen.getByLabelText('Elaborado por')).toHaveValue('ana'))
-    expect(screen.getByText('Salvar Versão')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' })).toBeEnabled()
 
     const callsBefore = fetchSpy.mock.calls.length
-    fireEvent.click(screen.getByText('Salvar Versão'))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
 
     // Modal de commit deve aparecer
     expect(await screen.findByText('Salvar alteração')).toBeInTheDocument()
@@ -212,9 +209,9 @@ describe('DocumentoStakeholders — fluxo de salvar (commit)', () => {
     // Sincroniza com o fim do loadVersions antes de clicar em "Salvar Versão"
     // (evita o clique sobre um botão de um render intermediário).
     await waitFor(() => expect(screen.getByLabelText('Elaborado por')).toHaveValue('ana'))
-    expect(screen.getByText('Salvar Versão')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' })).toBeEnabled()
 
-    fireEvent.click(screen.getByText('Salvar Versão'))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
     await screen.findByText('Salvar alteração')
 
     const titleInput = screen.getByPlaceholderText('Ex: Atualização dos aprovadores')
@@ -235,9 +232,9 @@ describe('DocumentoStakeholders — fluxo de salvar (commit)', () => {
   it('cancelar o modal não dispara nenhum POST', async () => {
     renderComponent()
     await waitFor(() => expect(screen.getByLabelText('Elaborado por')).toHaveValue('ana'))
-    expect(screen.getByText('Salvar Versão')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' })).toBeEnabled()
 
-    fireEvent.click(screen.getByText('Salvar Versão'))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
     await screen.findByText('Salvar alteração')
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
 

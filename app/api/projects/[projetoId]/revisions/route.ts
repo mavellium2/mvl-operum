@@ -10,6 +10,7 @@ import {
   salvarRascunho,
   rascunhoDocumento,
   excluirVersao,
+  descartarRascunho,
 } from '@/services/documentRevisionService'
 import {
   tipoDocumento,
@@ -159,9 +160,17 @@ export async function DELETE(req: Request, { params }: Ctx) {
   const session = await verifySession()
   try {
     const { projetoId } = await params
+    const body = await req.json()
+    // Rascunho privado: { draft: true, type, resourceId } descarta as alterações não salvas.
+    if (body?.draft === true) {
+      const rascunho = z
+        .object({ draft: z.literal(true), type: tipoDocumento, resourceId: z.string().max(64).default('') })
+        .parse(body)
+      return Response.json(await descartarRascunho(session, projetoId, rascunho.type, rascunho.resourceId))
+    }
     const { versionId } = z
       .object({ versionId: z.string().min(1).max(64) })
-      .parse(await req.json())
+      .parse(body)
     const result = await excluirVersao(session, projetoId, versionId)
     revalidatePath(`/projetos/${projetoId}`, 'layout')
     return Response.json(result)

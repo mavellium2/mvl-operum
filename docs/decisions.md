@@ -899,3 +899,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** leituras da EAP incluem movimento recente dos cards; conclusões anteriores com histórico passam a aparecer automaticamente. Sem movimento, a data continua ausente. Campos manuais conservam precedência. Nenhum tempo ou gasto é inferido. A edição de data pelo MCP pode esbarrar nas mesmas exigências de responsável do painel, devolvidas no resultado de sincronização.
 - **Referências:** `services/realizadoDosCards.ts`, `lib/dataRealizacao.ts`, `services/planilhaCardSync.ts`, `services/taskCostsService.ts`, `app/api/internal/task-costs/[cardId]/route.ts`, `mcp-server/src/tools/budgets.ts`. Complementa ADR-054, ADR-064 e ADR-065.
 - **Condições de revisão:** revisar o fuso se houver configuração por tenant e o carregamento de movimentos se a volumetria do projeto justificar outra projeção.
+
+## ADR-069 — Editar os documentos direto na folha com um kit comum de campos
+
+- **Data:** 2026-10-30.
+- **Status:** implementada no código; pendente de publicação.
+- **Contexto:** Termo, Partes Interessadas, EAP e Atas eram editados em formulários separados da prévia ("Gerar documento"), cada um com layout e controles próprios; ajustes de quadro, assinatura, prévia diferente do PDF e quebras de página se repetiam em vários cards. O usuário desenhou no Penpot a tela "Edição de documento" (barra por grupos, folha editável e kit de 5 campos).
+- **Escolha:** um editor comum (`components/documentos/editor/`) e uma única folha por documento, usada para editar (dentro do editor) e para imprimir (fora dele). Campos do cadastro aparecem como Automático (não editáveis no documento); o aprovador é o gerente do projeto (exceto na Ata, que mantém a escolha atual). Desfazer/refazer é local à tela (`hooks/useDesfazer.ts`).
+- **Justificativa:** a prévia passa a ser a própria exportação, o padrão visual fica num só lugar e um documento novo vira só um modelo de seções e campos.
+- **Alternativas consideradas:** manter formulário + prévia e só restilizar a prévia (mantinha a duplicação e a diferença entre o que se edita e o que sai no PDF).
+- **Consequências:** os formulários antigos saíram (`CamposQuadroDocumento` removido). A tela de prévia na tela ainda é uma folha contínua com marcas de quebra; as páginas reais só existem no PDF. Exportações em Word seguem os modelos do professor. Sem mudança de API pública, além do campo `instituicao` no GET `/charter`.
+- **Referências:** `components/documentos/editor/EditorDocumento.tsx`, `components/documentos/editor/folha.tsx`, `hooks/useDesfazer.ts`, `hooks/useVersoesDocumento.ts`, `components/projetos/documentacao/ProjectCharter.tsx`, `components/projetos/DocumentoStakeholders.tsx`, `components/projetos/documentacao/EapDocument.tsx`, `components/atas/AtaFormClient.tsx`. Desenho: Penpot, página "Tela — Edição de documento".
+- **Condições de revisão:** se surgirem documentos novos com campos fora do kit, ou se o professor exigir o PDF idêntico aos modelos originais.

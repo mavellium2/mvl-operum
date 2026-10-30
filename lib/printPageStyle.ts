@@ -16,6 +16,18 @@ interface PrintPageStyleOptions {
   marginMm?: { top: number; x: number }
   /** CSS adicional, ex.: páginas nomeadas com orientação própria. */
   extraCss?: string
+  /** Texto do canto inferior esquerdo de todas as páginas (rodapeDocumento). */
+  rodape?: string
+}
+
+/** "Operum · Termo de Abertura do Projeto · versão 1.2" (rodapé dos documentos). */
+export function rodapeDocumento(documento: string, versao?: string | null): string {
+  return ['Operum', documento, versao?.trim() ? `versão ${versao.trim()}` : null].filter(Boolean).join(' · ')
+}
+
+/** Texto seguro dentro de `content: "..."` do CSS. */
+function textoCss(texto: string): string {
+  return texto.replace(/[\\"]/g, m => `\\${m}`).replace(/[\r\n]+/g, ' ')
 }
 
 /**
@@ -27,20 +39,28 @@ export function alturaUtilDaPaginaMm({ landscape = false, marginTopMm = 0 }: { l
   return (landscape ? 210 : 297) - marginTopMm - PAGE_NUMBER_MARGIN_MM
 }
 
-export function printPageStyle({ landscape = false, marginMm = { top: 0, x: 0 }, extraCss = '' }: PrintPageStyleOptions = {}): string {
+export function printPageStyle({ landscape = false, marginMm = { top: 0, x: 0 }, extraCss = '', rodape }: PrintPageStyleOptions = {}): string {
   const usable = alturaUtilDaPaginaMm({ landscape, marginTopMm: marginMm.top })
+  const esquerda = rodape ? `
+      @bottom-left {
+        content: "${textoCss(rodape)}";
+        font: 8pt Arial, Arimo, Helvetica, sans-serif;
+        color: #555;
+      }` : ''
   return `
     @page {
       size: A4${landscape ? ' landscape' : ''};
-      margin: ${marginMm.top}mm ${marginMm.x}mm ${PAGE_NUMBER_MARGIN_MM}mm;
+      margin: ${marginMm.top}mm ${marginMm.x}mm ${PAGE_NUMBER_MARGIN_MM}mm;${esquerda}
       @bottom-right {
         content: "Página " counter(page) " de " counter(pages);
-        font: 8pt Arial, Helvetica, sans-serif;
+        font: 8pt Arial, Arimo, Helvetica, sans-serif;
         color: #555;
       }
     }
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      [data-folha] { width: auto !important; padding: 0 !important; }
+      [data-tela-apenas] { display: none !important; }
       [data-print-sheet] { min-height: ${usable}mm !important; padding-bottom: 0 !important; }
       [data-print-sheet] tr { break-inside: avoid; }
       [data-print-sheet-fixed] { height: ${usable}mm !important; }

@@ -7,6 +7,18 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.43.0] — 2026-10-30
+
+- **Documentos — edição direto na folha:** Termo de Abertura, Partes Interessadas, EAP e Atas passam a ser editados na própria folha A4 (o que se vê é o que sai no PDF), no lugar do formulário + "Gerar documento". Segue a tela "Edição de documento" desenhada no Penpot.
+- **Barra do documento:** grupos Versão (abre versões anteriores só para leitura), Documento (salvar versão — Ctrl+S, histórico, revisar proposta pendente com contador, imprimir — Ctrl+P), Edição (desfazer/refazer — Ctrl+Z/Ctrl+Shift+Z, adicionar linha, limpar campo), Navegar (campo anterior/próximo com Tab e próximo campo vazio com contador; na EAP, Páginas 1/2), Download (PDF e Word), Outros (ajustar à largura, zoom, ajuda rápida e manual) e indicador de salvamento.
+- **Kit de 5 campos:** Automático (cadeado e origem ao passar o mouse; ex.: instituição, projeto, gerente, aprovador e a EAP gráfica, com atalho "Editar na EAP/WBS"), Texto (vazio mostra a pergunta que orienta), Pessoa (membros da equipe), Data (dd/mm/aaaa) e Lista/tabela ("+ Adicionar" no fim e "×" na linha). O campo em foco mostra ao lado da folha a ajuda, o contador de caracteres e "Tab → próximo campo".
+- **Folha:** seções numeradas em romano com faixa cinza, bloco de assinaturas no fim e rodapé "Operum · documento · versão" com "Página X de Y" em todas as páginas do PDF; margens de 12 mm (topo) e 15 mm (laterais).
+- **Partes Interessadas:** folha no layout do modelo "03_Form Stakeholders" (título centralizado, quadro com rótulos em negrito e data de aprovação numa linha só, tabela direto com o cabeçalho das colunas), com margens de 8 mm e colunas reequilibradas para caber mais pessoas por página; telefone sempre no formato (00) 00000-0000. "Adicionar parte interessada" se abre em interno ou externo e usa, num painel à direita, o mesmo cadastro da tela Stakeholders; quem é vinculado ou criado entra na tabela do documento.
+- **Sair sem salvar:** ao deixar qualquer documento com alterações que ainda não viraram versão (links, menu de documentos ou fechar a aba), o Operum pergunta se a pessoa quer salvar, salvar mais tarde (rascunho só dela, restaurado quando voltar) ou descartar as alterações.
+- **Ata:** o número é campo automático (cadeado); na ata nova já aparece o próximo número do projeto, confirmado ao salvar.
+- **Menu Documentação:** subitens com bolinha de estado e contador de propostas pendentes. A instituição do Termo passa a vir do cadastro do projeto, como na Ata.
+- Sem dependências novas ou migrations.
+
 ## [1.42.0] — 2026-10-26
 
 - **Sprint → Planilha de Custos:** a data realizada acompanha o movimento de conclusão do card, inclusive movimentos anteriores, no fuso de São Paulo. Reabertura remove a data automática; nova conclusão usa o novo movimento. Datas manuais são preservadas. Planilha, EAP, minicards e exportações usam a mesma origem; não são inventados tempo ou gastos.

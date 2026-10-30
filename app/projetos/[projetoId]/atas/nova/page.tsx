@@ -5,7 +5,7 @@ import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import prisma from '@/lib/prisma'
 import AtaFormClient from '@/components/atas/AtaFormClient'
-import { cabecalhoDaAta, emailsParaCopia } from '@/services/ataService'
+import { cabecalhoDaAta, emailsParaCopia, proximoNumero } from '@/services/ataService'
 import type { MemberOption } from '@/components/atas/MemberSelect'
 import type { Metadata } from 'next'
 
@@ -23,7 +23,7 @@ export default async function NovaAtaPage({ params }: { params: Promise<{ projet
 
   if (!(await canProjectPermission({ tenantId, role, userId }, projetoId, 'documentos:ver'))) notFound()
 
-  const [cabecalho, emailsSugeridos] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId)])
+  const [cabecalho, emailsSugeridos, numero] = await Promise.all([cabecalhoDaAta(tenantId, projetoId), emailsParaCopia(tenantId, projetoId), proximoNumero(projetoId)])
   const members: MemberOption[] = (
     await prisma.userProject.findMany({
       where: { projectId: projetoId, active: true },
@@ -44,14 +44,15 @@ export default async function NovaAtaPage({ params }: { params: Promise<{ projet
     })
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="max-w-3xl mx-auto px-4 py-8">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
         <Link href={`/projetos/${projetoId}/documentacao?doc=atas`} className="text-sm text-blue-600 hover:underline">
           ← Voltar às atas
         </Link>
-        <h1 className="text-xl font-bold text-gray-900 mt-3 mb-1">Nova Ata de Reunião</h1>
-        <p className="text-sm text-gray-500 mb-6">Projeto: {project.name}</p>
-        <AtaFormClient projetoId={projetoId} mode="create" nomeProjeto={project.name} members={members} emailsSugeridos={emailsSugeridos} instituicaoProjeto={cabecalho.instituicao} logoUrl={cabecalho.logoUrl} />
+        <h1 className="text-sm font-semibold text-gray-900">Nova Ata de Reunião</h1>
+      </div>
+      <main className="min-h-0 flex-1">
+        <AtaFormClient projetoId={projetoId} mode="create" numero={numero} nomeProjeto={project.name} members={members} emailsSugeridos={emailsSugeridos} instituicaoProjeto={cabecalho.instituicao} logoUrl={cabecalho.logoUrl} />
       </main>
     </div>
   )

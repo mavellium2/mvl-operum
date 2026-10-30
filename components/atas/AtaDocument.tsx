@@ -1,122 +1,205 @@
 'use client'
 
-import { forwardRef } from 'react'
+import { forwardRef, type ReactNode } from 'react'
+import { Users } from 'lucide-react'
 import {
-  ATA_ASSINATURAS_POR_LINHA, ATA_ESPACO_MM, ATA_LOGO_MM, ATA_RODAPE, ataAssinantes, ataComUmaLinhaVazia, ataCopias, ataData, ataNumero, ataPessoa,
+  ATA_ASSINATURAS_POR_LINHA, ataAssinantes, ataComUmaLinhaVazia, ataCopias, ataData, ataNumero, ataPessoa,
   type AtaExportData,
 } from '@/lib/exports/ataDocx'
+import type { MembroEquipeOption } from '@/components/projetos/documentacao/MembroEquipeSelect'
+import {
+  Assinaturas, Cabecalho, CampoAutomatico, CampoData, CampoPessoa, CampoTexto, CINZA_CLARO, Folha, LinhaLista, Quadro,
+  SecaoTabela, SecaoTexto, celula, celulaCampo, faixa, secao, useEditorFolha,
+} from '@/components/documentos/editor/folha'
 
 /**
- * Prévia/PDF da Ata no layout do modelo "01_Form Ata de Reunião" (mesmas regras
- * do Word em lib/exports/ataDocx.ts).
+ * Ata de Reunião na folha padrão dos documentos, com o conteúdo do modelo
+ * "01_Form Ata de Reunião" (mesmas regras de linhas do Word em
+ * lib/exports/ataDocx.ts). Dentro do EditorDocumento tudo é editado direto na
+ * folha; fora dele (PDF) sai só o texto.
  */
 
-const BORDA = '1px solid #000'
-const CINZA = '#bfbfbf'
-const CINZA_CLARO = '#e7e6e6'
-const td: React.CSSProperties = { border: BORDA, padding: '2px 5px', verticalAlign: 'top', fontSize: '9pt', lineHeight: 1.3, whiteSpace: 'pre-wrap' }
-const tabela: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }
-const B = ({ children }: { children: React.ReactNode }) => <strong>{children}</strong>
+export const TITULO_ATA = 'Ata de Reunião'
 
-export default forwardRef<HTMLDivElement, { data: AtaExportData }>(function AtaDocument({ data: d }, ref) {
+export type CampoTextoAta = 'local' | 'assuntosTratados' | 'decisoesTomadas' | 'observacoes'
+
+/** Ligações da folha com o estado do editor (só usadas dentro do EditorDocumento). */
+export interface EdicaoAta {
+  projetoId: string
+  membros: MembroEquipeOption[]
+  onCriarMembro: (membro: MembroEquipeOption) => void
+  onTexto: (campo: CampoTextoAta, valor: string) => void
+  dataRaw: string
+  onData: (data: string) => void
+  elaboradoPorUserId: string | null
+  onElaboradoPor: (membro: MembroEquipeOption | null) => void
+  aprovadoPorUserId: string | null
+  onAprovadoPor: (membro: MembroEquipeOption | null) => void
+  /** Presentes como estão no formulário (sem a linha vazia do modelo). */
+  presentes: { userId: string; setorEmpresa: string }[]
+  onPresente: (indice: number, membro: MembroEquipeOption | null) => void
+  onSetor: (indice: number, valor: string) => void
+  onAdicionarPresente: () => void
+  onRemoverPresente: (indice: number) => void
+  onIncluirEquipe?: () => void
+  avisoPresente?: string | null
+  acoes: { acao: string; prazoRaw: string; responsavelUserId: string }[]
+  onAcao: (indice: number, valor: string) => void
+  onPrazo: (indice: number, valor: string) => void
+  onResponsavel: (indice: number, membro: MembroEquipeOption | null) => void
+  onAdicionarAcao: () => void
+  onRemoverAcao: (indice: number) => void
+  /** Ata nova: o número mostrado é o previsto e só é confirmado ao salvar. */
+  numeroPrevisto?: boolean
+  /** Edição dos anexos (lista + enviar arquivo) e das cópias (seletor de e-mails). */
+  anexos: ReactNode
+  copias: ReactNode
+}
+
+const pilula = 'inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 font-sans text-[13px] font-medium text-blue-600 shadow-sm hover:border-blue-300 hover:bg-blue-50'
+
+export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: EdicaoAta }>(function AtaDocument({ data: d, edicao }, ref) {
+  const { editavel } = useEditorFolha()
+  const ed = editavel ? edicao : undefined
   const presentes = ataComUmaLinhaVazia(d.presentes, p => !!p.nome?.trim(), { nome: '', setorEmpresa: null })
   const acoes = ataComUmaLinhaVazia(d.acoes, a => !!a.acao?.trim(), { acao: '', prazo: null, responsavel: null })
   const caixas = ataCopias(d.copiasPara)
   const assinantes = ataAssinantes(d.presentes)
-  const espaco = `${ATA_ESPACO_MM}mm`
+  const membrosLivres = (userId: string) => (ed?.membros ?? []).filter(m => m.id === userId || !ed?.presentes.some(p => p.userId === m.id))
+
   return (
-    <div
-      ref={ref}
-      data-print-sheet
-      style={{ width: '210mm', minHeight: '297mm', padding: '12mm 15mm', boxSizing: 'border-box', background: 'white', color: 'black', fontFamily: 'Calibri, Carlito, Arial, sans-serif', fontSize: '9pt', position: 'relative' }}
-    >
-      {/* Logo + título */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: espaco }}>
-        <div style={{ width: `${ATA_LOGO_MM}mm`, height: '19mm', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: d.logoUrl ? 'none' : '1px solid #4a6fa5', background: d.logoUrl ? 'transparent' : '#9db7e0' }}>
-          {d.logoUrl
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={d.logoUrl} alt="Logo" style={{ maxHeight: '19mm', maxWidth: '33mm', objectFit: 'contain' }} />
-            : <span style={{ fontSize: '12pt', textAlign: 'center', lineHeight: 1.15 }}>Logo do<br />Projeto</span>}
-        </div>
-        <h1 data-testid="ata-titulo" style={{ flex: 1, margin: 0, textAlign: 'center', fontFamily: 'Arial, sans-serif', fontSize: '14pt', fontWeight: 'bold' }}>
-          Ata de Reunião Nº {ataNumero(d.numero)}
-        </h1>
-        {/* Mesma largura da logo do outro lado: o nº fica no centro da página. */}
-        <div aria-hidden="true" style={{ width: `${ATA_LOGO_MM}mm`, flexShrink: 0 }} />
-      </div>
+    <Folha ref={ref} data-testid="ata-folha">
+      <Cabecalho
+        titulo={
+          <span data-testid="ata-titulo">
+            {TITULO_ATA} Nº{' '}
+            {/* Número sequencial do projeto: gerado pelo sistema, não é digitado. */}
+            <CampoAutomatico inline origem={edicao?.numeroPrevisto ? 'Automático: próximo número das atas do projeto (confirmado ao salvar)' : 'Automático: número sequencial das atas do projeto'}>
+              {ataNumero(d.numero)}
+            </CampoAutomatico>
+          </span>
+        }
+        logoUrl={d.logoUrl}
+      />
 
-      {/* Quadro: identificação, presentes, assuntos, decisões */}
-      <table style={tabela}>
-        <colgroup><col style={{ width: '75%' }} /><col style={{ width: '25%' }} /></colgroup>
-        <tbody>
-          <tr><td colSpan={2} style={{ ...td, background: CINZA, fontWeight: 'bold' }}>{d.instituicao}</td></tr>
-          <tr><td colSpan={2} style={td}><B>Nome do projeto:</B> {d.nomeProjeto}</td></tr>
-          <tr><td style={td}><B>Local:</B> {d.local}</td><td style={td}><B>Data:</B> {ataData(d.data)}</td></tr>
-          <tr><td colSpan={2} style={td}><B>Elaborado por:</B> {ataPessoa(d.elaboradoPor, d.elaboradoPorFuncao)}</td></tr>
-          <tr><td colSpan={2} style={td}><B>Aprovado por:</B> {ataPessoa(d.aprovadoPor, d.aprovadoPorFuncao)}</td></tr>
-          <tr><td colSpan={2} style={{ ...td, background: CINZA, fontWeight: 'bold' }}>I. Relação dos presentes</td></tr>
-          <tr><td style={{ ...td, fontWeight: 'bold' }}>Nome:</td><td style={{ ...td, fontWeight: 'bold' }}>Setor/Empresa:</td></tr>
-          {presentes.map((p, i) => <tr key={i}><td style={{ ...td, height: '1.4em' }}>{p.nome}</td><td style={td}>{p.setorEmpresa}</td></tr>)}
-          <tr><td colSpan={2} style={{ ...td, background: CINZA, fontWeight: 'bold' }}>II. Assuntos tratados</td></tr>
-          <tr><td colSpan={2} style={{ ...td, height: '22mm' }}>{d.assuntosTratados}</td></tr>
-          <tr><td colSpan={2} style={{ ...td, background: CINZA, fontWeight: 'bold' }}>III. Decisões tomadas</td></tr>
-          <tr><td colSpan={2} style={{ ...td, height: '22mm' }}>{d.decisoesTomadas}</td></tr>
-        </tbody>
-      </table>
+      <Quadro testId="quadro-identificacao">
+        <tr><td colSpan={2} style={{ ...faixa, padding: 0 }}><CampoAutomatico>{d.instituicao}</CampoAutomatico></td></tr>
+        <tr><td colSpan={2} style={celulaCampo}><CampoAutomatico>Nome do projeto: {d.nomeProjeto}</CampoAutomatico></td></tr>
+        <tr>
+          <td style={celulaCampo}>
+            {ed
+              ? <div className="flex items-start" style={{ paddingLeft: 6 }}><span style={{ padding: '2px 0' }}>Local:</span><div className="flex-1"><CampoTexto id="ata-local" rotulo="Local" ajuda="Onde a reunião aconteceu (sala, endereço ou on-line)." pergunta="sala / on-line" valor={d.local ?? ''} onChange={v => ed.onTexto('local', v)} max={200} linha /></div></div>
+              : <div style={{ padding: '2px 6px' }}>Local: {d.local}</div>}
+          </td>
+          <td style={celula}>
+            Data:{' '}
+            {ed
+              ? <CampoData id="ata-data" rotulo="Data da reunião" ajuda="Dia da reunião (obrigatório)." valor={ed.dataRaw} onChange={ed.onData} />
+              : ataData(d.data)}
+          </td>
+        </tr>
+        <tr>
+          <td colSpan={2} style={celula}>
+            Elaborado por:{' '}
+            {ed
+              ? <CampoPessoa id="ata-elaborado-por" rotulo="Elaborado por" ajuda="Quem redigiu a ata. Escolha um membro da equipe." projetoId={ed.projetoId} membros={ed.membros} valorId={ed.elaboradoPorUserId} nome={d.elaboradoPor ?? ''} onChange={ed.onElaboradoPor} onCriarMembro={ed.onCriarMembro} />
+              : ataPessoa(d.elaboradoPor, d.elaboradoPorFuncao)}
+          </td>
+        </tr>
+        <tr>
+          <td colSpan={2} style={celula}>
+            Aprovado por:{' '}
+            {ed
+              ? <CampoPessoa id="ata-aprovado-por" rotulo="Aprovado por" ajuda="Quem aprova a ata (normalmente o gerente do projeto)." projetoId={ed.projetoId} membros={ed.membros} valorId={ed.aprovadoPorUserId} nome={d.aprovadoPor ?? ''} onChange={ed.onAprovadoPor} onCriarMembro={ed.onCriarMembro} />
+              : ataPessoa(d.aprovadoPor, d.aprovadoPorFuncao)}
+          </td>
+        </tr>
+      </Quadro>
 
-      {/* IV. Ações */}
-      <table style={{ ...tabela, marginTop: -1 }}>
-        <colgroup><col style={{ width: '57%' }} /><col style={{ width: '19%' }} /><col style={{ width: '24%' }} /></colgroup>
-        <tbody>
-          <tr>
-            <td style={{ ...td, background: CINZA, fontWeight: 'bold' }}>IV. Ações a serem empreendidas</td>
-            <td style={{ ...td, background: CINZA, fontWeight: 'bold' }}>Prazo</td>
-            <td style={{ ...td, background: CINZA, fontWeight: 'bold' }}>Responsável</td>
-          </tr>
-          {acoes.map((a, i) => <tr key={i}><td style={{ ...td, height: '1.4em' }}>{a.acao}</td><td style={td}>{a.prazo ? ataData(a.prazo) : ''}</td><td style={td}>{a.responsavel}</td></tr>)}
-        </tbody>
-      </table>
+      <SecaoTabela
+        testId="ata-presentes"
+        titulo={secao(1, 'Relação dos presentes')}
+        colunas={[{ rotulo: 'Nome', largura: '70%' }, { rotulo: 'Setor/Empresa', largura: '30%' }]}
+        onAdicionar={ed?.onAdicionarPresente}
+        rotuloAdicionar="Adicionar presente"
+        extrasAdicionar={ed?.onIncluirEquipe && (
+          <button type="button" onClick={ed.onIncluirEquipe} className={pilula}>
+            <Users className="h-4 w-4" /> Incluir toda a equipe
+          </button>
+        )}
+      >
+        {ed
+          ? ed.presentes.map((p, i) => (
+            <LinhaLista key={i} onRemover={() => ed.onRemoverPresente(i)} rotuloRemover={`Remover ${d.presentes[i]?.nome || `presente ${i + 1}`}`}>
+              <td style={celula}>
+                <CampoPessoa id={`ata-presente-${i}`} rotulo="Presente" ajuda="Membro da equipe que participou da reunião." projetoId={ed.projetoId} membros={membrosLivres(p.userId)} valorId={p.userId} nome={d.presentes[i]?.nome ?? ''} onChange={m => ed.onPresente(i, m)} onCriarMembro={ed.onCriarMembro} />
+              </td>
+              <td style={celulaCampo}>
+                <CampoTexto id={`ata-setor-${i}`} rotulo="Setor/Empresa" ajuda="Preenchido pela função do membro; pode ser ajustado." pergunta="setor" valor={p.setorEmpresa} onChange={v => ed.onSetor(i, v)} max={120} linha />
+              </td>
+            </LinhaLista>
+          ))
+          : presentes.map((p, i) => <tr key={i} style={{ breakInside: 'avoid' }}><td style={{ ...celula, height: '1.4em' }}>{p.nome}</td><td style={celula}>{p.setorEmpresa}</td></tr>)}
+      </SecaoTabela>
+      {ed?.avisoPresente && <p role="alert" className="font-sans text-sm text-amber-700">{ed.avisoPresente}</p>}
+
+      <SecaoTexto titulo={secao(2, 'Assuntos tratados')}>
+        <CampoTexto id="ata-assuntos" rotulo="Assuntos tratados" ajuda="O que foi discutido na reunião." pergunta="quais assuntos foram tratados?" valor={d.assuntosTratados ?? ''} onChange={v => edicao?.onTexto('assuntosTratados', v)} max={10000} />
+      </SecaoTexto>
+      <SecaoTexto titulo={secao(3, 'Decisões tomadas')}>
+        <CampoTexto id="ata-decisoes" rotulo="Decisões tomadas" ajuda="O que ficou decidido." pergunta="o que foi decidido?" valor={d.decisoesTomadas ?? ''} onChange={v => edicao?.onTexto('decisoesTomadas', v)} max={10000} />
+      </SecaoTexto>
+
+      <SecaoTabela
+        testId="ata-acoes"
+        faixaNasColunas
+        titulo={secao(4, 'Ações a serem empreendidas')}
+        colunas={[{ rotulo: 'Ação', largura: '57%' }, { rotulo: 'Prazo', largura: '19%' }, { rotulo: 'Responsável', largura: '24%' }]}
+        onAdicionar={ed?.onAdicionarAcao}
+        rotuloAdicionar="Adicionar ação"
+      >
+        {ed
+          ? ed.acoes.map((a, i) => (
+            <LinhaLista key={i} onRemover={() => ed.onRemoverAcao(i)} rotuloRemover={`Remover ação ${i + 1}`}>
+              <td style={celulaCampo}><CampoTexto id={`ata-acao-${i}`} rotulo="Ação" ajuda="O que precisa ser feito depois da reunião." pergunta="o que será feito?" valor={a.acao} onChange={v => ed.onAcao(i, v)} max={2000} celulaDeTabela /></td>
+              <td style={celula}><CampoData id={`ata-prazo-${i}`} rotulo="Prazo" ajuda="Até quando a ação deve ser feita." valor={a.prazoRaw} onChange={v => ed.onPrazo(i, v)} /></td>
+              <td style={celula}><CampoPessoa id={`ata-responsavel-${i}`} rotulo="Responsável" ajuda="Membro da equipe responsável pela ação." projetoId={ed.projetoId} membros={ed.membros} valorId={a.responsavelUserId} nome={d.acoes[i]?.responsavel ?? ''} onChange={m => ed.onResponsavel(i, m)} onCriarMembro={ed.onCriarMembro} /></td>
+            </LinhaLista>
+          ))
+          : acoes.map((a, i) => <tr key={i} style={{ breakInside: 'avoid' }}><td style={{ ...celula, height: '1.4em', whiteSpace: 'pre-wrap' }}>{a.acao}</td><td style={celula}>{a.prazo ? ataData(a.prazo) : ''}</td><td style={celula}>{a.responsavel}</td></tr>)}
+      </SecaoTabela>
 
       {/* Documentos anexos */}
-      <div style={{ ...td, display: 'block', background: CINZA_CLARO, marginTop: espaco, minHeight: '10mm' }}>
-        <B>Documentos anexos:</B>
-        {d.anexos.length > 0 && <div>{d.anexos.map(a => `${a.nome}${a.url ? ` — ${a.url}` : ''}`).join('\n')}</div>}
+      <div style={{ ...celula, background: CINZA_CLARO, minHeight: '10mm' }}>
+        <strong>Documentos anexos:</strong>
+        {ed ? ed.anexos : d.anexos.length > 0 && <div style={{ whiteSpace: 'pre-wrap' }}>{d.anexos.map(a => `${a.nome}${a.url ? ` — ${a.url}` : ''}`).join('\n')}</div>}
       </div>
 
       {/* Enviar cópias para */}
-      <div style={{ ...td, display: 'block', background: CINZA_CLARO, marginTop: espaco }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', columnGap: 8 }}>
-          <div><B>Enviar cópias para:</B></div>
-          {caixas.map((c, i) => <div key={i}>{c.marcado ? '☒' : '☐'} {c.texto}</div>)}
-        </div>
+      <div style={{ ...celula, background: CINZA_CLARO }}>
+        {ed ? (
+          <><strong>Enviar cópias para:</strong>{ed.copias}</>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', columnGap: 8 }}>
+            <div><strong>Enviar cópias para:</strong></div>
+            {caixas.map((c, i) => <div key={i}>{c.marcado ? '☒' : '☐'} {c.texto}</div>)}
+          </div>
+        )}
       </div>
 
-      {/* Assinaturas + Obs */}
-      <table style={{ ...tabela, marginTop: espaco }}>
-        <tbody>
-          <tr><td style={{ ...td, background: CINZA }}><B>Assinaturas</B> &lt;principais envolvidos&gt;</td></tr>
-          <tr>
-            <td style={{ ...td, background: CINZA_CLARO, height: '21mm' }}>
-              {/* Mesma grade do Word: assinatura cadastrada (ou espaço para assinar), linha e nome. */}
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ATA_ASSINATURAS_POR_LINHA}, 1fr)`, gap: '4mm 8mm', paddingTop: '2mm' }}>
-                {assinantes.map((p, i) => (
-                  <div key={i} data-testid="ata-assinatura" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
-                    <div style={{ height: '12mm', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                      {p.assinaturaUrl
-                        // eslint-disable-next-line @next/next/no-img-element
-                        ? <img src={p.assinaturaUrl} alt={`Assinatura de ${p.nome}`} style={{ maxHeight: '12mm', maxWidth: '40mm', objectFit: 'contain' }} />
-                        : null}
-                    </div>
-                    <div style={{ borderTop: BORDA, paddingTop: 2, textAlign: 'center', width: '100%' }}>{p.nome}</div>
-                  </div>
-                ))}
-              </div>
-            </td>
-          </tr>
-          <tr><td style={{ ...td, height: '16mm' }}><B>Obs:</B> {d.observacoes}</td></tr>
-        </tbody>
-      </table>
-      <div style={{ fontSize: '7pt', marginTop: 4, marginLeft: '10mm' }}>{ATA_RODAPE}</div>
-    </div>
+      <Assinaturas
+        titulo={<>Assinaturas <span style={{ fontWeight: 'normal' }}>&lt;principais envolvidos&gt;</span></>}
+        porLinha={ATA_ASSINATURAS_POR_LINHA}
+        assinantes={assinantes.map(p => ({ nome: p.nome, funcao: p.setorEmpresa, assinaturaUrl: p.assinaturaUrl }))}
+        obs={
+          <div className="flex" style={{ paddingLeft: 6 }}>
+            <strong style={{ padding: '2px 0' }}>Obs:</strong>
+            <div style={{ flex: 1 }}>
+              <CampoTexto id="ata-observacoes" rotulo="Observações" ajuda="Observações gerais da ata (opcional)." pergunta="alguma observação?" valor={d.observacoes ?? ''} onChange={v => edicao?.onTexto('observacoes', v)} max={5000} preencher={false} />
+            </div>
+          </div>
+        }
+      />
+    </Folha>
   )
 })

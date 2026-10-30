@@ -1,25 +1,27 @@
 'use client'
 
-import { printPageStyle } from '@/lib/printPageStyle'
-import { EAP_PRINT_MARGIN_TOP_MM } from './EapDocumentSheet'
+import { printPageStyle, rodapeDocumento } from '@/lib/printPageStyle'
+import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
+import { FOLHA_MARGEM_MM } from '@/components/documentos/editor/folha'
+import Tooltip from '@/components/ui/Tooltip'
+import { abrirPropostas, ROTULO_STATUS, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useReactToPrint } from 'react-to-print'
 import {
-  ArrowLeft, Undo2, Redo2, Plus, ZoomIn, ZoomOut, Save, Eye, Download,
-  RotateCcw, Trash2, Copy, ChevronUp, ChevronDown, CornerDownRight, FileUp,
+  Plus, RotateCcw, Trash2, Copy, ChevronUp, ChevronDown, CornerDownRight, FileUp, Network,
 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import CamposQuadroDocumento from './CamposQuadroDocumento'
 import { type MembroEquipeOption, useMembrosEquipe } from './MembroEquipeSelect'
 import { useToast } from '@/components/ui/Toast'
 import { fetchWithSession } from '@/lib/clientFetch'
 import type { EapDocument, EapNode, EapDocumentMetadata } from '@/types/eap'
-import { findNode, flattenTree, collectSubtreeIds } from '@/lib/eapCode'
+import { findNode, collectSubtreeIds } from '@/lib/eapCode'
 import {
   insertChild, insertSibling, removeNode, duplicateNode, moveNode,
   moveNodeRelative, updateTitle, listCandidateParents,
@@ -33,8 +35,6 @@ const labelClass = 'block text-sm font-semibold text-slate-700 mb-1'
 const inputClass =
   'w-full border-2 border-slate-400 rounded-lg px-3 py-2 text-sm text-slate-900 bg-white placeholder-slate-500 ' +
   'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-const toolButton =
-  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
 
 // ── Estado do editor (metadados + árvore = uma única fonte de verdade) ──────
 
@@ -64,8 +64,9 @@ function defaultSiblingTitle(level: number): string {
 export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOption[] }) {
   const permissions = useProjectPermissions()
   const canEdit = permissions.has('documentos:editar')
+  const canEditRef = useRef(canEdit)
+  useEffect(() => { canEditRef.current = canEdit })
   const { projetoId } = useParams<{ projetoId: string }>()
-  const router = useRouter()
   const { toast } = useToast()
 
   const printRef = useRef<HTMLDivElement>(null)
@@ -97,8 +98,12 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
-  const [zoom, setZoom] = useState(100)
-  const [viewing, setViewing] = useState(false)
+  const [versaoSelecionada, setVersaoSelecionada] = useState<string | null>(null)
+  const { versoes, vigente, pendentes } = useVersoesDocumento(projetoId, 'EAP')
+  /** Alterações ainda não enviadas com "Salvar versão" (indicador da barra). */
+  const [alterado, setAlterado] = useState(false)
+  const rascunho = useRascunhoDocumento(projetoId, 'EAP')
+  const [rascunhoRestaurado, setRascunhoRestaurado] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -139,12 +144,23 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
       setPast([])
       setFuture([])
       setSelectedId(null)
+      setAlterado(false)
+      // "Salvar mais tarde": volta de onde parou (rascunho privado, ainda sem versão).
+      if (canEditRef.current) {
+        const salvo = await rascunho.recuperar<EapDocumentMetadata & { nodes?: EapNode[] }>()
+        if (salvo && Array.isArray(salvo.nodes)) {
+          const { nodes: nosSalvos, ...meta } = salvo
+          setMetadata(prev => ({ ...prev, ...meta }))
+          setNodes(nosSalvos)
+          setRascunhoRestaurado(true)
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar EAP')
     } finally {
       setLoading(false)
     }
-  }, [projetoId])
+  }, [projetoId, rascunho])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load])
@@ -156,6 +172,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
     setPast(prev => [...prev.slice(-99), { metadata, nodes }])
     setFuture([])
     setNodes(nodes)
+    setAlterado(true)
   }
 
   function undo() {
@@ -167,6 +184,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
       setMetadata(snapshot.metadata)
       setNodes(snapshot.nodes)
       setEditingNodeId(null)
+      setAlterado(true)
       return prev.slice(0, -1)
     })
   }
@@ -180,21 +198,12 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
       setMetadata(snapshot.metadata)
       setNodes(snapshot.nodes)
       setEditingNodeId(null)
+      setAlterado(true)
       return prev.slice(0, -1)
     })
   }
 
   // ── Operações estruturais (SPEC §9–§10) ───────────────────────────────────
-
-  const handleAddLevel = () => {
-    // "Adicionar nível": cria um filho direto da raiz
-    if (nodes.length === 0) {
-      commit([{ id: crypto.randomUUID(), parentId: null, code: '1', title: '[NOME DO PROJETO]', level: 1, order: 0, children: [] }])
-      return
-    }
-    const root = nodes[0]
-    commit(insertChild(nodes, root.id, defaultChildTitle(root.level)))
-  }
 
   const handleAddItem = () => {
     if (nodes.length === 0) {
@@ -251,7 +260,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: doc ? `EAP - ${doc.projectName || 'Projeto'}` : 'EAP - Estrutura Analítica do Projeto',
-    pageStyle: printPageStyle({ landscape: true, marginMm: { top: EAP_PRINT_MARGIN_TOP_MM, x: 0 } }),
+    pageStyle: printPageStyle({ landscape: true, marginMm: FOLHA_MARGEM_MM, rodape: rodapeDocumento('Estrutura Analítica do Projeto', metadata.version || '1.0') }),
   })
 
   // ── Salvar (PUT) ──────────────────────────────────────────────────────────
@@ -272,6 +281,8 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
       }
       const data = await r.json()
       setDoc(data.document)
+      setAlterado(false)
+      setRascunhoRestaurado(false)
       window.dispatchEvent(new CustomEvent('operum:document-version', { detail: { projetoId } }))
       toast(data.status === 'PENDING' ? 'Versão da EAP enviada para aprovação. O documento vigente foi preservado.' : 'EAP aprovada e publicada.')
       if (data.status === 'APPROVED') window.dispatchEvent(new CustomEvent('operum:document-published', { detail: { projetoId, type: 'EAP' } }))
@@ -301,6 +312,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
       setFuture([])
       setSelectedId(null)
       setEditingNodeId(null)
+      setAlterado(false)
       toast('Documento recriado a partir do modelo.')
     } catch {
       toast('Erro ao recriar a partir do modelo', 'error')
@@ -311,25 +323,20 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
 
   // ── Métricas para a UI ────────────────────────────────────────────────────
 
-  const selectedNode = selectedId ? findNode(nodes, selectedId) : null
-  const flat = useMemo(() => flattenTree(nodes), [nodes])
-  const totalNodes = flat.length
-
-  const snapshot = useMemo(() => ({ metadata, nodes }), [metadata, nodes])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-16">
-        <div className="bg-white animate-pulse rounded shadow-2xl" style={{ width: '297mm', height: '210mm' }} />
+      <div className="flex h-full items-center justify-center bg-[#eef0f3] p-16">
+        <div className="bg-white animate-pulse shadow" style={{ width: '297mm', height: '210mm' }} />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-start justify-center p-8">
+      <div className="flex h-full items-start justify-center bg-[#eef0f3] p-8">
         <div className="w-[297mm] rounded-xl bg-red-50 border border-red-200 p-6 text-red-700 text-sm">{error}</div>
       </div>
     )
@@ -337,181 +344,125 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
 
   function updateMetadata(field: keyof EapDocumentMetadata, value: string | null) {
     if (!canEdit) return
+    setPast(prev => [...prev.slice(-99), { metadata, nodes }])
+    setFuture([])
     setMetadata(prev => ({ ...prev, [field]: value }))
+    setAlterado(true)
   }
 
   function updateMembro(nome: 'preparedBy' | 'approvedBy', idField: 'preparedByUserId' | 'approvedByUserId', membro: MembroEquipeOption | null) {
     if (!canEdit) return
+    setPast(prev => [...prev.slice(-99), { metadata, nodes }])
+    setFuture([])
     setMetadata(prev => ({ ...prev, [nome]: membro?.name ?? '', [idField]: membro?.id ?? null }))
+    setAlterado(true)
   }
 
+  // Versão aberta pelo seletor: só leitura, com a estrutura salva nela.
+  const versaoAberta = versaoSelecionada ? versoes.find(v => v.id === versaoSelecionada) ?? null : null
+  const conteudoVersao = versaoAberta?.payload as (Partial<EapDocumentMetadata> & { nodes?: EapNode[] }) | null | undefined
+  const metaExibida: EapDocumentMetadata = conteudoVersao ? { ...metadata, ...conteudoVersao } : metadata
+  const nosExibidos = conteudoVersao?.nodes ?? nodes
+  const editavel = canEdit && !versaoAberta && !saving
+  const rodape = rodapeDocumento('Estrutura Analítica do Projeto', metaExibida.version || '1.0')
+
   return (
-    <div className="min-h-screen bg-gray-300 flex flex-col items-center py-8 gap-5">
-      {/* ── Toolbar (SPEC §19) ───────────────────────────────────────────── */}
-      <div className="w-[297mm] flex items-center gap-1.5 flex-wrap print:hidden">
-        <button
-          aria-label="Voltar"
-          title="Voltar"
-          onClick={() => router.back()}
-          className={`${toolButton} text-slate-600 hover:bg-white hover:shadow transition-all`}
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <span className="w-px h-6 bg-slate-400/50 mx-1" />
-        <button
-          aria-label="Desfazer"
-          title="Desfazer (Ctrl+Z)"
-          disabled={!canEdit || past.length === 0}
-          onClick={undo}
-          className={`${toolButton} text-slate-600 hover:bg-white hover:shadow transition-all`}
-        >
-          <Undo2 className="w-4 h-4" />
-        </button>
-        <button
-          aria-label="Refazer"
-          title="Refazer (Ctrl+Shift+Z)"
-          disabled={!canEdit || future.length === 0}
-          onClick={redo}
-          className={`${toolButton} text-slate-600 hover:bg-white hover:shadow transition-all`}
-        >
-          <Redo2 className="w-4 h-4" />
-        </button>
-        <span className="w-px h-6 bg-slate-400/50 mx-1" />
-        {!origemWbs && <>
-        <button
-          onClick={handleAddLevel}
-          className={`${toolButton} bg-white text-blue-700 border border-blue-200 hover:bg-blue-50 transition-colors`}
-        >
-          <Plus className="w-4 h-4" /> Adicionar nível
-        </button>
-        <button
-          onClick={handleAddItem}
-          className={`${toolButton} bg-white text-blue-700 border border-blue-200 hover:bg-blue-50 transition-colors`}
-        >
-          <CornerDownRight className="w-4 h-4" /> Adicionar item
-        </button>
+    <>
+      <EditorDocumento
+        documento="EAP"
+        paisagem
+        editavel={editavel}
+        status={!canEdit || versaoAberta ? 'leitura' : saving ? 'salvando' : alterado ? 'pendente' : 'salvo'}
+        mensagemStatus={!canEdit || versaoAberta ? undefined : saving ? 'Salvando…' : alterado ? 'Alterações ainda não salvas — use “Salvar versão”' : 'Tudo salvo'}
+        versao={{
+          rotulo: versaoAberta ? `${versaoAberta.versao ?? '—'} · ${ROTULO_STATUS[versaoAberta.status] ?? ''}` : `${metadata.version || '1.0'} · ${vigente ? 'vigente' : 'rascunho'}`,
+          rotuloAtual: 'Documento atual (editável)',
+          selecionada: versaoSelecionada,
+          opcoes: versoes.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao ?? '—'} · ${v.id === vigente?.id ? 'vigente' : ROTULO_STATUS[v.status] ?? ''}`, detalhe: v.commitTitle })),
+          onSelecionar: setVersaoSelecionada,
+        }}
+        onSalvar={() => void handleSave()}
+        podeSalvar={editavel}
+        onHistorico={() => abrirPropostas(projetoId)}
+        pendentes={{ total: pendentes, onRevisar: () => abrirPropostas(projetoId) }}
+        onImprimir={() => handlePrint()}
+        onPdf={() => handlePrint()}
+        onWord={() => toast('A EAP ainda não tem exportação em Word. Use o PDF.', 'warning')}
+        desfazer={{ desfazer: undo, refazer: redo, podeDesfazer: past.length > 0, podeRefazer: future.length > 0 }}
+        onAdicionarLinha={!origemWbs ? handleAddItem : undefined}
+        paginas={{ total: 2, seletor: '[data-testid^="eap-pagina-"]' }}
+        saida={{
+          pendente: canEdit && alterado && !versaoAberta,
+          salvar: () => void handleSave(),
+          salvarDepois: () => rascunho.guardar({ ...metadata, nodes }),
+          descartar: () => rascunho.descartar(),
+        }}
+        extrasEdicao={<>
+          <Tooltip label="Editar a estrutura na EAP/WBS">
+            <Link href={`/projetos/${projetoId}/wbs`} aria-label="Editar a estrutura na EAP/WBS" className="flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-100">
+              <Network className="h-4 w-4" />
+            </Link>
+          </Tooltip>
+          {!origemWbs && permissions.has('documentos:excluir') && (
+            <Tooltip label="Recriar a partir do modelo EAP">
+              <button type="button" aria-label="Recriar a partir do modelo EAP" disabled={!editavel} onClick={() => setConfirmReset(true)} className="flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-100 disabled:opacity-35">
+                <RotateCcw className="h-4 w-4" />
+              </button>
+            </Tooltip>
+          )}
         </>}
-        <span className="w-px h-6 bg-slate-400/50 mx-1" />
-        <div className="flex items-center gap-1 bg-white rounded-lg border border-slate-300 px-1 py-0.5">
-          <button
-            aria-label="Diminuir zoom"
-            disabled={zoom <= 50}
-            onClick={() => setZoom(z => Math.max(50, z - 10))}
-            className="p-1 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setZoom(100)}
-            title="Redefinir zoom"
-            className="px-1 text-xs font-semibold text-slate-700 w-10 hover:bg-slate-100 rounded"
-          >
-            {zoom}%
-          </button>
-          <button
-            aria-label="Aumentar zoom"
-            disabled={zoom >= 200}
-            onClick={() => setZoom(z => Math.min(200, z + 10))}
-            className="p-1 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-        </div>
-        <span className="w-px h-6 bg-slate-400/50 mx-1" />
-        <button
-          onClick={() => setViewing(v => !v)}
-          className={`${toolButton} ${viewing
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
-            : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'} transition-colors`}
-        >
-          <Eye className="w-4 h-4" /> {viewing ? 'Editar' : 'Visualizar'}
-        </button>
-        <button
-          disabled={!canEdit || (saving)} onClick={handleSave}
-          className={`${toolButton} bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm`}
-        >
-          <Save className="w-4 h-4" /> {saving ? 'Salvando…' : 'Salvar'}
-        </button>
-        {!origemWbs && <button
-          onClick={() => setConfirmReset(true)}
-          disabled={saving || !canEdit || !permissions.has('documentos:excluir')}
-          className={`${toolButton} text-amber-700 bg-white border border-amber-200 hover:bg-amber-50 transition-colors`}
-          title="Recriar o documento a partir do modelo EAP (matriz original)"
-        >
-          <RotateCcw className="w-4 h-4" /> Modelo
-        </button>}
-        <button
-          onClick={() => handlePrint()}
-          disabled={!doc}
-          className={`${toolButton} bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm`}
-        >
-          <Download className="w-4 h-4" /> Exportar PDF
-        </button>
-      </div>
-
-      <div className="w-[297mm] rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-900 print:hidden">
-        {origemWbs
-          ? <>A estrutura deste documento vem da aba <strong>EAP/WBS</strong>. Para incluir, renomear ou mover itens, <Link href={`/projetos/${projetoId}/wbs`} className="font-semibold underline">edite a EAP/WBS</Link>.</>
-          : <>A aba <strong>EAP/WBS</strong> ainda não foi montada; o documento usa a estrutura do modelo. <Link href={`/projetos/${projetoId}/wbs`} className="font-semibold underline">Montar a EAP/WBS</Link>.</>}
-      </div>
-
-      {/* ── Metadados do documento (SPEC §17) ────────────────────────────── */}
-      {!viewing && (
-        <div className="w-[297mm] bg-white rounded-xl shadow-md p-6 grid grid-cols-2 gap-4 print:hidden">
-          <div>
-            <label className={labelClass} htmlFor="eap-nome-projeto">Nome do projeto</label>
-            <input
-              id="eap-nome-projeto"
-              className={inputClass}
-              value={metadata.projectName}
-              onChange={e => updateMetadata('projectName', e.target.value)}
-              placeholder="Nome do projeto"
-            />
-          </div>
-          <CamposQuadroDocumento
-            idPrefix="eap"
-            projetoId={projetoId}
-            membros={todosMembros}
-            onCriarMembro={registrarCriado}
-            gerenteProjeto={metadata.projectManager}
-            elaboradoPorUserId={metadata.preparedByUserId}
-            onElaboradoPor={m => updateMembro('preparedBy', 'preparedByUserId', m)}
-            aprovadoPorUserId={metadata.approvedByUserId}
-            onAprovadoPor={m => updateMembro('approvedBy', 'approvedByUserId', m)}
-            versao={metadata.version}
-            onVersao={v => updateMetadata('version', v)}
-            dataAprovacao={metadata.approvalDate ?? ''}
-            onDataAprovacao={v => updateMetadata('approvalDate', v || null)}
-            disabled={!canEdit}
-            labelClass={labelClass}
-            inputClass={inputClass}
-          />
-          <div className="flex items-end">
-            <p className="text-xs text-slate-500 leading-relaxed">
-              <strong>{totalNodes}</strong> {totalNodes === 1 ? 'bloco' : 'blocos'} na EAP ·{' '}
-              {origemWbs ? 'estrutura da aba EAP/WBS' : selectedNode ? `selecionado: ${selectedNode.code}` : 'clique em um bloco para editar'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Prancheta do documento (A4, layout fixo) ─────────────────────── */}
-      <div className="shadow-2xl rounded-sm overflow-hidden bg-white">
-        <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}>
+        avisos={<>
+          {!origemWbs && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-900">
+              A aba <strong>EAP/WBS</strong> ainda não foi montada; o documento usa a estrutura do modelo (clique num bloco para editá-lo). <Link href={`/projetos/${projetoId}/wbs`} className="font-semibold underline">Montar a EAP/WBS</Link>.
+            </div>
+          )}
+          {rascunhoRestaurado && !versaoAberta && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve uma versão para enviá-lo à aprovação.</p>}
+          {versaoAberta && (
+            <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+              Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
+              <button type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar ao documento atual</button>
+            </div>
+          )}
+        </>}
+      >
+        <div className="[&_[data-folha]]:shadow-[0_1px_3px_rgba(15,23,42,0.12)]">
           <EapDocumentSheet
-            ref={printRef}
-            metadata={snapshot.metadata}
-            nodes={snapshot.nodes}
+            metadata={metaExibida}
+            nodes={nosExibidos}
             instituicao={instituicao}
             logoUrl={logoUrl}
             assinaturaUrl={assinaturaUrl}
             // Documento atual: EAP gráfica igual à aba. Versões antigas usam a estrutura salva nelas.
-            arvore={!viewing && origemWbs ? arvore : null}
-            interactive={!viewing && !origemWbs}
+            arvore={!versaoAberta && origemWbs ? arvore : null}
+            interactive={editavel && !origemWbs}
             selectedId={selectedId}
-            onSelectBlock={id => !viewing && openBlock(id)}
+            onSelectBlock={id => editavel && openBlock(id)}
+            rodape={rodape}
+            edicao={{
+              projetoId,
+              membros: todosMembros,
+              onCriarMembro: registrarCriado,
+              onElaboradoPor: m => updateMembro('preparedBy', 'preparedByUserId', m),
+              onVersao: v => updateMetadata('version', v),
+              onDataAprovacao: v => updateMetadata('approvalDate', v || null),
+              linkWbs: `/projetos/${projetoId}/wbs`,
+            }}
           />
         </div>
+      </EditorDocumento>
+
+      {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
+      <div hidden>
+        <EapDocumentSheet
+          ref={printRef}
+          metadata={metaExibida}
+          nodes={nosExibidos}
+          instituicao={instituicao}
+          logoUrl={logoUrl}
+          assinaturaUrl={assinaturaUrl}
+          arvore={!versaoAberta && origemWbs ? arvore : null}
+        />
       </div>
 
       {/* ── Painel de edição do bloco (SPEC §20) ─────────────────────────── */}
@@ -648,6 +599,6 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
         message="O documento atual será substituído pela estrutura padrão do modelo (com campos em branco). Esta ação não altera o template — apenas esta cópia."
         confirmLabel="Recriar"
       />
-    </div>
+    </>
   )
 }

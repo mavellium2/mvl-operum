@@ -32,7 +32,8 @@ export async function buscarAta(tenantId: string, ataId: string) {
   })
 }
 
-async function proximoNumero(projetoId: string): Promise<number> {
+/** Número da próxima ata do projeto (o mesmo que a criação vai usar). */
+export async function proximoNumero(projetoId: string): Promise<number> {
   const last = await prisma.ata.findFirst({
     where: { projetoId },
     orderBy: { numero: 'desc' },

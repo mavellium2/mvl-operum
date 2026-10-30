@@ -6,13 +6,15 @@ import { findById } from '@/services/projectAccess'
 import { canProjectPermission } from '@/services/projectAccess'
 import { listarAtasPorProjeto } from '@/services/ataService'
 import prisma from '@/lib/prisma'
+import { carregarStakeholdersDoProjeto } from '@/services/stakeholdersDoProjeto'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = { title: 'Documentação' }
 
-export default async function DocumentacaoPage({ params }: { params: Promise<{ projetoId: string }> }) {
+export default async function DocumentacaoPage({ params, searchParams }: { params: Promise<{ projetoId: string }>; searchParams: Promise<{ doc?: string }> }) {
   const { projetoId } = await params
+  const { doc } = await searchParams
   const { userId, role, tenantId } = await verifySession()
 
   const project = await findById(projetoId)
@@ -27,6 +29,13 @@ export default async function DocumentacaoPage({ params }: { params: Promise<{ p
     console.error('[DocumentacaoPage] falha ao listar atas:', err)
   }
   const gerente = await canProjectPermission({ tenantId, role, userId }, projetoId, 'documentos:excluir')
+
+  // "Adicionar parte interessada" reaproveita o cadastro da tela Stakeholders: só para quem
+  // gerencia a equipe e só quando o documento aberto é o de Partes Interessadas.
+  const abrindoPartes = !doc || doc === 'stakeholder'
+  const podeCadastrar = abrindoPartes && await canProjectPermission({ tenantId, role, userId }, projetoId, 'projeto:equipe')
+  const dadosCadastro = podeCadastrar ? await carregarStakeholdersDoProjeto(tenantId, projetoId) : null
+  const cadastroStakeholders = dadosCadastro ? { ...dadosCadastro, userRole: (role === 'admin' ? 'admin' : 'gerente') as 'admin' | 'gerente' } : null
 
   // Membros da equipe (responsáveis/aprovadores dos documentos devem ser membros).
   // `pendente` indica cadastro iniciado de forma simples e ainda não concluído (1º acesso).
@@ -76,6 +85,7 @@ export default async function DocumentacaoPage({ params }: { params: Promise<{ p
         }))}
         gerente={gerente}
         membros={membros}
+        cadastroStakeholders={cadastroStakeholders}
       />
     </div>
   )
