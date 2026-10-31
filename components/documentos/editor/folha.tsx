@@ -174,12 +174,24 @@ const FolhasPaginadas = forwardRef<HTMLDivElement, Required<Pick<FolhaProps, 'pa
     else if (ref) ref.current = el
   }
 
-  // Fontes e imagens (logo, assinaturas) mudam a altura depois de carregar: mede de novo.
+  // Fontes mudam a altura depois de carregar: mede de novo quando terminam.
+  // Só na montagem — `fonts.ready` já resolvida dispararia uma nova medida a
+  // cada render, num laço sem fim que travava o navegador.
+  useEffect(() => {
+    const fontes = document.fonts
+    if (!fontes) return
+    let ativo = true
+    const remedir = () => { if (ativo) setVersaoMedida(v => v + 1) }
+    void fontes.ready.then(remedir)
+    fontes.addEventListener?.('loadingdone', remedir)
+    return () => { ativo = false; fontes.removeEventListener?.('loadingdone', remedir) }
+  }, [])
+
+  // Imagens (logo, assinaturas) ainda carregando: mede de novo quando chegam.
   useEffect(() => {
     const el = raiz.current
     if (!el) return
     const remedir = () => setVersaoMedida(v => v + 1)
-    void document.fonts?.ready.then(remedir)
     const imagens = [...el.querySelectorAll('img')].filter(i => !i.complete)
     imagens.forEach(i => i.addEventListener('load', remedir, { once: true }))
     return () => imagens.forEach(i => i.removeEventListener('load', remedir))
