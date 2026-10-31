@@ -45,11 +45,13 @@ export default function DocumentacaoLayout({ projetoId, atas, gerente, membros =
     return () => window.removeEventListener('operum:document-published', refresh)
   }, [projetoId])
 
-  // "Revisar proposta pendente" (barra do editor): abre o histórico e registro do documento num painel.
-  const [revisando, setRevisando] = useState(false)
+  // "Revisar proposta pendente" (barra do editor, lista de atas): abre o histórico e registro num painel.
+  // Com `resourceId`, só as versões daquela ata.
+  const [revisando, setRevisando] = useState<{ resourceId: string } | null>(null)
   useEffect(() => {
     const abrir = (event: Event) => {
-      if ((event as CustomEvent<{ projetoId: string }>).detail?.projetoId === projetoId) setRevisando(true)
+      const detail = (event as CustomEvent<{ projetoId: string; resourceId?: string }>).detail
+      if (detail?.projetoId === projetoId) setRevisando({ resourceId: detail.resourceId ?? '' })
     }
     window.addEventListener('operum:revisar-propostas', abrir)
     return () => window.removeEventListener('operum:revisar-propostas', abrir)
@@ -59,7 +61,6 @@ export default function DocumentacaoLayout({ projetoId, atas, gerente, membros =
   return (
     <div data-testid="doc-layout" className="flex flex-col lg:flex-row flex-1 h-full overflow-hidden">
       <div data-testid="doc-content" className="flex-1 min-w-0 overflow-y-auto">
-        {activeDoc === 'atas' && <HistoricoDocumento key={activeDoc} projetoId={projetoId} type={tipo} />}
         {activeDoc === 'atas' ? (
           <DocumentoAtas projetoId={projetoId} atas={atas} gerente={gerente} />
         ) : activeDoc === 'charter' ? (
@@ -70,8 +71,8 @@ export default function DocumentacaoLayout({ projetoId, atas, gerente, membros =
           <DocumentoStakeholders key={publication} membros={membros} cadastro={cadastroStakeholders} />
         )}
       </div>
-      <Drawer isOpen={revisando} onClose={() => setRevisando(false)} title="Propostas e registro do documento" width="w-[480px]">
-        {revisando && <HistoricoDocumento key={activeDoc} projetoId={projetoId} type={tipo} embutido />}
+      <Drawer isOpen={!!revisando} onClose={() => setRevisando(null)} title="Propostas e registro do documento" width="w-[480px]">
+        {revisando && <HistoricoDocumento key={`${activeDoc}-${revisando.resourceId}`} projetoId={projetoId} type={tipo} resourceId={revisando.resourceId} embutido />}
       </Drawer>
     </div>
   )
