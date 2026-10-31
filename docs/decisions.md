@@ -947,3 +947,14 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** formulários enviam o valor por campo oculto (`name`); testes escolhem opções pelo helper `__tests__/helpers/select.ts`. Novos campos de escolha devem usar este componente.
 - **Referências:** `components/ui/Select.tsx`, `components/projetos/documentacao/MembroEquipeSelect.tsx`, `components/projetos/cadastro/CadastroMembroLateral.tsx`.
 
+## ADR-073 — Paginar os documentos em folhas A4 na própria tela
+
+- **Data:** 2026-10-31.
+- **Status:** implementada no código; pendente de publicação.
+- **Contexto:** a prévia mostrava uma folha única e longa com marcas tracejadas, e só a impressão quebrava as páginas (cortando onde o navegador quisesse). O usuário pediu folhas A4 reais, como no Word, sem quebrar conteúdo em qualquer lugar.
+- **Escolha:** a `Folha` do editor mede os blocos já desenhados e os distribui em folhas A4 separadas: blocos inteiros não se partem, tabelas e listas quebram entre linhas (cabeçalho das colunas repetido quando o modelo pede) e textos longos são divididos em pedaços editáveis do mesmo valor. A impressão usa `@page` sem margem e imprime as mesmas folhas.
+- **Justificativa:** o que se edita é o que sai no PDF, com as mesmas quebras; a medição nas próprias folhas evita uma segunda cópia do documento.
+- **Alternativas consideradas:** deixar a quebra para o CSS de impressão (sem controle visível na edição); Paged.js (pagina clonando o DOM, o que quebra a edição React); cópia invisível só para medir (duplicava o conteúdo e os campos).
+- **Consequências:** a cada alteração a distribuição é recalculada (uma ou duas passadas); um bloco atômico maior que uma folha transborda. Testes em jsdom (sem layout) veem uma folha só.
+- **Referências:** `components/documentos/editor/folha.tsx` (`Folha`, `SecaoTexto`, `SecaoTabela`, `ListaPaginada`, `CampoTexto` com `fragmento`), `lib/printPageStyle.ts` (`printFolhasStyle`).
+

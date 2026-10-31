@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useMemo } from 'react'
+import { forwardRef, useMemo, useState } from 'react'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import type { EapNode, EapDocumentMetadata } from '@/types/eap'
 import { computeEapColumnLayout, eapBoxLabel, eapWrapLines, fitScale, EAP_COL_LINE_H, EAP_COL_PAD_Y } from '@/lib/eapLayout'
@@ -10,7 +10,7 @@ import EapGraficaDaAba, { type ArvoreDaAba } from './EapGraficaDaAba'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import { PAGE_NUMBER_MARGIN_MM } from '@/lib/printPageStyle'
 import {
-  Assinaturas, Cabecalho, CampoAutomatico, CampoData, CampoPessoa, CampoTexto, FOLHA_MARGEM_MM, FONTE_DOC, Folha, Quadro,
+  Assinaturas, Cabecalho, CampoAutomatico, ListaPaginada, CampoData, CampoPessoa, CampoTexto, FOLHA_MARGEM_MM, FONTE_DOC, Folha, Quadro,
   celula, celulaCampo, faixa, useEditorFolha,
 } from '@/components/documentos/editor/folha'
 
@@ -71,11 +71,10 @@ const AZUL_BORDA = '#2f528f'
 const nada = () => {}
 
 /** Rodapé da folha na tela ("Operum · … · versão" e "Página X de Y"); no PDF vem do @page. */
+/** Rodapé da folha da EAP gráfica (as folhas do texto têm o rodapé da paginação). */
 function RodapeTela({ texto, pagina, total }: { texto?: string; pagina: number; total: number }) {
-  const { editavel } = useEditorFolha()
-  if (!editavel || !texto) return null
   return (
-    <div data-tela-apenas="" aria-hidden="true" style={{ position: 'absolute', left: `${FOLHA_MARGEM_MM.x}mm`, right: `${FOLHA_MARGEM_MM.x}mm`, bottom: '3mm', display: 'flex', justifyContent: 'space-between', font: '8pt Arial, Arimo, Helvetica, sans-serif', color: '#555' }}>
+    <div data-rodape-pagina="" style={{ position: 'absolute', left: `${FOLHA_MARGEM_MM.x}mm`, right: `${FOLHA_MARGEM_MM.x}mm`, bottom: '3.5mm', display: 'flex', justifyContent: 'space-between', font: '8pt Arial, Arimo, Helvetica, sans-serif', color: '#555' }}>
       <span>{texto}</span><span>Página {pagina} de {total}</span>
     </div>
   )
@@ -125,6 +124,8 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
   function EapDocumentSheet({ metadata, nodes, instituicao, logoUrl, assinaturaUrl, arvore, interactive, selectedId, onSelectBlock, edicao, rodape }, ref) {
     const layout = useMemo(() => computeEapColumnLayout(nodes), [nodes])
     const flat = useMemo(() => flattenTree(nodes), [nodes])
+    // Folhas ocupadas pela EAP em texto (para o "Página 1 de N" da folha gráfica).
+    const [paginasTexto, setPaginasTexto] = useState(1)
 
     // Área da árvore: página menos margens, faixa da numeração e cabeçalho.
     const availW = (PAGE_W - FOLHA_MARGEM_MM.x * 2 - 8) * MM
@@ -196,7 +197,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
         return <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>Estrutura da EAP vazia — use o editor para montar a árvore.</div>
       }
       return (
-        <div style={{ fontFamily: FONTE_DOC, fontSize: '10pt', lineHeight: 1.35 }}>
+        <ListaPaginada style={{ fontFamily: FONTE_DOC, fontSize: '10pt', lineHeight: 1.35 }}>
           {flat.map(node => {
             const temFilhos = (node.children?.length ?? 0) > 0
             const texto = node.level === 1 ? `${node.code}. ${node.title}` : `${node.code} ${node.title}`
@@ -216,7 +217,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
               </div>
             )
           })}
-        </div>
+        </ListaPaginada>
       )
     }
 
@@ -228,11 +229,11 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
           <Cabecalho titulo={TITULO_EAP} logoUrl={logoUrl} />
           <QuadroEap metadata={metadata} instituicao={instituicao} assinaturaUrl={assinaturaUrl} edicao={edicao} />
           {grafica}
-          <RodapeTela texto={rodape} pagina={1} total={2} />
+          <RodapeTela texto={rodape} pagina={1} total={1 + paginasTexto} />
         </Folha>
 
         {/* ── PÁGINAS 2+ — EAP TEXTO (o texto continua nas páginas seguintes) ── */}
-        <Folha paisagem data-testid="eap-pagina-2">
+        <Folha paisagem data-testid="eap-pagina-2" rodape={rodape} paginaInicial={2} onPaginas={setPaginasTexto}>
           {renderTextualTree()}
           <Assinaturas
             assinantes={[
@@ -240,7 +241,6 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
               { nome: metadata.approvedBy || metadata.projectManager, funcao: 'Aprovado por — Gerente do projeto', assinaturaUrl },
             ]}
           />
-          <RodapeTela texto={rodape} pagina={2} total={2} />
         </Folha>
       </div>
     )

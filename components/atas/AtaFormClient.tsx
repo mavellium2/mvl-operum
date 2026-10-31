@@ -1,9 +1,9 @@
 'use client'
 
 import { emailValido, formatEmail } from '@/lib/contato'
-import { printPageStyle, rodapeDocumento } from '@/lib/printPageStyle'
+import { printFolhasStyle } from '@/lib/printPageStyle'
 import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
-import { FOLHA_MARGEM_MM } from '@/components/documentos/editor/folha'
+import { CopiaParaImpressao } from '@/components/documentos/editor/folha'
 import Drawer from '@/components/ui/Drawer'
 import { useDesfazer } from '@/hooks/useDesfazer'
 import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
@@ -20,7 +20,6 @@ import { criarAtaAction, atualizarAtaAction, enviarAnexoAtaAction } from '@/app/
 import { type MemberOption } from '@/components/atas/MemberSelect'
 import { useMembrosEquipe } from '@/components/projetos/documentacao/MembroEquipeSelect'
 import { toDateInputValue } from '@/lib/date'
-import PaginasDaPrevia from '@/components/projetos/documentacao/PaginasDaPrevia'
 import MultiCreatableSelect from '@/components/ui/MultiCreatableSelect'
 
 interface Presente { nome: string; setorEmpresa: string; userId: string }
@@ -85,7 +84,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
   const [historicoAberto, setHistoricoAberto] = useState(false)
   const documentRef = useRef<HTMLDivElement>(null)
   const tituloImpressao = `${TITULO_ATA} Nº ${String(numero ?? '').padStart(2, '0') || '__'}`
-  const print = useReactToPrint({ contentRef: documentRef, documentTitle: tituloImpressao, pageStyle: printPageStyle({ marginMm: FOLHA_MARGEM_MM, rodape: rodapeDocumento(tituloImpressao) }) })
+  const print = useReactToPrint({ contentRef: documentRef, documentTitle: tituloImpressao, pageStyle: printFolhasStyle() })
   const [local, setLocal] = useState(initial?.local ?? '')
   const [data, setData] = useState(initial?.data ? toDateOnly(initial.data) : '')
   const [elaboradoPor, setElaboradoPor] = useState(initial?.elaboradoPor ?? '')
@@ -308,7 +307,6 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
     : dadosDocumento
   const editavel = canEdit && !versaoAberta && !saving
 
-  const tituloAta = `${TITULO_ATA} Nº ${String(numero ?? '').padStart(2, '0') || '__'}`
   const edicao: EdicaoAta = {
     projetoId,
     numeroPrevisto: mode === 'create',
@@ -424,17 +422,13 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
           )}
         </>}
       >
-        <PaginasDaPrevia marginTopMm={FOLHA_MARGEM_MM.top} folha={{ rodape: rodapeDocumento(tituloAta) }}>
-          <div className="shadow-[0_1px_3px_rgba(15,23,42,0.12)]">
-            <AtaDocument data={dadosExibidos} edicao={edicao} />
-          </div>
-        </PaginasDaPrevia>
+        <AtaDocument data={dadosExibidos} edicao={edicao} />
       </EditorDocumento>
 
       {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
-      <div hidden>
+      <CopiaParaImpressao>
         <AtaDocument ref={documentRef} data={dadosExibidos} />
-      </div>
+      </CopiaParaImpressao>
 
       {ataId && (
         <Drawer isOpen={historicoAberto} onClose={() => setHistoricoAberto(false)} title="Propostas e registro da ata" width="w-[480px]">

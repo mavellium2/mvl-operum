@@ -1,5 +1,6 @@
 'use client'
 
+import { rodapeDocumento } from '@/lib/printPageStyle'
 import { forwardRef, type ReactNode } from 'react'
 import { Users } from 'lucide-react'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
@@ -69,7 +70,7 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
   const membrosLivres = (userId: string) => (ed?.membros ?? []).filter(m => m.id === userId || !ed?.presentes.some(p => p.userId === m.id))
 
   return (
-    <Folha ref={ref} data-testid="ata-folha">
+    <Folha ref={ref} data-testid="ata-folha" rodape={rodapeDocumento(`${TITULO_ATA} Nº ${ataNumero(d.numero)}`)}>
       <Cabecalho
         titulo={
           <span data-testid="ata-titulo">
