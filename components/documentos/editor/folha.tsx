@@ -62,6 +62,14 @@ export const faixa: CSSProperties = { ...celula, background: CINZA, fontWeight: 
 const cabecalhoColuna: CSSProperties = { ...celula, fontWeight: 'bold' }
 const tabela: CSSProperties = { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }
 const PAD = '2px 6px'
+/** Sobe 1px para a borda de cima coincidir com a de baixo da tabela anterior. */
+const COLADO: CSSProperties = { marginTop: -1 }
+/**
+ * Blocos da folha (coluna flex de altura fixa) nunca encolhem: no Firefox eles
+ * encolhiam para caber na folha, o texto transbordava sobre o bloco seguinte e
+ * a paginação media a altura encolhida (tudo parecia caber numa folha só).
+ */
+const NAO_ENCOLHE: CSSProperties = { flexShrink: 0 }
 
 const ROMANOS: [number, string][] = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]
 export function romano(n: number): string {
@@ -239,7 +247,7 @@ const FolhasPaginadas = forwardRef<HTMLDivElement, Required<Pick<FolhaProps, 'pa
               if (!b) return null
               const fatia = p.tipo === 'inteiro' ? undefined : { de: p.de, ate: p.ate, primeiro: p.primeiro, ultimo: p.ultimo }
               return (
-                <div key={p.tipo === 'inteiro' ? `${p.i}` : `${p.i}-${p.de}`} data-peca={p.i} data-de={fatia?.de} data-primeiro={fatia ? String(fatia.primeiro) : undefined} data-ultimo={fatia ? String(fatia.ultimo) : undefined}>
+                <div key={p.tipo === 'inteiro' ? `${p.i}` : `${p.i}-${p.de}`} data-peca={p.i} data-de={fatia?.de} data-primeiro={fatia ? String(fatia.primeiro) : undefined} data-ultimo={fatia ? String(fatia.ultimo) : undefined} style={NAO_ENCOLHE}>
                   {fatia ? cloneElement(b as ReactElement<{ _fatia?: unknown }>, { _fatia: fatia }) : b}
                 </div>
               )
@@ -509,6 +517,16 @@ export function Quadro({ children, colunas = ['75%', '25%'], testId }: { childre
 interface Fatia { de: number; ate: number; primeiro: boolean; ultimo: boolean }
 
 /**
+ * Linhas do pedaço. O último pedaço vai até o fim da lista: linhas novas
+ * ("Adicionar presente", "Incluir toda a equipe") aparecem já no render
+ * seguinte e a paginação as mede; antes, o intervalo fixo as escondia.
+ */
+function fatiaDeLinhas<T>(linhas: T[], fatia?: Fatia): T[] {
+  if (!fatia) return linhas
+  return fatia.ultimo ? linhas.slice(fatia.de) : linhas.slice(fatia.de, fatia.ate)
+}
+
+/**
  * Como o título da seção aparece: `faixa` (faixa cinza dentro da caixa) ou
  * `titulo` (negrito acima da caixa, recuado — modelo do Termo de Abertura).
  */
@@ -517,14 +535,19 @@ export type EstiloSecao = 'faixa' | 'titulo'
 const tituloAcima: CSSProperties = { fontWeight: 'bold', fontSize: '10pt', padding: '0 0 1px 10mm', lineHeight: 1.3 }
 
 /** Seção de texto: título + caixa com o campo de texto (o texto pode continuar na folha seguinte). */
-export function SecaoTexto({ titulo, children, alturaMinima = '22mm', estilo = 'faixa', _fatia }: { titulo: ReactNode; children: ReactNode; alturaMinima?: string; estilo?: EstiloSecao; _fatia?: Fatia }) {
+export function SecaoTexto({ titulo, children, alturaMinima = '22mm', estilo = 'faixa', colado = false, _fatia }: {
+  titulo: ReactNode; children: ReactNode; alturaMinima?: string; estilo?: EstiloSecao
+  /** Encosta na tabela de cima, como uma tabela só (sem espaço nem borda dupla). Use com `gap` 0 na folha. */
+  colado?: boolean
+  _fatia?: Fatia
+}) {
   const primeiro = !_fatia || _fatia.primeiro
   const ultimo = !_fatia || _fatia.ultimo
   const conteudo = _fatia
     ? blocosDe(children).map((c, i) => (c.type === CampoTexto ? cloneElement(c as ReactElement<{ fragmento?: Fragmento }>, { key: i, fragmento: _fatia }) : c))
     : children
   return (
-    <div data-secao="texto">
+    <div data-secao="texto" style={colado && primeiro ? COLADO : undefined}>
       {estilo === 'titulo' && primeiro && <div data-secao-titulo="" style={tituloAcima}>{titulo}</div>}
       <table style={tabela}>
         {estilo === 'faixa' && primeiro && <thead><tr data-faixa=""><th style={faixa}>{titulo}</th></tr></thead>}
@@ -541,7 +564,7 @@ export interface Coluna { rotulo?: ReactNode; largura?: string; alinhamento?: CS
  * seção; o cabeçalho das colunas se repete (`repetirCabecalho`). Com
  * `onAdicionar`, o editor mostra "+ Adicionar …" no fim da tabela.
  */
-export function SecaoTabela({ titulo, colunas, children, rodape, faixaNasColunas = false, onAdicionar, rotuloAdicionar = 'Adicionar linha', extrasAdicionar, menuAdicionar, semFaixa = false, estiloCabecalho, testId, estilo = 'faixa', repetirCabecalho = true, _fatia }: {
+export function SecaoTabela({ titulo, colunas, children, rodape, faixaNasColunas = false, onAdicionar, rotuloAdicionar = 'Adicionar linha', extrasAdicionar, menuAdicionar, semFaixa = false, estiloCabecalho, testId, estilo = 'faixa', repetirCabecalho = true, colado = false, botaoSobreBorda = false, _fatia }: {
   titulo: ReactNode
   colunas: Coluna[]
   children: ReactNode
@@ -561,17 +584,21 @@ export function SecaoTabela({ titulo, colunas, children, rodape, faixaNasColunas
   estilo?: EstiloSecao
   /** Repete o cabeçalho das colunas quando a tabela continua na folha seguinte. */
   repetirCabecalho?: boolean
+  /** Encosta na tabela de cima, como uma tabela só (sem espaço nem borda dupla). Use com `gap` 0 na folha. */
+  colado?: boolean
+  /** "+ Adicionar" sobre a borda de baixo, sem abrir espaço até a seção seguinte (seções coladas). */
+  botaoSobreBorda?: boolean
   _fatia?: Fatia
 }) {
   const { editavel } = useEditorFolha()
   const primeiro = !_fatia || _fatia.primeiro
   const ultimo = !_fatia || _fatia.ultimo
   const linhas = linhasDe(children)
-  const visiveis = _fatia ? linhas.slice(_fatia.de, _fatia.ate) : linhas
+  const visiveis = fatiaDeLinhas(linhas, _fatia)
   const mostrarColunas = colunas.some(c => c.rotulo) && (primeiro || repetirCabecalho)
   const faixaDentro = estilo === 'faixa' && !semFaixa
   return (
-    <div style={{ position: 'relative' }} data-testid={primeiro ? testId : undefined} data-secao="linhas" data-repetir={repetirCabecalho ? undefined : 'nao'}>
+    <div style={{ position: 'relative', ...(colado && primeiro ? COLADO : {}) }} data-testid={primeiro ? testId : undefined} data-secao="linhas" data-repetir={repetirCabecalho ? undefined : 'nao'}>
       {estilo === 'titulo' && primeiro && <div data-secao-titulo="" style={tituloAcima}>{titulo}</div>}
       <table style={tabela}>
         <colgroup>{colunas.map((c, i) => <col key={i} style={c.largura ? { width: c.largura } : undefined} />)}</colgroup>
@@ -592,7 +619,9 @@ export function SecaoTabela({ titulo, colunas, children, rodape, faixaNasColunas
       </table>
       {editavel && ultimo && (onAdicionar || menuAdicionar) && (
         // Com linha de total (ex.: Custo total) o botão fica sobre a borda dela, como no desenho; sem ela, logo abaixo da tabela.
-        <div data-tela-apenas="" className="flex justify-center gap-2" style={{ marginTop: rodape ? -14 : 4, marginBottom: rodape ? -4 : 0, position: 'relative', zIndex: 1 }}>
+        <div data-tela-apenas="" className="flex justify-center gap-2" style={botaoSobreBorda
+          ? { position: 'absolute', left: 0, right: 0, bottom: 0, transform: 'translateY(50%)', zIndex: 2 }
+          : { marginTop: rodape ? -14 : 4, marginBottom: rodape ? -4 : 0, position: 'relative', zIndex: 1 }}>
           <span className="relative">
             <button
               type="button"
@@ -626,7 +655,7 @@ export function SecaoTabela({ titulo, colunas, children, rodape, faixaNasColunas
 /** Lista de linhas sem tabela (ex.: EAP em texto): quebra entre linhas na folha seguinte. */
 export function ListaPaginada({ children, style, _fatia }: { children: ReactNode; style?: CSSProperties; _fatia?: Fatia }) {
   const linhas = linhasDe(children)
-  const visiveis = _fatia ? linhas.slice(_fatia.de, _fatia.ate) : linhas
+  const visiveis = fatiaDeLinhas(linhas, _fatia)
   return (
     <div data-secao="linhas">
       <div data-lista="" style={style}>{visiveis}</div>
@@ -639,14 +668,19 @@ export function ListaPaginada({ children, style, _fatia }: { children: ReactNode
 export interface Assinante { nome: string; funcao?: string | null; assinaturaUrl?: string | null }
 
 /** Sempre o último bloco; não se separa do conteúdo final na impressão. */
-export function Assinaturas({ assinantes, porLinha = 2, titulo = 'Assinaturas', obs }: { assinantes: Assinante[]; porLinha?: number; titulo?: ReactNode; obs?: ReactNode }) {
+export function Assinaturas({ assinantes, porLinha = 2, titulo = 'Assinaturas', obs, caixaUnica = false }: {
+  assinantes: Assinante[]; porLinha?: number; titulo?: ReactNode; obs?: ReactNode
+  /** Título e assinaturas na mesma caixa cinza (modelo "01_Form Ata de Reunião"). */
+  caixaUnica?: boolean
+}) {
   const lista = assinantes.length > 0 ? assinantes : [{ nome: '' }]
   return (
     <table style={{ ...tabela, breakInside: 'avoid' }} data-testid="bloco-assinaturas">
       <tbody>
-        <tr><td style={faixa}>{titulo}</td></tr>
+        {!caixaUnica && <tr><td style={faixa}>{titulo}</td></tr>}
         <tr>
-          <td style={{ ...celula, background: CINZA_CLARO, padding: '2mm 8mm 3mm' }}>
+          <td style={caixaUnica ? { ...faixa, padding: '2px 6px 3mm', height: '20mm' } : { ...celula, background: CINZA_CLARO, padding: '2mm 8mm 3mm' }}>
+            {caixaUnica && <div style={{ marginBottom: '2mm' }}>{titulo}</div>}
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${porLinha}, 1fr)`, gap: '3mm 10mm' }}>
               {lista.map((p, i) => (
                 <div key={i} data-testid="assinatura" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -751,7 +785,7 @@ export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max =
     onChange(valor.slice(0, de) + limpo + valor.slice(ate))
   }
   return (
-    <div {...(primeiro ? { 'data-campo': id, 'data-vazio': valor.trim() ? undefined : 'true' } : { 'data-campo-continuacao': id })} className={`${preencher ? 'h-full min-h-full' : ''} ${FOCO}`} style={{ padding: pad }}>
+    <div {...(primeiro ? { 'data-campo': id, 'data-vazio': valor.trim() ? undefined : 'true' } : { 'data-campo-continuacao': id })} className={`${preencher ? 'min-h-full' : ''} ${FOCO}`} style={{ padding: pad }}>
       <textarea
         ref={ref}
         {...(primeiro ? { 'data-campo-foco': '' } : {})}

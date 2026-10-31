@@ -1,11 +1,10 @@
 'use client'
 
-import { rodapeDocumento } from '@/lib/printPageStyle'
 import { forwardRef, type ReactNode } from 'react'
 import { Users } from 'lucide-react'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import {
-  ATA_ASSINATURAS_POR_LINHA, ataAssinantes, ataComUmaLinhaVazia, ataCopias, ataData, ataNumero, ataPessoa,
+  ATA_ASSINATURAS_POR_LINHA, ATA_ESPACO_MM, ataAssinantes, ataComUmaLinhaVazia, ataCopias, ataData, ataNumero, ataPessoa,
   type AtaExportData,
 } from '@/lib/exports/ataDocx'
 import type { MembroEquipeOption } from '@/components/projetos/documentacao/MembroEquipeSelect'
@@ -15,10 +14,12 @@ import {
 } from '@/components/documentos/editor/folha'
 
 /**
- * Ata de Reunião na folha padrão dos documentos, com o conteúdo do modelo
- * "01_Form Ata de Reunião" (mesmas regras de linhas do Word em
- * lib/exports/ataDocx.ts). Dentro do EditorDocumento tudo é editado direto na
- * folha; fora dele (PDF) sai só o texto.
+ * Ata de Reunião no layout do modelo "01_Form Ata de Reunião" (mesmas regras
+ * de linhas do Word em lib/exports/ataDocx.ts): quadro e seções I a IV numa
+ * tabela contínua, rótulos em negrito, anexos e cópias em caixas cinza
+ * separadas, assinaturas numa caixa cinza e "Obs:" em negrito. Sem o
+ * "© 01_Form Ata de Reunião" do modelo. Dentro do EditorDocumento tudo é
+ * editado direto na folha; fora dele (PDF) sai só o texto.
  */
 
 export const TITULO_ATA = 'Ata de Reunião'
@@ -58,6 +59,21 @@ export interface EdicaoAta {
   copias: ReactNode
 }
 
+/** Rótulo em negrito do quadro ("Nome do projeto:", "Local:"…), como no modelo. */
+const R = ({ children }: { children: ReactNode }) => <strong>{children}</strong>
+/** Espaço entre as caixas separadas (anexos, cópias, assinaturas). */
+const separado = { paddingTop: `${ATA_ESPACO_MM}mm` }
+
+/**
+ * Abre o seletor de membro de um campo recém-criado (ex.: linha nova de
+ * presente), esperando alguns quadros até a linha aparecer na folha.
+ */
+function abrirSeletor(id: string, tentativas = 10) {
+  const botao = document.querySelector<HTMLElement>(`[data-campo="${CSS.escape(id)}"] button`)
+  if (botao) { botao.click(); return }
+  if (tentativas > 0) requestAnimationFrame(() => abrirSeletor(id, tentativas - 1))
+}
+
 const pilula = 'inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 font-sans text-[13px] font-medium text-blue-600 shadow-sm hover:border-blue-300 hover:bg-blue-50'
 
 export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: EdicaoAta }>(function AtaDocument({ data: d, edicao }, ref) {
@@ -70,7 +86,8 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
   const membrosLivres = (userId: string) => (ed?.membros ?? []).filter(m => m.id === userId || !ed?.presentes.some(p => p.userId === m.id))
 
   return (
-    <Folha ref={ref} data-testid="ata-folha" rodape={rodapeDocumento(`${TITULO_ATA} Nº ${ataNumero(d.numero)}`)}>
+    // gap 0: quadro e seções I–IV formam uma tabela só, como no modelo.
+    <Folha ref={ref} data-testid="ata-folha" style={{ gap: 0 }}>
       <Cabecalho
         titulo={
           <span data-testid="ata-titulo">
@@ -84,16 +101,17 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
         logoUrl={d.logoUrl}
       />
 
-      <Quadro testId="quadro-identificacao">
+      <div style={{ paddingTop: '4mm' }}>
+      <Quadro testId="quadro-identificacao" colunas={['74%', '26%']}>
         <tr><td colSpan={2} style={{ ...faixa, padding: 0 }}><CampoAutomatico>{d.instituicao}</CampoAutomatico></td></tr>
-        <tr><td colSpan={2} style={celulaCampo}><CampoAutomatico>Nome do projeto: {d.nomeProjeto}</CampoAutomatico></td></tr>
+        <tr><td colSpan={2} style={celulaCampo}><CampoAutomatico><R>Nome do projeto:</R> {d.nomeProjeto}</CampoAutomatico></td></tr>
         <tr>
           <td style={celulaCampo}>
             {ed
-              ? <div className="flex items-start" style={{ paddingLeft: 6 }}><span style={{ padding: '2px 0' }}>Local:</span><div className="flex-1"><CampoTexto id="ata-local" rotulo="Local" ajuda="Onde a reunião aconteceu (sala, endereço ou on-line)." pergunta="sala / on-line" valor={d.local ?? ''} onChange={v => ed.onTexto('local', v)} max={200} linha /></div></div>
-              : <div style={{ padding: '2px 6px' }}>Local: {d.local}</div>}
+              ? <div className="flex items-start" style={{ paddingLeft: 6 }}><R><span style={{ display: 'inline-block', padding: '2px 0' }}>Local:</span></R><div className="flex-1"><CampoTexto id="ata-local" rotulo="Local" ajuda="Onde a reunião aconteceu (sala, endereço ou on-line)." pergunta="sala / on-line" valor={d.local ?? ''} onChange={v => ed.onTexto('local', v)} max={200} linha /></div></div>
+              : <div style={{ padding: '2px 6px' }}><R>Local:</R> {d.local}</div>}
           </td>
-          <td style={celula}>
+          <td style={{ ...celula, fontWeight: 'bold' }}>
             Data:{' '}
             {ed
               ? <CampoData id="ata-data" rotulo="Data da reunião" ajuda="Dia da reunião (obrigatório)." valor={ed.dataRaw} onChange={ed.onData} />
@@ -102,7 +120,7 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
         </tr>
         <tr>
           <td colSpan={2} style={celula}>
-            Elaborado por:{' '}
+            <R>Elaborado por:</R>{' '}
             {ed
               ? <CampoPessoa id="ata-elaborado-por" rotulo="Elaborado por" ajuda="Quem redigiu a ata. Escolha um membro da equipe." projetoId={ed.projetoId} membros={ed.membros} valorId={ed.elaboradoPorUserId} nome={d.elaboradoPor ?? ''} onChange={ed.onElaboradoPor} onCriarMembro={ed.onCriarMembro} />
               : ataPessoa(d.elaboradoPor, d.elaboradoPorFuncao)}
@@ -110,20 +128,24 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
         </tr>
         <tr>
           <td colSpan={2} style={celula}>
-            Aprovado por:{' '}
+            <R>Aprovado por:</R>{' '}
             {ed
               ? <CampoPessoa id="ata-aprovado-por" rotulo="Aprovado por" ajuda="Quem aprova a ata (normalmente o gerente do projeto)." projetoId={ed.projetoId} membros={ed.membros} valorId={ed.aprovadoPorUserId} nome={d.aprovadoPor ?? ''} onChange={ed.onAprovadoPor} onCriarMembro={ed.onCriarMembro} />
               : ataPessoa(d.aprovadoPor, d.aprovadoPorFuncao)}
           </td>
         </tr>
-        {(d.gerenteProjeto || d.assinaturaGerenteUrl) && <tr><td colSpan={2} style={{ ...celula, whiteSpace: 'nowrap' }}><AssinaturaEmLinha url={d.assinaturaGerenteUrl} rotulo="Assinatura do gerente:" vazio={editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined} /></td></tr>}
+        {(d.gerenteProjeto || d.assinaturaGerenteUrl) && <tr><td colSpan={2} style={{ ...celula, whiteSpace: 'nowrap' }}><AssinaturaEmLinha url={d.assinaturaGerenteUrl} rotulo={<R>Assinatura do gerente:</R>} vazio={editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined} /></td></tr>}
       </Quadro>
+      </div>
 
       <SecaoTabela
         testId="ata-presentes"
+        colado
+        botaoSobreBorda
         titulo={secao(1, 'Relação dos presentes')}
-        colunas={[{ rotulo: 'Nome', largura: '70%' }, { rotulo: 'Setor/Empresa', largura: '30%' }]}
-        onAdicionar={ed?.onAdicionarPresente}
+        colunas={[{ rotulo: 'Nome:', largura: '72%' }, { rotulo: 'Setor/Empresa:', largura: '28%' }]}
+        // Linha nova já com o seletor de membro aberto (mesmo componente dos demais campos de pessoa).
+        onAdicionar={ed && (() => { const n = ed.presentes.length; ed.onAdicionarPresente(); abrirSeletor(`ata-presente-${n}`) })}
         rotuloAdicionar="Adicionar presente"
         extrasAdicionar={ed?.onIncluirEquipe && (
           <button type="button" onClick={ed.onIncluirEquipe} className={pilula}>
@@ -146,18 +168,20 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
       </SecaoTabela>
       {ed?.avisoPresente && <p role="alert" className="font-sans text-sm text-amber-700">{ed.avisoPresente}</p>}
 
-      <SecaoTexto titulo={secao(2, 'Assuntos tratados')}>
+      <SecaoTexto colado titulo={secao(2, 'Assuntos tratados')}>
         <CampoTexto id="ata-assuntos" rotulo="Assuntos tratados" ajuda="O que foi discutido na reunião." pergunta="quais assuntos foram tratados?" valor={d.assuntosTratados ?? ''} onChange={v => edicao?.onTexto('assuntosTratados', v)} max={10000} />
       </SecaoTexto>
-      <SecaoTexto titulo={secao(3, 'Decisões tomadas')}>
+      <SecaoTexto colado titulo={secao(3, 'Decisões tomadas')}>
         <CampoTexto id="ata-decisoes" rotulo="Decisões tomadas" ajuda="O que ficou decidido." pergunta="o que foi decidido?" valor={d.decisoesTomadas ?? ''} onChange={v => edicao?.onTexto('decisoesTomadas', v)} max={10000} />
       </SecaoTexto>
 
       <SecaoTabela
         testId="ata-acoes"
+        colado
+        botaoSobreBorda
         faixaNasColunas
         titulo={secao(4, 'Ações a serem empreendidas')}
-        colunas={[{ rotulo: 'Ação', largura: '57%' }, { rotulo: 'Prazo', largura: '19%' }, { rotulo: 'Responsável', largura: '24%' }]}
+        colunas={[{ rotulo: 'Ação', largura: '55%' }, { rotulo: 'Prazo', largura: '19%' }, { rotulo: 'Responsável', largura: '26%' }]}
         onAdicionar={ed?.onAdicionarAcao}
         rotuloAdicionar="Adicionar ação"
       >
@@ -173,12 +197,15 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
       </SecaoTabela>
 
       {/* Documentos anexos */}
+      <div style={separado}>
       <div style={{ ...celula, background: CINZA_CLARO, minHeight: '10mm' }}>
         <strong>Documentos anexos:</strong>
         {ed ? ed.anexos : d.anexos.length > 0 && <div style={{ whiteSpace: 'pre-wrap' }}>{d.anexos.map(a => `${a.nome}${a.url ? ` — ${a.url}` : ''}`).join('\n')}</div>}
       </div>
+      </div>
 
       {/* Enviar cópias para */}
+      <div style={separado}>
       <div style={{ ...celula, background: CINZA_CLARO }}>
         {ed ? (
           <><strong>Enviar cópias para:</strong>{ed.copias}</>
@@ -189,20 +216,25 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
           </div>
         )}
       </div>
+      </div>
 
+      <div style={separado}>
       <Assinaturas
-        titulo={<>Assinaturas <span style={{ fontWeight: 'normal' }}>&lt;principais envolvidos&gt;</span></>}
+        caixaUnica
+        titulo="Assinaturas"
         porLinha={ATA_ASSINATURAS_POR_LINHA}
         assinantes={assinantes.map(p => ({ nome: p.nome, funcao: p.setorEmpresa, assinaturaUrl: p.assinaturaUrl }))}
         obs={
-          <div className="flex" style={{ paddingLeft: 6 }}>
-            <strong style={{ padding: '2px 0' }}>Obs:</strong>
-            <div style={{ flex: 1 }}>
+          // Obs em negrito, como no modelo (o texto digitado também).
+          <div style={{ paddingLeft: 6, fontWeight: 'bold' }}>
+            <div style={{ padding: '2px 0' }}>Obs:</div>
+            <div style={{ marginLeft: -6 }}>
               <CampoTexto id="ata-observacoes" rotulo="Observações" ajuda="Observações gerais da ata (opcional)." pergunta="alguma observação?" valor={d.observacoes ?? ''} onChange={v => edicao?.onTexto('observacoes', v)} max={5000} preencher={false} />
             </div>
           </div>
         }
       />
+      </div>
     </Folha>
   )
 })

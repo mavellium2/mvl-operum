@@ -1,5 +1,5 @@
 import {
-  AlignmentType, BorderStyle, Document, Footer, HeightRule, ImageRun, Paragraph, ShadingType,
+  AlignmentType, BorderStyle, Document, HeightRule, ImageRun, Paragraph, ShadingType,
   Table, TableCell, TableRow, TextRun, VerticalAlign, WidthType,
 } from 'docx'
 
@@ -34,7 +34,6 @@ export interface AtaExportData {
 
 // ── Regras do modelo (compartilhadas com a prévia em components/atas/AtaDocument.tsx) ──
 
-export const ATA_RODAPE = '© 01_Form Ata de Reunião'
 export const ATA_PLANO_DO_PROJETO = 'Plano do Projeto'
 /**
  * Linhas das tabelas de presentes e ações: as preenchidas e só UMA vazia no fim
@@ -53,9 +52,9 @@ export const ataAssinantes = (presentes: Presente[]) => presentes.filter(p => p.
 
 export const ataNumero = (n: number | null | undefined) => (n ? String(n).padStart(2, '0') : '__')
 export const ataData = (d: Date | null | undefined) => (d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '__/__/____')
-/** "Nome – função" (ou só o nome). */
+/** "Nome - função" (ou só o nome), como no modelo ("Karoline … - Gerente"). */
 export const ataPessoa = (nome: string | null | undefined, funcao?: string | null) =>
-  [nome?.trim(), funcao?.trim()].filter(Boolean).join(' – ')
+  [nome?.trim(), funcao?.trim()].filter(Boolean).join(' - ')
 /** Completa a lista com linhas vazias até o mínimo do modelo. */
 export function ataPreencher<T>(itens: T[], minimo: number, vazio: T): T[] {
   return itens.length >= minimo ? itens : [...itens, ...Array.from({ length: minimo - itens.length }, () => vazio)]
@@ -129,7 +128,7 @@ function tabela(larguras: number[], linhas: Array<{ cells: TableCell[]; altura?:
 const espaco = () => new Paragraph({ spacing: { before: 0, after: 0, line: ATA_ESPACO_TWIPS, lineRule: 'exact' }, children: [] })
 
 /**
- * Ata no layout do modelo "01_Form Ata de Reunião". `logo`: parágrafo com a imagem;
+ * Ata no layout do modelo "01_Form Ata de Reunião" (sem o "© 01_Form…" do rodapé). `logo`: parágrafo com a imagem;
  * `assinaturas`: imagem da assinatura de cada assinante (mesma ordem de `ataAssinantes`).
  * `assinaturaGerente`: imagem inline do gerente, independente dos presentes.
  * As imagens são carregadas por quem chama (navegador ou servidor).
@@ -160,7 +159,7 @@ export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinatur
   const quadro = tabela([W1, W2], [
     { cells: [celula(titulo(d.instituicao ?? ''), LARGURA, { span: 2, cinza: CINZA })] },
     { cells: [celula(rotulo('Nome do projeto:', d.nomeProjeto), LARGURA, { span: 2 })] },
-    { cells: [celula(rotulo('Local:', d.local), W1), celula(rotulo('Data:', ataData(d.data)), W2)] },
+    { cells: [celula(rotulo('Local:', d.local), W1), celula(titulo(`Data: ${ataData(d.data)}`), W2)] },
     { cells: [celula(rotulo('Elaborado por:', ataPessoa(d.elaboradoPor, d.elaboradoPorFuncao)), LARGURA, { span: 2 })] },
     { cells: [celula(rotulo('Aprovado por:', ataPessoa(d.aprovadoPor, d.aprovadoPorFuncao)), LARGURA, { span: 2 })] },
     ...(d.gerenteProjeto || d.assinaturaGerenteUrl ? [{ cells: [celula([new Paragraph({ children: [
@@ -218,14 +217,15 @@ export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinatur
   for (let i = 0; i < Math.max(1, assinantes.length); i += ATA_ASSINATURAS_POR_LINHA) {
     linhasAssinatura.push(new TableRow({ children: Array.from({ length: ATA_ASSINATURAS_POR_LINHA }, (_, k) => celulaAssinatura(i + k)) }))
   }
+  // Como no modelo: título e assinaturas na mesma caixa cinza; Obs em negrito.
   const assinaturasTabela = tabela([LARGURA], [
-    { cells: [celula(titulo('Assinaturas', ' <principais envolvidos>'), LARGURA, { cinza: CINZA })] },
     { cells: [new TableCell({
       width: { size: LARGURA, type: WidthType.DXA }, borders: bordas,
-      shading: { type: ShadingType.CLEAR, fill: CINZA_CLARO, color: 'auto' },
-      children: [new Table({ width: { size: LARGURA - 200, type: WidthType.DXA }, columnWidths: Array.from({ length: ATA_ASSINATURAS_POR_LINHA }, () => A), rows: linhasAssinatura }), new Paragraph({ children: [] })],
+      shading: { type: ShadingType.CLEAR, fill: CINZA, color: 'auto' },
+      margins: { left: 80, right: 80, top: 20, bottom: 20 },
+      children: [...titulo('Assinaturas'), new Table({ width: { size: LARGURA - 200, type: WidthType.DXA }, columnWidths: Array.from({ length: ATA_ASSINATURAS_POR_LINHA }, () => A), rows: linhasAssinatura }), new Paragraph({ children: [] })],
     })], altura: 1200 },
-    { cells: [celula([...titulo('Obs:'), ...texto([{ t: d.observacoes ?? '' }])], LARGURA)], altura: 900 },
+    { cells: [celula([...titulo('Obs:'), ...texto([{ t: d.observacoes ?? '', b: true }])], LARGURA)], altura: 900 },
   ])
 
   return new Document({
@@ -234,7 +234,6 @@ export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinatur
     styles: { default: { document: { run: { font: 'Calibri', size: 18 } } } },
     sections: [{
       properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 850, right: 850, bottom: 850, left: 850 } } },
-      footers: { default: new Footer({ children: [new Paragraph({ children: [new TextRun({ text: ATA_RODAPE, size: 14 })] })] }) },
       children: [cabecalho, espaco(), quadro, tabelaAcoes, espaco(), anexos, espaco(), copias, espaco(), assinaturasTabela],
     }],
   })
