@@ -15,6 +15,7 @@ funcionalidade depois disso é uma versão MINOR.
 - **Correção — documentos travando o navegador:** a folha media a página de novo sem parar enquanto o documento ficava aberto (cerca de 2 mil vezes por segundo), o que consumia CPU e memória até travar o navegador, principalmente na EAP. Agora mede de novo só quando o conteúdo, as fontes ou as imagens mudam.
 - **Menu Documentação:** os documentos aparecem logo abaixo do item Documentação, e não no fim do menu.
 - **Partes Interessadas:** sai o aviso fixo acima da folha.
+- **Segurança:** `follow-redirects` 1.16.2 (GHSA-mrwp-f3q8-3g9p, alta) em todo o workspace e nos serviços, via override do pnpm; o pacote chega ao api-gateway por `http-proxy-middleware`.
 
 ## [1.43.0] — 2026-10-30
 
