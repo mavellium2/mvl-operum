@@ -115,10 +115,10 @@ function DateInputBR({
 // ── Estilo ──────────────────────────────────────────────────
 // Superfícies de vidro (translúcidas, com desfoque), como no iOS.
 const card = 'vidro rounded-[22px]'
-const inputClass = 'w-full px-4 py-3 bg-white/45 shadow-[inset_0_1px_2px_rgb(15_23_42/0.05)] border border-slate-900/[0.08] rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 text-slate-800 font-medium'
-const celulaInput = 'w-full px-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm transition-all outline-none'
+const inputClass = 'campo-vidro w-full px-4 py-3 rounded-xl text-sm text-slate-800 font-medium'
+const celulaInput = 'campo-limpo w-full px-3 py-2.5 rounded-lg text-sm'
 /** Valor de uma linha de propriedades: texto, fundo só ao passar o mouse ou editar. */
-const propriedadeInput = 'h-8 w-full rounded-lg bg-transparent transition-colors duration-150 px-2.5 text-[13px] font-medium text-slate-800 outline-none placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-900/[0.04] focus:bg-white/80 focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:text-slate-500 disabled:hover:bg-transparent'
+const propriedadeInput = 'campo-limpo h-8 w-full rounded-lg px-2.5 text-[13px] font-medium text-slate-800 placeholder:font-normal placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-500'
 const tituloLateral = 'mb-1 px-1 text-[11px] font-bold uppercase tracking-widest text-slate-400'
 
 function Propriedade({ Icone, rotulo, htmlFor, children }: { Icone: typeof Flag; rotulo: string; htmlFor?: string; children: ReactNode }) {
@@ -550,7 +550,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                         id={`termo-${nome}`} readOnly={!canEditPublished} name={nome} value={form[nome]}
                         onChange={e => alterarCampo(nome, e.target.value)} placeholder={placeholder} alturaMinima={70} preencher={!largo}
                         rotulo={
-                          <span className="ml-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                          <span className="ml-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 transition-colors duration-300 group-focus-within:text-blue-600">
                             <Icone className="h-3.5 w-3.5 shrink-0" />{ROTULOS_PROJETO[nome]}
                             {alterado(nome) && <span className="anim-surgir ml-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Alterado" />}
                           </span>
@@ -649,11 +649,11 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{editId ? 'Projeto' : 'Novo projeto'}</p>
                   <TextoQueCresce
                     value={form.name} onChange={v => alterarCampo('name', v.replace(/\n/g, ' '))} aria-label="Nome do projeto" placeholder="Nome do projeto"
-                    className="-mx-1.5 block w-[calc(100%+0.75rem)] rounded-lg px-1.5 py-0.5 text-lg font-extrabold leading-tight tracking-tight text-slate-900 outline-none placeholder:text-slate-300 hover:bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                    className="-mx-1.5 block w-[calc(100%+0.75rem)] campo-limpo rounded-lg px-1.5 py-0.5 text-lg font-extrabold leading-tight tracking-tight text-slate-900 placeholder:text-slate-300"
                   />
                   <TextoQueCresce
                     value={form.slogan} onChange={v => alterarCampo('slogan', v.replace(/\n/g, ' '))} aria-label="Slogan / visão" placeholder="Adicione um slogan…"
-                    className="-mx-1.5 mt-0.5 block w-[calc(100%+0.75rem)] rounded-lg px-1.5 py-0.5 text-[13px] leading-snug text-slate-500 outline-none placeholder:text-slate-400 hover:bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                    className="-mx-1.5 mt-0.5 block w-[calc(100%+0.75rem)] campo-limpo rounded-lg px-1.5 py-0.5 text-[13px] leading-snug text-slate-500 placeholder:text-slate-400"
                   />
                 </div>
               </div>

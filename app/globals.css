@@ -215,6 +215,47 @@ textarea:disabled {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
 }
+/* ── Foco dos campos (estilo iOS) ─────────────────────────────
+   O campo clareia, ganha um halo azul suave e um brilho difuso; tudo com
+   transição macia. Sem contorno duro do navegador. */
+.campo-vidro {
+  background-color: rgb(255 255 255 / 0.45);
+  border: 1px solid rgb(15 23 42 / 0.08);
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.05);
+  transition:
+    background-color 260ms var(--ease-suave),
+    border-color 260ms var(--ease-suave),
+    box-shadow 420ms var(--ease-suave);
+}
+.campo-vidro:hover:not(:focus):not([readonly]) { background-color: rgb(255 255 255 / 0.62); border-color: rgb(15 23 42 / 0.12); }
+.campo-vidro:focus,
+.campo-vidro:focus-visible {
+  outline: none;
+  background-color: rgb(255 255 255 / 0.92);
+  border-color: rgb(59 130 246 / 0.55);
+  box-shadow:
+    0 0 0 4px rgb(59 130 246 / 0.14),
+    0 8px 24px -10px rgb(37 99 235 / 0.35),
+    inset 0 1px 1px rgb(15 23 42 / 0.03);
+}
+/* Campo "sem caixa" (tabela, propriedades, nome): só aparece no hover/foco. */
+.campo-limpo {
+  background-color: transparent;
+  border: 1px solid transparent;
+  transition:
+    background-color 220ms var(--ease-suave),
+    border-color 220ms var(--ease-suave),
+    box-shadow 380ms var(--ease-suave);
+}
+.campo-limpo:hover:not(:focus):not(:disabled) { background-color: rgb(15 23 42 / 0.04); }
+.campo-limpo:focus,
+.campo-limpo:focus-visible {
+  outline: none;
+  background-color: rgb(255 255 255 / 0.92);
+  border-color: rgb(59 130 246 / 0.5);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.13), 0 6px 18px -10px rgb(37 99 235 / 0.35);
+}
+
 /* Botão que "afunda" ao toque, com retorno de mola. */
 .pressionavel { transition: transform 420ms var(--ease-mola), box-shadow 200ms ease, background-color 200ms ease, opacity 200ms ease; }
 .pressionavel:active:not(:disabled) { transform: scale(0.96); transition-duration: 120ms; }
