@@ -104,26 +104,64 @@ textarea:disabled {
    Superfície translúcida com desfoque do que está atrás, brilho fino na borda
    superior e sombra longa e suave. */
 .vidro {
-  background: rgb(255 255 255 / 0.7);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgb(255 255 255 / 0.65);
+  /* Brilho especular difuso no canto superior esquerdo + corpo translúcido que
+     fica um pouco mais denso embaixo (leitura). */
+  background:
+    radial-gradient(120% 70% at 0% 0%, rgb(255 255 255 / 0.42), transparent 55%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.36) 0%, rgb(255 255 255 / 0.24) 100%);
+  -webkit-backdrop-filter: blur(28px) saturate(210%) brightness(1.06);
+  backdrop-filter: blur(28px) saturate(210%) brightness(1.06);
+  border: 0;
+  position: relative;
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.85),
-    0 1px 2px rgb(15 23 42 / 0.04),
-    0 10px 30px -12px rgb(15 23 42 / 0.12);
+    /* reflexo da luz: forte em cima e à esquerda, sutil embaixo e à direita */
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 1px 0 0 rgb(255 255 255 / 0.55),
+    inset 0 -1px 0 rgb(255 255 255 / 0.25),
+    inset -1px 0 0 rgb(255 255 255 / 0.2),
+    /* contorno fino, para o vidro não "sumir" no céu */
+    0 0 0 1px rgb(255 255 255 / 0.35),
+    0 0 0 1.5px rgb(15 23 42 / 0.04),
+    /* profundidade */
+    0 2px 6px -2px rgb(15 23 42 / 0.06),
+    0 18px 40px -20px rgb(30 41 82 / 0.22);
 }
 .vidro-flutuante {
-  background: rgb(255 255 255 / 0.72);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
-  backdrop-filter: blur(32px) saturate(200%);
-  border: 1px solid rgb(255 255 255 / 0.7);
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgb(255 255 255 / 0.55), transparent 55%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.38) 100%);
+  -webkit-backdrop-filter: blur(36px) saturate(200%) brightness(1.05);
+  backdrop-filter: blur(36px) saturate(200%) brightness(1.05);
+  border: 0;
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 0 0 0.5px rgb(15 23 42 / 0.06),
-    0 24px 60px -18px rgb(15 23 42 / 0.28),
-    0 8px 20px -10px rgb(15 23 42 / 0.12);
+    inset 0 1px 0 rgb(255 255 255 / 1),
+    inset 1px 0 0 rgb(255 255 255 / 0.6),
+    inset 0 -1px 0 rgb(255 255 255 / 0.3),
+    0 0 0 1px rgb(255 255 255 / 0.4),
+    0 0 0 1.5px rgb(15 23 42 / 0.06),
+    0 28px 64px -20px rgb(30 41 82 / 0.38),
+    0 10px 24px -12px rgb(30 41 82 / 0.18);
 }
+/* Borda de luz do vidro: brilhante no canto de cima, quase some no meio e volta
+   de leve embaixo (como a luz contornando uma lâmina de vidro). */
+.vidro::before,
+.vidro-flutuante::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.25px;
+  background: linear-gradient(150deg,
+    rgb(255 255 255 / 0.95) 0%, rgb(255 255 255 / 0.5) 18%,
+    rgb(255 255 255 / 0.08) 45%, rgb(255 255 255 / 0.08) 62%,
+    rgb(255 255 255 / 0.55) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* Fundo: céu de manhã clara, difuso. Azul suave no alto, um toque lilás no meio
    e o brilho morno do nascer do sol perto do horizonte; nuvens brancas e
    desfocadas passam devagar. Dá ao vidro algo bonito para desfocar. */
@@ -134,8 +172,9 @@ textarea:disabled {
   background:
     radial-gradient(60rem 26rem at 18% 112%, rgb(255 214 170 / 0.55), transparent 65%),
     radial-gradient(46rem 22rem at 78% 108%, rgb(255 190 200 / 0.38), transparent 65%),
-    radial-gradient(70rem 40rem at 50% -18%, rgb(186 220 255 / 0.75), transparent 70%),
-    linear-gradient(180deg, #e8f2ff 0%, #eef3ff 38%, #f6f2fb 68%, #fdf4ec 100%);
+    radial-gradient(70rem 40rem at 50% -18%, rgb(170 210 255 / 0.85), transparent 70%),
+    radial-gradient(30rem 20rem at 8% 92%, rgb(255 200 140 / 0.45), transparent 70%),
+    linear-gradient(180deg, #dcebff 0%, #e8eeff 36%, #f3eefa 66%, #fdf1e6 100%);
   background-attachment: fixed;
 }
 .fundo-vidro::before,
@@ -145,15 +184,16 @@ textarea:disabled {
   inset: -6%;
   z-index: -1;
   pointer-events: none;
-  filter: blur(42px);
-  opacity: 0.9;
+  filter: blur(30px);
+  opacity: 1;
 }
 /* Nuvens altas, largas e espaçadas. */
 .fundo-vidro::before {
   background:
-    radial-gradient(28rem 7rem at 22% 18%, rgb(255 255 255 / 0.85), transparent 70%),
-    radial-gradient(34rem 8rem at 70% 12%, rgb(255 255 255 / 0.7), transparent 70%),
-    radial-gradient(22rem 6rem at 48% 34%, rgb(255 255 255 / 0.55), transparent 70%);
+    radial-gradient(30rem 8rem at 22% 18%, rgb(255 255 255 / 0.95), transparent 68%),
+    radial-gradient(36rem 9rem at 70% 12%, rgb(255 255 255 / 0.85), transparent 68%),
+    radial-gradient(26rem 7rem at 46% 38%, rgb(255 255 255 / 0.75), transparent 68%),
+    radial-gradient(24rem 6rem at 88% 46%, rgb(255 255 255 / 0.6), transparent 68%);
   animation: nuvens-a 90s ease-in-out infinite alternate;
 }
 /* Nuvens baixas, mais quentes, perto do horizonte. */

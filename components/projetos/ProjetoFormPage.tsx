@@ -115,7 +115,7 @@ function DateInputBR({
 // ── Estilo ──────────────────────────────────────────────────
 // Superfícies de vidro (translúcidas, com desfoque), como no iOS.
 const card = 'vidro rounded-[22px]'
-const inputClass = 'w-full px-4 py-3 bg-white/55 border border-slate-200/60 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 text-slate-800 font-medium'
+const inputClass = 'w-full px-4 py-3 bg-white/45 shadow-[inset_0_1px_2px_rgb(15_23_42/0.05)] border border-slate-900/[0.08] rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 text-slate-800 font-medium'
 const celulaInput = 'w-full px-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm transition-all outline-none'
 /** Valor de uma linha de propriedades: texto, fundo só ao passar o mouse ou editar. */
 const propriedadeInput = 'h-8 w-full rounded-lg bg-transparent transition-colors duration-150 px-2.5 text-[13px] font-medium text-slate-800 outline-none placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-900/[0.04] focus:bg-white/80 focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:text-slate-500 disabled:hover:bg-transparent'
@@ -783,7 +783,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               </ul>
             </div>
           )}
-          <div className="vidro-flutuante flex items-center gap-2 rounded-[22px] py-1.5 pl-4 pr-1.5">
+          <div className="vidro-flutuante relative flex items-center gap-2 rounded-[22px] py-1.5 pl-4 pr-1.5">
             {!editId ? (
               <span className="flex-1 text-sm font-medium text-slate-600">Preencha os dados e crie o projeto.</span>
             ) : pendente ? (
