@@ -94,7 +94,63 @@ textarea:disabled {
 
 /* ── Movimento suave das telas de edição ───────────────────── */
 /* Curva "ease-out" longa: começa rápido e assenta devagar, sem tranco. */
-:root { --ease-suave: cubic-bezier(0.22, 1, 0.36, 1); }
+:root {
+  --ease-suave: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Mola: passa um pouco do ponto e volta (destaques, painéis, ícones). */
+  --ease-mola: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* ── Vidro (estilo "Liquid Glass") ────────────────────────────
+   Superfície translúcida com desfoque do que está atrás, brilho fino na borda
+   superior e sombra longa e suave. */
+.vidro {
+  background: rgb(255 255 255 / 0.7);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.65);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.85),
+    0 1px 2px rgb(15 23 42 / 0.04),
+    0 10px 30px -12px rgb(15 23 42 / 0.12);
+}
+.vidro-flutuante {
+  background: rgb(255 255 255 / 0.72);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 0 0 0.5px rgb(15 23 42 / 0.06),
+    0 24px 60px -18px rgb(15 23 42 / 0.28),
+    0 8px 20px -10px rgb(15 23 42 / 0.12);
+}
+/* Fundo com cor suave, para o vidro ter o que desfocar. */
+.fundo-vidro {
+  background:
+    radial-gradient(40rem 26rem at 12% -6%, rgb(99 102 241 / 0.10), transparent 70%),
+    radial-gradient(36rem 24rem at 92% 8%, rgb(56 189 248 / 0.10), transparent 70%),
+    radial-gradient(44rem 30rem at 55% 105%, rgb(167 139 250 / 0.08), transparent 70%),
+    #f6f8fc;
+}
+/* Conteúdo que rola some suavemente nas bordas, em vez de ser cortado. */
+@utility borda-suave-rolagem {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
+}
+/* Só a borda de baixo (listas com cabeçalho fixo em cima). */
+@utility borda-suave-rolagem-baixo {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
+}
+/* Botão que "afunda" ao toque, com retorno de mola. */
+.pressionavel { transition: transform 420ms var(--ease-mola), box-shadow 200ms ease, background-color 200ms ease, opacity 200ms ease; }
+.pressionavel:active:not(:disabled) { transform: scale(0.96); transition-duration: 120ms; }
+@keyframes mola-surgir {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.anim-mola { animation: mola-surgir 460ms var(--ease-suave) both; }
 @keyframes suave-entrar {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }

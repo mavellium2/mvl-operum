@@ -55,13 +55,13 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
   return (
     <div
       role="dialog" aria-label="Histórico de versões" aria-hidden={!aberto} inert={!aberto}
-      className={`absolute inset-x-0 bottom-full mb-2 flex max-h-[60vh] origin-bottom flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl transition-all duration-300 [transition-timing-function:var(--ease-suave)] ${aberto ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-2 scale-[0.98] opacity-0'}`}
+      className={`absolute inset-x-0 bottom-full mb-2 vidro-flutuante flex max-h-[60vh] origin-bottom flex-col rounded-[22px] transition-[opacity,transform] duration-500 [transition-timing-function:var(--ease-mola)] ${aberto ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-3 scale-[0.96] opacity-0 duration-200'}`}
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-2.5">
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-900/[0.06] px-4 py-2.5">
         <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900"><History className="h-4 w-4 text-slate-400" />Histórico de versões</h3>
         <button type="button" aria-label="Fechar histórico" onClick={onFechar} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="borda-suave-rolagem min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
         {erro && <p role="alert" className="px-3 py-4 text-sm text-red-600">{erro}</p>}
         {!erro && versoes === null && <p className="px-3 py-4 text-sm text-slate-500">Carregando…</p>}
         {versoes?.length === 0 && <p className="px-3 py-4 text-sm text-slate-500">Ainda não há versões. Cada vez que você salvar, uma versão nova entra aqui.</p>}
@@ -75,7 +75,7 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
                 {/* Linha do tempo, como num histórico de commits. */}
                 <span aria-hidden="true" className={`absolute left-3 top-0 w-px bg-slate-200 ${i === versoes.length - 1 ? 'h-4' : 'h-full'}`} />
                 <span aria-hidden="true" className={`absolute left-[7px] top-3.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${atual ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                <div className="rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-slate-50">
+                <div className="rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-white/60">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-bold text-slate-900">v{v.numero}</span>
                     {atual && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">Atual</span>}

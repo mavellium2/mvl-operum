@@ -113,11 +113,12 @@ function DateInputBR({
 }
 
 // ── Estilo ──────────────────────────────────────────────────
-const card = 'rounded-2xl border border-slate-200/70 bg-white shadow-sm'
-const inputClass = 'w-full px-4 py-3 bg-slate-50/50 border border-slate-200/60 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 text-slate-800 font-medium'
+// Superfícies de vidro (translúcidas, com desfoque), como no iOS.
+const card = 'vidro rounded-[22px]'
+const inputClass = 'w-full px-4 py-3 bg-white/55 border border-slate-200/60 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 text-slate-800 font-medium'
 const celulaInput = 'w-full px-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm transition-all outline-none'
 /** Valor de uma linha de propriedades: texto, fundo só ao passar o mouse ou editar. */
-const propriedadeInput = 'h-8 w-full rounded-lg bg-transparent transition-colors duration-150 px-2.5 text-[13px] font-medium text-slate-800 outline-none placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:text-slate-500 disabled:hover:bg-transparent'
+const propriedadeInput = 'h-8 w-full rounded-lg bg-transparent transition-colors duration-150 px-2.5 text-[13px] font-medium text-slate-800 outline-none placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-900/[0.04] focus:bg-white/80 focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:text-slate-500 disabled:hover:bg-transparent'
 const tituloLateral = 'mb-1 px-1 text-[11px] font-bold uppercase tracking-widest text-slate-400'
 
 function Propriedade({ Icone, rotulo, htmlFor, children }: { Icone: typeof Flag; rotulo: string; htmlFor?: string; children: ReactNode }) {
@@ -484,8 +485,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const preenchidos = CAMPOS_TERMO.filter(c => form[c.nome].trim()).length
 
   return (
-    <div ref={raizRef} className="relative min-h-screen bg-[#F8FAFC] font-sans">
-      <div className="pointer-events-none absolute left-1/2 top-0 h-[260px] w-full max-w-3xl -translate-x-1/2 rounded-full bg-blue-500/5 blur-[120px]" />
+    <div ref={raizRef} className="fundo-vidro relative min-h-screen font-sans">
 
       <main className="relative mx-auto max-w-[1280px] px-4 pb-4 pt-5 sm:px-6">
         {syncPending && (
@@ -510,11 +510,11 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
           {/* ── Coluna principal: Diretrizes e Escopo | Cronograma Financeiro ── */}
           <div className="order-2 flex min-w-0 flex-col lg:order-1 lg:h-full lg:min-h-0">
             {/* Abas com resumo: as duas partes ficam a um clique, cada uma cabendo na tela. */}
-            <div role="tablist" aria-label="Seções do projeto" className="relative mb-3 grid shrink-0 grid-cols-2 gap-1 rounded-2xl border border-slate-200/50 bg-slate-200/50 p-1.5 shadow-sm">
+            <div role="tablist" aria-label="Seções do projeto" className="relative mb-3 grid shrink-0 grid-cols-2 gap-1 rounded-[20px] border border-white/60 bg-slate-900/[0.05] p-1.5 shadow-[inset_0_1px_2px_rgb(15_23_42/0.06)] backdrop-blur-xl">
               {/* Destaque da aba ativa: desliza entre as abas em vez de trocar de repente. */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute bottom-1.5 left-1.5 top-1.5 rounded-xl border border-slate-200/40 bg-white shadow-sm transition-transform duration-300 [transition-timing-function:var(--ease-suave)]"
+                className="pointer-events-none absolute bottom-1.5 left-1.5 top-1.5 rounded-[15px] border border-white/80 bg-white/90 shadow-[inset_0_1px_0_rgb(255_255_255),0_4px_14px_-4px_rgb(15_23_42/0.18)] transition-transform duration-500 [transition-timing-function:var(--ease-mola)]"
                 style={{ width: 'calc(50% - 0.5rem)', transform: aba === 'cronograma' ? 'translateX(calc(100% + 0.25rem))' : 'translateX(0)' }}
               />
               {([
@@ -524,7 +524,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                 <button
                   key={id} type="button" role="tab" id={`aba-${id}`} aria-selected={aba === id} aria-controls={`painel-${id}`}
                   onClick={() => setAba(id)}
-                  className={`relative z-10 flex min-w-0 flex-col items-start rounded-xl px-4 py-2 text-left transition-colors duration-200 ${aba === id ? '' : 'hover:bg-white/40'}`}
+                  className={`pressionavel relative z-10 flex min-w-0 flex-col items-start rounded-[15px] px-4 py-2 text-left ${aba === id ? '' : 'hover:bg-white/35'}`}
                 >
                   <span className={`flex items-center gap-1.5 text-sm font-bold transition-colors duration-200 ${aba === id ? 'text-slate-900' : 'text-slate-600'}`}>
                     {titulo}{mudou && <span className="anim-surgir h-1.5 w-1.5 rounded-full bg-amber-500" title="Com alterações" />}
@@ -543,7 +543,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                   </div>
                   {editId && <Link href={`/projetos/${editId}/documentacao?doc=charter`} className="shrink-0 pt-1 text-xs font-semibold text-blue-600 hover:underline">Abrir a folha do Termo</Link>}
                 </header>
-                <div ref={rolagemDiretrizes} className="grid grid-cols-1 gap-x-4 gap-y-3 px-6 pb-6 pt-3 md:grid-cols-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                <div ref={rolagemDiretrizes} className="grid grid-cols-1 gap-x-4 gap-y-3 px-6 pb-6 pt-3 md:grid-cols-2 lg:borda-suave-rolagem lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:scroll-smooth">
                   {CAMPOS_TERMO.map(({ nome, Icone, placeholder, largo }) => (
                     <div key={nome} className={largo ? 'md:col-span-2' : 'min-w-0'}>
                       <ExpandableTextarea
@@ -573,29 +573,29 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                         <h2 className="text-lg font-bold text-slate-900">Cronograma Financeiro</h2>
                         <p className="mt-0.5 text-sm font-medium text-slate-500">Estime as entregas macro e o orçamento dedicado a cada etapa.</p>
                       </div>
-                      <button type="button" onClick={addMacroFase} className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50">
+                      <button type="button" onClick={addMacroFase} className="pressionavel flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.15),0_8px_20px_-8px_rgb(15_23_42/0.6)] hover:bg-slate-800 disabled:opacity-50">
                         <Plus className="h-4 w-4" />Adicionar Fase
                       </button>
                     </div>
                     <dl className="mt-4 grid grid-cols-3 gap-2">
-                      <div className="rounded-xl bg-slate-50 px-4 py-2.5 ring-1 ring-inset ring-slate-200/70">
+                      <div className="rounded-2xl bg-white/50 px-4 py-2.5 ring-1 ring-inset ring-slate-200/60">
                         <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fases</dt>
                         <dd className="text-lg font-black tabular-nums text-slate-900">{fasesPreenchidas.length}</dd>
                       </div>
-                      <div className={`rounded-xl px-4 py-2.5 ring-1 ring-inset ${pendenciasFases ? 'bg-amber-50 ring-amber-200' : 'bg-slate-50 ring-slate-200/70'}`}>
+                      <div className={`rounded-xl px-4 py-2.5 ring-1 ring-inset ${pendenciasFases ? 'bg-amber-50/80 ring-amber-200' : 'bg-white/50 ring-slate-200/60'}`}>
                         <dt className={`text-[10px] font-bold uppercase tracking-widest ${pendenciasFases ? 'text-amber-700' : 'text-slate-400'}`}>Sem prazo ou custo</dt>
                         <dd className={`text-lg font-black tabular-nums ${pendenciasFases ? 'text-amber-800' : 'text-slate-900'}`}>{pendenciasFases}</dd>
                       </div>
-                      <div className="rounded-xl bg-slate-900 px-4 py-2.5 text-right text-white">
+                      <div className="rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950 px-4 py-2.5 text-right text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_10px_24px_-12px_rgb(15_23_42/0.7)]">
                         <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Orçamento total</dt>
                         <dd className="text-lg font-black tabular-nums tracking-tight" data-testid="orcamento-total">{total}</dd>
                       </div>
                     </dl>
                   </header>
-                  <div ref={rolagemFases} className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                  <div ref={rolagemFases} className="lg:borda-suave-rolagem-baixo lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
                     <table className="w-full table-fixed text-left">
                       <colgroup><col /><col className="w-[124px]" /><col className="w-[140px]" /><col className="w-11" /></colgroup>
-                      <thead className="sticky top-0 z-10 border-b border-slate-200/80 bg-slate-50/95 backdrop-blur">
+                      <thead className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/90 shadow-[0_6px_12px_-10px_rgb(15_23_42/0.25)] backdrop-blur-2xl backdrop-saturate-150">
                         <tr>
                           <th className="py-2.5 pl-6 pr-4 text-[11px] font-bold uppercase tracking-widest text-slate-500">Descrição da Fase</th>
                           <th className="px-2 py-2.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">Data Limite</th>
@@ -756,7 +756,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
           {pendente && (
             <div
               role="dialog" aria-label="Alterações não salvas" aria-hidden={!verAlteracoes} inert={!verAlteracoes}
-              className={`absolute inset-x-0 bottom-full mb-2 max-h-[60vh] origin-bottom overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl transition-all duration-300 [transition-timing-function:var(--ease-suave)] ${verAlteracoes ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-2 scale-[0.98] opacity-0'}`}
+              className={`absolute inset-x-0 bottom-full mb-2 vidro-flutuante max-h-[60vh] origin-bottom overflow-y-auto rounded-[22px] p-2 transition-[opacity,transform] duration-500 [transition-timing-function:var(--ease-mola)] ${verAlteracoes ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-3 scale-[0.96] opacity-0 duration-200'}`}
             >
               <div className="flex items-center justify-between px-3 py-2">
                 <h3 className="text-sm font-bold text-slate-900">O que mudou desde o último salvamento</h3>
@@ -783,7 +783,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               </ul>
             </div>
           )}
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/95 py-2 pl-4 pr-2 shadow-xl backdrop-blur">
+          <div className="vidro-flutuante flex items-center gap-2 rounded-[22px] py-1.5 pl-4 pr-1.5">
             {!editId ? (
               <span className="flex-1 text-sm font-medium text-slate-600">Preencha os dados e crie o projeto.</span>
             ) : pendente ? (
@@ -796,19 +796,19 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               </button>
             ) : (
               <span key="salvo" role="status" className="anim-entrar flex flex-1 items-center gap-2 text-sm font-medium text-slate-500">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />{isLoadingEdit ? 'Carregando…' : 'Tudo salvo'}
+                <CheckCircle2 className="anim-mola h-4 w-4 text-emerald-500" />{isLoadingEdit ? 'Carregando…' : 'Tudo salvo'}
               </span>
             )}
             {editId && (
               <button type="button" onClick={() => { setVerAlteracoes(false); setVerHistorico(v => !v) }} aria-expanded={verHistorico}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 ${verHistorico ? 'bg-slate-100 text-slate-900' : 'text-slate-600'}`}>
+                className={`pressionavel inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold hover:bg-slate-900/[0.05] ${verHistorico ? 'bg-slate-900/[0.07] text-slate-900' : 'text-slate-600'}`}>
                 <History className="h-4 w-4" />Histórico
               </button>
             )}
             {editId
-              ? pendente && <button type="button" onClick={descartar} disabled={isPending} className="anim-entrar rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50">Descartar</button>
-              : <Link href={voltarHref} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancelar</Link>}
-            <button type="button" onClick={salvar} disabled={ocupado || (!!editId && !pendente)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-sm transition-all duration-300 [transition-timing-function:var(--ease-suave)] hover:bg-blue-700 hover:shadow-md active:scale-[0.97] disabled:opacity-40 disabled:shadow-none disabled:hover:bg-blue-600 disabled:active:scale-100">
+              ? pendente && <button type="button" onClick={descartar} disabled={isPending} className="anim-entrar pressionavel rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-900/[0.05] disabled:opacity-50">Descartar</button>
+              : <Link href={voltarHref} className="pressionavel rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-900/[0.05]">Cancelar</Link>}
+            <button type="button" onClick={salvar} disabled={ocupado || (!!editId && !pendente)} className="pressionavel flex items-center gap-2 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 px-5 py-2 text-sm font-bold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.28),0_8px_20px_-8px_rgb(37_99_235/0.7)] hover:from-blue-500 hover:to-blue-700 disabled:opacity-40 disabled:shadow-none">
               {isPending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
               {isPending ? (editId ? 'Salvando…' : 'Criando…') : (editId ? 'Salvar alterações' : 'Criar projeto')}
             </button>
