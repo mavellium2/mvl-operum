@@ -1,6 +1,7 @@
 import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 
 interface ExpandableTextareaProps {
+  id?: string;
   name: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
@@ -10,6 +11,7 @@ interface ExpandableTextareaProps {
 }
 
 const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
+  id,
   name,
   value,
   onChange,
@@ -29,7 +31,7 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
   // display:none → display:block changes even with no viewport movement.
   useEffect(() => {
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (!textarea || typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) setVisibilityTick(t => t + 1);
     }, { threshold: 0.01 });
@@ -118,12 +120,14 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
       <textarea
         readOnly={readOnly}
         ref={textareaRef}
+        id={id}
         name={name}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         onFocus={() => isCollapsed && setIsCollapsed(false)} 
-        className={`${className} block w-full overflow-hidden ${
+        // Folga à direita para o texto não passar por baixo do botão (canto superior).
+        className={`${className} block w-full overflow-hidden ${isOverflowing ? 'pr-11' : ''} ${
           isCollapsed ? 'cursor-pointer' : ''
         }`}
       />
@@ -135,7 +139,9 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
             e.preventDefault(); 
             setIsCollapsed(!isCollapsed);
           }}
-          className="absolute bottom-3 right-3 p-1.5 bg-white/80 hover:bg-slate-100 text-slate-500 rounded-md border border-slate-200 shadow-sm transition-all backdrop-blur-sm z-10"
+          aria-label={isCollapsed ? 'Expandir campo' : 'Recolher campo'}
+          aria-expanded={!isCollapsed}
+          className="absolute top-2 right-2 p-1.5 bg-white/80 hover:bg-slate-100 text-slate-500 rounded-md border border-slate-200 shadow-sm transition-all backdrop-blur-sm z-10"
           title={isCollapsed ? "Expandir" : "Recolher"}
         >
           {isCollapsed ? (

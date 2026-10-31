@@ -24,13 +24,15 @@ export interface SelectProps {
   compact?: boolean
   /** Dentro de texto (ex.: folha dos documentos): sem borda nem altura própria, segue a fonte e a linha de quem está em volta. */
   inline?: boolean
+  /** Valor de uma linha de propriedades (painel lateral): texto com seta, fundo só ao passar o mouse. */
+  propriedade?: boolean
   searchable?: boolean
   onCreate?: () => void
   createLabel?: string
 }
 
 export default function Select({ options, value, onChange, placeholder = 'Selecione...', disabled = false,
-  id, name, ariaLabel, className = '', compact = false, inline = false, searchable = true, onCreate,
+  id, name, ariaLabel, className = '', compact = false, inline = false, propriedade = false, searchable = true, onCreate,
   createLabel = 'Criar novo',
 }: SelectProps) {
   const uid = useId()
@@ -138,7 +140,7 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
   }, [active, expanded, uid, visible.length, searchable])
 
   return (
-    <span className={`inline-flex min-w-0 ${inline ? 'w-full align-baseline' : compact ? 'max-w-full align-middle' : 'w-full'} ${className}`}>
+    <span className={`inline-flex min-w-0 ${inline || propriedade ? 'w-full align-baseline' : compact ? 'max-w-full align-middle' : 'w-full'} ${className}`}>
       {name && <input type="hidden" name={name} value={value ?? ''} disabled={disabled} />}
       <button ref={trigger} id={id} type="button" role="combobox" aria-label={ariaLabel} aria-haspopup="listbox"
         aria-expanded={expanded} aria-controls={expanded ? listId : undefined} disabled={disabled}
@@ -146,9 +148,9 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
         onKeyDown={event => {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); show(event.key === 'ArrowUp') }
         }}
-        className={`group flex min-w-0 items-center justify-between gap-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${inline ? 'w-full rounded-sm px-0.5 leading-[inherit]! [font:inherit]! hover:bg-blue-50/60 aria-expanded:bg-[#f5f8ff] aria-expanded:outline aria-expanded:outline-2 aria-expanded:outline-blue-500' : compact ? 'h-7 rounded-md border border-transparent px-1.5 hover:border-slate-200 hover:bg-slate-50' : 'min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm hover:border-blue-300'} ${selected ? (inline ? 'text-inherit' : 'text-slate-800') : 'text-slate-400'}`}>
+        className={`group flex min-w-0 items-center justify-between gap-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${propriedade ? 'h-8 w-full rounded-lg px-2.5 text-[13px] font-medium hover:bg-slate-100 aria-expanded:bg-slate-100' : inline ? 'w-full rounded-sm px-0.5 leading-[inherit]! [font:inherit]! hover:bg-blue-50/60 aria-expanded:bg-[#f5f8ff] aria-expanded:outline aria-expanded:outline-2 aria-expanded:outline-blue-500' : compact ? 'h-7 rounded-md border border-transparent px-1.5 hover:border-slate-200 hover:bg-slate-50' : 'min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm hover:border-blue-300'} ${selected ? (inline ? 'text-inherit' : 'text-slate-800') : 'text-slate-400'}`}>
         <span className="truncate">{selected?.label ?? placeholder}</span>
-        <ChevronDown aria-hidden="true" size={compact || inline ? 13 : 16} className={`shrink-0 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        <ChevronDown aria-hidden="true" size={compact || inline || propriedade ? 13 : 16} className={`shrink-0 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
       </button>
       {expanded && createPortal(
         <div ref={panel} tabIndex={-1} onKeyDown={keys} style={{ position: 'fixed', ...position, zIndex: 10000 }}
