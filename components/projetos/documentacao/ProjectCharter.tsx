@@ -1,13 +1,13 @@
 'use client'
 
-import { printPageStyle, rodapeDocumento } from '@/lib/printPageStyle'
+import { printFolhasStyle } from '@/lib/printPageStyle'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { useDesfazer } from '@/hooks/useDesfazer'
 import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
 import EditorDocumento, { type StatusSalvamento } from '@/components/documentos/editor/EditorDocumento'
-import { FOLHA_MARGEM_MM } from '@/components/documentos/editor/folha'
+import { CopiaParaImpressao } from '@/components/documentos/editor/folha'
 import { useRecoverableDraft } from '@/hooks/useRecoverableDraft'
 import { useAutosave } from '@/hooks/useAutosave'
 import { useParams } from 'next/navigation'
@@ -25,7 +25,6 @@ import {
   type MembroEquipeOption,
   useMembrosEquipe,
 } from './MembroEquipeSelect'
-import PaginasDaPrevia from './PaginasDaPrevia'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -308,11 +307,10 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
 
   // ── Print ──────────────────────────────────────────────────────────────────
 
-  const rodape = rodapeDocumento(TITULO_TERMO, selectedVersion?.versao ?? versionMeta.versao)
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: TITULO_TERMO,
-    pageStyle: printPageStyle({ marginMm: FOLHA_MARGEM_MM, rodape }),
+    pageStyle: printFolhasStyle(),
   })
 
   // ── Commit (save version) ──────────────────────────────────────────────────
@@ -585,17 +583,13 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
           )}
         </>}
       >
-        <PaginasDaPrevia marginTopMm={FOLHA_MARGEM_MM.top} folha={{ rodape }}>
-          <div className="shadow-[0_1px_3px_rgba(15,23,42,0.12)]">
-            <ProjectCharterDocument {...documentProps} edicao={edicao} />
-          </div>
-        </PaginasDaPrevia>
+        <ProjectCharterDocument {...documentProps} edicao={edicao} />
       </EditorDocumento>
 
       {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
-      <div hidden>
+      <CopiaParaImpressao>
         <ProjectCharterDocument ref={printRef} {...documentProps} />
-      </div>
+      </CopiaParaImpressao>
 
       {/* ── Commit modal ──────────────────────────────────────────────────── */}
       <Modal isOpen={commitModalOpen} onClose={() => { if (!savingVersionRef.current) setCommitModalOpen(false) }} title="Salvar alteração" maxWidth="max-w-sm">

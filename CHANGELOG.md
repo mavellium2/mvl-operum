@@ -7,6 +7,16 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.44.0] — 2026-10-31
+
+- **Folhas A4 de verdade, como no Word:** cada documento é distribuído em folhas A4 separadas (210 × 297 mm; paisagem 297 × 210 mm), na tela e no PDF. Blocos inteiros (cabeçalho, quadro, assinaturas) não se partem; tabelas quebram entre linhas, sem cortar uma linha, com o cabeçalho das colunas repetido quando o modelo pede; textos longos continuam na folha seguinte a partir de uma linha inteira e seguem editáveis atravessando a quebra (setas, apagar e cursor acompanham). Rodapé "Página X de Y" em cada folha (e "Operum · documento · versão" na Ata). Margens laterais estreitas (10 mm) para aproveitar a folha. O PDF imprime as mesmas folhas.
+- **Termo de Abertura no modelo do professor ("02_Project Charter"):** logo e título "Termo de Abertura de Projeto - Project Charter", quadro com rótulos em negrito, seções com o título acima da caixa (Justificativa, Objetivos, Metodologia, Descrição do produto), premissas e restrições lado a lado item a item, macro fases numeradas (1.1, 1.2…) com custo total, principais envolvidos agrupados e designação de gerente.
+- **EAP no modelo da aula ("04 Aula GP - Modelo de EAP"):** folha paisagem com os títulos "Modelo de Estrutura Analítica do Projeto (EAP - Gráfica)" e "(EAP - Texto)", quadro de identificação em negrito e EAP em texto recuada por nível; a EAP gráfica usa o arranjo em colunas do modelo (fases lado a lado) com as cores dos blocos da aba EAP/WBS, e todas as páginas mostram "Página X de Y". Corrige a EAP gráfica ilegível em projetos com muitos itens (encolhida para caber na folha): com muitas fases os blocos ficam mais estreitos e o texto quebra em linhas, sem diminuir a fonte. O contador "Páginas" do editor passa a contar as folhas reais.
+- **Correção — documentos travando o navegador:** a folha media a página de novo sem parar enquanto o documento ficava aberto (cerca de 2 mil vezes por segundo), o que consumia CPU e memória até travar o navegador, principalmente na EAP. Agora mede de novo só quando o conteúdo, as fontes ou as imagens mudam.
+- **Menu Documentação:** os documentos aparecem logo abaixo do item Documentação, e não no fim do menu.
+- **Partes Interessadas:** sai o aviso fixo acima da folha.
+- **Segurança:** `follow-redirects` 1.16.2 (GHSA-mrwp-f3q8-3g9p, alta) em todo o workspace e nos serviços, via override do pnpm; o pacote chega ao api-gateway por `http-proxy-middleware`.
+
 ## [1.43.0] — 2026-10-30
 
 - **Documentos — edição direto na folha:** Termo de Abertura, Partes Interessadas, EAP e Atas passam a ser editados na própria folha A4 (o que se vê é o que sai no PDF), no lugar do formulário + "Gerar documento". Segue a tela "Edição de documento" desenhada no Penpot.

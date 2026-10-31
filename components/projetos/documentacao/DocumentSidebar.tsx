@@ -98,7 +98,7 @@ export default function DocumentSidebar({ activeDoc, onSelect, embedded = false,
     .filter((d): d is (typeof DOCUMENTS)[number] => Boolean(d))
 
   return (
-    <nav aria-label="Documentos" className={embedded ? "ml-3 border-l border-slate-200 py-2 pl-2" : "w-full lg:w-56 max-h-48 lg:max-h-none overflow-y-auto shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col py-4 gap-1 px-2"}>
+    <nav aria-label="Documentos" className={embedded ? "ml-5 border-l border-slate-200 pl-1.5" : "w-full lg:w-56 max-h-48 lg:max-h-none overflow-y-auto shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col py-4 gap-1 px-2"}>
       {!embedded && (
         <p className="px-2 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
           Documentos
@@ -107,7 +107,7 @@ export default function DocumentSidebar({ activeDoc, onSelect, embedded = false,
       <DragDropContext onDragEnd={handleDragEnd}>
         <Droppable droppableId="documents">
           {provided => (
-            <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1">
+            <div ref={provided.innerRef} {...provided.droppableProps} className={embedded ? "space-y-0.5" : "space-y-1"}>
               {orderedDocs.map((doc, index) => (
                 <Draggable key={doc.id} draggableId={doc.id} index={index}>
                   {(dragProvided, dragSnapshot) => (

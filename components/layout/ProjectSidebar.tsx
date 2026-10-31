@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useId } from 'react'
+import { Fragment, useEffect, useState, useId } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { PanelLeftOpen, Building2, Briefcase } from 'lucide-react'
@@ -140,21 +140,28 @@ export default function ProjectSidebar({ projetoId, canManageMembers, canManageG
         animated={animated}
         onToggleCollapse={toggleCollapsed}
       >
-        {navItems.map(({ href, label, Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              isActive(href)
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            <Icon />
-            <span className="truncate">{label}</span>
-          </Link>
-        ))}
-        {permissions.has('documentos:ver') && isActive(`/projetos/${projetoId}/documentacao`) && <DocumentSidebar embedded projetoId={projetoId} activeDoc={searchParams.get('doc') ?? 'stakeholder'} onSelect={doc => router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)} />}
+        {navItems.map(({ href, label, Icon }) => {
+          const documentacao = href === `/projetos/${projetoId}/documentacao`
+          return (
+            <Fragment key={href}>
+              <Link
+                href={href}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive(href)
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <Icon />
+                <span className="truncate">{label}</span>
+              </Link>
+              {/* Documentos logo abaixo do item Documentação, quando ele está aberto. */}
+              {documentacao && permissions.has('documentos:ver') && isActive(href) && (
+                <DocumentSidebar embedded projetoId={projetoId} activeDoc={searchParams.get('doc') ?? 'stakeholder'} onSelect={doc => router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)} />
+              )}
+            </Fragment>
+          )
+        })}
         <Link href="/projetos" className="mt-4 block border-t border-gray-200 px-3 py-3 text-sm text-gray-600 hover:text-gray-900">Todos os projetos</Link>
       </SidebarLayout>
 

@@ -127,7 +127,8 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
   useEffect(() => {
     const el = folhas.current
     if (!el) return
-    const contar = () => setVazios(el.querySelectorAll('[data-campo][data-vazio="true"]').length)
+    // A cópia de medição da paginação ([data-medicao]) não conta.
+    const contar = () => setVazios([...el.querySelectorAll('[data-campo][data-vazio="true"]')].filter(c => !c.closest('[data-medicao]')).length)
     contar()
     const mo = new MutationObserver(contar)
     mo.observe(el, { subtree: true, attributes: true, attributeFilter: ['data-vazio'], childList: true })
@@ -146,7 +147,7 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
   const camposNavegaveis = useCallback(() => {
     const el = folhas.current
     if (!el) return [] as HTMLElement[]
-    return [...el.querySelectorAll<HTMLElement>(SELETOR_FOCO)].filter(c => !(c as HTMLInputElement).disabled && !c.closest('[hidden]'))
+    return [...el.querySelectorAll<HTMLElement>(SELETOR_FOCO)].filter(c => !(c as HTMLInputElement).disabled && !c.closest('[hidden]') && !c.closest('[data-medicao]'))
   }, [])
 
   const navegar = useCallback((passo: 1 | -1, soVazios = false) => {

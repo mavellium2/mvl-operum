@@ -121,7 +121,8 @@ it('edita direto na folha e a cópia usada no PDF mostra o mesmo texto', async (
   await waitFor(() => expect(field).toBeEnabled())
   expect(field).toHaveAccessibleName('Justificativa')
   fireEvent.change(field, { target: { value: 'Texto da sessão' } })
-  const copiaDoPdf = container.querySelector('[hidden]')!
+  // Cópia de impressão: fora da tela (inert), com a mesma folha só de leitura.
+  const copiaDoPdf = container.querySelector('[inert]')!
   expect(copiaDoPdf).toHaveTextContent('Texto da sessão')
   expect(copiaDoPdf.querySelector('textarea')).toBeNull()
   // Ctrl+Z na folha desfaz a edição.
@@ -137,7 +138,7 @@ it('abre um snapshot histórico sem substituir conteúdo ou cabeçalho pelos atu
   fireEvent.click(screen.getByRole('button', { name: 'Histórico de versões' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Abrir documento desta versão' }))
   expect(screen.getAllByText('Texto histórico').length).toBeGreaterThan(0)
-  expect(screen.getAllByText('Nome do projeto: Nome histórico').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('Nome histórico').length).toBeGreaterThan(0)
   expect(screen.queryByDisplayValue('Vigente')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Voltar ao rascunho' }))
   expect(screen.getByDisplayValue('Vigente')).toBeInTheDocument()
