@@ -10,11 +10,12 @@ import EapGraficaDaAba, { type ArvoreDaAba } from './EapGraficaDaAba'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import { PAGE_NUMBER_MARGIN_MM } from '@/lib/printPageStyle'
 import {
-  Assinaturas, Cabecalho, CampoAutomatico, ListaPaginada, CampoData, CampoPessoa, CampoTexto, FOLHA_MARGEM_MM, FONTE_DOC, Folha, Quadro,
-  celula, celulaCampo, faixa, useEditorFolha,
+  CampoAutomatico, ListaPaginada, CampoData, CampoPessoa, CampoTexto, FOLHA_MARGEM_MM, Folha, useEditorFolha,
 } from '@/components/documentos/editor/folha'
 
 export const TITULO_EAP = 'Estrutura Analítica do Projeto — EAP'
+export const TITULO_EAP_GRAFICA = 'Modelo de Estrutura Analítica do Projeto (EAP - Gráfica)'
+export const TITULO_EAP_TEXTO = 'Modelo de Estrutura Analítica do Projeto (EAP - Texto)'
 
 /** Ligações do quadro com o estado do editor (só usadas dentro do EditorDocumento). */
 export interface EdicaoEap {
@@ -53,8 +54,6 @@ export interface EapDocumentSheetProps {
   /** Habilita interação (clique nos blocos) — usado pelo editor. */
   interactive?: boolean
   edicao?: EdicaoEap
-  /** Rodapé desenhado na folha, na tela (no PDF vem do @page). */
-  rodape?: string
   selectedId?: string | null
   onSelectBlock?: (id: string) => void
 }
@@ -70,58 +69,86 @@ const AZUL = '#4472c4'
 const AZUL_BORDA = '#2f528f'
 const nada = () => {}
 
-/** Rodapé da folha na tela ("Operum · … · versão" e "Página X de Y"); no PDF vem do @page. */
 /** Rodapé da folha da EAP gráfica (as folhas do texto têm o rodapé da paginação). */
-function RodapeTela({ texto, pagina, total }: { texto?: string; pagina: number; total: number }) {
+function RodapeTela({ pagina, total }: { pagina: number; total: number }) {
   return (
     <div data-rodape-pagina="" style={{ position: 'absolute', left: `${FOLHA_MARGEM_MM.x}mm`, right: `${FOLHA_MARGEM_MM.x}mm`, bottom: '3.5mm', display: 'flex', justifyContent: 'space-between', font: '8pt Arial, Arimo, Helvetica, sans-serif', color: '#555' }}>
-      <span>{texto}</span><span>Página {pagina} de {total}</span>
+      <span /><span>Página {pagina} de {total}</span>
     </div>
   )
 }
 
-function QuadroEap({ metadata, instituicao, assinaturaUrl, edicao }: { metadata: EapDocumentMetadata; instituicao: string; assinaturaUrl?: string | null; edicao?: EdicaoEap }) {
+const bordaEap = '1px solid #000'
+const celEap: React.CSSProperties = { border: bordaEap, padding: '1px 5px', verticalAlign: 'top', textAlign: 'left', fontSize: '10pt', lineHeight: 1.3, fontWeight: 'bold', fontFamily: 'Calibri, Carlito, Arial, Helvetica, sans-serif' }
+const celEapCampo: React.CSSProperties = { ...celEap, padding: 0 }
+/** Rótulo em negrito e itálico ("Versão:", "Data de aprovação:"), como no modelo. */
+const RotuloItalico = ({ children }: { children: React.ReactNode }) => <em style={{ fontWeight: 'bold' }}>{children}</em>
+
+/** Logo à esquerda e título centralizado na folha (coluna vazia da mesma largura à direita). */
+function CabecalhoEap({ titulo, logoUrl }: { titulo: string; logoUrl?: string | null }) {
+  const { editavel } = useEditorFolha()
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', minHeight: '24mm' }}>
+      <div style={{ width: '40mm', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+        {logoUrl
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={logoUrl} alt="Logo do projeto" style={{ maxHeight: '24mm', maxWidth: '36mm', objectFit: 'contain' }} />
+          : editavel
+            ? <div style={{ width: '30mm', height: '20mm', border: '1px solid #4a6fa5', background: '#9db7e0', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '11pt', lineHeight: 1.15 }}>Logo do<br />Projeto</div>
+            : null}
+      </div>
+      <h1 style={{ flex: 1, margin: 0, textAlign: 'center', fontFamily: 'Arial, Arimo, Helvetica, sans-serif', fontSize: '15pt', fontWeight: 'bold', lineHeight: 1.2 }}>{titulo}</h1>
+      <div aria-hidden="true" style={{ width: '40mm', flexShrink: 0 }} />
+    </div>
+  )
+}
+
+/** Quadro de identificação no modelo "04 Aula GP": tudo em negrito; Versão e Data de aprovação em itálico. */
+function QuadroEap({ metadata, instituicao, assinaturaUrl, edicao, testId }: { metadata: EapDocumentMetadata; instituicao: string; assinaturaUrl?: string | null; edicao?: EdicaoEap; testId?: string }) {
   const { editavel } = useEditorFolha()
   const ed = edicao
   const aprovador = metadata.approvedBy || metadata.projectManager
   return (
-    <Quadro testId="quadro-identificacao">
-      <tr><td colSpan={2} style={{ ...faixa, padding: 0 }}><CampoAutomatico>{instituicao}</CampoAutomatico></td></tr>
-      <tr><td colSpan={2} style={celulaCampo}><CampoAutomatico>Nome do projeto: {metadata.projectName}</CampoAutomatico></td></tr>
-      <tr><td colSpan={2} style={celulaCampo}><CampoAutomatico origem="Automático: vem do gerente do projeto">Gerente do projeto: {metadata.projectManager}</CampoAutomatico></td></tr>
-      <tr>
-        <td style={celula}>
-          Elaborado por:{' '}
-          <CampoPessoa
-            id="eap-elaborado-por" rotulo="Elaborado por" ajuda="Quem montou este documento. Escolha um membro da equipe."
-            projetoId={ed?.projetoId ?? ''} membros={ed?.membros ?? []} valorId={metadata.preparedByUserId} nome={metadata.preparedBy}
-            onChange={ed?.onElaboradoPor ?? nada} onCriarMembro={ed?.onCriarMembro}
-          />
-        </td>
-        <td style={celulaCampo}>
-          {editavel
-            ? <div className="flex items-start" style={{ paddingLeft: 6 }}><span style={{ padding: '2px 0' }}>Versão:</span><div className="flex-1"><CampoTexto id="eap-versao" rotulo="Versão" ajuda="Número desta versão do documento (ex.: 1.0, 1.1)." pergunta="1.0" valor={metadata.version ?? ''} onChange={ed?.onVersao ?? nada} max={20} linha /></div></div>
-            : <div style={{ padding: '2px 6px' }}>Versão: {metadata.version || '1.0'}</div>}
-        </td>
-      </tr>
-      <tr><td colSpan={2} style={celulaCampo}><CampoAutomatico origem="Automático: o aprovador é sempre o gerente do projeto">Aprovado por: {aprovador}</CampoAutomatico></td></tr>
-      <tr>
-        <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-          <AssinaturaEmLinha url={assinaturaUrl} vazio={metadata.signature || (editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined)} />
-        </td>
-        <td style={{ ...celula, whiteSpace: 'nowrap' }}>
-          Data de aprovação:{' '}
-          {editavel
-            ? <CampoData id="eap-data-aprovacao" rotulo="Data de aprovação" ajuda="Dia em que o gerente aprovou esta versão." valor={metadata.approvalDate ?? ''} onChange={ed?.onDataAprovacao ?? nada} />
-            : formatDateBR(metadata.approvalDate, '')}
-        </td>
-      </tr>
-    </Quadro>
+    <table data-testid={testId} style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+      <colgroup><col style={{ width: '62%' }} /><col style={{ width: '15%' }} /><col style={{ width: '23%' }} /></colgroup>
+      <tbody>
+        <tr><td colSpan={3} style={{ ...celEapCampo, background: '#bfbfbf' }}><CampoAutomatico padding="1px 5px">{instituicao}</CampoAutomatico></td></tr>
+        <tr><td colSpan={3} style={celEapCampo}><CampoAutomatico padding="1px 5px">Nome do projeto: {metadata.projectName}</CampoAutomatico></td></tr>
+        <tr><td colSpan={3} style={celEapCampo}><CampoAutomatico padding="1px 5px">Gerente do projeto: {metadata.projectManager}</CampoAutomatico></td></tr>
+        <tr>
+          <td colSpan={2} style={celEap}>
+            Elaborado por:{' '}
+            <CampoPessoa
+              id="eap-elaborado-por" rotulo="Elaborado por" ajuda="Quem montou este documento. Escolha um membro da equipe."
+              projetoId={ed?.projetoId ?? ''} membros={ed?.membros ?? []} valorId={metadata.preparedByUserId} nome={metadata.preparedBy}
+              onChange={ed?.onElaboradoPor ?? nada} onCriarMembro={ed?.onCriarMembro}
+            />
+          </td>
+          <td style={{ ...celEapCampo, fontWeight: 'normal' }}>
+            {editavel
+              ? <div className="flex items-start" style={{ paddingLeft: 5 }}><RotuloItalico>Versão:</RotuloItalico>&nbsp;<div className="flex-1"><CampoTexto id="eap-versao" rotulo="Versão" ajuda="Número desta versão do documento (ex.: 1.0, 1.1)." pergunta="1.0" valor={metadata.version ?? ''} onChange={ed?.onVersao ?? nada} max={20} linha compacto /></div></div>
+              : <div style={{ padding: '1px 5px' }}><RotuloItalico>Versão:</RotuloItalico> {metadata.version || '1.0'}</div>}
+          </td>
+        </tr>
+        <tr><td colSpan={3} style={celEapCampo}><CampoAutomatico padding="1px 5px">Aprovado por: {aprovador}</CampoAutomatico></td></tr>
+        <tr>
+          <td style={{ ...celEap, whiteSpace: 'nowrap' }}>
+            <AssinaturaEmLinha url={assinaturaUrl} vazio={metadata.signature || (editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined)} />
+          </td>
+          <td colSpan={2} style={{ ...celEap, fontWeight: 'normal', whiteSpace: 'nowrap' }}>
+            <RotuloItalico>Data de aprovação:</RotuloItalico>{' '}
+            {editavel
+              ? <CampoData id="eap-data-aprovacao" rotulo="Data de aprovação" ajuda="Dia em que o gerente aprovou esta versão." valor={metadata.approvalDate ?? ''} onChange={ed?.onDataAprovacao ?? nada} />
+              : formatDateBR(metadata.approvalDate, '')}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   )
 }
 
 const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
-  function EapDocumentSheet({ metadata, nodes, instituicao, logoUrl, assinaturaUrl, arvore, interactive, selectedId, onSelectBlock, edicao, rodape }, ref) {
+  function EapDocumentSheet({ metadata, nodes, instituicao, logoUrl, assinaturaUrl, arvore, interactive, selectedId, onSelectBlock, edicao }, ref) {
     const layout = useMemo(() => computeEapColumnLayout(nodes), [nodes])
     const flat = useMemo(() => flattenTree(nodes), [nodes])
     // Folhas ocupadas pela EAP em texto (para o "Página 1 de N" da folha gráfica).
@@ -197,7 +224,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
         return <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>Estrutura da EAP vazia — use o editor para montar a árvore.</div>
       }
       return (
-        <ListaPaginada style={{ fontFamily: FONTE_DOC, fontSize: '10pt', lineHeight: 1.35 }}>
+        <ListaPaginada style={{ fontFamily: '"Times New Roman", Tinos, Times, serif', fontSize: '10.5pt', lineHeight: 1.25 }}>
           {flat.map(node => {
             const temFilhos = (node.children?.length ?? 0) > 0
             const texto = node.level === 1 ? `${node.code}. ${node.title}` : `${node.code} ${node.title}`
@@ -205,9 +232,9 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
               <div
                 key={node.id}
                 style={{
-                  marginLeft: node.level <= 1 ? 0 : `${(node.level - 2) * 5 + 1}mm`,
-                  marginTop: node.level === 2 ? '1.25em' : 0,
-                  marginBottom: node.level === 1 ? '0.25em' : 0,
+                  // Recuo de 4 mm por nível a partir do 2º (o 1º e o 2º ficam na margem), como no modelo.
+                  marginLeft: node.level <= 2 ? 0 : `${(node.level - 2) * 4}mm`,
+                  marginTop: node.level === 2 ? '1em' : 0,
                   fontWeight: node.level <= 2 || temFilhos ? 'bold' : 'normal',
                   breakInside: 'avoid',
                   breakAfter: temFilhos ? 'avoid' : 'auto',
@@ -224,23 +251,19 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
     const grafica = renderGraphicTree()
     return (
       <div ref={ref} data-testid="eap-sheet" className="eap-sheet" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* ── PÁGINA 1 — EAP GRÁFICA (altura fixa: uma página) ─────────────── */}
-        <Folha paisagem fixa data-testid="eap-pagina-1" style={{ breakAfter: 'page' }}>
-          <Cabecalho titulo={TITULO_EAP} logoUrl={logoUrl} />
-          <QuadroEap metadata={metadata} instituicao={instituicao} assinaturaUrl={assinaturaUrl} edicao={edicao} />
+        {/* ── FOLHA 1 — EAP GRÁFICA (altura fixa: uma folha) ──────────────── */}
+        <Folha paisagem fixa data-testid="eap-pagina-1" style={{ breakAfter: 'page', gap: '4mm' }}>
+          <CabecalhoEap titulo={TITULO_EAP_GRAFICA} logoUrl={logoUrl} />
+          <QuadroEap testId="quadro-identificacao" metadata={metadata} instituicao={instituicao} assinaturaUrl={assinaturaUrl} edicao={edicao} />
           {grafica}
-          <RodapeTela texto={rodape} pagina={1} total={1 + paginasTexto} />
+          <RodapeTela pagina={1} total={1 + paginasTexto} />
         </Folha>
 
-        {/* ── PÁGINAS 2+ — EAP TEXTO (o texto continua nas páginas seguintes) ── */}
-        <Folha paisagem data-testid="eap-pagina-2" rodape={rodape} paginaInicial={2} onPaginas={setPaginasTexto}>
+        {/* ── FOLHAS 2+ — EAP TEXTO: título e quadro só na primeira; a lista continua nas seguintes ── */}
+        <Folha paisagem data-testid="eap-pagina-2" paginaInicial={2} onPaginas={setPaginasTexto} style={{ gap: '4mm' }}>
+          <CabecalhoEap titulo={TITULO_EAP_TEXTO} logoUrl={logoUrl} />
+          <QuadroEap metadata={metadata} instituicao={instituicao} assinaturaUrl={assinaturaUrl} />
           {renderTextualTree()}
-          <Assinaturas
-            assinantes={[
-              { nome: metadata.preparedBy, funcao: 'Elaborado por' },
-              { nome: metadata.approvedBy || metadata.projectManager, funcao: 'Aprovado por — Gerente do projeto', assinaturaUrl },
-            ]}
-          />
         </Folha>
       </div>
     )

@@ -1,7 +1,7 @@
 'use client'
 
 import Select from '@/components/ui/Select'
-import { printFolhasStyle, rodapeDocumento } from '@/lib/printPageStyle'
+import { printFolhasStyle } from '@/lib/printPageStyle'
 import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
 import { CopiaParaImpressao } from '@/components/documentos/editor/folha'
 import Tooltip from '@/components/ui/Tooltip'
@@ -365,7 +365,6 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
   const metaExibida: EapDocumentMetadata = conteudoVersao ? { ...metadata, ...conteudoVersao } : metadata
   const nosExibidos = conteudoVersao?.nodes ?? nodes
   const editavel = canEdit && !versaoAberta && !saving
-  const rodape = rodapeDocumento('Estrutura Analítica do Projeto', metaExibida.version || '1.0')
 
   return (
     <>
@@ -440,7 +439,6 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
             interactive={editavel && !origemWbs}
             selectedId={selectedId}
             onSelectBlock={id => editavel && openBlock(id)}
-            rodape={rodape}
             edicao={{
               projetoId,
               membros: todosMembros,
@@ -464,7 +462,6 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
           logoUrl={logoUrl}
           assinaturaUrl={assinaturaUrl}
           arvore={!versaoAberta && origemWbs ? arvore : null}
-          rodape={rodape}
         />
       </CopiaParaImpressao>
 
