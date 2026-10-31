@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Plus, Search } from 'lucide-react'
 
@@ -9,6 +9,8 @@ export interface SelectOption {
   label: string
   description?: string
   disabled?: boolean
+  /** Antes do nome (ex.: foto da pessoa), na opção e no campo selecionado. */
+  icone?: ReactNode
 }
 
 export interface SelectProps {
@@ -149,7 +151,7 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); show(event.key === 'ArrowUp') }
         }}
         className={`group flex min-w-0 items-center justify-between gap-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${propriedade ? 'h-8 w-full rounded-lg px-2.5 text-[13px] font-medium hover:bg-slate-100 aria-expanded:bg-slate-100' : inline ? 'w-full rounded-sm px-0.5 leading-[inherit]! [font:inherit]! hover:bg-blue-50/60 aria-expanded:bg-[#f5f8ff] aria-expanded:outline aria-expanded:outline-2 aria-expanded:outline-blue-500' : compact ? 'h-7 rounded-md border border-transparent px-1.5 hover:border-slate-200 hover:bg-slate-50' : 'min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm hover:border-blue-300'} ${selected ? (inline ? 'text-inherit' : 'text-slate-800') : 'text-slate-400'}`}>
-        <span className="truncate">{selected?.label ?? placeholder}</span>
+        <span className="flex min-w-0 items-center gap-2">{selected?.icone && <span className="shrink-0">{selected.icone}</span>}<span className="truncate">{selected?.label ?? placeholder}</span></span>
         <ChevronDown aria-hidden="true" size={compact || inline || propriedade ? 13 : 16} className={`shrink-0 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
       </button>
       {expanded && createPortal(
@@ -169,6 +171,7 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
               onMouseEnter={() => { if (!option.disabled) setActive(index) }} onMouseDown={event => event.preventDefault()}
               onClick={() => choose(index)}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 ${option.disabled ? 'cursor-not-allowed text-slate-300' : `cursor-pointer ${active === index ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'}`}`}>
+              {option.icone && <span className="shrink-0">{option.icone}</span>}
               <span className="min-w-0 flex-1"><span className="block truncate font-medium">{option.label}</span>{option.description && <span className="block truncate text-xs text-slate-400">{option.description}</span>}</span>
               {option.value === value && <Check size={16} aria-hidden="true" className="shrink-0 text-blue-600" />}
             </div>)}

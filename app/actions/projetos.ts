@@ -165,6 +165,10 @@ export async function getProjetoAction(id: string) {
       },
       select: { userId: true },
     })
+    // Nome e foto do gerente: o seletor do Editar projeto mostra mesmo para quem não lista usuários.
+    const gerenteUsuario = gerente
+      ? await prisma.user.findFirst({ where: { id: gerente.userId, tenantId }, select: { id: true, name: true, avatarUrl: true } })
+      : null
 
     const macroFasesSyncPending = (projeto.macroFasesRevision ?? 0) > (projeto.macroFasesSyncedRevision ?? 0)
 
@@ -203,6 +207,7 @@ export async function getProjetoAction(id: string) {
       },
       departamentosAssociados: associados.map(a => a.department),
       gerenteId: gerente?.userId ?? '',
+      gerente: gerenteUsuario,
     }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao buscar projeto' }

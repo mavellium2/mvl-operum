@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/Toast'
 import MultiCreatableSelect from '@/components/ui/MultiCreatableSelect'
 import ExpandableTextarea from '@/components/ui/ExpandableTextarea'
 import ProjetoLogoUpload from '@/components/projetos/ProjetoLogoUpload'
+import UserAvatar from '@/components/user/UserAvatar'
 import { useGuardaSaida } from '@/components/documentos/editor/GuardaSaida'
 import { linhaInstitucional, periodoEhSemestral, TURNOS } from '@/lib/linhaInstitucional'
 import { desfazerAlteracao, listarAlteracoes, ROTULOS_PROJETO, type CampoTextoTermo, type FaseForm, type FormProjeto } from '@/lib/alteracoesProjeto'
@@ -26,8 +27,9 @@ import { diffTexto } from '@/lib/diffTexto'
 interface Usuario {
   id: string
   name: string
-  email: string
+  email?: string
   isActive?: boolean
+  avatarUrl?: string | null
 }
 
 export default function NovoProjetoPage({ canAssignRoles = true }: { canAssignRoles?: boolean }) {
@@ -186,6 +188,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const [isLoadingEdit, setIsLoadingEdit] = useState(!!editId)
 
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  /** Gerente atual (nome e foto), vindo do projeto: aparece mesmo sem a lista de usuários. */
+  const [gerenteAtual, setGerenteAtual] = useState<Usuario | null>(null)
   const [departamentosExistentes, setDepartamentosExistentes] = useState<string[]>([])
   const [error, setError] = useState('')
   const [syncPending, setSyncPending] = useState(false)
@@ -262,6 +266,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
       setInicioPelaTarefa(Boolean((p as { inicioPelaPrimeiraTarefa?: boolean }).inicioPelaPrimeiraTarefa))
       const associados = (result as { departamentosAssociados?: { id: string; name: string }[] }).departamentosAssociados
       const gerenteId = (result as { gerenteId?: string }).gerenteId ?? ''
+      setGerenteAtual((result as { gerente?: Usuario | null }).gerente ?? null)
       const publicado: FormProjeto = {
         name: p.name ?? '',
         slogan: p.slogan ?? '',
@@ -312,9 +317,15 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     const chave = faseNova.current
     if (!chave) return
     faseNova.current = null
-    const campo = rolagemFases.current?.querySelector<HTMLTextAreaElement>(`[data-fase="${chave}"]`)
-    campo?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
-    campo?.focus({ preventScroll: true })
+    const lista = rolagemFases.current
+    const campo = lista?.querySelector<HTMLTextAreaElement>(`[data-fase="${chave}"]`)
+    if (!lista || !campo) return
+    // A fase nova entra no fim: rola a lista até o fim (no celular, a página até a linha) e foca o nome.
+    campo.focus({ preventScroll: true })
+    requestAnimationFrame(() => {
+      if (lista.scrollHeight > lista.clientHeight) lista.scrollTo({ top: lista.scrollHeight, behavior: 'smooth' })
+      else campo.closest('tr')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+    })
   }, [macroFases])
   const updateMacroFase = (chave: string, field: 'fase' | 'dataLimite' | 'custo', value: string) => {
     if (canEditCosts) setMacroFases(l => l.map(f => (f.chave === chave ? { ...f, [field]: value } : f)))
@@ -403,6 +414,16 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const linha = linhaInstitucional({ location: form.location, departamentos: form.departamentos, semestre: form.semestre, termo: form.termo, turno: form.turno, ano: form.ano ? Number(form.ano) : null, anoAms: form.anoAms })
   const alterado = (campo: keyof FormProjeto) => alteracoes.some(a => a.chave === campo)
   const ocupado = isPending || isLoadingEdit
+  // Gerente: foto antes do nome. O gerente atual entra na lista mesmo quando ela não foi carregada.
+  const pessoasGerente = [...usuarios.filter(u => u.isActive !== false || u.id === form.initialMemberId)]
+  if (gerenteAtual && !pessoasGerente.some(u => u.id === gerenteAtual.id)) pessoasGerente.unshift(gerenteAtual)
+  const opcoesGerente = [
+    { value: '', label: 'Designar depois' },
+    ...pessoasGerente.map(u => ({
+      value: u.id, label: u.name,
+      icone: <UserAvatar name={u.name} avatarUrl={u.avatarUrl ?? (gerenteAtual?.id === u.id ? gerenteAtual.avatarUrl : null)} size="xs" />,
+    })),
+  ]
   // Linha institucional em partes ("Fatec Garça", "ADS", "2º Semestre 2026"…), para ler sem esforço.
   const segmentosLinha = linha ? linha.split(' - ').map(t => t.trim()).filter(Boolean) : []
   const pendenciasFases = fasesPreenchidas.filter(f => !f.dataLimite || !((parseMoeda(f.custo) ?? 0) > 0)).length
@@ -592,7 +613,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               <h3 className={tituloLateral}>Propriedades</h3>
               <Propriedade Icone={UserRound} rotulo="Gerente" htmlFor="projeto-gerente">
                 <Select id="projeto-gerente" propriedade disabled={!canAssignRoles} name="initialMemberId" placeholder="Designar depois" value={form.initialMemberId} onChange={v => alterarCampo('initialMemberId', v)}
-                  options={[{ value: '', label: 'Designar depois' }, ...usuarios.filter(u => u.isActive !== false || u.id === form.initialMemberId).map(u => ({ value: u.id, label: u.name }))]} />
+                  options={opcoesGerente} />
               </Propriedade>
               <Propriedade Icone={CalendarDays} rotulo="Início">
                 {inicioPelaTarefa ? (

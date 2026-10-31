@@ -18,7 +18,7 @@ beforeEach(() => {
     id: 'p1', name: 'JANUS V2', semestre: '2', termo: '5', turno: 'Noturno', ano: 2026, departamentos: [],
     justificativa: 'Equipes grandes (até 10 membros).', endDate: '2026-11-16T00:00:00Z',
     macroFases: [{ fase: 'Escopo', dataLimite: '2026-09-25', custo: '83,34' }],
-  } } as never)
+  }, gerenteId: 'g1', gerente: { id: 'g1', name: 'Ana Gerente', avatarUrl: null } } as never)
   vi.mocked(updateProjetoAction).mockResolvedValue({ projeto: { id: 'p1' } } as never)
 })
 
@@ -61,5 +61,12 @@ describe('Editar projeto — alterações não salvas', () => {
     await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ name: 'JANUS V3', macroFases: [{ fase: 'Escopo', dataLimite: '2026-09-25', custo: '83,34' }] })))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDisabled())
     expect(screen.getByRole('status')).toHaveTextContent('Tudo salvo')
+  })
+
+  it('mostra o gerente com a foto mesmo sem a lista de usuários (quem não é admin)', async () => {
+    render(<ProjetoFormPage />)
+    const campo = await screen.findByRole('combobox', { name: 'Gerente' })
+    await waitFor(() => expect(campo).toHaveTextContent('Ana Gerente'))
+    expect(campo).toHaveTextContent('AG') // iniciais no lugar da foto, antes do nome
   })
 })
