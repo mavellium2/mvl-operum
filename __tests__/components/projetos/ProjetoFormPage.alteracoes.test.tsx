@@ -23,12 +23,16 @@ beforeEach(() => {
 })
 
 describe('Editar projeto — alterações não salvas', () => {
-  it('a barra só aparece com alteração e mostra antes e depois; desfazer volta o campo', async () => {
+  it('a barra fica visível; com alteração mostra antes e depois e desfazer volta o campo', async () => {
     render(<ProjetoFormPage />)
     const nome = await screen.findByLabelText('Nome do projeto')
     await waitFor(() => expect(nome).toHaveValue('JANUS V2'))
-    expect(screen.queryByRole('button', { name: 'Salvar alterações' })).not.toBeInTheDocument()
+    // Sem alteração: a barra continua visível, com "Tudo salvo" e o Salvar desativado.
+    expect(screen.getByRole('status')).toHaveTextContent('Tudo salvo')
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDisabled()
 
+    // Diretrizes e Cronograma ficam em abas com resumo.
+    expect(screen.getByRole('tab', { name: /Cronograma Financeiro.*1 fase/ })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Justificativa do Projeto'), { target: { value: 'Equipes grandes (de 5 a 10 membros).' } })
     fireEvent.change(screen.getByLabelText('Data prevista de fim'), { target: { value: '30/11/2026' } })
     fireEvent.click(screen.getByRole('button', { name: /2 alterações não salvas/ }))
@@ -45,7 +49,7 @@ describe('Editar projeto — alterações não salvas', () => {
     expect(screen.getByRole('button', { name: /1 alteração não salva/ })).toBeInTheDocument()
   })
 
-  it('salvar envia o formulário e esconde a barra; descartar volta tudo', async () => {
+  it('salvar envia o formulário e volta a "Tudo salvo"; descartar volta tudo', async () => {
     render(<ProjetoFormPage />)
     await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
     fireEvent.change(screen.getByLabelText('Nome do projeto'), { target: { value: 'JANUS V3' } })
@@ -55,6 +59,7 @@ describe('Editar projeto — alterações não salvas', () => {
     fireEvent.change(screen.getByLabelText('Nome do projeto'), { target: { value: 'JANUS V3' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ name: 'JANUS V3', macroFases: [{ fase: 'Escopo', dataLimite: '2026-09-25', custo: '83,34' }] })))
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Salvar alterações' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDisabled())
+    expect(screen.getByRole('status')).toHaveTextContent('Tudo salvo')
   })
 })

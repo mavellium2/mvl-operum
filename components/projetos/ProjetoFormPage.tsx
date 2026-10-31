@@ -4,11 +4,11 @@ import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { parseMoeda } from '@/lib/dinheiro'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
-import { useState, useTransition, useEffect, useMemo, Suspense, type ReactNode } from 'react'
+import { useState, useTransition, useEffect, useLayoutEffect, useMemo, useRef, Suspense, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  AlertTriangle, ArrowLeft, Building2, CalendarClock, CalendarDays, ChevronDown, Flag, GraduationCap, Layers, Lightbulb,
+  AlertTriangle, ArrowLeft, Building2, CheckCircle2, CalendarClock, CalendarDays, ChevronDown, Flag, GraduationCap, Layers, Lightbulb,
   ListChecks, MapPin, Package, Plus, Scale, ShieldAlert, Target, Trash2, Undo2, UserRound, Wrench, X,
 } from 'lucide-react'
 import { createProjetoAction, updateProjetoAction, getProjetoAction, retryMacroFasesSyncAction } from '@/app/actions/projetos'
@@ -147,6 +147,18 @@ const FORM_VAZIO: FormProjeto = {
 let proximaChave = 0
 const novaFase = (): FaseForm => ({ chave: `nova-${++proximaChave}`, fase: '', dataLimite: '', custo: '' })
 
+/** Campo de texto que cresce com o conteúdo (quebra linha em vez de cortar). */
+function TextoQueCresce({ value, onChange, className, ...resto }: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'onChange' | 'value'> & { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = '0px'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
+  return <textarea ref={ref} rows={1} value={value} onChange={e => onChange(e.target.value)} className={`${className} resize-none overflow-hidden`} {...resto} />
+}
+
 /** Texto com as palavras removidas (vermelho, riscadas) e incluídas (verde). */
 function DiffTexto({ antes, depois }: { antes: string; depois: string }) {
   if (!antes && !depois) return <span className="text-sm text-slate-400">vazio</span>
@@ -188,6 +200,20 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const [salvo, setSalvo] = useState<{ form: FormProjeto; fases: FaseForm[] } | null>(null)
   const [verAlteracoes, setVerAlteracoes] = useState(false)
   const [inicioPelaTarefa, setInicioPelaTarefa] = useState(false)
+  const [aba, setAba] = useState<'diretrizes' | 'cronograma'>('diretrizes')
+  // Barra de salvar fixa na tela, alinhada à área do formulário (o menu lateral muda de largura).
+  const areaRef = useRef<HTMLElement>(null)
+  const [barra, setBarra] = useState<{ left: number | string; width: number | string }>({ left: 0, width: '100%' })
+  useEffect(() => {
+    const el = areaRef.current
+    if (!el) return
+    const medir = () => { const r = el.getBoundingClientRect(); if (r.width > 0) setBarra({ left: r.left, width: r.width }) }
+    medir()
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(medir)
+    ro?.observe(el)
+    window.addEventListener('resize', medir)
+    return () => { ro?.disconnect(); window.removeEventListener('resize', medir) }
+  }, [])
 
   useEffect(() => {
     listUsersAction().then(r => {
@@ -341,14 +367,15 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const linha = linhaInstitucional({ location: form.location, departamentos: form.departamentos, semestre: form.semestre, termo: form.termo, turno: form.turno, ano: form.ano ? Number(form.ano) : null, anoAms: form.anoAms })
   const alterado = (campo: keyof FormProjeto) => alteracoes.some(a => a.chave === campo)
   const ocupado = isPending || isLoadingEdit
+  const preenchidos = CAMPOS_TERMO.filter(c => form[c.nome].trim()).length
 
   return (
     <div className="relative min-h-screen bg-[#F8FAFC] font-sans">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[260px] w-full max-w-3xl -translate-x-1/2 rounded-full bg-blue-500/5 blur-[120px]" />
 
-      <main className="relative mx-auto max-w-[1200px] px-4 pb-32 pt-5 sm:px-6">
+      <main ref={areaRef} className="relative mx-auto max-w-[1280px] px-4 pb-28 pt-5 sm:px-6">
         {syncPending && (
-          <div role="status" className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div role="status" className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <p>Projeto salvo. A sincronização das macrofases com a EAP está pendente.</p>
             {canEditCosts && syncProjectId && <button type="button" disabled={isPending} className="mt-2 font-bold underline" onClick={() => startTransition(async () => {
               const result = await retryMacroFasesSyncAction(syncProjectId)
@@ -360,134 +387,155 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         )}
 
         {error && (
-          <div role="alert" className="mb-5 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm font-semibold text-red-600">
+          <div role="alert" className="mb-4 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm font-semibold text-red-600">
             <AlertTriangle className="h-4 w-4 shrink-0" />{error}
           </div>
         )}
 
-        <form onSubmit={e => { e.preventDefault(); salvar() }} className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
-          {/* ── Coluna principal ── */}
-          <div className="min-w-0 space-y-6">
-            <section className={`${card} relative p-6`} aria-label="Projeto">
-              {/* Voltar: no canto do cartão, sem ocupar uma linha própria. */}
-              <Link href={voltarHref} className="absolute right-3 top-3 inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-                <ArrowLeft className="h-3.5 w-3.5" />Voltar
-              </Link>
-              <div className="flex items-start gap-5">
-                <ProjetoLogoUpload nome={form.name} url={form.logoUrl} onChange={url => setForm(f => ({ ...f, logoUrl: url }))} disabled={ocupado} />
-                <div className="min-w-0 flex-1 pr-16">
-                  {!editId && <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-blue-600">Novo projeto</p>}
-                  <input
-                    name="name" value={form.name} onChange={e => alterarCampo('name', e.target.value)} aria-label="Nome do projeto" aria-required="true"
-                    placeholder="Nome do projeto"
-                    className="-mx-2 w-full rounded-lg px-2 py-1 text-2xl font-extrabold tracking-tight text-slate-900 outline-none placeholder:text-slate-300 hover:bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-                  />
-                  <input
-                    name="slogan" value={form.slogan} onChange={e => alterarCampo('slogan', e.target.value)} aria-label="Slogan / visão"
-                    placeholder="Adicione um slogan ou a visão do projeto…"
-                    className="-mx-2 mt-0.5 w-full rounded-lg px-2 py-1 text-[15px] text-slate-600 outline-none placeholder:text-slate-400 hover:bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-                  />
-                  {linha && (
-                    <p className="mt-3">
-                      <span title="Linha institucional dos documentos" className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-200">
-                        <GraduationCap className="h-3.5 w-3.5 shrink-0" />{linha}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              </div>
-            </section>
+        <form onSubmit={e => { e.preventDefault(); salvar() }} className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+          {/* ── Coluna principal: Diretrizes e Escopo | Cronograma Financeiro ── */}
+          <div className="order-2 min-w-0 lg:order-1">
+            {/* Abas com resumo: as duas partes ficam a um clique, cada uma cabendo na tela. */}
+            <div role="tablist" aria-label="Seções do projeto" className="mb-4 grid grid-cols-2 gap-1 rounded-2xl border border-slate-200/50 bg-slate-200/50 p-1.5 shadow-sm">
+              {([
+                ['diretrizes', 'Diretrizes e Escopo', `${preenchidos} de ${CAMPOS_TERMO.length} preenchidos`, alteracoes.some(a => (CAMPOS_TERMO as { nome: string }[]).some(c => c.nome === a.chave))],
+                ['cronograma', 'Cronograma Financeiro', `${fasesPreenchidas.length} ${fasesPreenchidas.length === 1 ? 'fase' : 'fases'} · ${total}`, alteracoes.some(a => a.chave.startsWith('fase:'))],
+              ] as const).map(([id, titulo, resumo, mudou]) => (
+                <button
+                  key={id} type="button" role="tab" id={`aba-${id}`} aria-selected={aba === id} aria-controls={`painel-${id}`}
+                  onClick={() => setAba(id)}
+                  className={`flex min-w-0 flex-col items-start rounded-xl px-4 py-2 text-left transition-all ${aba === id ? 'border border-slate-200/40 bg-white shadow-sm' : 'border border-transparent hover:bg-slate-200/60'}`}
+                >
+                  <span className={`flex items-center gap-1.5 text-sm font-bold ${aba === id ? 'text-slate-900' : 'text-slate-600'}`}>
+                    {titulo}{mudou && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Com alterações" />}
+                  </span>
+                  <span className="truncate text-xs font-medium text-slate-500">{resumo}</span>
+                </button>
+              ))}
+            </div>
 
-            <section className={card} aria-labelledby="titulo-diretrizes">
-              <header className="flex items-start justify-between gap-4 px-8 pt-7">
-                <div>
-                  <h2 id="titulo-diretrizes" className="text-xl font-bold text-slate-900">Diretrizes e Escopo</h2>
-                  <p className="mt-1.5 text-sm font-medium text-slate-500">{editId ? 'As alterações serão registradas em uma nova versão do Termo de Abertura.' : 'Detalhe as justificativas, metodologia e limites para aprovação deste projeto.'}</p>
-                </div>
-                {editId && <Link href={`/projetos/${editId}/documentacao?doc=charter`} className="shrink-0 pt-1 text-xs font-semibold text-blue-600 hover:underline">Abrir a folha do Termo</Link>}
-              </header>
-              <div className="grid grid-cols-1 gap-x-5 gap-y-5 px-8 pb-8 pt-6 md:grid-cols-2">
-                {CAMPOS_TERMO.map(({ nome, Icone, placeholder, largo }) => (
-                  <div key={nome} className={largo ? 'md:col-span-2' : ''}>
-                    <label htmlFor={`termo-${nome}`} className="mb-1.5 ml-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">
-                      <Icone className="h-3.5 w-3.5" />{ROTULOS_PROJETO[nome]}
-                      {alterado(nome) && <span className="ml-1 h-1.5 w-1.5 rounded-full bg-amber-500" title="Alterado" />}
-                    </label>
-                    <ExpandableTextarea
-                      id={`termo-${nome}`} readOnly={!canEditPublished} name={nome} value={form[nome]}
-                      onChange={e => alterarCampo(nome, e.target.value)} placeholder={placeholder}
-                      className={`${inputClass} resize-none leading-relaxed rounded-xl`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <fieldset disabled={!canEditCosts} className="min-w-0">
-              <section className={`${card} p-8`} aria-labelledby="titulo-cronograma">
-                <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            {aba === 'diretrizes' && (
+              <section id="painel-diretrizes" role="tabpanel" aria-labelledby="aba-diretrizes" className={`${card} px-6 pb-6 pt-5`}>
+                <header className="mb-4 flex items-start justify-between gap-4">
                   <div>
-                    <h2 id="titulo-cronograma" className="text-xl font-bold text-slate-900">Cronograma Financeiro</h2>
-                    <p className="mt-1.5 text-sm font-medium text-slate-500">Estime as entregas macro e o orçamento dedicado a cada etapa.</p>
+                    <h2 className="text-lg font-bold text-slate-900">Diretrizes e Escopo</h2>
+                    <p className="mt-0.5 text-sm font-medium text-slate-500">{editId ? 'As alterações serão registradas em uma nova versão do Termo de Abertura.' : 'Detalhe as justificativas, metodologia e limites para aprovação deste projeto.'}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-5">
-                    <div className="text-right">
-                      <p className="whitespace-nowrap text-[11px] font-bold uppercase tracking-widest text-slate-400">Orçamento total</p>
-                      <p className="text-xl font-black tracking-tight text-slate-900" data-testid="orcamento-total">{total}</p>
+                  {editId && <Link href={`/projetos/${editId}/documentacao?doc=charter`} className="shrink-0 pt-1 text-xs font-semibold text-blue-600 hover:underline">Abrir a folha do Termo</Link>}
+                </header>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2">
+                  {CAMPOS_TERMO.map(({ nome, Icone, placeholder, largo }) => (
+                    <div key={nome} className={largo ? 'md:col-span-2' : ''}>
+                      <ExpandableTextarea
+                        id={`termo-${nome}`} readOnly={!canEditPublished} name={nome} value={form[nome]}
+                        onChange={e => alterarCampo(nome, e.target.value)} placeholder={placeholder} alturaMinima={70}
+                        rotulo={
+                          <span className="ml-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                            <Icone className="h-3.5 w-3.5 shrink-0" />{ROTULOS_PROJETO[nome]}
+                            {alterado(nome) && <span className="ml-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Alterado" />}
+                          </span>
+                        }
+                        className={`${inputClass} resize-none leading-relaxed`}
+                      />
                     </div>
-                    <button type="button" onClick={addMacroFase} className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50">
-                      <Plus className="h-4 w-4" />Adicionar Fase
-                    </button>
-                  </div>
-                </div>
-                <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-                  <table className="w-full text-left">
-                    <thead className="border-b border-slate-200/80 bg-slate-50">
-                      <tr>
-                        <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-500">Descrição da Fase</th>
-                        <th className="w-40 px-5 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-500">Data Limite</th>
-                        <th className="w-48 px-6 py-4 text-right text-[11px] font-bold uppercase tracking-widest text-slate-500">Custo Previsto</th>
-                        <th className="w-14 px-4 py-4"><span className="sr-only">Ações</span></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {macroFases.map((fase, idx) => (
-                        <tr key={fase.chave} className="group transition-colors hover:bg-slate-50/50">
-                          <td className="p-3">
-                            <div className="flex items-start gap-2">
-                              <span className="shrink-0 py-2.5 text-sm text-slate-500">1.{idx + 1}</span>
-                              <textarea aria-label={`Fase 1.${idx + 1}`} rows={1} value={fase.fase} onChange={e => updateMacroFase(fase.chave, 'fase', e.target.value)} placeholder={`Ex: Fase ${idx + 1}...`} className={`${celulaInput} min-w-0 flex-1 resize-y font-semibold text-slate-800`} />
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <DateInputBR ariaLabel={`Data limite da fase 1.${idx + 1}`} value={fase.dataLimite} onChange={v => updateMacroFase(fase.chave, 'dataLimite', v)} className={`${celulaInput} font-medium text-slate-600`} />
-                          </td>
-                          <td className="p-3">
-                            <MoedaInput
-                              value={fase.custo}
-                              onValueChange={texto => updateMacroFase(fase.chave, 'custo', texto)}
-                              rotulo="Custo"
-                              aria-label={`Custo da fase ${idx + 1}`}
-                              adorno={<span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-bold text-slate-400">R$</span>}
-                              className={`${celulaInput} pl-9 text-right font-bold text-slate-800`}
-                            />
-                          </td>
-                          <td className="p-3 text-center">
-                            <button type="button" aria-label={`Remover fase 1.${idx + 1}`} onClick={() => removeMacroFase(fase.chave)} disabled={macroFases.length === 1} className="rounded-lg p-2 text-slate-300 transition-all hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  ))}
                 </div>
               </section>
-            </fieldset>
+            )}
+
+            {aba === 'cronograma' && (
+              <fieldset disabled={!canEditCosts} className="min-w-0">
+                <section id="painel-cronograma" role="tabpanel" aria-labelledby="aba-cronograma" className={`${card} px-6 pb-6 pt-5`}>
+                  <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h2 className="text-lg font-bold text-slate-900">Cronograma Financeiro</h2>
+                      <p className="mt-0.5 text-sm font-medium text-slate-500">Estime as entregas macro e o orçamento dedicado a cada etapa.</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-5">
+                      <div className="text-right">
+                        <p className="whitespace-nowrap text-[11px] font-bold uppercase tracking-widest text-slate-400">Orçamento total</p>
+                        <p className="text-xl font-black tracking-tight text-slate-900" data-testid="orcamento-total">{total}</p>
+                      </div>
+                      <button type="button" onClick={addMacroFase} className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50">
+                        <Plus className="h-4 w-4" />Adicionar Fase
+                      </button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+                    <table className="w-full table-fixed text-left">
+                      <colgroup><col /><col className="w-[124px]" /><col className="w-[140px]" /><col className="w-11" /></colgroup>
+                      <thead className="border-b border-slate-200/80 bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500">Descrição da Fase</th>
+                          <th className="px-2 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500">Data Limite</th>
+                          <th className="px-3 py-3 text-right text-[11px] font-bold uppercase tracking-widest text-slate-500">Custo Previsto</th>
+                          <th><span className="sr-only">Ações</span></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {macroFases.map((fase, idx) => (
+                          <tr key={fase.chave} className="group align-top transition-colors hover:bg-slate-50/50">
+                            <td className="py-1.5 pl-2 pr-1">
+                              <div className="flex items-start gap-1.5">
+                                <span className="w-7 shrink-0 py-2.5 text-right text-sm text-slate-500">1.{idx + 1}</span>
+                                <TextoQueCresce aria-label={`Fase 1.${idx + 1}`} value={fase.fase} onChange={v => updateMacroFase(fase.chave, 'fase', v)} placeholder={`Ex: Fase ${idx + 1}...`} className={`${celulaInput} min-w-0 flex-1 font-semibold text-slate-800`} />
+                              </div>
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <DateInputBR ariaLabel={`Data limite da fase 1.${idx + 1}`} value={fase.dataLimite} onChange={v => updateMacroFase(fase.chave, 'dataLimite', v)} className={`${celulaInput} px-2 font-medium tabular-nums text-slate-600`} />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <MoedaInput
+                                value={fase.custo}
+                                onValueChange={texto => updateMacroFase(fase.chave, 'custo', texto)}
+                                rotulo="Custo"
+                                aria-label={`Custo da fase ${idx + 1}`}
+                                adorno={<span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm font-bold text-slate-400">R$</span>}
+                                className={`${celulaInput} pl-8 text-right font-bold tabular-nums text-slate-800`}
+                              />
+                            </td>
+                            <td className="py-1.5 pr-1 text-center">
+                              <button type="button" aria-label={`Remover fase 1.${idx + 1}`} onClick={() => removeMacroFase(fase.chave)} disabled={macroFases.length === 1} className="mt-0.5 rounded-lg p-2 text-slate-300 transition-all hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </fieldset>
+            )}
           </div>
 
-          {/* ── Coluna lateral: propriedades ── */}
-          <aside className="space-y-4 lg:sticky lg:top-5 lg:self-start">
+          {/* ── Coluna lateral: o projeto e as propriedades ── */}
+          <aside className="order-1 space-y-4 lg:sticky lg:top-5 lg:order-2 lg:self-start">
+            <section className={`${card} relative p-4`} aria-label="Projeto">
+              <Link href={voltarHref} title="Voltar ao projeto" className="absolute right-2 top-2 inline-flex h-7 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                <ArrowLeft className="h-3.5 w-3.5" />Voltar
+              </Link>
+              <div className="flex items-start gap-3 pr-14">
+                <ProjetoLogoUpload nome={form.name} url={form.logoUrl} onChange={url => setForm(f => ({ ...f, logoUrl: url }))} disabled={ocupado} tamanho="md" />
+                <div className="min-w-0 flex-1">
+                  {!editId && <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Novo projeto</p>}
+                  <TextoQueCresce
+                    value={form.name} onChange={v => alterarCampo('name', v.replace(/\n/g, ' '))} aria-label="Nome do projeto" placeholder="Nome do projeto"
+                    className="-mx-1.5 w-full rounded-lg px-1.5 py-0.5 text-lg font-extrabold leading-tight tracking-tight text-slate-900 outline-none placeholder:text-slate-300 hover:bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                  />
+                </div>
+              </div>
+              <TextoQueCresce
+                value={form.slogan} onChange={v => alterarCampo('slogan', v.replace(/\n/g, ' '))} aria-label="Slogan / visão" placeholder="Adicione um slogan ou a visão do projeto…"
+                className="-mx-1.5 mt-2 w-[calc(100%+0.75rem)] rounded-lg px-1.5 py-1 text-sm text-slate-600 outline-none placeholder:text-slate-400 hover:bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+              />
+              {linha && (
+                <p title="Linha institucional dos documentos" className="mt-2 flex items-start gap-1.5 rounded-xl bg-blue-50 px-2.5 py-1.5 text-xs font-semibold leading-snug text-blue-700 ring-1 ring-inset ring-blue-200">
+                  <GraduationCap className="mt-px h-3.5 w-3.5 shrink-0" />{linha}
+                </p>
+              )}
+            </section>
+
             <section className={`${card} p-4`} aria-label="Propriedades">
               <h3 className={tituloLateral}>Propriedades</h3>
               <Propriedade Icone={UserRound} rotulo="Gerente" htmlFor="projeto-gerente">
@@ -563,59 +611,61 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         </form>
       </main>
 
-      {/* ── Barra de salvar: na edição, só aparece quando há alteração ── */}
-      {(pendente || !editId) && (
-        <div className="pointer-events-none sticky bottom-5 z-40 -mt-16 flex justify-center px-4">
-          <div className="pointer-events-auto w-full max-w-[720px]">
-            {verAlteracoes && pendente && (
-              <div role="dialog" aria-label="Alterações não salvas" className="mb-2 max-h-[60vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
-                <div className="flex items-center justify-between px-3 py-2">
-                  <h3 className="text-sm font-bold text-slate-900">O que mudou desde o último salvamento</h3>
-                  <button type="button" aria-label="Fechar" onClick={() => setVerAlteracoes(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
-                </div>
-                <ul className="space-y-1">
-                  {alteracoes.map(a => (
-                    <li key={a.chave} className="rounded-xl px-3 py-2.5 hover:bg-slate-50" data-testid="alteracao">
-                      <div className="mb-1.5 flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{a.rotulo}</span>
-                        <button type="button" onClick={() => desfazer(a.chave)} aria-label={`Desfazer ${a.rotulo}`} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">
-                          <Undo2 className="h-3.5 w-3.5" />Desfazer
-                        </button>
-                      </div>
-                      {a.texto ? <DiffTexto antes={a.antes} depois={a.depois} /> : (
-                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                          {a.antes ? <del className="rounded-lg bg-rose-50 px-2 py-0.5 text-rose-700">{a.antes}</del> : <span className="text-slate-400">vazio</span>}
-                          <span className="text-slate-400" aria-hidden="true">→</span>
-                          {a.depois ? <ins className="rounded-lg bg-emerald-50 px-2 py-0.5 text-emerald-800 no-underline">{a.depois}</ins> : <span className="text-slate-400">vazio</span>}
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+      {/* ── Barra de salvar: fixa na tela, alinhada à área do formulário; sempre visível ── */}
+      <div className="pointer-events-none fixed bottom-4 z-40 flex justify-center px-4" style={{ left: barra.left, width: barra.width }}>
+        <div className="pointer-events-auto w-full max-w-[720px]">
+          {verAlteracoes && pendente && (
+            <div role="dialog" aria-label="Alterações não salvas" className="mb-2 max-h-[60vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+              <div className="flex items-center justify-between px-3 py-2">
+                <h3 className="text-sm font-bold text-slate-900">O que mudou desde o último salvamento</h3>
+                <button type="button" aria-label="Fechar" onClick={() => setVerAlteracoes(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
               </div>
-            )}
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/95 py-2.5 pl-4 pr-2.5 shadow-xl backdrop-blur">
-              {editId ? (
-                <button type="button" onClick={() => setVerAlteracoes(v => !v)} aria-expanded={verAlteracoes} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-sm font-medium text-slate-700 hover:text-slate-900">
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
-                  <span className="truncate">{alteracoes.length} {alteracoes.length === 1 ? 'alteração não salva' : 'alterações não salvas'}</span>
-                  <span className="shrink-0 text-xs font-semibold text-blue-600">{verAlteracoes ? 'Ocultar' : 'Ver o que mudou'}</span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${verAlteracoes ? '' : 'rotate-180'}`} />
-                </button>
-              ) : (
-                <span className="flex-1 text-sm font-medium text-slate-600">Preencha os dados e crie o projeto.</span>
-              )}
-              {editId
-                ? <button type="button" onClick={descartar} disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">Descartar</button>
-                : <Link href={voltarHref} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancelar</Link>}
-              <button type="button" onClick={salvar} disabled={ocupado} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50">
-                {isPending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
-                {isPending ? (editId ? 'Salvando…' : 'Criando…') : (editId ? 'Salvar alterações' : 'Criar projeto')}
-              </button>
+              <ul className="space-y-1">
+                {alteracoes.map(a => (
+                  <li key={a.chave} className="rounded-xl px-3 py-2.5 hover:bg-slate-50" data-testid="alteracao">
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{a.rotulo}</span>
+                      <button type="button" onClick={() => desfazer(a.chave)} aria-label={`Desfazer ${a.rotulo}`} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                        <Undo2 className="h-3.5 w-3.5" />Desfazer
+                      </button>
+                    </div>
+                    {a.texto ? <DiffTexto antes={a.antes} depois={a.depois} /> : (
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        {a.antes ? <del className="rounded-lg bg-rose-50 px-2 py-0.5 text-rose-700">{a.antes}</del> : <span className="text-slate-400">vazio</span>}
+                        <span className="text-slate-400" aria-hidden="true">→</span>
+                        {a.depois ? <ins className="rounded-lg bg-emerald-50 px-2 py-0.5 text-emerald-800 no-underline">{a.depois}</ins> : <span className="text-slate-400">vazio</span>}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
+          )}
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/95 py-2 pl-4 pr-2 shadow-xl backdrop-blur">
+            {!editId ? (
+              <span className="flex-1 text-sm font-medium text-slate-600">Preencha os dados e crie o projeto.</span>
+            ) : pendente ? (
+              <button type="button" onClick={() => setVerAlteracoes(v => !v)} aria-expanded={verAlteracoes} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-sm font-medium text-slate-700 hover:text-slate-900">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                <span className="truncate">{alteracoes.length} {alteracoes.length === 1 ? 'alteração não salva' : 'alterações não salvas'}</span>
+                <span className="shrink-0 text-xs font-semibold text-blue-600">{verAlteracoes ? 'Ocultar' : 'Ver o que mudou'}</span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${verAlteracoes ? '' : 'rotate-180'}`} />
+              </button>
+            ) : (
+              <span role="status" className="flex flex-1 items-center gap-2 text-sm font-medium text-slate-500">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />{isLoadingEdit ? 'Carregando…' : 'Tudo salvo'}
+              </span>
+            )}
+            {editId
+              ? pendente && <button type="button" onClick={descartar} disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">Descartar</button>
+              : <Link href={voltarHref} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancelar</Link>}
+            <button type="button" onClick={salvar} disabled={ocupado || (!!editId && !pendente)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-blue-600">
+              {isPending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+              {isPending ? (editId ? 'Salvando…' : 'Criando…') : (editId ? 'Salvar alterações' : 'Criar projeto')}
+            </button>
           </div>
         </div>
-      )}
+      </div>
       {dialogoSaida}
     </div>
   )

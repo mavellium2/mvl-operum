@@ -6,11 +6,13 @@ import { uploadAvatarAction } from '@/app/actions/profile'
 import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
 
 /**
- * Logo do projeto no cartão do Editar projeto: quadrado de 80 px que vira
+ * Logo do projeto no cartão do Editar projeto: quadrado (56 ou 80 px) que vira
  * "Trocar" ao passar o mouse e abre o seletor de arquivo. Sem logo, mostra a
  * inicial do nome.
  */
-export default function ProjetoLogoUpload({ nome, url, onChange, disabled = false }: {
+export default function ProjetoLogoUpload({ nome, url, onChange, disabled = false, tamanho = 'lg' }: {
+  /** `md`: 56 px (coluna lateral); `lg`: 80 px. */
+  tamanho?: 'md' | 'lg'
   nome: string
   url: string
   onChange: (url: string) => void
@@ -42,7 +44,7 @@ export default function ProjetoLogoUpload({ nome, url, onChange, disabled = fals
         disabled={disabled || enviando}
         onClick={() => arquivo.current?.click()}
         aria-label={imagem ? 'Trocar logo do projeto' : 'Enviar logo do projeto'}
-        className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 text-3xl font-extrabold text-white shadow-sm ring-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed"
+        className={`group relative flex ${tamanho === 'md' ? 'h-14 w-14 rounded-xl text-2xl' : 'h-20 w-20 rounded-2xl text-3xl'} items-center justify-center overflow-hidden bg-gradient-to-br from-cyan-400 to-blue-600 font-extrabold text-white shadow-sm ring-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed`}
       >
         {imagem
           // eslint-disable-next-line @next/next/no-img-element
@@ -52,7 +54,7 @@ export default function ProjetoLogoUpload({ nome, url, onChange, disabled = fals
           <span className={`absolute inset-0 flex-col items-center justify-center gap-0.5 bg-slate-900/50 text-[11px] font-semibold text-white ${enviando ? 'flex' : 'hidden group-hover:flex group-focus-visible:flex'}`}>
             {enviando
               ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              : <><Camera className="h-5 w-5" />{imagem ? 'Trocar' : 'Enviar'}</>}
+              : <><Camera className="h-4 w-4" />{imagem ? 'Trocar' : 'Enviar'}</>}
           </span>
         )}
       </button>

@@ -8,6 +8,10 @@ interface ExpandableTextareaProps {
   placeholder?: string;
   className?: string;
   readOnly?: boolean;
+  /** Altura mínima e altura recolhida, em px. */
+  alturaMinima?: number;
+  /** Título do campo: com ele, o botão de recolher fica na linha do título e o texto usa a largura toda. */
+  rotulo?: React.ReactNode;
 }
 
 const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
@@ -17,14 +21,16 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
   onChange,
   placeholder,
   className,
-  readOnly = false
+  readOnly = false,
+  alturaMinima = 100,
+  rotulo,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isOverflowing, setIsOverflowing] = useState<boolean>(false);
   const [visibilityTick, setVisibilityTick] = useState(0);
 
-  const prevHeightRef = useRef<number>(100);
+  const prevHeightRef = useRef<number>(alturaMinima);
 
   // Recalculate height when the element transitions from hidden to visible
   // (e.g. when the parent tab becomes active). IntersectionObserver fires on
@@ -65,11 +71,11 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
 
     // 3. Mede o tamanho no escuro
     textarea.style.transition = 'none';
-    textarea.style.height = '100px'; 
+    textarea.style.height = `${alturaMinima}px`;
     const scrollHeight = textarea.scrollHeight;
 
-    setIsOverflowing(scrollHeight > 100);
-    const newHeight = isCollapsed ? 100 : scrollHeight;
+    setIsOverflowing(scrollHeight > alturaMinima);
+    const newHeight = isCollapsed ? alturaMinima : Math.max(alturaMinima, scrollHeight);
     textarea.style.height = `${newHeight}px`;
 
     // 4. RESTAURA A POSIÇÃO (Anula a tentativa do navegador de dar o pulo seco)
@@ -113,10 +119,36 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
 
     prevHeightRef.current = newHeight;
 
-  }, [value, isCollapsed, visibilityTick]);
+  }, [value, isCollapsed, visibilityTick, alturaMinima]);
+
+  const botao = (posicao: string) => isOverflowing && (
+        <button
+          type="button"
+          onMouseDown={(e: React.MouseEvent<HTMLButtonElement>) => {
+            e.preventDefault(); 
+            setIsCollapsed(!isCollapsed);
+          }}
+          aria-label={isCollapsed ? 'Expandir campo' : 'Recolher campo'}
+          aria-expanded={!isCollapsed}
+          className={`${posicao} p-1.5 bg-white/80 hover:bg-slate-100 text-slate-500 rounded-md border border-slate-200 shadow-sm transition-all backdrop-blur-sm z-10`}
+          title={isCollapsed ? "Expandir" : "Recolher"}
+        >
+          {isCollapsed ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+          )}
+        </button>
+  );
 
   return (
     <div className="relative group">
+      {rotulo && (
+        <div className="mb-1.5 flex min-h-7 items-end justify-between gap-2">
+          <label htmlFor={id} className="min-w-0">{rotulo}</label>
+          {botao('relative')}
+        </div>
+      )}
       <textarea
         readOnly={readOnly}
         ref={textareaRef}
@@ -127,30 +159,12 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
         placeholder={placeholder}
         onFocus={() => isCollapsed && setIsCollapsed(false)} 
         // Folga à direita para o texto não passar por baixo do botão (canto superior).
-        className={`${className} block w-full overflow-hidden ${isOverflowing ? 'pr-11' : ''} ${
+        className={`${className} block w-full overflow-hidden ${isOverflowing && !rotulo ? 'pr-11' : ''} ${
           isCollapsed ? 'cursor-pointer' : ''
         }`}
       />
 
-      {isOverflowing && (
-        <button
-          type="button"
-          onMouseDown={(e: React.MouseEvent<HTMLButtonElement>) => {
-            e.preventDefault(); 
-            setIsCollapsed(!isCollapsed);
-          }}
-          aria-label={isCollapsed ? 'Expandir campo' : 'Recolher campo'}
-          aria-expanded={!isCollapsed}
-          className="absolute top-2 right-2 p-1.5 bg-white/80 hover:bg-slate-100 text-slate-500 rounded-md border border-slate-200 shadow-sm transition-all backdrop-blur-sm z-10"
-          title={isCollapsed ? "Expandir" : "Recolher"}
-        >
-          {isCollapsed ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-          )}
-        </button>
-      )}
+      {!rotulo && botao('absolute top-2 right-2')}
     </div>
   );
 };
