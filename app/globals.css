@@ -124,14 +124,47 @@ textarea:disabled {
     0 24px 60px -18px rgb(15 23 42 / 0.28),
     0 8px 20px -10px rgb(15 23 42 / 0.12);
 }
-/* Fundo com cor suave, para o vidro ter o que desfocar. */
+/* Fundo: céu de manhã clara, difuso. Azul suave no alto, um toque lilás no meio
+   e o brilho morno do nascer do sol perto do horizonte; nuvens brancas e
+   desfocadas passam devagar. Dá ao vidro algo bonito para desfocar. */
 .fundo-vidro {
+  isolation: isolate;
+  /* Recorta as nuvens na área da página (sem virar área de rolagem). */
+  overflow: clip;
   background:
-    radial-gradient(40rem 26rem at 12% -6%, rgb(99 102 241 / 0.10), transparent 70%),
-    radial-gradient(36rem 24rem at 92% 8%, rgb(56 189 248 / 0.10), transparent 70%),
-    radial-gradient(44rem 30rem at 55% 105%, rgb(167 139 250 / 0.08), transparent 70%),
-    #f6f8fc;
+    radial-gradient(60rem 26rem at 18% 112%, rgb(255 214 170 / 0.55), transparent 65%),
+    radial-gradient(46rem 22rem at 78% 108%, rgb(255 190 200 / 0.38), transparent 65%),
+    radial-gradient(70rem 40rem at 50% -18%, rgb(186 220 255 / 0.75), transparent 70%),
+    linear-gradient(180deg, #e8f2ff 0%, #eef3ff 38%, #f6f2fb 68%, #fdf4ec 100%);
+  background-attachment: fixed;
 }
+.fundo-vidro::before,
+.fundo-vidro::after {
+  content: '';
+  position: absolute;
+  inset: -6%;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(42px);
+  opacity: 0.9;
+}
+/* Nuvens altas, largas e espaçadas. */
+.fundo-vidro::before {
+  background:
+    radial-gradient(28rem 7rem at 22% 18%, rgb(255 255 255 / 0.85), transparent 70%),
+    radial-gradient(34rem 8rem at 70% 12%, rgb(255 255 255 / 0.7), transparent 70%),
+    radial-gradient(22rem 6rem at 48% 34%, rgb(255 255 255 / 0.55), transparent 70%);
+  animation: nuvens-a 90s ease-in-out infinite alternate;
+}
+/* Nuvens baixas, mais quentes, perto do horizonte. */
+.fundo-vidro::after {
+  background:
+    radial-gradient(30rem 7rem at 30% 72%, rgb(255 248 240 / 0.7), transparent 70%),
+    radial-gradient(26rem 6rem at 82% 64%, rgb(255 255 255 / 0.6), transparent 70%);
+  animation: nuvens-b 120s ease-in-out infinite alternate;
+}
+@keyframes nuvens-a { from { transform: translate3d(-3%, 0, 0); } to { transform: translate3d(4%, 1.5%, 0); } }
+@keyframes nuvens-b { from { transform: translate3d(3%, 0, 0); } to { transform: translate3d(-4%, -1%, 0); } }
 /* Conteúdo que rola some suavemente nas bordas, em vez de ser cortado. */
 @utility borda-suave-rolagem {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
