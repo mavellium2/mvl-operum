@@ -204,6 +204,38 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const rolagemDiretrizes = useRef<HTMLDivElement>(null)
   const rolagemFases = useRef<HTMLDivElement>(null)
   const faseNova = useRef<string | null>(null)
+  const raizRef = useRef<HTMLDivElement>(null)
+  const abaRef = useRef(aba)
+  useEffect(() => { abaRef.current = aba }, [aba])
+
+  // No computador a página não rola: a roda do mouse em qualquer ponto da tela (fora do menu
+  // lateral do app, que fica fora desta raiz) rola o conteúdo da aba aberta.
+  useEffect(() => {
+    const raiz = raizRef.current
+    if (!raiz) return
+    const largo = window.matchMedia?.('(min-width: 1024px)')
+    function aoRolar(e: WheelEvent) {
+      if (largo && !largo.matches) return
+      if (e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return // zoom e rolagem lateral seguem normais
+      const area = (abaRef.current === 'diretrizes' ? rolagemDiretrizes : rolagemFases).current
+      const alvo = e.target as Element | null
+      if (!area || !alvo || area.contains(alvo)) return
+      // Quem rola sozinho continua rolando sozinho (lista de alterações, menus abertos…).
+      for (let el: Element | null = alvo; el && el !== raiz; el = el.parentElement) {
+        if (el.matches('[role="dialog"], [role="listbox"], [role="menu"]')) return
+        const st = getComputedStyle(el)
+        if (/(auto|scroll)/.test(st.overflowY) && el.scrollHeight > el.clientHeight) {
+          const podeRolar = e.deltaY > 0 ? el.scrollTop + el.clientHeight < el.scrollHeight - 1 : el.scrollTop > 0
+          if (podeRolar) return
+        }
+      }
+      e.preventDefault()
+      const passo = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? area.clientHeight : 1
+      area.scrollBy({ top: e.deltaY * passo })
+    }
+    raiz.addEventListener('wheel', aoRolar, { passive: false })
+    return () => raiz.removeEventListener('wheel', aoRolar)
+  }, [])
 
   useEffect(() => {
     listUsersAction().then(r => {
@@ -377,7 +409,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const preenchidos = CAMPOS_TERMO.filter(c => form[c.nome].trim()).length
 
   return (
-    <div className="relative min-h-screen bg-[#F8FAFC] font-sans">
+    <div ref={raizRef} className="relative min-h-screen bg-[#F8FAFC] font-sans">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[260px] w-full max-w-3xl -translate-x-1/2 rounded-full bg-blue-500/5 blur-[120px]" />
 
       <main className="relative mx-auto max-w-[1280px] px-4 pb-4 pt-5 sm:px-6">
