@@ -465,10 +465,6 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                       </button>
                     </div>
                     <dl className="mt-4 grid grid-cols-3 gap-2">
-                      <div className="rounded-xl bg-slate-900 px-4 py-2.5 text-white">
-                        <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Orçamento total</dt>
-                        <dd className="text-lg font-black tabular-nums tracking-tight" data-testid="orcamento-total">{total}</dd>
-                      </div>
                       <div className="rounded-xl bg-slate-50 px-4 py-2.5 ring-1 ring-inset ring-slate-200/70">
                         <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fases</dt>
                         <dd className="text-lg font-black tabular-nums text-slate-900">{fasesPreenchidas.length}</dd>
@@ -476,6 +472,10 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                       <div className={`rounded-xl px-4 py-2.5 ring-1 ring-inset ${pendenciasFases ? 'bg-amber-50 ring-amber-200' : 'bg-slate-50 ring-slate-200/70'}`}>
                         <dt className={`text-[10px] font-bold uppercase tracking-widest ${pendenciasFases ? 'text-amber-700' : 'text-slate-400'}`}>Sem prazo ou custo</dt>
                         <dd className={`text-lg font-black tabular-nums ${pendenciasFases ? 'text-amber-800' : 'text-slate-900'}`}>{pendenciasFases}</dd>
+                      </div>
+                      <div className="rounded-xl bg-slate-900 px-4 py-2.5 text-right text-white">
+                        <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Orçamento total</dt>
+                        <dd className="text-lg font-black tabular-nums tracking-tight" data-testid="orcamento-total">{total}</dd>
                       </div>
                     </dl>
                   </header>
