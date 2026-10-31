@@ -45,3 +45,22 @@ describe('desfazerAlteracao', () => {
     expect(desfazerAlteracao('fase:a', salvo, { form: form(), fases: [fase('b')] }).fases.map(f => f.chave)).toEqual(['a', 'b'])
   })
 })
+
+import { conteudoDaVersao, formDaVersao } from '@/lib/alteracoesProjeto'
+
+describe('restaurar uma versão no formulário', () => {
+  it('casa fases pelo nome (mantém o item da EAP), cria as que faltam e mantém as que a versão não tinha', () => {
+    const atuais = [fase('a', { nodeId: 'n1', fase: 'Escopo' }), fase('b', { nodeId: 'n2', fase: 'Tecnologia' })]
+    const versao = { form: form({ name: 'Antigo' }), fases: [{ fase: 'escopo', dataLimite: '', custo: '10,00' }, { fase: 'Testes', dataLimite: '', custo: '' }] }
+    let n = 0
+    const r = formDaVersao(versao, atuais, () => `nova-${++n}`)
+    expect(r.form.name).toBe('Antigo')
+    expect(r.fases.map(f => [f.chave, f.nodeId, f.fase, f.custo])).toEqual([
+      ['a', 'n1', 'escopo', '10,00'], ['nova-1', undefined, 'Testes', ''], ['b', 'n2', 'Tecnologia', '83,34'],
+    ])
+    expect(r.fasesMantidas).toEqual(['Tecnologia'])
+  })
+  it('conteúdo da versão sem as chaves de tela', () => {
+    expect(conteudoDaVersao(form(), [fase('a', { nodeId: 'n1' })]).fases).toEqual([{ fase: 'Escopo', dataLimite: '2026-09-25', custo: '83,34' }])
+  })
+})

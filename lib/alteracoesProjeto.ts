@@ -27,7 +27,7 @@ export interface FormProjeto {
 }
 
 /** Macro fase do formulário; `chave` identifica a linha (não vai para o servidor). */
-export interface FaseForm { chave: string; fase: string; dataLimite: string; custo: string }
+export interface FaseForm { chave: string; fase: string; dataLimite: string; custo: string; /** Item da EAP, quando a fase já existe. */ nodeId?: string }
 
 export type CampoTextoTermo = 'justificativa' | 'objetivos' | 'descricaoProduto' | 'metodologia' | 'premissas' | 'restricoes' | 'limitesAutoridade'
 
@@ -131,4 +131,31 @@ export function desfazerAlteracao(
   const fases = [...atual.fases]
   fases.splice(Math.min(posicao, fases.length), 0, { ...original })
   return { form: atual.form, fases }
+}
+
+/** Conteúdo gravado no histórico (sem as chaves de tela). */
+export function conteudoDaVersao(form: FormProjeto, fases: FaseForm[]) {
+  return { form, fases: fases.map(({ fase, dataLimite, custo }) => ({ fase, dataLimite, custo })) }
+}
+
+/**
+ * Formulário a partir de uma versão do histórico. As fases são casadas pelo nome com
+ * as atuais (mantêm o item da EAP). Fases atuais que a versão não tem continuam:
+ * excluir fase só pela confirmação, que mostra o impacto na EAP, sprints e custos.
+ */
+export function formDaVersao(
+  versao: { form: FormProjeto; fases: { fase: string; dataLimite: string; custo: string }[] },
+  atuais: FaseForm[],
+  novaChave: () => string,
+): { form: FormProjeto; fases: FaseForm[]; fasesMantidas: string[] } {
+  const norm = (t: string) => t.trim().toLowerCase()
+  const porNome = new Map(atuais.map(f => [norm(f.fase), f]))
+  const usadas = new Set<string>()
+  const fases: FaseForm[] = versao.fases.map(v => {
+    const atual = porNome.get(norm(v.fase))
+    if (atual && !usadas.has(atual.chave)) { usadas.add(atual.chave); return { ...atual, fase: v.fase, dataLimite: v.dataLimite, custo: v.custo } }
+    return { chave: novaChave(), fase: v.fase, dataLimite: v.dataLimite, custo: v.custo }
+  })
+  const mantidas = atuais.filter(f => !usadas.has(f.chave) && f.nodeId)
+  return { form: { ...versao.form }, fases: [...fases, ...mantidas], fasesMantidas: mantidas.map(f => f.fase) }
 }

@@ -8,7 +8,7 @@ import { useState, useTransition, useEffect, useLayoutEffect, useMemo, useRef, S
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  AlertTriangle, Building2, CheckCircle2, CalendarClock, CalendarDays, ChevronDown, Flag, GraduationCap, Layers, Lightbulb,
+  AlertTriangle, Building2, CheckCircle2, History, CalendarClock, CalendarDays, ChevronDown, Flag, GraduationCap, Layers, Lightbulb,
   ListChecks, MapPin, Package, Plus, Scale, ShieldAlert, Target, Trash2, Undo2, UserRound, Wrench, X,
 } from 'lucide-react'
 import { createProjetoAction, updateProjetoAction, getProjetoAction, retryMacroFasesSyncAction } from '@/app/actions/projetos'
@@ -21,7 +21,10 @@ import ProjetoLogoUpload from '@/components/projetos/ProjetoLogoUpload'
 import UserAvatar from '@/components/user/UserAvatar'
 import { useGuardaSaida } from '@/components/documentos/editor/GuardaSaida'
 import { linhaInstitucional, periodoEhSemestral, TURNOS } from '@/lib/linhaInstitucional'
-import { desfazerAlteracao, listarAlteracoes, ROTULOS_PROJETO, type CampoTextoTermo, type FaseForm, type FormProjeto } from '@/lib/alteracoesProjeto'
+import { conteudoDaVersao, desfazerAlteracao, formDaVersao, listarAlteracoes, ROTULOS_PROJETO, type CampoTextoTermo, type FaseForm, type FormProjeto } from '@/lib/alteracoesProjeto'
+import HistoricoProjeto from '@/components/projetos/HistoricoProjeto'
+import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
+import type { VersaoProjeto } from '@/services/projetoVersoes'
 import { diffTexto } from '@/lib/diffTexto'
 
 interface Usuario {
@@ -203,6 +206,11 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   /** Como o projeto está salvo (base de "Alterações não salvas"). Nulo ao criar. */
   const [salvo, setSalvo] = useState<{ form: FormProjeto; fases: FaseForm[] } | null>(null)
   const [verAlteracoes, setVerAlteracoes] = useState(false)
+  const [verHistorico, setVerHistorico] = useState(false)
+  /** Versão do histórico carregada no formulário (salvar cria uma versão nova a partir dela). */
+  const [restaurando, setRestaurando] = useState<number | null>(null)
+  const [recarregarHistorico, setRecarregarHistorico] = useState(0)
+  const [faseAExcluir, setFaseAExcluir] = useState<{ nodeId: string; nome: string; numero: string; chave: string } | null>(null)
   const [inicioPelaTarefa, setInicioPelaTarefa] = useState(false)
   const [aba, setAba] = useState<'diretrizes' | 'cronograma'>('diretrizes')
   const rolagemDiretrizes = useRef<HTMLDivElement>(null)
@@ -292,7 +300,11 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         departamentos: associados?.length ? associados.map(d => d.name) : (p.departamentos ?? []),
       }
       const fases: FaseForm[] = p.macroFases?.length
-        ? p.macroFases.map((f, i) => ({ chave: `salva-${i}`, fase: f.fase, dataLimite: f.dataLimite ?? '', custo: f.custo ?? '' }))
+        ? p.macroFases.map((f, i) => {
+          // Fase da EAP: o id do item permite renomear e excluir com segurança.
+          const nodeId = (f as { nodeId?: string }).nodeId
+          return { chave: nodeId ? `no-${nodeId}` : `salva-${i}`, nodeId, fase: f.fase, dataLimite: f.dataLimite ?? '', custo: f.custo ?? '' }
+        })
         : []
       setForm(publicado)
       setMacroFases(fases.length ? fases : [novaFase()])
@@ -331,7 +343,32 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     if (canEditCosts) setMacroFases(l => l.map(f => (f.chave === chave ? { ...f, [field]: value } : f)))
   }
   const removeMacroFase = (chave: string) => {
-    if (canEditCosts && macroFases.length > 1) setMacroFases(l => l.filter(f => f.chave !== chave))
+    if (!canEditCosts) return
+    const fase = macroFases.find(f => f.chave === chave)
+    const salva = fase?.nodeId && salvo?.fases.some(f => f.chave === chave)
+    if (fase && salva) {
+      // Fase já salva: exclusão com confirmação e impacto (EAP, sprints, tarefas, planilha, Termo).
+      const numero = `1.${macroFases.indexOf(fase) + 1}`
+      setFaseAExcluir({ nodeId: fase.nodeId as string, nome: salvo?.fases.find(f => f.chave === chave)?.fase ?? fase.fase, numero, chave })
+      return
+    }
+    // Fase nova (ainda não salva): sai na hora.
+    setMacroFases(l => (l.length > 1 ? l.filter(f => f.chave !== chave) : [novaFase()]))
+  }
+  function faseExcluida() {
+    const chave = faseAExcluir?.chave
+    setFaseAExcluir(null)
+    if (!chave) return
+    setMacroFases(l => { const r = l.filter(f => f.chave !== chave); return r.length ? r : [novaFase()] })
+    setSalvo(sv => (sv ? { ...sv, fases: sv.fases.filter(f => f.chave !== chave) } : sv))
+    setRecarregarHistorico(n => n + 1)
+    toast('Fase excluída da EAP, das sprints e da planilha.', 'success')
+  }
+  /** Versão gravada junto com a exclusão: o projeto salvo, sem a fase. */
+  function versaoDaExclusao() {
+    if (!salvo || !faseAExcluir) return undefined
+    const fases = salvo.fases.filter(f => f.chave !== faseAExcluir.chave)
+    return { conteudo: conteudoDaVersao(salvo.form, fases), anterior: conteudoDaVersao(salvo.form, salvo.fases), alteracoes: [`Fase ${faseAExcluir.numero} ${faseAExcluir.nome} excluída`] }
   }
 
   const total = macroFases
@@ -352,11 +389,22 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const pendente = !!editId && alteracoes.length > 0
 
   function descartar() {
+    setRestaurando(null)
     if (!salvo) return
     setForm(salvo.form)
     setMacroFases(salvo.fases.length ? salvo.fases : [novaFase()])
     setVerAlteracoes(false)
     setError('')
+  }
+  function restaurar(v: VersaoProjeto) {
+    if (!salvo) return
+    const r = formDaVersao(v.conteudo, salvo.fases, () => novaFase().chave)
+    setForm(r.form)
+    setMacroFases(r.fases.length ? r.fases : [novaFase()])
+    setRestaurando(v.numero)
+    setVerHistorico(false)
+    setVerAlteracoes(true)
+    if (r.fasesMantidas.length) toast(`Fases que a v${v.numero} não tinha continuam (${r.fasesMantidas.join(', ')}). Para excluir, use a lixeira de cada fase.`, 'warning')
   }
   function desfazer(chave: string) {
     if (!salvo) return
@@ -372,8 +420,14 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
-    const fasesEnvio = macroFases.map(({ fase, dataLimite, custo }) => ({ fase, dataLimite, custo }))
+    const fasesEnvio = macroFases.map(({ fase, dataLimite, custo, nodeId }) => ({ fase, dataLimite, custo, ...(nodeId ? { nodeId } : {}) }))
     const enviado = { form, fases: fasesPreenchidas }
+    const versao = salvo && alteracoes.length ? {
+      conteudo: conteudoDaVersao(form, fasesPreenchidas),
+      anterior: conteudoDaVersao(salvo.form, salvo.fases),
+      alteracoes: alteracoes.map(a => a.rotulo),
+      ...(restaurando ? { restauradaDe: restaurando } : {}),
+    } : undefined
 
     startTransition(async () => {
       const update: Record<string, unknown> = { ...form, anoAms: form.semestre === 'ano' ? form.anoAms || null : null }
@@ -386,7 +440,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         for (const key of ['justificativa','objetivos','metodologia','descricaoProduto','premissas','restricoes','limitesAutoridade']) delete update[key]
       }
       const result = editId
-        ? await updateProjetoAction(undefined, editId, update)
+        ? await updateProjetoAction(undefined, editId, update, versao)
         : await createProjetoAction(undefined, { ...form, macroFases: fasesEnvio })
 
       if ('error' in result) {
@@ -396,7 +450,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
       }
       setSyncProjectId(result.projeto.id as string)
       setSyncPending(result.macroFasesSync?.pending ?? false)
-      if (editId) setSalvo(enviado)
+      if (editId) { setSalvo(enviado); setRestaurando(null); setRecarregarHistorico(n => n + 1) }
       setVerAlteracoes(false)
       if (result.macroFasesSync?.pending) return
       if (editId) {
@@ -566,7 +620,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                               />
                             </td>
                             <td className="py-1.5 pr-2 text-center">
-                              <button type="button" aria-label={`Remover fase 1.${idx + 1}`} onClick={() => removeMacroFase(fase.chave)} disabled={macroFases.length === 1} className="mt-0.5 rounded-lg p-2 text-slate-300 transition-all hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent">
+                              <button type="button" aria-label={`Remover fase 1.${idx + 1}`} onClick={() => removeMacroFase(fase.chave)} disabled={macroFases.length === 1 && !fase.nodeId} className="mt-0.5 rounded-lg p-2 text-slate-300 transition-all hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent">
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </td>
@@ -685,6 +739,13 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         {/* ── Barra de salvar: sempre visível. No computador fica logo abaixo das colunas (a página não rola);
             no celular, presa ao rodapé enquanto a página rola. ── */}
         <div className="sticky bottom-4 z-40 mx-auto mt-3 w-full max-w-[720px]">
+          {editId && (
+            <HistoricoProjeto
+              projetoId={editId} aberto={verHistorico} salvo={salvo} recarregar={recarregarHistorico}
+              nomeDoUsuario={id => (usuarios.find(u => u.id === id) ?? (gerenteAtual?.id === id ? gerenteAtual : null))?.name ?? 'Membro'}
+              onFechar={() => setVerHistorico(false)} onRestaurar={restaurar}
+            />
+          )}
           {/* Painel flutua acima da barra (não empurra nada) e entra/sai com transição. */}
           {pendente && (
             <div
@@ -720,8 +781,9 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
             {!editId ? (
               <span className="flex-1 text-sm font-medium text-slate-600">Preencha os dados e crie o projeto.</span>
             ) : pendente ? (
-              <button type="button" onClick={() => setVerAlteracoes(v => !v)} aria-expanded={verAlteracoes} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-sm font-medium text-slate-700 hover:text-slate-900">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+              <button type="button" onClick={() => { setVerHistorico(false); setVerAlteracoes(v => !v) }} aria-expanded={verAlteracoes} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-sm font-medium text-slate-700 hover:text-slate-900">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${restaurando ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                {restaurando && <span className="shrink-0 font-semibold text-blue-700">Restaurando a v{restaurando} ·</span>}
                 <span className="truncate">{alteracoes.length} {alteracoes.length === 1 ? 'alteração não salva' : 'alterações não salvas'}</span>
                 <span className="shrink-0 text-xs font-semibold text-blue-600">{verAlteracoes ? 'Ocultar' : 'Ver o que mudou'}</span>
                 <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${verAlteracoes ? '' : 'rotate-180'}`} />
@@ -730,6 +792,12 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               <span role="status" className="flex flex-1 items-center gap-2 text-sm font-medium text-slate-500">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />{isLoadingEdit ? 'Carregando…' : 'Tudo salvo'}
               </span>
+            )}
+            {editId && (
+              <button type="button" onClick={() => { setVerAlteracoes(false); setVerHistorico(v => !v) }} aria-expanded={verHistorico}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 ${verHistorico ? 'bg-slate-100 text-slate-900' : 'text-slate-600'}`}>
+                <History className="h-4 w-4" />Histórico
+              </button>
             )}
             {editId
               ? pendente && <button type="button" onClick={descartar} disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">Descartar</button>
@@ -742,6 +810,9 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         </div>
       </main>
 
+      {editId && (
+        <ExcluirFaseDialog projetoId={editId} fase={faseAExcluir} versao={versaoDaExclusao} onFechar={() => setFaseAExcluir(null)} onExcluida={faseExcluida} />
+      )}
       {dialogoSaida}
     </div>
   )

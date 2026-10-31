@@ -9,6 +9,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }), useParams: () => ({ projetoId: 'p1' }), useSearchParams: () => new URLSearchParams(),
 }))
 vi.mock('@/app/actions/projetos', () => ({ getProjetoAction: vi.fn(), updateProjetoAction: vi.fn(), createProjetoAction: vi.fn(), retryMacroFasesSyncAction: vi.fn() }))
+vi.mock('@/app/actions/projetoEdicao', () => ({ listarVersoesProjetoAction: vi.fn(async () => ({ versoes: [] })), impactoExclusaoFaseAction: vi.fn(), excluirFaseAction: vi.fn() }))
 vi.mock('@/app/actions/admin', () => ({ listUsersAction: vi.fn(async () => ({ users: [] })) }))
 vi.mock('@/app/actions/departments', () => ({ getDepartmentsAction: vi.fn(async () => []) }))
 vi.mock('@/components/permissoes/ProjectPermissions', () => ({ useProjectPermissions: () => new Set(['projeto:editar']) }))
@@ -29,7 +30,7 @@ describe('Ano do AMS no editar projeto', () => {
     expect(campo).toHaveTextContent('2º')
     escolherOpcao(campo, '1º')
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ semestre: 'ano', anoAms: '1', ano: '2026', termo: '', turno: '' })))
+    await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ semestre: 'ano', anoAms: '1', ano: '2026', termo: '', turno: '' }), expect.objectContaining({ alteracoes: expect.any(Array) })))
   })
   it('só aparece no período Ano e limpa a classificação ao trocar para semestre', async () => {
     render(<ProjetoFormPage />)
@@ -38,7 +39,7 @@ describe('Ano do AMS no editar projeto', () => {
     expect(screen.queryByLabelText('Ano do AMS')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Termo')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ semestre: '1', anoAms: null })))
+    await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ semestre: '1', anoAms: null }), expect.objectContaining({ alteracoes: expect.any(Array) })))
     fireEvent.click(screen.getByRole('radio', { name: 'Ano' }))
     expect(screen.getByLabelText('Ano do AMS')).toHaveTextContent('Selecione')
   })

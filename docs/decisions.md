@@ -957,3 +957,25 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Alternativas consideradas:** deixar a quebra para o CSS de impressão (sem controle visível na edição); Paged.js (pagina clonando o DOM, o que quebra a edição React); cópia invisível só para medir (duplicava o conteúdo e os campos).
 - **Consequências:** a cada alteração a distribuição é recalculada (uma ou duas passadas); um bloco atômico maior que uma folha transborda. Testes em jsdom (sem layout) veem uma folha só.
 - **Referências:** `components/documentos/editor/folha.tsx` (`Folha`, `SecaoTexto`, `SecaoTabela`, `ListaPaginada`, `CampoTexto` com `fragmento`), `lib/printPageStyle.ts` (`printFolhasStyle`).
+
+## ADR-076 — Histórico de versões do Editar projeto, linear como commits
+
+- **Data:** 2026-10-31.
+- **Status:** implementada no código; pendente de publicação.
+- **Contexto:** o usuário pediu, no Editar projeto, um histórico das alterações com a possibilidade de voltar a uma versão "como no git", sem nunca existirem duas versões atuais. As edições do projeto não eram registradas (só o Termo tinha versões, pelo fluxo de aprovação).
+- **Escolha:** tabela `ProjetoVersao` (migration `20261031180000_projeto_versoes`): cada salvamento do Editar projeto grava o conteúdo do formulário (campos e macro fases) com número sequencial, autor e a lista do que mudou; no primeiro salvamento a v1 guarda o estado anterior. A última versão é a atual. "Restaurar" carrega uma versão antiga no formulário como alterações não salvas, com a comparação visível; salvar cria uma versão nova com `restauradaDe` — as versões nunca são reescritas. Restaurar não exclui fases: fases atuais que a versão não tinha continuam, e excluir fase só pela confirmação de impacto (ADR-077). Falha ao gravar a versão não impede o salvamento do projeto.
+- **Justificativa:** histórico linear e imutável é fácil de entender e auditar; restaurar como alteração pendente reaproveita as permissões e validações do salvamento normal.
+- **Alternativas consideradas:** guardar as versões no `AuditLog` (mistura auditoria com conteúdo restaurável); "voltar" reescrevendo o projeto direto pela versão (pularia a revisão e as regras de cada campo); reverter apagando versões posteriores (perderia histórico).
+- **Consequências:** o conteúdo da versão vem do formulário de quem salvou (validado por schema); os textos do Termo continuam indo para aprovação como antes. Versões de antes desta entrega não existem.
+- **Referências:** `prisma/schema.prisma` (`ProjetoVersao`), `services/projetoVersoes.ts`, `app/actions/projetoEdicao.ts`, `components/projetos/HistoricoProjeto.tsx`, `lib/alteracoesProjeto.ts` (`formDaVersao`).
+
+## ADR-077 — Excluir macro fase pelo Editar projeto com o mesmo efeito da EAP
+
+- **Data:** 2026-10-31.
+- **Status:** implementada no código; pendente de publicação.
+- **Contexto:** a lixeira do Cronograma Financeiro só tirava a linha do formulário. A sincronização das macro fases com a EAP só cria e atualiza itens (por nome), então a fase continuava na EAP, nas sprints, nas tarefas e na planilha, e voltava ao abrir a tela. Renomear uma fase criava outra na EAP pelo mesmo motivo.
+- **Escolha:** fase já salva é excluída na hora, depois de uma confirmação que mostra o impacto (itens da EAP abaixo, sprint e tarefas, horas registradas, orçado/realizado da planilha, Termo) e pede motivo quando a sprint tem dados. A exclusão usa `deleteNode` da EAP (subárvore, tarefas, sprint com histórico e motivo) e remove a fase do cadastro `ProjectMacroFase`, para a sincronização não a recriar. O formulário passa a enviar o id do item da EAP de cada fase existente, e o salvamento renomeia o item antes de sincronizar.
+- **Justificativa:** um único caminho de exclusão mantém EAP, sprints, tarefas, planilha e Termo coerentes, com as mesmas regras de motivo da aba EAP/WBS.
+- **Alternativas consideradas:** excluir no "Salvar" junto com as outras alterações (o impacto ficaria escondido até depois de salvar); fazer a sincronização remover itens que sumiram da lista (apagaria dados sem confirmação).
+- **Consequências:** a exclusão de fase não depende de Salvar e entra no histórico do projeto (ADR-076). Fase nova, ainda não salva, sai do formulário sem confirmação.
+- **Referências:** `app/actions/projetoEdicao.ts` (`impactoExclusaoFaseAction`, `excluirFaseAction`), `components/projetos/ExcluirFaseDialog.tsx`, `app/actions/projetos.ts` (`renomearFasesDaEap`), `services/wbsService.ts` (`deleteNode`).
