@@ -27,8 +27,7 @@ import {
   insertChild, insertSibling, removeNode, duplicateNode, moveNode,
   moveNodeRelative, updateTitle, listCandidateParents,
 } from '@/lib/eapTree'
-import EapDocumentSheet from './EapDocumentSheet'
-import type { ArvoreDaAba } from './EapGraficaDaAba'
+import EapDocumentSheet, { type ArvoreDaAba } from './EapDocumentSheet'
 
 // ── UI constants (padrão do app) ─────────────────────────────────────────────
 
@@ -79,6 +78,8 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
   /** Estrutura vinda da aba EAP/WBS: no documento, só leitura. */
   const [origemWbs, setOrigemWbs] = useState(false)
   const [arvore, setArvore] = useState<ArvoreDaAba | null>(null)
+  // Folhas do documento (gráfica + texto), para o contador "Páginas" do editor.
+  const [totalPaginas, setTotalPaginas] = useState(2)
   /** Assinatura do gerente (só com versão aprovada). */
   const [assinaturaUrl, setAssinaturaUrl] = useState<string | null>(null)
   const { todos: todosMembros, registrarCriado } = useMembrosEquipe(membros)
@@ -391,7 +392,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
         onWord={() => toast('A EAP ainda não tem exportação em Word. Use o PDF.', 'warning')}
         desfazer={{ desfazer: undo, refazer: redo, podeDesfazer: past.length > 0, podeRefazer: future.length > 0 }}
         onAdicionarLinha={!origemWbs ? handleAddItem : undefined}
-        paginas={{ total: 2, seletor: '[data-testid^="eap-pagina-"]' }}
+        paginas={{ total: totalPaginas, seletor: '[data-folha]' }}
         saida={{
           pendente: canEdit && alterado && !versaoAberta,
           salvar: () => void handleSave(),
@@ -439,6 +440,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
             interactive={editavel && !origemWbs}
             selectedId={selectedId}
             onSelectBlock={id => editavel && openBlock(id)}
+            onPaginas={setTotalPaginas}
             edicao={{
               projetoId,
               membros: todosMembros,

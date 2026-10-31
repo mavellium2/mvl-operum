@@ -1,21 +1,30 @@
 'use client'
 
-import { forwardRef, useMemo, useState } from 'react'
+import { forwardRef, useEffect, useMemo, useState } from 'react'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import type { EapNode, EapDocumentMetadata } from '@/types/eap'
-import { computeEapColumnLayout, eapBoxLabel, eapWrapLines, fitScale, EAP_COL_LINE_H, EAP_COL_PAD_Y } from '@/lib/eapLayout'
+import { computeEapColumnLayout, eapColunasParaLargura, eapBoxLabel, eapWrapLines, fitScale, EAP_COL_LINE_H, EAP_COL_PAD_Y } from '@/lib/eapLayout'
 import { flattenTree } from '@/lib/eapCode'
 import { formatDateBR } from '@/lib/date'
-import EapGraficaDaAba, { type ArvoreDaAba } from './EapGraficaDaAba'
+import type { WbsNodeClient } from '@/types/wbs'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import { PAGE_NUMBER_MARGIN_MM } from '@/lib/printPageStyle'
 import {
-  CampoAutomatico, ListaPaginada, CampoData, CampoPessoa, CampoTexto, FOLHA_MARGEM_MM, Folha, useEditorFolha,
+  CampoAutomatico, ListaPaginada, CampoData, CampoPessoa, CampoTexto, EditorFolhaProvider, FOLHA_MARGEM_MM, Folha, useEditorFolha,
 } from '@/components/documentos/editor/folha'
 
 export const TITULO_EAP = 'Estrutura Analítica do Projeto — EAP'
 export const TITULO_EAP_GRAFICA = 'Modelo de Estrutura Analítica do Projeto (EAP - Gráfica)'
 export const TITULO_EAP_TEXTO = 'Modelo de Estrutura Analítica do Projeto (EAP - Texto)'
+
+/** Árvore da aba EAP/WBS: dá as cores de cada bloco da EAP gráfica. */
+export interface ArvoreDaAba {
+  rootId: string | null
+  nodes: Record<string, WbsNodeClient>
+}
+
+/** Quadro repetido na folha do texto: só leitura (os campos ficam no quadro da folha 1). */
+const SO_LEITURA = { editavel: false, focar: () => {}, registrarLimpar: () => {} }
 
 /** Ligações do quadro com o estado do editor (só usadas dentro do EditorDocumento). */
 export interface EdicaoEap {
@@ -34,9 +43,10 @@ export interface EdicaoEap {
  * documento"), todo em A4 paisagem.
  *
  * PÁGINA 1 — EAP GRÁFICA: logo + título, quadro de identificação e a árvore
- *   (igual à aba EAP/WBS; campo automático, editado na própria aba).
- * PÁGINAS 2+ — EAP TEXTO: a lista numerada gerada da MESMA árvore, seguida
- *   das assinaturas.
+ *   no layout em colunas do modelo "04 Aula GP" (fases lado a lado, itens
+ *   empilhados), com as cores dos blocos da aba EAP/WBS.
+ * PÁGINAS 2+ — EAP TEXTO: a lista numerada gerada da MESMA árvore, recuada
+ *   por nível. Todas as folhas mostram "Página X de Y".
  *
  * Dentro do EditorDocumento o quadro é editável; fora dele (PDF) sai só o
  * texto. `ref` é usado pelo react-to-print para exportar o PDF.
@@ -49,8 +59,10 @@ export interface EapDocumentSheetProps {
   logoUrl?: string | null
   /** Assinatura do gerente (documento com versão aprovada). */
   assinaturaUrl?: string | null
-  /** Árvore da aba EAP/WBS: a EAP gráfica é desenhada igual à aba. Sem ela, layout em colunas. */
+  /** Árvore da aba EAP/WBS: os blocos da EAP gráfica usam as cores dela. Sem ela, azul do modelo. */
   arvore?: ArvoreDaAba | null
+  /** Total de folhas do documento (gráfica + texto), para o contador do editor. */
+  onPaginas?: (total: number) => void
   /** Habilita interação (clique nos blocos) — usado pelo editor. */
   interactive?: boolean
   edicao?: EdicaoEap
@@ -148,15 +160,18 @@ function QuadroEap({ metadata, instituicao, assinaturaUrl, edicao, testId }: { m
 }
 
 const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
-  function EapDocumentSheet({ metadata, nodes, instituicao, logoUrl, assinaturaUrl, arvore, interactive, selectedId, onSelectBlock, edicao }, ref) {
-    const layout = useMemo(() => computeEapColumnLayout(nodes), [nodes])
+  function EapDocumentSheet({ metadata, nodes, instituicao, logoUrl, assinaturaUrl, arvore, interactive, selectedId, onSelectBlock, edicao, onPaginas }, ref) {
     const flat = useMemo(() => flattenTree(nodes), [nodes])
     // Folhas ocupadas pela EAP em texto (para o "Página 1 de N" da folha gráfica).
     const [paginasTexto, setPaginasTexto] = useState(1)
+    useEffect(() => { onPaginas?.(1 + paginasTexto) }, [onPaginas, paginasTexto])
 
     // Área da árvore: página menos margens, faixa da numeração e cabeçalho.
     const availW = (PAGE_W - FOLHA_MARGEM_MM.x * 2 - 8) * MM
     const availH = (PAGE_H - FOLHA_MARGEM_MM.top - PAGE_NUMBER_MARGIN_MM - CABECALHO_MM) * MM
+    // Muitas fases: blocos mais estreitos para caber na largura sem encolher o texto.
+    const medidas = useMemo(() => eapColunasParaLargura(Math.max(0, ...nodes.map(r => r.children?.length ?? 0)), availW), [nodes, availW])
+    const layout = useMemo(() => computeEapColumnLayout(nodes, medidas), [nodes, medidas])
     const scale = fitScale(layout.bounds.width, layout.bounds.height || 1, availW, availH)
 
     function renderGraphicTree() {
@@ -167,7 +182,6 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
           </div>
         )
       }
-      if (arvore?.rootId) return <EapGraficaDaAba arvore={arvore} larguraMax={availW} alturaMax={availH} />
       return (
         <svg
           viewBox={`0 0 ${layout.bounds.width} ${layout.bounds.height}`}
@@ -175,6 +189,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
           height={(layout.bounds.height || 1) * scale}
           style={{ display: 'block', margin: '0 auto' }}
           role="tree"
+          aria-label="EAP gráfica"
         >
           {layout.connectors.map((c, i) => (
             <path key={`${c.fromId}-${c.toId}-${i}`} d={c.path} fill="none" stroke="#7f8fa6" strokeWidth={1} />
@@ -183,12 +198,15 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
             const g = layout.geometry[node.id]
             if (!g) return null
             const selected = interactive && selectedId === node.id
-            const lines = eapWrapLines(eapBoxLabel(node, g.isRoot))
+            // Cores do bloco na aba EAP/WBS (o layout é o do modelo, em colunas).
+            const cor = arvore?.nodes[node.id]?.style
+            const lines = eapWrapLines(eapBoxLabel(node, g.isRoot), medidas.maxChars, medidas.maxLines)
             const top = g.y + (g.height - lines.length * EAP_COL_LINE_H) / 2
             return (
               <g
                 key={node.id}
                 role="treeitem"
+                aria-label={eapBoxLabel(node, false)}
                 aria-level={node.level}
                 aria-selected={selected}
                 onClick={interactive ? () => onSelectBlock?.(node.id) : undefined}
@@ -196,7 +214,8 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
               >
                 <rect
                   x={g.x} y={g.y} width={g.width} height={g.height}
-                  fill={AZUL} stroke={selected ? '#f59e0b' : AZUL_BORDA} strokeWidth={selected ? 2.5 : 0.8}
+                  fill={cor?.backgroundColor ?? AZUL} stroke={selected ? '#f59e0b' : cor?.borderColor ?? AZUL_BORDA} strokeWidth={selected ? 2.5 : 0.8}
+                  rx={cor ? Math.min(cor.borderRadius, 4) : 0}
                 />
                 {lines.map((line, i) => (
                   <text
@@ -207,7 +226,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
                     fontFamily="Calibri, Carlito, Arial, sans-serif"
                     fontSize={9}
                     fontWeight={g.isRoot ? 700 : 400}
-                    fill="#fff"
+                    fill={cor?.textColor ?? '#fff'}
                   >
                     {line}
                   </text>
@@ -262,7 +281,9 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
         {/* ── FOLHAS 2+ — EAP TEXTO: título e quadro só na primeira; a lista continua nas seguintes ── */}
         <Folha paisagem data-testid="eap-pagina-2" paginaInicial={2} onPaginas={setPaginasTexto} style={{ gap: '4mm' }}>
           <CabecalhoEap titulo={TITULO_EAP_TEXTO} logoUrl={logoUrl} />
-          <QuadroEap metadata={metadata} instituicao={instituicao} assinaturaUrl={assinaturaUrl} />
+          <EditorFolhaProvider value={SO_LEITURA}>
+            <QuadroEap metadata={metadata} instituicao={instituicao} assinaturaUrl={assinaturaUrl} />
+          </EditorFolhaProvider>
           {renderTextualTree()}
         </Folha>
       </div>

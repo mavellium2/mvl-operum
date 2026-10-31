@@ -212,8 +212,30 @@ export function eapWrapLines(text: string, maxChars = EAP_COL_MAX_CHARS, maxLine
   return kept
 }
 
-function boxHeight(node: EapNode, isRoot: boolean): number {
-  return eapWrapLines(eapBoxLabel(node, isRoot)).length * EAP_COL_LINE_H + EAP_COL_PAD_Y * 2
+/** Medidas do layout em colunas; o documento estreita os blocos quando há muitas fases. */
+export interface EapColunasOpcoes {
+  boxW?: number
+  gapX?: number
+  maxChars?: number
+  maxLines?: number
+}
+
+/**
+ * Medidas para `n` fases caberem em `larguraPx` sem encolher a fonte: blocos
+ * mais estreitos (até 70 px) e o texto quebrado em mais linhas.
+ */
+export function eapColunasParaLargura(n: number, larguraPx: number): Required<EapColunasOpcoes> {
+  if (n <= 0) return { boxW: EAP_COL_BOX_W, gapX: EAP_COL_GAP_X, maxChars: EAP_COL_MAX_CHARS, maxLines: EAP_COL_MAX_LINES }
+  const largoPadrao = n * (EAP_COL_INDENT + EAP_COL_BOX_W) + (n - 1) * EAP_COL_GAP_X
+  if (largoPadrao <= larguraPx) return { boxW: EAP_COL_BOX_W, gapX: EAP_COL_GAP_X, maxChars: EAP_COL_MAX_CHARS, maxLines: EAP_COL_MAX_LINES }
+  const gapX = 10
+  const boxW = Math.max(70, Math.min(EAP_COL_BOX_W, Math.floor((larguraPx - (n - 1) * gapX) / n - EAP_COL_INDENT)))
+  // ~5,3 px por caractere na fonte de 9 px.
+  return { boxW, gapX, maxChars: Math.max(12, Math.floor(boxW / 5.3)), maxLines: 6 }
+}
+
+function boxHeight(node: EapNode, isRoot: boolean, o: Required<EapColunasOpcoes>): number {
+  return eapWrapLines(eapBoxLabel(node, isRoot), o.maxChars, o.maxLines).length * EAP_COL_LINE_H + EAP_COL_PAD_Y * 2
 }
 
 /** Descendentes em pré-ordem (iterativo). */
@@ -228,47 +250,53 @@ function descendants(node: EapNode): EapNode[] {
   return out
 }
 
-export function computeEapColumnLayout(roots: EapNode[]): EapLayoutResult {
+export function computeEapColumnLayout(roots: EapNode[], opcoes: EapColunasOpcoes = {}): EapLayoutResult {
+  const o: Required<EapColunasOpcoes> = {
+    boxW: opcoes.boxW ?? EAP_COL_BOX_W, gapX: opcoes.gapX ?? EAP_COL_GAP_X,
+    maxChars: opcoes.maxChars ?? EAP_COL_MAX_CHARS, maxLines: opcoes.maxLines ?? EAP_COL_MAX_LINES,
+  }
+  const BOX_W = o.boxW
+  const GAP_X = o.gapX
   const geometry: EapLayoutResult['geometry'] = {}
   const connectors: EapLayoutResult['connectors'] = []
-  const colW = EAP_COL_INDENT + EAP_COL_BOX_W
+  const colW = EAP_COL_INDENT + BOX_W
   let offsetX = 0
   let maxBottom = 0
 
   for (const root of roots) {
     const columns = root.children ?? []
-    const blockW = Math.max(EAP_COL_BOX_W, columns.length * colW + Math.max(0, columns.length - 1) * EAP_COL_GAP_X)
-    const rootH = boxHeight(root, true)
-    const rootX = offsetX + (blockW - EAP_COL_BOX_W) / 2
-    geometry[root.id] = { id: root.id, x: rootX, y: 0, width: EAP_COL_BOX_W, height: rootH, isRoot: true }
+    const blockW = Math.max(BOX_W, columns.length * colW + Math.max(0, columns.length - 1) * GAP_X)
+    const rootH = boxHeight(root, true, o)
+    const rootX = offsetX + (blockW - BOX_W) / 2
+    geometry[root.id] = { id: root.id, x: rootX, y: 0, width: BOX_W, height: rootH, isRoot: true }
     maxBottom = Math.max(maxBottom, rootH)
 
     if (columns.length > 0) {
       const busY = rootH + 12
       const headerY = busY + 12
-      const headerH = Math.max(...columns.map(c => boxHeight(c, false)))
-      const rootCx = rootX + EAP_COL_BOX_W / 2
+      const headerH = Math.max(...columns.map(c => boxHeight(c, false, o)))
+      const rootCx = rootX + BOX_W / 2
 
       columns.forEach((col, i) => {
-        const colX = offsetX + i * (colW + EAP_COL_GAP_X)
-        const cx = colX + EAP_COL_BOX_W / 2
-        geometry[col.id] = { id: col.id, x: colX, y: headerY, width: EAP_COL_BOX_W, height: headerH, isRoot: false }
+        const colX = offsetX + i * (colW + GAP_X)
+        const cx = colX + BOX_W / 2
+        geometry[col.id] = { id: col.id, x: colX, y: headerY, width: BOX_W, height: headerH, isRoot: false }
         connectors.push({ fromId: root.id, toId: col.id, path: `M ${rootCx} ${rootH} V ${busY} H ${cx} V ${headerY}` })
 
         const lineX = colX + EAP_COL_INDENT / 2
         let y = headerY + headerH + EAP_COL_GAP_Y
         for (const item of descendants(col)) {
-          const h = boxHeight(item, false)
-          geometry[item.id] = { id: item.id, x: colX + EAP_COL_INDENT, y, width: EAP_COL_BOX_W, height: h, isRoot: false }
+          const h = boxHeight(item, false, o)
+          geometry[item.id] = { id: item.id, x: colX + EAP_COL_INDENT, y, width: BOX_W, height: h, isRoot: false }
           connectors.push({ fromId: col.id, toId: item.id, path: `M ${lineX} ${headerY + headerH} V ${y + h / 2} H ${colX + EAP_COL_INDENT}` })
           y += h + EAP_COL_GAP_Y
         }
         maxBottom = Math.max(maxBottom, y - EAP_COL_GAP_Y, headerY + headerH)
       })
     }
-    offsetX += blockW + EAP_COL_GAP_X * 2
+    offsetX += blockW + GAP_X * 2
   }
 
-  const width = roots.length > 0 ? offsetX - EAP_COL_GAP_X * 2 : 0
+  const width = roots.length > 0 ? offsetX - GAP_X * 2 : 0
   return { geometry, connectors, bounds: { width, height: roots.length > 0 ? maxBottom : 0 } }
 }
