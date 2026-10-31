@@ -27,6 +27,8 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
   const [versoes, setVersoes] = useState<VersaoProjeto[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [comparando, setComparando] = useState<number | null>(null)
+  /** Versões já comparadas: o conteúdo fica montado para fechar deslizando. */
+  const [comparadas, setComparadas] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (!aberto) return
@@ -53,7 +55,7 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
   return (
     <div
       role="dialog" aria-label="Histórico de versões" aria-hidden={!aberto} inert={!aberto}
-      className={`absolute inset-x-0 bottom-full mb-2 flex max-h-[60vh] origin-bottom flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl transition-all duration-200 ease-out ${aberto ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-2 scale-[0.98] opacity-0'}`}
+      className={`absolute inset-x-0 bottom-full mb-2 flex max-h-[60vh] origin-bottom flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl transition-all duration-300 [transition-timing-function:var(--ease-suave)] ${aberto ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-2 scale-[0.98] opacity-0'}`}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-2.5">
         <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900"><History className="h-4 w-4 text-slate-400" />Histórico de versões</h3>
@@ -67,13 +69,13 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
           {versoes?.map((v, i) => {
             const atual = i === 0
             const aberta = comparando === v.numero
-            const lista = aberta ? diferencas(v) : []
+            const lista = aberta || comparadas.has(v.numero) ? diferencas(v) : []
             return (
               <li key={v.numero} className="relative pl-7" data-testid="versao">
                 {/* Linha do tempo, como num histórico de commits. */}
                 <span aria-hidden="true" className={`absolute left-3 top-0 w-px bg-slate-200 ${i === versoes.length - 1 ? 'h-4' : 'h-full'}`} />
                 <span aria-hidden="true" className={`absolute left-[7px] top-3.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${atual ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                <div className="rounded-xl px-3 py-2.5 hover:bg-slate-50">
+                <div className="rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-slate-50">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-bold text-slate-900">v{v.numero}</span>
                     {atual && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">Atual</span>}
@@ -85,15 +87,17 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
                   </p>
                   {!atual && (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <button type="button" onClick={() => setComparando(aberta ? null : v.numero)} aria-expanded={aberta} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">
-                        <ChevronDown className={`h-3.5 w-3.5 transition ${aberta ? 'rotate-180' : ''}`} />Comparar com a atual
+                      <button type="button" onClick={() => { setComparadas(c => new Set(c).add(v.numero)); setComparando(aberta ? null : v.numero) }} aria-expanded={aberta} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${aberta ? 'rotate-180' : ''}`} />Comparar com a atual
                       </button>
                       <button type="button" onClick={() => onRestaurar(v)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50">
                         <RotateCcw className="h-3.5 w-3.5" />Restaurar esta versão
                       </button>
                     </div>
                   )}
-                  {aberta && (
+                  <div className={`grid transition-[grid-template-rows,opacity] duration-300 [transition-timing-function:var(--ease-suave)] ${aberta ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`} aria-hidden={!aberta}>
+                  <div className="min-h-0 overflow-hidden">
+                  {(aberta || comparadas.has(v.numero)) && (
                     <ul className="mt-2 space-y-1.5 rounded-lg border border-slate-100 bg-white p-2 text-xs">
                       {lista.length === 0 && <li className="text-slate-500">Igual à versão atual.</li>}
                       {lista.map(a => (
@@ -110,6 +114,8 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
                       ))}
                     </ul>
                   )}
+                  </div>
+                  </div>
                 </div>
               </li>
             )

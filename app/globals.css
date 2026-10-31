@@ -92,6 +92,43 @@ textarea:disabled {
   to { stroke-dashoffset: 0; }
 }
 
+/* ── Movimento suave das telas de edição ───────────────────── */
+/* Curva "ease-out" longa: começa rápido e assenta devagar, sem tranco. */
+:root { --ease-suave: cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes suave-entrar {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes suave-surgir {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes linha-nova {
+  0%   { opacity: 0; transform: translateY(-4px); background-color: rgb(239 246 255); }
+  35%  { opacity: 1; transform: translateY(0); background-color: rgb(239 246 255); }
+  100% { background-color: transparent; }
+}
+.anim-entrar { animation: suave-entrar 280ms var(--ease-suave) both; }
+.anim-surgir { animation: suave-surgir 240ms var(--ease-suave) both; }
+.anim-linha-nova { animation: linha-nova 1100ms var(--ease-suave) both; }
+
+/* Classes de entrada usadas pelo app (modais, menus, painéis): sem a biblioteca de
+   animação elas não faziam nada. Combinam opacidade, escala e deslocamento. */
+@keyframes entrar-composto {
+  from {
+    opacity: var(--entrar-opacidade, 1);
+    transform: translate3d(var(--entrar-x, 0), var(--entrar-y, 0), 0) scale(var(--entrar-escala, 1));
+  }
+}
+.animate-in { animation: entrar-composto 240ms var(--ease-suave) both; }
+.fade-in { --entrar-opacidade: 0; }
+.zoom-in-95 { --entrar-escala: 0.95; }
+.slide-in-from-top-2 { --entrar-y: -0.5rem; }
+.slide-in-from-bottom-4 { --entrar-y: 1rem; }
+.slide-in-from-left-4 { --entrar-x: -1rem; }
+.slide-in-from-right-4 { --entrar-x: 1rem; }
+.slide-in-from-right { --entrar-x: 100%; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation: none !important;

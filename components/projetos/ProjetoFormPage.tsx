@@ -117,7 +117,7 @@ const card = 'rounded-2xl border border-slate-200/70 bg-white shadow-sm'
 const inputClass = 'w-full px-4 py-3 bg-slate-50/50 border border-slate-200/60 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all duration-200 text-slate-800 font-medium'
 const celulaInput = 'w-full px-3 py-2.5 bg-transparent border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-lg text-sm transition-all outline-none'
 /** Valor de uma linha de propriedades: texto, fundo só ao passar o mouse ou editar. */
-const propriedadeInput = 'h-8 w-full rounded-lg bg-transparent px-2.5 text-[13px] font-medium text-slate-800 outline-none placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:text-slate-500 disabled:hover:bg-transparent'
+const propriedadeInput = 'h-8 w-full rounded-lg bg-transparent transition-colors duration-150 px-2.5 text-[13px] font-medium text-slate-800 outline-none placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:text-slate-500 disabled:hover:bg-transparent'
 const tituloLateral = 'mb-1 px-1 text-[11px] font-bold uppercase tracking-widest text-slate-400'
 
 function Propriedade({ Icone, rotulo, htmlFor, children }: { Icone: typeof Flag; rotulo: string; htmlFor?: string; children: ReactNode }) {
@@ -489,7 +489,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
 
       <main className="relative mx-auto max-w-[1280px] px-4 pb-4 pt-5 sm:px-6">
         {syncPending && (
-          <div role="status" className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div role="status" className="anim-entrar mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <p>Projeto salvo. A sincronização das macrofases com a EAP está pendente.</p>
             {canEditCosts && syncProjectId && <button type="button" disabled={isPending} className="mt-2 font-bold underline" onClick={() => startTransition(async () => {
               const result = await retryMacroFasesSyncAction(syncProjectId)
@@ -501,7 +501,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         )}
 
         {error && (
-          <div role="alert" className="mb-4 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm font-semibold text-red-600">
+          <div role="alert" className="anim-entrar mb-4 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm font-semibold text-red-600">
             <AlertTriangle className="h-4 w-4 shrink-0" />{error}
           </div>
         )}
@@ -510,7 +510,13 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
           {/* ── Coluna principal: Diretrizes e Escopo | Cronograma Financeiro ── */}
           <div className="order-2 flex min-w-0 flex-col lg:order-1 lg:h-full lg:min-h-0">
             {/* Abas com resumo: as duas partes ficam a um clique, cada uma cabendo na tela. */}
-            <div role="tablist" aria-label="Seções do projeto" className="mb-3 grid shrink-0 grid-cols-2 gap-1 rounded-2xl border border-slate-200/50 bg-slate-200/50 p-1.5 shadow-sm">
+            <div role="tablist" aria-label="Seções do projeto" className="relative mb-3 grid shrink-0 grid-cols-2 gap-1 rounded-2xl border border-slate-200/50 bg-slate-200/50 p-1.5 shadow-sm">
+              {/* Destaque da aba ativa: desliza entre as abas em vez de trocar de repente. */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-1.5 left-1.5 top-1.5 rounded-xl border border-slate-200/40 bg-white shadow-sm transition-transform duration-300 [transition-timing-function:var(--ease-suave)]"
+                style={{ width: 'calc(50% - 0.5rem)', transform: aba === 'cronograma' ? 'translateX(calc(100% + 0.25rem))' : 'translateX(0)' }}
+              />
               {([
                 ['diretrizes', 'Diretrizes e Escopo', `${preenchidos} de ${CAMPOS_TERMO.length} preenchidos`, alteracoes.some(a => (CAMPOS_TERMO as { nome: string }[]).some(c => c.nome === a.chave))],
                 ['cronograma', 'Cronograma Financeiro', `${fasesPreenchidas.length} ${fasesPreenchidas.length === 1 ? 'fase' : 'fases'} · ${total}`, alteracoes.some(a => a.chave.startsWith('fase:'))],
@@ -518,10 +524,10 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                 <button
                   key={id} type="button" role="tab" id={`aba-${id}`} aria-selected={aba === id} aria-controls={`painel-${id}`}
                   onClick={() => setAba(id)}
-                  className={`flex min-w-0 flex-col items-start rounded-xl px-4 py-2 text-left transition-all ${aba === id ? 'border border-slate-200/40 bg-white shadow-sm' : 'border border-transparent hover:bg-slate-200/60'}`}
+                  className={`relative z-10 flex min-w-0 flex-col items-start rounded-xl px-4 py-2 text-left transition-colors duration-200 ${aba === id ? '' : 'hover:bg-white/40'}`}
                 >
-                  <span className={`flex items-center gap-1.5 text-sm font-bold ${aba === id ? 'text-slate-900' : 'text-slate-600'}`}>
-                    {titulo}{mudou && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Com alterações" />}
+                  <span className={`flex items-center gap-1.5 text-sm font-bold transition-colors duration-200 ${aba === id ? 'text-slate-900' : 'text-slate-600'}`}>
+                    {titulo}{mudou && <span className="anim-surgir h-1.5 w-1.5 rounded-full bg-amber-500" title="Com alterações" />}
                   </span>
                   <span className="truncate text-xs font-medium text-slate-500">{resumo}</span>
                 </button>
@@ -529,7 +535,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
             </div>
 
             {aba === 'diretrizes' && (
-              <section id="painel-diretrizes" role="tabpanel" aria-labelledby="aba-diretrizes" className={`${card} flex flex-col overflow-hidden lg:min-h-0 lg:flex-1`}>
+              <section key="diretrizes" id="painel-diretrizes" role="tabpanel" aria-labelledby="aba-diretrizes" className={`${card} anim-entrar flex flex-col overflow-hidden lg:min-h-0 lg:flex-1`}>
                 <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-6 pb-4 pt-5">
                   <div>
                     <h2 className="text-lg font-bold text-slate-900">Diretrizes e Escopo</h2>
@@ -546,7 +552,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                         rotulo={
                           <span className="ml-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">
                             <Icone className="h-3.5 w-3.5 shrink-0" />{ROTULOS_PROJETO[nome]}
-                            {alterado(nome) && <span className="ml-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Alterado" />}
+                            {alterado(nome) && <span className="anim-surgir ml-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Alterado" />}
                           </span>
                         }
                         className={`${inputClass} resize-none leading-relaxed`}
@@ -559,7 +565,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
 
             {aba === 'cronograma' && (
               <fieldset disabled={!canEditCosts} className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1">
-                <section id="painel-cronograma" role="tabpanel" aria-labelledby="aba-cronograma" className={`${card} flex flex-col overflow-hidden lg:min-h-0 lg:flex-1`}>
+                <section key="cronograma" id="painel-cronograma" role="tabpanel" aria-labelledby="aba-cronograma" className={`${card} anim-entrar flex flex-col overflow-hidden lg:min-h-0 lg:flex-1`}>
                   {/* Cabeçalho fixo: título, ação e os números do cronograma. */}
                   <header className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-5">
                     <div className="flex items-start justify-between gap-4">
@@ -599,7 +605,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {macroFases.map((fase, idx) => (
-                          <tr key={fase.chave} className="group align-top transition-colors hover:bg-slate-50/50">
+                          <tr key={fase.chave} className={`group align-top transition-colors duration-200 hover:bg-slate-50/50 ${fase.chave.startsWith('nova-') ? 'anim-linha-nova' : ''}`}>
                             <td className="py-1.5 pl-4 pr-1">
                               <div className="flex items-start gap-1.5">
                                 <span className="w-7 shrink-0 py-2.5 text-right text-sm tabular-nums text-slate-500">1.{idx + 1}</span>
@@ -750,7 +756,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
           {pendente && (
             <div
               role="dialog" aria-label="Alterações não salvas" aria-hidden={!verAlteracoes} inert={!verAlteracoes}
-              className={`absolute inset-x-0 bottom-full mb-2 max-h-[60vh] origin-bottom overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl transition-all duration-200 ease-out ${verAlteracoes ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-2 scale-[0.98] opacity-0'}`}
+              className={`absolute inset-x-0 bottom-full mb-2 max-h-[60vh] origin-bottom overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl transition-all duration-300 [transition-timing-function:var(--ease-suave)] ${verAlteracoes ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-2 scale-[0.98] opacity-0'}`}
             >
               <div className="flex items-center justify-between px-3 py-2">
                 <h3 className="text-sm font-bold text-slate-900">O que mudou desde o último salvamento</h3>
@@ -781,15 +787,15 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
             {!editId ? (
               <span className="flex-1 text-sm font-medium text-slate-600">Preencha os dados e crie o projeto.</span>
             ) : pendente ? (
-              <button type="button" onClick={() => { setVerHistorico(false); setVerAlteracoes(v => !v) }} aria-expanded={verAlteracoes} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-sm font-medium text-slate-700 hover:text-slate-900">
-                <span className={`h-2 w-2 shrink-0 rounded-full ${restaurando ? 'bg-blue-500' : 'bg-amber-500'}`} />
+              <button key="pendente" type="button" onClick={() => { setVerHistorico(false); setVerAlteracoes(v => !v) }} aria-expanded={verAlteracoes} className="anim-entrar flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-sm font-medium text-slate-700 transition-colors hover:text-slate-900">
+                <span className={`anim-surgir h-2 w-2 shrink-0 rounded-full transition-colors duration-300 ${restaurando ? 'bg-blue-500' : 'bg-amber-500'}`} />
                 {restaurando && <span className="shrink-0 font-semibold text-blue-700">Restaurando a v{restaurando} ·</span>}
                 <span className="truncate">{alteracoes.length} {alteracoes.length === 1 ? 'alteração não salva' : 'alterações não salvas'}</span>
                 <span className="shrink-0 text-xs font-semibold text-blue-600">{verAlteracoes ? 'Ocultar' : 'Ver o que mudou'}</span>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${verAlteracoes ? '' : 'rotate-180'}`} />
+                <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 [transition-timing-function:var(--ease-suave)] ${verAlteracoes ? '' : 'rotate-180'}`} />
               </button>
             ) : (
-              <span role="status" className="flex flex-1 items-center gap-2 text-sm font-medium text-slate-500">
+              <span key="salvo" role="status" className="anim-entrar flex flex-1 items-center gap-2 text-sm font-medium text-slate-500">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />{isLoadingEdit ? 'Carregando…' : 'Tudo salvo'}
               </span>
             )}
@@ -800,9 +806,9 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               </button>
             )}
             {editId
-              ? pendente && <button type="button" onClick={descartar} disabled={isPending} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">Descartar</button>
+              ? pendente && <button type="button" onClick={descartar} disabled={isPending} className="anim-entrar rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50">Descartar</button>
               : <Link href={voltarHref} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancelar</Link>}
-            <button type="button" onClick={salvar} disabled={ocupado || (!!editId && !pendente)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-blue-600">
+            <button type="button" onClick={salvar} disabled={ocupado || (!!editId && !pendente)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-sm transition-all duration-300 [transition-timing-function:var(--ease-suave)] hover:bg-blue-700 hover:shadow-md active:scale-[0.97] disabled:opacity-40 disabled:shadow-none disabled:hover:bg-blue-600 disabled:active:scale-100">
               {isPending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
               {isPending ? (editId ? 'Salvando…' : 'Criando…') : (editId ? 'Salvar alterações' : 'Criar projeto')}
             </button>
