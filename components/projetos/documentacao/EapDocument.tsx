@@ -1,9 +1,9 @@
 'use client'
 
 import Select from '@/components/ui/Select'
-import { printPageStyle, rodapeDocumento } from '@/lib/printPageStyle'
+import { printFolhasStyle, rodapeDocumento } from '@/lib/printPageStyle'
 import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
-import { FOLHA_MARGEM_MM } from '@/components/documentos/editor/folha'
+import { CopiaParaImpressao } from '@/components/documentos/editor/folha'
 import Tooltip from '@/components/ui/Tooltip'
 import { abrirPropostas, ROTULO_STATUS, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
 import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
@@ -261,7 +261,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: doc ? `EAP - ${doc.projectName || 'Projeto'}` : 'EAP - Estrutura Analítica do Projeto',
-    pageStyle: printPageStyle({ landscape: true, marginMm: FOLHA_MARGEM_MM, rodape: rodapeDocumento('Estrutura Analítica do Projeto', metadata.version || '1.0') }),
+    pageStyle: printFolhasStyle({ landscape: true }),
   })
 
   // ── Salvar (PUT) ──────────────────────────────────────────────────────────
@@ -455,7 +455,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
       </EditorDocumento>
 
       {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
-      <div hidden>
+      <CopiaParaImpressao>
         <EapDocumentSheet
           ref={printRef}
           metadata={metaExibida}
@@ -464,8 +464,9 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
           logoUrl={logoUrl}
           assinaturaUrl={assinaturaUrl}
           arvore={!versaoAberta && origemWbs ? arvore : null}
+          rodape={rodape}
         />
-      </div>
+      </CopiaParaImpressao>
 
       {/* ── Painel de edição do bloco (SPEC §20) ─────────────────────────── */}
       <Modal

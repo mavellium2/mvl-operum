@@ -33,7 +33,7 @@ function textoCss(texto: string): string {
 /**
  * Altura útil de cada página impressa (mm): o que cabe entre a margem superior e
  * a faixa da numeração. A prévia usa o mesmo valor para mostrar onde cada folha
- * termina (PaginasDaPrevia).
+ * termina.
  */
 export function alturaUtilDaPaginaMm({ landscape = false, marginTopMm = 0 }: { landscape?: boolean; marginTopMm?: number } = {}): number {
   return (landscape ? 210 : 297) - marginTopMm - PAGE_NUMBER_MARGIN_MM
@@ -68,3 +68,26 @@ export function printPageStyle({ landscape = false, marginMm = { top: 0, x: 0 },
     ${extraCss}
   `
 }
+
+/**
+ * Impressão das folhas já paginadas na tela (Folha do editor de documentos):
+ * cada folha tem o tamanho exato do A4, com margens e rodapé ("Página X de Y")
+ * desenhados nela. O @page fica sem margem e cada folha ocupa uma página, então
+ * o PDF sai igual ao que se vê na tela.
+ */
+export function printFolhasStyle({ landscape = false }: { landscape?: boolean } = {}): string {
+  return `
+    @page { size: A4${landscape ? ' landscape' : ''}; margin: 0; }
+    @media print {
+      html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      [data-medicao], [data-tela-apenas] { display: none !important; }
+      [data-paginas] { gap: 0 !important; }
+      [data-pagina] { box-shadow: none !important; margin: 0 !important; overflow: hidden; break-after: page; page-break-after: always; }
+      [data-pagina]:last-child { break-after: auto; page-break-after: auto; }
+      textarea { resize: none; }
+      textarea::placeholder { color: transparent !important; }
+    }
+  `
+}
+
