@@ -12,6 +12,8 @@ interface ExpandableTextareaProps {
   alturaMinima?: number;
   /** Título do campo: com ele, o botão de recolher fica na linha do título e o texto usa a largura toda. */
   rotulo?: React.ReactNode;
+  /** Ocupa a altura toda da célula (campos lado a lado ficam com a mesma altura). */
+  preencher?: boolean;
 }
 
 const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
@@ -24,6 +26,7 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
   readOnly = false,
   alturaMinima = 100,
   rotulo,
+  preencher = false,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
@@ -45,89 +48,48 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
     return () => io.disconnect();
   }, []);
 
+  // Só anima quando a pessoa recolhe/expande; ao digitar, a altura acompanha o texto na hora.
+  const animarRef = useRef(false);
+  const alternar = () => { animarRef.current = true; setIsCollapsed(c => !c); };
+
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // Skip calculation while element is inside a display:none ancestor —
-    // scrollHeight returns 0 there, which would lock the height at 1 line.
+    // Dentro de um ancestral display:none o scrollHeight é 0 e travaria a altura em uma linha.
     if (textarea.offsetParent === null) return;
 
-    // 1. Acha o container que tem o scroll (seja a janela ou uma div modal)
-    const getScrollParent = (node: HTMLElement | null): HTMLElement | Window => {
-      if (!node || node === document.body) return window;
-      const overflowY = window.getComputedStyle(node).overflowY;
-      const isScrollable = overflowY === 'auto' || overflowY === 'scroll';
-      if (isScrollable && node.scrollHeight > node.clientHeight) return node;
-      return getScrollParent(node.parentElement);
-    };
+    const animar = animarRef.current;
+    animarRef.current = false;
 
-    const scrollContainer = getScrollParent(textarea);
-    const isWindow = scrollContainer === window;
-
-    const currentScrollY = isWindow 
-      ? window.scrollY 
-      : (scrollContainer as HTMLElement).scrollTop;
-
-    // 3. Mede o tamanho no escuro
+    // Mede a altura do conteúdo sem transição.
     textarea.style.transition = 'none';
     textarea.style.height = `${alturaMinima}px`;
     const scrollHeight = textarea.scrollHeight;
-
-    setIsOverflowing(scrollHeight > alturaMinima);
+    setIsOverflowing(scrollHeight > alturaMinima + 2);
     const newHeight = isCollapsed ? alturaMinima : Math.max(alturaMinima, scrollHeight);
-    textarea.style.height = `${newHeight}px`;
 
-    // 4. RESTAURA A POSIÇÃO (Anula a tentativa do navegador de dar o pulo seco)
-    if (isWindow) {
-      window.scrollTo(window.scrollX, currentScrollY);
+    if (animar) {
+      // Parte da altura anterior e anima até a nova (curva suave, sem "pulo").
+      textarea.style.height = `${prevHeightRef.current}px`;
+      void textarea.offsetHeight;
+      textarea.style.transition = 'height 320ms cubic-bezier(0.22, 1, 0.36, 1)';
+      textarea.style.height = `${newHeight}px`;
+      if (newHeight > prevHeightRef.current) {
+        // Ao expandir, mostra o fim do campo se ele passar da área visível.
+        setTimeout(() => textarea.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }), 340);
+      }
     } else {
-      (scrollContainer as HTMLElement).scrollTop = currentScrollY;
+      textarea.style.height = `${newHeight}px`;
     }
-
-    void textarea.offsetHeight; 
-    textarea.style.transition = 'height 300ms ease-in-out';
-
-    // 5. ANIMAÇÃO DE SCROLL SUAVE COM MARGEM DE RESPIRO
-    if (newHeight > prevHeightRef.current) {
-      const MARGIN_BOTTOM = 120; // <-- Sua margem de respiro para não colar
-      
-      // setTimeout garante que a transição começou e nós dominamos o scroll
-      setTimeout(() => {
-        const rect = textarea.getBoundingClientRect();
-
-        if (isWindow) {
-          if (rect.bottom > window.innerHeight - MARGIN_BOTTOM) {
-            window.scrollBy({
-              top: rect.bottom - window.innerHeight + MARGIN_BOTTOM,
-              behavior: 'smooth'
-            });
-          }
-        } else {
-          const container = scrollContainer as HTMLElement;
-          const containerRect = container.getBoundingClientRect();
-          
-          if (rect.bottom > containerRect.bottom - MARGIN_BOTTOM) {
-            container.scrollBy({
-              top: rect.bottom - containerRect.bottom + MARGIN_BOTTOM,
-              behavior: 'smooth'
-            });
-          }
-        }
-      }, 10);
-    }
-
     prevHeightRef.current = newHeight;
-
   }, [value, isCollapsed, visibilityTick, alturaMinima]);
 
   const botao = (posicao: string) => isOverflowing && (
         <button
           type="button"
-          onMouseDown={(e: React.MouseEvent<HTMLButtonElement>) => {
-            e.preventDefault(); 
-            setIsCollapsed(!isCollapsed);
-          }}
+          onMouseDown={(e: React.MouseEvent<HTMLButtonElement>) => { e.preventDefault(); alternar(); }}
+          onKeyDown={(e: React.KeyboardEvent<HTMLButtonElement>) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } }}
           aria-label={isCollapsed ? 'Expandir campo' : 'Recolher campo'}
           aria-expanded={!isCollapsed}
           className={`${posicao} p-1.5 bg-white/80 hover:bg-slate-100 text-slate-500 rounded-md border border-slate-200 shadow-sm transition-all backdrop-blur-sm z-10`}
@@ -142,7 +104,7 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
   );
 
   return (
-    <div className="relative group">
+    <div className={`relative group ${preencher ? 'flex h-full flex-col' : ''}`}>
       {rotulo && (
         <div className="mb-1.5 flex min-h-7 items-end justify-between gap-2">
           <label htmlFor={id} className="min-w-0">{rotulo}</label>
@@ -157,12 +119,16 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        onFocus={() => isCollapsed && setIsCollapsed(false)} 
+        onFocus={() => { if (isCollapsed) alternar(); }}
         // Folga à direita para o texto não passar por baixo do botão (canto superior).
-        className={`${className} block w-full overflow-hidden ${isOverflowing && !rotulo ? 'pr-11' : ''} ${
+        className={`${className} block w-full overflow-hidden ${preencher ? 'grow' : ''} ${isOverflowing && !rotulo ? 'pr-11' : ''} ${
           isCollapsed ? 'cursor-pointer' : ''
         }`}
       />
+      {/* Recolhido: esmaece o fim do texto para indicar que há mais. */}
+      {isCollapsed && isOverflowing && (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-px bottom-px h-8 rounded-b-xl bg-gradient-to-t from-white to-transparent" />
+      )}
 
       {!rotulo && botao('absolute top-2 right-2')}
     </div>
