@@ -6,7 +6,7 @@ import type { EapNode, EapDocumentMetadata } from '@/types/eap'
 import { computeEapColumnLayout, eapColunasParaLargura, eapBoxLabel, eapWrapLines, fitScale, EAP_COL_LINE_H, EAP_COL_PAD_Y } from '@/lib/eapLayout'
 import { flattenTree } from '@/lib/eapCode'
 import { formatDateBR } from '@/lib/date'
-import type { WbsNodeClient } from '@/types/wbs'
+import EapGraficaDaAba, { type ArvoreDaAba } from './EapGraficaDaAba'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import { PAGE_NUMBER_MARGIN_MM } from '@/lib/printPageStyle'
 import {
@@ -17,11 +17,7 @@ export const TITULO_EAP = 'Estrutura Analítica do Projeto — EAP'
 export const TITULO_EAP_GRAFICA = 'Modelo de Estrutura Analítica do Projeto (EAP - Gráfica)'
 export const TITULO_EAP_TEXTO = 'Modelo de Estrutura Analítica do Projeto (EAP - Texto)'
 
-/** Árvore da aba EAP/WBS: dá as cores de cada bloco da EAP gráfica. */
-export interface ArvoreDaAba {
-  rootId: string | null
-  nodes: Record<string, WbsNodeClient>
-}
+export type { ArvoreDaAba }
 
 /** Quadro repetido na folha do texto: só leitura (os campos ficam no quadro da folha 1). */
 const SO_LEITURA = { editavel: false, focar: () => {}, registrarLimpar: () => {} }
@@ -43,8 +39,8 @@ export interface EdicaoEap {
  * documento"), todo em A4 paisagem.
  *
  * PÁGINA 1 — EAP GRÁFICA: logo + título, quadro de identificação e a árvore
- *   no layout em colunas do modelo "04 Aula GP" (fases lado a lado, itens
- *   empilhados), com as cores dos blocos da aba EAP/WBS.
+ *   idêntica à aba EAP/WBS (mesmo formato do menu Organizar, cores e
+ *   conectores). Sem a árvore da aba (versões antigas), layout em colunas.
  * PÁGINAS 2+ — EAP TEXTO: a lista numerada gerada da MESMA árvore, recuada
  *   por nível. Todas as folhas mostram "Página X de Y".
  *
@@ -59,7 +55,7 @@ export interface EapDocumentSheetProps {
   logoUrl?: string | null
   /** Assinatura do gerente (documento com versão aprovada). */
   assinaturaUrl?: string | null
-  /** Árvore da aba EAP/WBS: os blocos da EAP gráfica usam as cores dela. Sem ela, azul do modelo. */
+  /** Árvore da aba EAP/WBS: a EAP gráfica é desenhada idêntica à aba. Sem ela, layout em colunas. */
   arvore?: ArvoreDaAba | null
   /** Total de folhas do documento (gráfica + texto), para o contador do editor. */
   onPaginas?: (total: number) => void
@@ -182,6 +178,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
           </div>
         )
       }
+      if (arvore?.rootId) return <EapGraficaDaAba arvore={arvore} larguraMax={availW} alturaMax={availH} />
       return (
         <svg
           viewBox={`0 0 ${layout.bounds.width} ${layout.bounds.height}`}
@@ -198,8 +195,6 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
             const g = layout.geometry[node.id]
             if (!g) return null
             const selected = interactive && selectedId === node.id
-            // Cores do bloco na aba EAP/WBS (o layout é o do modelo, em colunas).
-            const cor = arvore?.nodes[node.id]?.style
             const lines = eapWrapLines(eapBoxLabel(node, g.isRoot), medidas.maxChars, medidas.maxLines)
             const top = g.y + (g.height - lines.length * EAP_COL_LINE_H) / 2
             return (
@@ -214,8 +209,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
               >
                 <rect
                   x={g.x} y={g.y} width={g.width} height={g.height}
-                  fill={cor?.backgroundColor ?? AZUL} stroke={selected ? '#f59e0b' : cor?.borderColor ?? AZUL_BORDA} strokeWidth={selected ? 2.5 : 0.8}
-                  rx={cor ? Math.min(cor.borderRadius, 4) : 0}
+                  fill={AZUL} stroke={selected ? '#f59e0b' : AZUL_BORDA} strokeWidth={selected ? 2.5 : 0.8}
                 />
                 {lines.map((line, i) => (
                   <text
@@ -226,7 +220,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
                     fontFamily="Calibri, Carlito, Arial, sans-serif"
                     fontSize={9}
                     fontWeight={g.isRoot ? 700 : 400}
-                    fill={cor?.textColor ?? '#fff'}
+                    fill="#fff"
                   >
                     {line}
                   </text>

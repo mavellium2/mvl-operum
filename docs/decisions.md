@@ -710,7 +710,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-053 — Documento EAP desenhado com o layout da aba EAP
 
 - **Data:** 2026-10-21.
-- **Status:** substituída pela [ADR-074](#adr-074--eap-gráfica-no-layout-do-modelo-com-as-cores-da-aba) em 2026-10-31; foi implementada na 1.34.0 e complementava a ADR-035 (estrutura da aba).
+- **Status:** implementada na 1.34.0; complementa a ADR-035 (estrutura da aba). Substituída pela [ADR-074](#adr-074--eap-gráfica-no-layout-do-modelo-com-as-cores-da-aba) na 1.44.0 e retomada pela [ADR-075](#adr-075--eap-gráfica-idêntica-à-aba-eapwbs) na 1.44.1.
 - **Contexto:** o documento lia a estrutura da aba, mas desenhava com layout próprio em colunas e cor única, ignorando o formato do menu Organizar, as cores e os conectores.
 - **Escolha:** `GET /api/projects/:id/eap` devolve também a árvore `WbsNode` (`arvore`); o documento atual desenha a EAP gráfica com `computeLayout` e a mesma medição de larguras da aba (`lib/wbsMedidas.ts`), com nós recolhidos expandidos. Versões antigas e projetos sem WBS mantêm o layout em colunas.
 - **Justificativa:** um só motor de layout garante que documento e aba não divirjam.
@@ -961,10 +961,21 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-074 — EAP gráfica no layout do modelo, com as cores da aba
 
 - **Data:** 2026-10-31.
-- **Status:** implementada no código; pendente de publicação. Substitui a [ADR-053](#adr-053--documento-eap-desenhado-com-o-layout-da-aba-eap).
+- **Status:** substituída pela [ADR-075](#adr-075--eap-gráfica-idêntica-à-aba-eapwbs) em 2026-10-31; foi publicada na 1.44.0 e substituía a [ADR-053](#adr-053--documento-eap-desenhado-com-o-layout-da-aba-eap).
 - **Contexto:** o usuário pediu que o documento EAP siga o modelo "04 Aula GP - Modelo de Estrutura Analítica do Projeto" sem mudar as cores da EAP gráfica para azul. Com o layout da aba (ADR-053), um projeto arranjado em "Horizontal" (41 itens numa coluna) era reduzido a cerca de 30% para caber na folha e ficava ilegível — consequência já prevista na ADR-053.
 - **Escolha:** a EAP gráfica usa sempre o layout em colunas do modelo (`computeEapColumnLayout`: raiz no topo, fases lado a lado, itens empilhados abaixo de cada fase) e pinta cada bloco com fundo, borda e cor do texto do nó correspondente da aba (`arvore.nodes[id].style`). Com muitas fases, os blocos ficam mais estreitos (mínimo de 70 px) e o texto quebra em mais linhas em vez de encolher (`eapColunasParaLargura`). Sem a árvore da aba (versões antigas, projetos sem WBS), os blocos usam o azul do modelo.
 - **Justificativa:** o arranjo do modelo cabe numa folha A4 paisagem com texto legível para qualquer formato escolhido na aba; as cores continuam as que a equipe definiu.
 - **Alternativas consideradas:** manter o layout da aba e dividir a árvore em várias folhas (perde a visão de conjunto e foge do modelo); manter o layout da aba e só limitar a escala mínima (a árvore transbordaria a folha).
 - **Consequências:** o documento não reproduz mais o arranjo do menu Organizar da aba, só as cores; `EapGraficaDaAba` foi removido. Árvores com colunas muito longas ainda são reduzidas na altura.
 - **Referências:** `components/projetos/documentacao/EapDocumentSheet.tsx`, `lib/eapLayout.ts` (`computeEapColumnLayout`, `eapColunasParaLargura`), `__tests__/components/projetos/EapGrafica.test.tsx`.
+
+## ADR-075 — EAP gráfica idêntica à aba EAP/WBS
+
+- **Data:** 2026-10-31.
+- **Status:** implementada no código; pendente de publicação (1.44.1). Substitui a [ADR-074](#adr-074--eap-gráfica-no-layout-do-modelo-com-as-cores-da-aba) e retoma a [ADR-053](#adr-053--documento-eap-desenhado-com-o-layout-da-aba-eap).
+- **Contexto:** depois da 1.44.0, o usuário pediu que a EAP gráfica do documento mostre "exatamente como está no menu EAP/WBS, idêntico", mesmo com o restante do documento no modelo "04 Aula GP".
+- **Escolha:** com a árvore da aba, a EAP gráfica volta a ser desenhada por `EapGraficaDaAba` (mesmo `computeLayout`, larguras, cores, bordas e conectores da aba, nós recolhidos expandidos). O layout em colunas fica só para versões antigas e projetos sem WBS. O restante do modelo da 1.44.0 continua (títulos, quadro, EAP em texto, numeração).
+- **Justificativa:** a aba é a fonte da estrutura e do desenho; o documento deve reproduzi-la sem diferença.
+- **Alternativas consideradas:** manter as colunas do modelo com as cores da aba (ADR-074, recusada pelo usuário).
+- **Consequências:** árvores organizadas de forma muito alta ou larga na aba (ex.: "Horizontal" com muitos itens) são reduzidas para caber numa folha A4 paisagem e ficam com texto pequeno; o ajuste é feito no menu Organizar da aba.
+- **Referências:** `components/projetos/documentacao/EapGraficaDaAba.tsx`, `components/projetos/documentacao/EapDocumentSheet.tsx`, `__tests__/components/projetos/EapGraficaDaAba.test.tsx`.

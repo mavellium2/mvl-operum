@@ -148,7 +148,7 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
     }
 
     return (
-      <Folha ref={ref} data-testid="termo-folha" numerar={false} style={{ fontSize: '10pt', gap: '5mm' }}>
+      <Folha ref={ref} data-testid="termo-folha" style={{ fontSize: '10pt', gap: '5mm' }}>
         {/* Logo à esquerda e título ao lado, alinhado à base da logo. */}
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8mm', minHeight: '24mm' }}>
           <div style={{ width: '30mm', height: '24mm', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
