@@ -1,6 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect, KeyboardEvent } from 'react'
+import GlassButton from '@/components/ui/GlassButton'
+
+import { useState, useRef, useEffect, useLayoutEffect, KeyboardEvent } from 'react'
+
+import { createPortal } from 'react-dom'
 
 interface MultiCreatableSelectProps {
   values: string[]
@@ -24,6 +28,25 @@ export default function MultiCreatableSelect({
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null)
+  useLayoutEffect(() => {
+    if (!isOpen || disabled) return
+    const update = () => {
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const below = window.innerHeight - rect.bottom - 16
+      const above = rect.top - 16
+      const up = below < 180 && above > below
+      const height = Math.max(80, Math.min(320, up ? above : below))
+      setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8)), width: Math.min(rect.width, window.innerWidth - 16), top: up ? rect.top - height - 6 : rect.bottom + 6, maxHeight: height })
+    }
+    update()
+    window.addEventListener('resize', update)
+    const scroll = (event: Event) => { if (!panelRef.current?.contains(event.target as Node)) update() }
+    window.addEventListener('scroll', scroll, true)
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('scroll', scroll, true) }
+  }, [isOpen, disabled, values.length])
 
   const filtered = options.filter(
     opt =>
@@ -62,7 +85,7 @@ export default function MultiCreatableSelect({
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node) && !panelRef.current?.contains(e.target as Node)) {
         setIsOpen(false)
       }
     }
@@ -71,7 +94,7 @@ export default function MultiCreatableSelect({
   }, [])
 
   return (
-    <div ref={containerRef} className="relative">
+    <div data-glass-multiselect data-open={isOpen && !disabled && (filtered.length > 0 || showCreate)} ref={containerRef} className="relative">
       <div
         className={`
           min-h-[46px] w-full px-3 py-2 bg-slate-50/50 border border-slate-200/60 rounded-xl
@@ -90,11 +113,11 @@ export default function MultiCreatableSelect({
         {values.map(val => (
           <span
             key={val}
-            className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-lg"
+            className="multiselect-glass-chip inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-lg"
           >
             {val}
             {!disabled && (
-              <button
+              <GlassButton variant="custom"
                 type="button"
                 onClick={e => { e.stopPropagation(); removeValue(val) }}
                 aria-label={`Remover ${val}`}
@@ -104,7 +127,7 @@ export default function MultiCreatableSelect({
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </GlassButton>
             )}
           </span>
         ))}
@@ -123,20 +146,20 @@ export default function MultiCreatableSelect({
         />
       </div>
 
-      {isOpen && !disabled && (filtered.length > 0 || showCreate) && (
-        <div className="absolute z-50 w-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+      {isOpen && !disabled && position && (filtered.length > 0 || showCreate) && createPortal(
+        <div ref={panelRef} data-glass-select-panel style={{ position: 'fixed', ...position, zIndex: 10000, overflowY: 'auto', padding: 4 }} className="bg-white border border-slate-200 rounded-xl shadow-lg">
           {filtered.map(opt => (
-            <button
+            <GlassButton variant="custom"
               key={opt}
               type="button"
               onMouseDown={e => { e.preventDefault(); addValue(opt) }}
-              className="w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="glass-select-option w-full px-4 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
             >
               {opt}
-            </button>
+            </GlassButton>
           ))}
           {showCreate && (
-            <button
+            <GlassButton variant="custom"
               type="button"
               onMouseDown={e => { e.preventDefault(); addValue(inputValue) }}
               className="w-full px-4 py-2.5 text-left text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-2 border-t border-slate-100"
@@ -145,9 +168,9 @@ export default function MultiCreatableSelect({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
               Criar &ldquo;{inputValue.trim()}&rdquo;
-            </button>
+            </GlassButton>
           )}
-        </div>
+        </div>, document.body
       )}
     </div>
   )

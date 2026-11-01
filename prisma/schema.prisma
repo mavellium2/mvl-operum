@@ -132,6 +132,7 @@ model ProjectMacroFase {
 /// grava o conteúdo do formulário. Restaurar carrega uma versão antiga no
 /// formulário e o salvamento seguinte vira uma versão nova (`restauradaDe`).
 model ProjetoVersao {
+  ativa        Boolean @default(false)
   id           String   @id @default(cuid())
   tenantId     String
   projectId    String

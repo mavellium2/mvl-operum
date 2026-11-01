@@ -3,8 +3,8 @@ import prisma from '@/lib/prisma'
 
 /**
  * Histórico do Editar projeto, linear como commits: cada salvamento grava o
- * conteúdo do formulário numa versão nova; a última é a atual. Restaurar não
- * reescreve versões: o salvamento seguinte cria outra, com `restauradaDe`.
+ * conteúdo do formulário numa versão nova. O marcador ativa é independente do
+ * maior número: restaurar ativa uma versão existente sem apagar as demais.
  */
 
 const texto = (max: number) => z.string().max(max)
@@ -22,6 +22,7 @@ export const ConteudoVersaoSchema = z.object({
 export type ConteudoVersao = z.infer<typeof ConteudoVersaoSchema>
 
 export const RegistroVersaoSchema = z.object({
+  ativarVersao: z.number().int().positive().optional(),
   conteudo: ConteudoVersaoSchema,
   /** Como estava antes deste salvamento: vira a v1 quando o projeto ainda não tem histórico. */
   anterior: ConteudoVersaoSchema.optional(),
@@ -31,6 +32,7 @@ export const RegistroVersaoSchema = z.object({
 export type RegistroVersao = z.infer<typeof RegistroVersaoSchema>
 
 export interface VersaoProjeto {
+  ativa?: boolean
   numero: number
   conteudo: ConteudoVersao
   alteracoes: string[]
@@ -46,6 +48,14 @@ export async function registrarVersaoProjeto(ctx: { tenantId: string; projectId:
   for (let tentativa = 0; ; tentativa++) {
     try {
       return await prisma.$transaction(async tx => {
+        if (r.ativarVersao) {
+          const alvo = await tx.projetoVersao.findFirst({ where: { tenantId: ctx.tenantId, projectId: ctx.projectId, numero: r.ativarVersao } })
+          if (!alvo) throw new Error('Versão não encontrada.')
+          await tx.projetoVersao.updateMany({ where: { tenantId: ctx.tenantId, projectId: ctx.projectId }, data: { ativa: false } })
+          await tx.projetoVersao.update({ where: { id: alvo.id }, data: { ativa: true } })
+          return alvo.numero
+        }
+        await tx.projetoVersao.updateMany({ where: { tenantId: ctx.tenantId, projectId: ctx.projectId, ativa: true }, data: { ativa: false } })
         const ultima = await tx.projetoVersao.findFirst({ where: { projectId: ctx.projectId, tenantId: ctx.tenantId }, orderBy: { numero: 'desc' }, select: { numero: true } })
         let numero = ultima?.numero ?? 0
         if (!ultima && r.anterior) {
@@ -55,7 +65,7 @@ export async function registrarVersaoProjeto(ctx: { tenantId: string; projectId:
         numero += 1
         await tx.projetoVersao.create({
           data: {
-            tenantId: ctx.tenantId, projectId: ctx.projectId, numero, conteudo: r.conteudo, alteracoes: r.alteracoes,
+            tenantId: ctx.tenantId, projectId: ctx.projectId, numero, ativa: true, conteudo: r.conteudo, alteracoes: r.alteracoes,
             restauradaDe: r.restauradaDe ?? null, autorId: ctx.userId, autorNome: autor?.name ?? '',
           },
         })
@@ -80,6 +90,7 @@ export async function listarVersoesProjeto(tenantId: string, projectId: string, 
     if (!conteudo.success) return []
     return [{
       numero: v.numero,
+      ativa: v.ativa,
       conteudo: conteudo.data,
       alteracoes: Array.isArray(v.alteracoes) ? (v.alteracoes as unknown[]).filter((a): a is string => typeof a === 'string') : [],
       restauradaDe: v.restauradaDe,

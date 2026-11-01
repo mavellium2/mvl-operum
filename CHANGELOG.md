@@ -7,6 +7,27 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.45.0] — 2026-11-01
+
+- Aparência permite fixar o visual da tarde, independentemente do horário, preservando a escolha neste navegador.
+
+- Restaurar versão aplica os dados e ativa a versão escolhida sem criar outra, preservando todas as demais. O próximo salvamento exige confirmação e cria a próxima versão pelo maior número do histórico. Migration adiciona marcador ativo com unicidade por projeto. Falhas mantêm o modal aberto e as edições atuais; fases já salvas ausentes na versão continuam preservadas.
+- Painel Ver o que mudou volta a ter altura limitada e barra de rolagem adaptada ao tema.
+
+- Corrige a resolução de imports .js para fontes TypeScript no MCP em desenvolvimento, permitindo iniciar o serviço por pnpm dev:all sem dependências novas.
+- Modal de alterações não salvas com vidro, botões reutilizáveis, foco em continuar editando e texto adequado ao projeto.
+
+- Imagem do projeto com moldura de vidro, iniciais, hover suave e ajuste de recorte com zoom e posição antes do upload. Prévia local descartada ao fechar; sem dependências novas.
+
+- Expansão e rolagem centralizadas em ExpandableFieldGroup para campos individuais e pares, evitando comandos de scroll concorrentes em Premissas/Restrições e Objetivos/Descrição.
+- Hover dos campos de Editar Projeto com entrada e saída graduais, preservando resposta rápida ao foco e redução de movimento.
+- Menu lateral acompanha a aparência e os materiais de vidro durante a edição do projeto.
+- Materiais de Editar Projeto refeitos com conteúdo fosco, controles flutuantes translúcidos, reflexos de borda e profundidade; fallback sem desfoque e respeito à redução de transparência. Aproximação web inspirada no Liquid Glass da Apple.
+- Paleta noturna refinada: céu azul profundo com luz violeta, painéis de vidro azul-roxo e detalhes lavanda, inspirada nas diretrizes de materiais e modo escuro da Apple.
+- Editar Projeto mantém o layout Liquid Glass e o calendário do Claude, com aparência automática de manhã, tarde e noite e opções claro, escuro e sistema em Configurações → Aparência.
+- Preferência salva neste navegador; atualização automática pelo relógio local e respeito à redução de movimento. Sem dependências novas; inclui migration de versão ativa.
+- Incremento MINOR de 1.44.0, acima de origin/main 1.44.1; conferir novamente antes do merge.
+
 ## [1.44.0] — 2026-10-31
 
 - **Folhas A4 de verdade, como no Word:** cada documento é distribuído em folhas A4 separadas (210 × 297 mm; paisagem 297 × 210 mm), na tela e no PDF. Blocos inteiros (cabeçalho, quadro, assinaturas) não se partem; tabelas quebram entre linhas, sem cortar uma linha, com o cabeçalho das colunas repetido quando o modelo pede; textos longos continuam na folha seguinte a partir de uma linha inteira e seguem editáveis atravessando a quebra (setas, apagar e cursor acompanham). Rodapé "Página X de Y" em cada folha (e "Operum · documento · versão" na Ata). Margens laterais estreitas (10 mm) para aproveitar a folha. O PDF imprime as mesmas folhas.

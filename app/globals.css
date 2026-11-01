@@ -256,6 +256,17 @@ textarea:disabled {
   box-shadow: 0 0 0 3px rgb(59 130 246 / 0.13), 0 6px 18px -10px rgb(37 99 235 / 0.35);
 }
 
+/* Calendário: o mês desliza para o lado ao trocar. */
+@keyframes mes-da-direita { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes mes-da-esquerda { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes calendario-abrir {
+  from { opacity: 0; transform: translateY(-6px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.anim-mes-direita { animation: mes-da-direita 320ms var(--ease-suave) both; }
+.anim-mes-esquerda { animation: mes-da-esquerda 320ms var(--ease-suave) both; }
+.anim-calendario { animation: calendario-abrir 420ms var(--ease-mola) both; transform-origin: top center; }
+
 /* Botão que "afunda" ao toque, com retorno de mola. */
 .pressionavel { transition: transform 420ms var(--ease-mola), box-shadow 200ms ease, background-color 200ms ease, opacity 200ms ease; }
 .pressionavel:active:not(:disabled) { transform: scale(0.96); transition-duration: 120ms; }
@@ -349,4 +360,12 @@ textarea:disabled {
     background: white !important;
     height: auto !important;
   }
+}
+
+/* Ajustes de altura não devem desligar as transições visuais do campo. */
+.expandable-textarea {
+  transition: background-color 650ms cubic-bezier(.4, 0, .2, 1), border-color 650ms cubic-bezier(.4, 0, .2, 1), box-shadow 700ms cubic-bezier(.4, 0, .2, 1), height var(--expand-height-duration, 0ms) cubic-bezier(.22, 1, .36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .expandable-textarea { transition: none; }
 }

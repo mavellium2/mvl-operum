@@ -323,9 +323,8 @@ export async function updateProjetoAction(
       await submeterDocumento(session, id, 'CHARTER', { ...((previous?.payload as object) ?? {}), ...complementares }, { commitTitle: 'Dados complementares atualizados na edição do projeto', versao: previous?.versao ?? '1.0', elaboradoPor: '', aprovadoPor: '', dataAprovacao: '' })
     }
     if (versao) {
-      // O histórico não pode impedir o salvamento: falha só é registrada no log.
+      // Só confirma o sucesso após persistir a versão ou seu marcador ativo.
       await registrarVersaoProjeto({ tenantId, projectId: id, userId: session.userId }, versao)
-        .catch(error => console.error('[projeto] falha ao gravar a versão do Editar projeto', error))
     }
     revalidatePath('/projetos')
     revalidatePath(`/projetos/${id}`, 'layout')

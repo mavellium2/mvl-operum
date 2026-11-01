@@ -42,11 +42,11 @@ describe('salvar o Editar projeto', () => {
     expect(vi.mocked(tx.wbsNode.update).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(reconcileMacroFases).mock.invocationCallOrder[0])
   })
 
-  it('grava a versão do histórico; falha no histórico não impede o salvamento', async () => {
+  it('não informa sucesso quando falha a gravação da versão', async () => {
     const versao = { conteudo: { form: {} as never, fases: [] }, alteracoes: ['Nome do projeto'], restauradaDe: 1 }
     vi.mocked(registrarVersaoProjeto).mockRejectedValueOnce(new Error('banco fora'))
     const r = await updateProjetoAction({}, 'p1', { name: 'P' }, versao as never)
-    expect(r).toHaveProperty('projeto')
+    expect(r).toHaveProperty('error', 'banco fora')
     expect(registrarVersaoProjeto).toHaveBeenCalledWith({ tenantId: 't1', projectId: 'p1', userId: 'u1' }, versao)
   })
 })

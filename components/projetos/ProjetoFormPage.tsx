@@ -1,15 +1,26 @@
 'use client'
 
+import AnimatedCardStack from '@/components/ui/AnimatedCardStack'
+import UndoChangeButton from '@/components/ui/UndoChangeButton'
+import Modal from '@/components/ui/Modal'
+import { listarVersoesProjetoAction } from '@/app/actions/projetoEdicao'
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
+import GlassCard from '@/components/ui/GlassCard'
+import GlassButton from '@/components/ui/GlassButton'
+import GlassSegmentedControl from '@/components/ui/GlassSegmentedControl'
 import Select from '@/components/ui/Select'
+import AnimatedTrashButton from '@/components/ui/AnimatedTrashButton'
+import ExpandableFieldGroup from '@/components/ui/ExpandableFieldGroup'
+import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { parseMoeda } from '@/lib/dinheiro'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
-import { useState, useTransition, useEffect, useLayoutEffect, useMemo, useRef, Suspense, type ReactNode, type TextareaHTMLAttributes } from 'react'
+import { useState, useTransition, useEffect, useLayoutEffect, useMemo, useRef, Suspense, type ReactNode, type CSSProperties, type TextareaHTMLAttributes } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   AlertTriangle, Building2, CheckCircle2, History, CalendarClock, CalendarDays, ChevronDown, Flag, GraduationCap, Layers, Lightbulb,
-  ListChecks, MapPin, Package, Plus, Scale, ShieldAlert, Target, Trash2, Undo2, UserRound, Wrench, X,
+  ListChecks, MapPin, Package, Plus, Save, Scale, ShieldAlert, Target, Undo2, UserRound, Wrench,
 } from 'lucide-react'
 import { createProjetoAction, updateProjetoAction, getProjetoAction, retryMacroFasesSyncAction } from '@/app/actions/projetos'
 import { listUsersAction } from '@/app/actions/admin'
@@ -18,11 +29,13 @@ import { useToast } from '@/components/ui/Toast'
 import MultiCreatableSelect from '@/components/ui/MultiCreatableSelect'
 import ExpandableTextarea from '@/components/ui/ExpandableTextarea'
 import ProjetoLogoUpload from '@/components/projetos/ProjetoLogoUpload'
+import SeletorData from '@/components/ui/SeletorData'
 import UserAvatar from '@/components/user/UserAvatar'
 import { useGuardaSaida } from '@/components/documentos/editor/GuardaSaida'
 import { linhaInstitucional, periodoEhSemestral, TURNOS } from '@/lib/linhaInstitucional'
 import { conteudoDaVersao, desfazerAlteracao, formDaVersao, listarAlteracoes, ROTULOS_PROJETO, type CampoTextoTermo, type FaseForm, type FormProjeto } from '@/lib/alteracoesProjeto'
 import HistoricoProjeto from '@/components/projetos/HistoricoProjeto'
+import RestaurarVersaoDialog from '@/components/projetos/RestaurarVersaoDialog'
 import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
 import type { VersaoProjeto } from '@/services/projetoVersoes'
 import { diffTexto } from '@/lib/diffTexto'
@@ -114,7 +127,6 @@ function DateInputBR({
 
 // ── Estilo ──────────────────────────────────────────────────
 // Superfícies de vidro (translúcidas, com desfoque), como no iOS.
-const card = 'vidro rounded-[22px]'
 const inputClass = 'campo-vidro w-full px-4 py-3 rounded-xl text-sm text-slate-800 font-medium'
 const celulaInput = 'campo-limpo w-full px-3 py-2.5 rounded-lg text-sm'
 /** Valor de uma linha de propriedades: texto, fundo só ao passar o mouse ou editar. */
@@ -123,7 +135,7 @@ const tituloLateral = 'mb-1 px-1 text-[11px] font-bold uppercase tracking-widest
 
 function Propriedade({ Icone, rotulo, htmlFor, children }: { Icone: typeof Flag; rotulo: string; htmlFor?: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[124px_1fr] items-center gap-2 py-1">
+    <div className="project-field grid grid-cols-[124px_1fr] items-center gap-2 py-1">
       <label htmlFor={htmlFor} className="flex items-center gap-2 text-[13px] text-slate-500"><Icone className="h-4 w-4 shrink-0 text-slate-400" />{rotulo}</label>
       <div className="min-w-0">{children}</div>
     </div>
@@ -205,6 +217,14 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const [form, setForm] = useState<FormProjeto>(FORM_VAZIO)
   const [macroFases, setMacroFases] = useState<FaseForm[]>(() => [novaFase()])
   /** Como o projeto está salvo (base de "Alterações não salvas"). Nulo ao criar. */
+  const [limiteFundoHistorico, setLimiteFundoHistorico] = useState(0)
+  const [alteracoesJaAbertas, setAlteracoesJaAbertas] = useState(false)
+  const [origemHistorico, setOrigemHistorico] = useState<number | undefined>(undefined)
+  const [estadoVersoes, setEstadoVersoes] = useState({ ativa: 0, ultima: 0 })
+  const [confirmarNovoSalvamento, setConfirmarNovoSalvamento] = useState(false)
+  const [erroRestauracao, setErroRestauracao] = useState('')
+  const [versaoParaRestaurar, setVersaoParaRestaurar] = useState<{ numero: number; dados: ReturnType<typeof formDaVersao> } | null>(null)
+  const [confirmacaoSalvo, setConfirmacaoSalvo] = useState(0)
   const [salvo, setSalvo] = useState<{ form: FormProjeto; fases: FaseForm[] } | null>(null)
   const [verAlteracoes, setVerAlteracoes] = useState(false)
   const [verHistorico, setVerHistorico] = useState(false)
@@ -214,6 +234,29 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const [faseAExcluir, setFaseAExcluir] = useState<{ nodeId: string; nome: string; numero: string; chave: string } | null>(null)
   const [inicioPelaTarefa, setInicioPelaTarefa] = useState(false)
   const [aba, setAba] = useState<'diretrizes' | 'cronograma'>('diretrizes')
+  const [abaVisivel, setAbaVisivel] = useState<'diretrizes' | 'cronograma'>('diretrizes')
+  const [saindo, setSaindo] = useState(false)
+  const [direcaoAba, setDirecaoAba] = useState<'right' | 'left'>('right')
+  const trocaTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (trocaTimer.current) clearTimeout(trocaTimer.current) }, [])
+  function trocarAba(proxima: 'diretrizes' | 'cronograma') {
+    if (proxima === aba) return
+    if (trocaTimer.current) clearTimeout(trocaTimer.current)
+    setAba(proxima)
+    setDirecaoAba(proxima === 'cronograma' ? 'right' : 'left')
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || proxima === abaVisivel) {
+      setAbaVisivel(proxima)
+      setSaindo(false)
+      return
+    }
+    setSaindo(true)
+    trocaTimer.current = setTimeout(() => {
+      setAbaVisivel(proxima)
+      setSaindo(false)
+      trocaTimer.current = null
+    }, 260)
+  }
+
   const rolagemDiretrizes = useRef<HTMLDivElement>(null)
   const rolagemFases = useRef<HTMLDivElement>(null)
   const faseNova = useRef<string | null>(null)
@@ -319,6 +362,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     if (error && name === 'name') setError('')
   }
 
+  const scrollNovaFase = useRef<number | null>(null)
+  useEffect(() => () => { if (scrollNovaFase.current !== null) cancelAnimationFrame(scrollNovaFase.current) }, [])
   const addMacroFase = () => {
     if (!canEditCosts) return
     const nova = novaFase()
@@ -335,10 +380,26 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     if (!lista || !campo) return
     // A fase nova entra no fim: rola a lista até o fim (no celular, a página até a linha) e foca o nome.
     campo.focus({ preventScroll: true })
-    requestAnimationFrame(() => {
-      if (lista.scrollHeight > lista.clientHeight) lista.scrollTo({ top: lista.scrollHeight, behavior: 'smooth' })
-      else campo.closest('tr')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
-    })
+    if (scrollNovaFase.current !== null) cancelAnimationFrame(scrollNovaFase.current)
+    let container: HTMLElement | null = lista
+    while (container && !(container.scrollHeight > container.clientHeight && /(auto|scroll)/.test(getComputedStyle(container).overflowY))) container = container.parentElement
+    const scroller = container ?? document.scrollingElement as HTMLElement
+    if (!scroller) return
+    const inicio = scroller.scrollTop
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const inicioTempo = performance.now()
+    const rolar = (agora: number) => {
+      if (!campo.isConnected) return
+      const progresso = reduced ? 1 : Math.min(1, (agora - inicioTempo) / 480)
+      const curva = progresso * progresso * (3 - 2 * progresso)
+      const base = scroller === document.scrollingElement ? 0 : scroller.getBoundingClientRect().top
+      const altura = scroller === document.scrollingElement ? window.innerHeight : scroller.clientHeight
+      const destino = Math.max(0, Math.min(scroller.scrollHeight - altura,
+        scroller.scrollTop + campo.getBoundingClientRect().bottom - base - altura + 24))
+      scroller.scrollTo({ top: inicio + (destino - inicio) * curva, behavior: 'instant' })
+      scrollNovaFase.current = progresso < 1 ? requestAnimationFrame(rolar) : null
+    }
+    scrollNovaFase.current = requestAnimationFrame(rolar)
   }, [macroFases])
   const updateMacroFase = (chave: string, field: 'fase' | 'dataLimite' | 'custo', value: string) => {
     if (canEditCosts) setMacroFases(l => l.map(f => (f.chave === chave ? { ...f, [field]: value } : f)))
@@ -399,74 +460,98 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   }
   function restaurar(v: VersaoProjeto) {
     if (!salvo) return
-    const r = formDaVersao(v.conteudo, salvo.fases, () => novaFase().chave)
-    setForm(r.form)
-    setMacroFases(r.fases.length ? r.fases : [novaFase()])
-    setRestaurando(v.numero)
-    setVerHistorico(false)
-    setVerAlteracoes(true)
-    if (r.fasesMantidas.length) toast(`Fases que a v${v.numero} não tinha continuam (${r.fasesMantidas.join(', ')}). Para excluir, use a lixeira de cada fase.`, 'warning')
+    setErroRestauracao('')
+    setVersaoParaRestaurar({ numero: v.numero, dados: formDaVersao(v.conteudo, salvo.fases, () => novaFase().chave) })
   }
+  function confirmarRestauracao() {
+    if (!versaoParaRestaurar || isPending) return
+    const { numero, dados: r } = versaoParaRestaurar
+    persistirProjeto(r.form, r.fases, numero, true)
+  }
+
   function desfazer(chave: string) {
     if (!salvo) return
     const r = desfazerAlteracao(chave, salvo, { form, fases: macroFases })
     setForm(r.form)
     setMacroFases(r.fases.length ? r.fases : [novaFase()])
+    const restantes = listarAlteracoes(salvo, { form: r.form, fases: r.fases.filter(f => f.fase.trim()) }, id => usuarios.find(u => u.id === id)?.name ?? 'Membro')
+    if (!restantes.length) setVerAlteracoes(false)
   }
 
   function salvar() {
+    if (estadoVersoes.ativa && estadoVersoes.ativa < estadoVersoes.ultima) { setConfirmarNovoSalvamento(true); return }
+    persistirProjeto(form, macroFases, restaurando, false)
+  }
+
+  function persistirProjeto(dadosForm: FormProjeto, dadosFases: FaseForm[], origem: number | null, restauracao: boolean) {
+    if (isPending) return
+    const falhar = (mensagem: string) => { if (restauracao) setErroRestauracao(mensagem); else setError(mensagem) }
     setError('')
-    if (!form.name.trim()) {
-      setError('O Nome do Projeto é obrigatório.')
+    setErroRestauracao('')
+    const fasesValidas = dadosFases.filter(f => f.fase.trim())
+    const diferencas = salvo ? listarAlteracoes(salvo, { form: dadosForm, fases: fasesValidas }, id => usuarios.find(u => u.id === id)?.name ?? 'Membro') : []
+    if (!dadosForm.name.trim()) {
+      falhar('O Nome do Projeto é obrigatório.')
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
-    const fasesEnvio = macroFases.map(({ fase, dataLimite, custo, nodeId }) => ({ fase, dataLimite, custo, ...(nodeId ? { nodeId } : {}) }))
-    const enviado = { form, fases: fasesPreenchidas }
-    const versao = salvo && alteracoes.length ? {
-      conteudo: conteudoDaVersao(form, fasesPreenchidas),
+    const fasesEnvio = dadosFases.map(({ fase, dataLimite, custo, nodeId }) => ({ fase, dataLimite, custo, ...(nodeId ? { nodeId } : {}) }))
+    const enviado = { form: dadosForm, fases: fasesValidas }
+    const versao = salvo && (diferencas.length || restauracao) ? {
+      conteudo: conteudoDaVersao(dadosForm, fasesValidas),
       anterior: conteudoDaVersao(salvo.form, salvo.fases),
-      alteracoes: alteracoes.map(a => a.rotulo),
-      ...(restaurando ? { restauradaDe: restaurando } : {}),
+      alteracoes: diferencas.map(a => a.rotulo),
+      ...(restauracao && origem ? { ativarVersao: origem } : origem ? { restauradaDe: origem } : {}),
     } : undefined
 
     startTransition(async () => {
-      const update: Record<string, unknown> = { ...form, anoAms: form.semestre === 'ano' ? form.anoAms || null : null }
-      // Termo/turno só valem para período semestral; ao mudar para anual, limpa.
-      if (!periodoEhSemestral(form.semestre)) { update.termo = ''; update.turno = '' }
-      if (!canAssignRoles) delete update.initialMemberId
-      if (!podeDepartamentos) delete update.departamentos
-      if (canEditCosts) update.macroFases = fasesEnvio
-      if (!canEditPublished) {
-        for (const key of ['justificativa','objetivos','metodologia','descricaoProduto','premissas','restricoes','limitesAutoridade']) delete update[key]
-      }
-      const result = editId
-        ? await updateProjetoAction(undefined, editId, update, versao)
-        : await createProjetoAction(undefined, { ...form, macroFases: fasesEnvio })
+      try {
+        const update: Record<string, unknown> = { ...dadosForm, anoAms: dadosForm.semestre === 'ano' ? dadosForm.anoAms || null : null }
+        // Termo/turno só valem para período semestral; ao mudar para anual, limpa.
+        if (!periodoEhSemestral(dadosForm.semestre)) { update.termo = ''; update.turno = '' }
+        if (!canAssignRoles) delete update.initialMemberId
+        if (!podeDepartamentos) delete update.departamentos
+        if (canEditCosts) update.macroFases = fasesEnvio
+        if (!canEditPublished) {
+          for (const key of ['justificativa','objetivos','metodologia','descricaoProduto','premissas','restricoes','limitesAutoridade']) delete update[key]
+        }
+        const result = editId
+          ? await updateProjetoAction(undefined, editId, update, versao)
+          : await createProjetoAction(undefined, { ...dadosForm, macroFases: fasesEnvio })
 
-      if ('error' in result) {
-        setError(result.error || 'Erro ao salvar projeto')
-        if (editId) toast(result.error || 'Erro ao salvar projeto', 'error')
-        return
-      }
-      setSyncProjectId(result.projeto.id as string)
-      setSyncPending(result.macroFasesSync?.pending ?? false)
-      if (editId) { setSalvo(enviado); setRestaurando(null); setRecarregarHistorico(n => n + 1) }
-      setVerAlteracoes(false)
-      if (result.macroFasesSync?.pending) return
-      if (editId) {
-        toast('Projeto atualizado com sucesso!', 'success')
-      } else {
-        router.push(`/projetos/${result.projeto.id}`)
-      }
+        if ('error' in result) {
+          falhar(result.error || 'Erro ao salvar projeto')
+          if (editId) toast(result.error || 'Erro ao salvar projeto', 'error')
+          return
+        }
+        setSyncProjectId(result.projeto.id as string)
+        setSyncPending(result.macroFasesSync?.pending ?? false)
+        if (editId) { setConfirmacaoSalvo(n => n + 1); setSalvo(enviado); setRestaurando(null); setRecarregarHistorico(n => n + 1) }
+        setVerAlteracoes(false)
+        setConfirmarNovoSalvamento(false)
+        if (restauracao) {
+          setForm(dadosForm)
+          setMacroFases(dadosFases.length ? dadosFases : [novaFase()])
+          setVersaoParaRestaurar(null)
+          setVerHistorico(false)
+          setEstadoVersoes(e => ({ ...e, ativa: origem ?? e.ativa }))
+          toast(`Versão ${origem} está ativa. O histórico foi preservado.`, 'success')
+        }
+        if (result.macroFasesSync?.pending) return
+        if (editId) {
+          if (!restauracao) toast('Projeto atualizado com sucesso!', 'success')
+        } else {
+          router.push(`/projetos/${result.projeto.id}`)
+        }
+      } catch { falhar('Não foi possível salvar. Suas edições foram preservadas. Tente novamente.') }
     })
   }
 
   // Sair com alterações: pergunta se quer salvar ou descartar (mesmo aviso dos documentos).
-  const { dialogo: dialogoSaida } = useGuardaSaida(editId ? { pendente, salvar, descartar } : undefined)
+  const { dialogo: dialogoSaida } = useGuardaSaida(editId ? { contexto: 'projeto', pendente, salvar, descartar } : undefined)
 
   const voltarHref = editId ? `/projetos/${editId}/dashboard` : '/projetos'
-  const linha = linhaInstitucional({ location: form.location, departamentos: form.departamentos, semestre: form.semestre, termo: form.termo, turno: form.turno, ano: form.ano ? Number(form.ano) : null, anoAms: form.anoAms })
+  const linha = linhaInstitucional({ location: null, departamentos: [], semestre: form.semestre, termo: form.termo, turno: form.turno, ano: form.ano ? Number(form.ano) : null, anoAms: form.anoAms })
   const alterado = (campo: keyof FormProjeto) => alteracoes.some(a => a.chave === campo)
   const ocupado = isPending || isLoadingEdit
   // Gerente: foto antes do nome. O gerente atual entra na lista mesmo quando ela não foi carregada.
@@ -479,24 +564,49 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
       icone: <UserAvatar name={u.name} avatarUrl={u.avatarUrl ?? (gerenteAtual?.id === u.id ? gerenteAtual.avatarUrl : null)} size="xs" />,
     })),
   ]
-  // Linha institucional em partes ("Fatec Garça", "ADS", "2º Semestre 2026"…), para ler sem esforço.
-  const segmentosLinha = linha ? linha.split(' - ').map(t => t.trim()).filter(Boolean) : []
+  // Local e departamentos mantêm exatamente os valores cadastrados.
+  const segmentosLinha = [form.location, ...form.departamentos, ...linha.split(' - ')].filter(t => t.trim())
   const pendenciasFases = fasesPreenchidas.filter(f => !f.dataLimite || !((parseMoeda(f.custo) ?? 0) > 0)).length
   const preenchidos = CAMPOS_TERMO.filter(c => form[c.nome].trim()).length
 
-  return (
-    <div ref={raizRef} className="fundo-vidro relative min-h-screen font-sans">
+  useEffect(() => {
+    if (!editId) return
+    let ativo = true
+    void listarVersoesProjetoAction(editId).then(result => {
+      if (!ativo || 'error' in result) return
+      const ultima = result.versoes[0]?.numero ?? 0
+      setEstadoVersoes({ ultima, ativa: result.versoes.find(v => v.ativa)?.numero ?? ultima })
+    })
+    return () => { ativo = false }
+  }, [editId, recarregarHistorico])
 
-      <main className="relative mx-auto max-w-[1280px] px-4 pb-4 pt-5 sm:px-6">
+  useLayoutEffect(() => {
+    if (!verHistorico && !(verAlteracoes && pendente)) return
+    const root = raizRef.current
+    if (!root) return
+    const update = () => setLimiteFundoHistorico(Math.max(0, root.getBoundingClientRect().left))
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(root)
+    window.addEventListener('resize', update)
+    return () => { observer.disconnect(); window.removeEventListener('resize', update) }
+  }, [verHistorico, verAlteracoes, pendente])
+
+  return (
+    <ProjectAppearance enabled={Boolean(editId)}>
+    <div ref={raizRef} className="fundo-vidro relative min-h-screen font-sans">
+      <div aria-hidden="true" data-open={verHistorico || (verAlteracoes && pendente)} onClick={() => { setVerHistorico(false); setVerAlteracoes(false) }} className="project-history-backdrop fixed inset-y-0 right-0 z-30" style={{ left: limiteFundoHistorico }} />
+
+      <main className="relative mx-auto max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
         {syncPending && (
           <div role="status" className="anim-entrar mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <p>Projeto salvo. A sincronização das macrofases com a EAP está pendente.</p>
-            {canEditCosts && syncProjectId && <button type="button" disabled={isPending} className="mt-2 font-bold underline" onClick={() => startTransition(async () => {
+            {canEditCosts && syncProjectId && <GlassButton variant="custom" type="button" disabled={isPending} className="mt-2 font-bold underline" onClick={() => startTransition(async () => {
               const result = await retryMacroFasesSyncAction(syncProjectId)
               if ('error' in result) { setError(result.error); return }
               setSyncPending(result.pending)
               if (!result.pending) { toast('Macrofases sincronizadas!', 'success'); if (!editId) router.push(`/projetos/${syncProjectId}`) }
-            })}>Tentar sincronizar novamente</button>}
+            })}>Tentar sincronizar novamente</GlassButton>}
           </div>
         )}
 
@@ -510,32 +620,13 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
           {/* ── Coluna principal: Diretrizes e Escopo | Cronograma Financeiro ── */}
           <div className="order-2 flex min-w-0 flex-col lg:order-1 lg:h-full lg:min-h-0">
             {/* Abas com resumo: as duas partes ficam a um clique, cada uma cabendo na tela. */}
-            <div role="tablist" aria-label="Seções do projeto" className="relative mb-3 grid shrink-0 grid-cols-2 gap-1 rounded-[20px] border border-white/60 bg-slate-900/[0.05] p-1.5 shadow-[inset_0_1px_2px_rgb(15_23_42/0.06)] backdrop-blur-xl">
-              {/* Destaque da aba ativa: desliza entre as abas em vez de trocar de repente. */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute bottom-1.5 left-1.5 top-1.5 rounded-[15px] border border-white/80 bg-white/90 shadow-[inset_0_1px_0_rgb(255_255_255),0_4px_14px_-4px_rgb(15_23_42/0.18)] transition-transform duration-500 [transition-timing-function:var(--ease-mola)]"
-                style={{ width: 'calc(50% - 0.5rem)', transform: aba === 'cronograma' ? 'translateX(calc(100% + 0.25rem))' : 'translateX(0)' }}
-              />
-              {([
-                ['diretrizes', 'Diretrizes e Escopo', `${preenchidos} de ${CAMPOS_TERMO.length} preenchidos`, alteracoes.some(a => (CAMPOS_TERMO as { nome: string }[]).some(c => c.nome === a.chave))],
-                ['cronograma', 'Cronograma Financeiro', `${fasesPreenchidas.length} ${fasesPreenchidas.length === 1 ? 'fase' : 'fases'} · ${total}`, alteracoes.some(a => a.chave.startsWith('fase:'))],
-              ] as const).map(([id, titulo, resumo, mudou]) => (
-                <button
-                  key={id} type="button" role="tab" id={`aba-${id}`} aria-selected={aba === id} aria-controls={`painel-${id}`}
-                  onClick={() => setAba(id)}
-                  className={`pressionavel relative z-10 flex min-w-0 flex-col items-start rounded-[15px] px-4 py-2 text-left ${aba === id ? '' : 'hover:bg-white/35'}`}
-                >
-                  <span className={`flex items-center gap-1.5 text-sm font-bold transition-colors duration-200 ${aba === id ? 'text-slate-900' : 'text-slate-600'}`}>
-                    {titulo}{mudou && <span className="anim-surgir h-1.5 w-1.5 rounded-full bg-amber-500" title="Com alterações" />}
-                  </span>
-                  <span className="truncate text-xs font-medium text-slate-500">{resumo}</span>
-                </button>
-              ))}
-            </div>
+            <GlassSegmentedControl label="Seções do projeto" value={aba} onChange={trocarAba} options={[
+              { value: 'diretrizes', label: 'Diretrizes e Escopo', description: `${preenchidos} de ${CAMPOS_TERMO.length} preenchidos`, changed: alteracoes.some(a => CAMPOS_TERMO.some(c => c.nome === a.chave)), id: 'aba-diretrizes', panelId: 'painel-diretrizes' },
+              { value: 'cronograma', label: 'Cronograma Financeiro', description: `${fasesPreenchidas.length} ${fasesPreenchidas.length === 1 ? 'fase' : 'fases'} · ${total}`, changed: alteracoes.some(a => a.chave.startsWith('fase:')), id: 'aba-cronograma', panelId: 'painel-cronograma' },
+            ]} />
 
-            {aba === 'diretrizes' && (
-              <section key="diretrizes" id="painel-diretrizes" role="tabpanel" aria-labelledby="aba-diretrizes" className={`${card} anim-entrar flex flex-col overflow-hidden lg:min-h-0 lg:flex-1`}>
+            {abaVisivel === 'diretrizes' && (
+              <GlassCard key="diretrizes" id="painel-diretrizes" role="tabpanel" inert={saindo} data-motion={saindo ? 'exit' : 'enter'} data-direction={direcaoAba} aria-labelledby="aba-diretrizes" className={`anim-entrar flex flex-col overflow-hidden lg:min-h-0 lg:flex-1`}>
                 <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-6 pb-4 pt-5">
                   <div>
                     <h2 className="text-lg font-bold text-slate-900">Diretrizes e Escopo</h2>
@@ -544,11 +635,14 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                   {editId && <Link href={`/projetos/${editId}/documentacao?doc=charter`} className="shrink-0 pt-1 text-xs font-semibold text-blue-600 hover:underline">Abrir a folha do Termo</Link>}
                 </header>
                 <div ref={rolagemDiretrizes} className="grid grid-cols-1 gap-x-4 gap-y-3 px-6 pb-6 pt-3 md:grid-cols-2 lg:borda-suave-rolagem lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:scroll-smooth">
-                  {CAMPOS_TERMO.map(({ nome, Icone, placeholder, largo }) => (
+                  {[[CAMPOS_TERMO[0]], CAMPOS_TERMO.slice(1, 3), [CAMPOS_TERMO[3]], CAMPOS_TERMO.slice(4, 6), [CAMPOS_TERMO[6]]].map(campos => (
+                    <ExpandableFieldGroup key={campos[0].nome}>
+                    {controls => campos.map(({ nome, Icone, placeholder, largo }) => (
                     <div key={nome} className={largo ? 'md:col-span-2' : 'min-w-0'}>
                       <ExpandableTextarea
                         id={`termo-${nome}`} readOnly={!canEditPublished} name={nome} value={form[nome]}
                         onChange={e => alterarCampo(nome, e.target.value)} placeholder={placeholder} alturaMinima={70} preencher={!largo}
+                        {...controls}
                         rotulo={
                           <span className="ml-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 transition-colors duration-300 group-focus-within:text-blue-600">
                             <Icone className="h-3.5 w-3.5 shrink-0" />{ROTULOS_PROJETO[nome]}
@@ -558,14 +652,16 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                         className={`${inputClass} resize-none leading-relaxed`}
                       />
                     </div>
+                    ))}
+                    </ExpandableFieldGroup>
                   ))}
                 </div>
-              </section>
+              </GlassCard>
             )}
 
-            {aba === 'cronograma' && (
+            {abaVisivel === 'cronograma' && (
               <fieldset disabled={!canEditCosts} className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1">
-                <section key="cronograma" id="painel-cronograma" role="tabpanel" aria-labelledby="aba-cronograma" className={`${card} anim-entrar flex flex-col overflow-hidden lg:min-h-0 lg:flex-1`}>
+                <GlassCard key="cronograma" id="painel-cronograma" role="tabpanel" inert={saindo} data-motion={saindo ? 'exit' : 'enter'} data-direction={direcaoAba} aria-labelledby="aba-cronograma" className={`anim-entrar flex flex-col overflow-hidden lg:min-h-0 lg:flex-1`}>
                   {/* Cabeçalho fixo: título, ação e os números do cronograma. */}
                   <header className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-5">
                     <div className="flex items-start justify-between gap-4">
@@ -573,29 +669,35 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                         <h2 className="text-lg font-bold text-slate-900">Cronograma Financeiro</h2>
                         <p className="mt-0.5 text-sm font-medium text-slate-500">Estime as entregas macro e o orçamento dedicado a cada etapa.</p>
                       </div>
-                      <button type="button" onClick={addMacroFase} className="pressionavel flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.15),0_8px_20px_-8px_rgb(15_23_42/0.6)] hover:bg-slate-800 disabled:opacity-50">
+                      <GlassButton variant="custom" type="button" onClick={addMacroFase} className="finance-add-phase pressionavel flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.15),0_8px_20px_-8px_rgb(15_23_42/0.6)] hover:bg-slate-800 disabled:opacity-50">
                         <Plus className="h-4 w-4" />Adicionar Fase
-                      </button>
+                      </GlassButton>
                     </div>
                     <dl className="mt-4 grid grid-cols-3 gap-2">
-                      <div className="rounded-2xl bg-white/50 px-4 py-2.5 ring-1 ring-inset ring-slate-200/60">
-                        <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fases</dt>
-                        <dd className="text-lg font-black tabular-nums text-slate-900">{fasesPreenchidas.length}</dd>
+                      <div className="finance-glass-stat rounded-2xl px-4 py-3">
+                        <dt className="text-[11px] font-medium text-slate-500">Fases</dt>
+                        <dd className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-slate-900">{fasesPreenchidas.length}</dd>
                       </div>
-                      <div className={`rounded-xl px-4 py-2.5 ring-1 ring-inset ${pendenciasFases ? 'bg-amber-50/80 ring-amber-200' : 'bg-white/50 ring-slate-200/60'}`}>
-                        <dt className={`text-[10px] font-bold uppercase tracking-widest ${pendenciasFases ? 'text-amber-700' : 'text-slate-400'}`}>Sem prazo ou custo</dt>
-                        <dd className={`text-lg font-black tabular-nums ${pendenciasFases ? 'text-amber-800' : 'text-slate-900'}`}>{pendenciasFases}</dd>
+                      <div className="finance-glass-stat rounded-2xl px-4 py-3" data-pending={pendenciasFases > 0}>
+                        <dt className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500"><span aria-hidden="true" className="finance-status-dot h-1.5 w-1.5 shrink-0 rounded-full" />Sem prazo ou custo</dt>
+                        <dd className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-slate-900">{pendenciasFases}</dd>
                       </div>
-                      <div className="rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950 px-4 py-2.5 text-right text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_10px_24px_-12px_rgb(15_23_42/0.7)]">
-                        <dt className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Orçamento total</dt>
-                        <dd className="text-lg font-black tabular-nums tracking-tight" data-testid="orcamento-total">{total}</dd>
+                      <div className="finance-budget-glass rounded-2xl px-4 py-3 text-right text-white">
+                        <dt className="text-[11px] font-medium text-white/65">Orçamento total</dt>
+                        <dd className="mt-1 text-lg font-semibold tabular-nums tracking-tight sm:text-xl" data-testid="orcamento-total">{total}</dd>
                       </div>
                     </dl>
                   </header>
+                  <div aria-hidden="true" className="finance-stable-heading grid shrink-0 grid-cols-[minmax(0,1fr)_124px_140px_44px] text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                    <span className="py-2.5 pl-6 pr-4">Descrição da Fase</span>
+                    <span className="px-2 py-2.5">Data Limite</span>
+                    <span className="px-3 py-2.5 text-right">Custo Previsto</span>
+                    <span />
+                  </div>
                   <div ref={rolagemFases} className="lg:borda-suave-rolagem-baixo lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
-                    <table className="w-full table-fixed text-left">
+                    <table className="finance-phase-table w-full table-fixed text-left">
                       <colgroup><col /><col className="w-[124px]" /><col className="w-[140px]" /><col className="w-11" /></colgroup>
-                      <thead className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/90 shadow-[0_6px_12px_-10px_rgb(15_23_42/0.25)] backdrop-blur-2xl backdrop-saturate-150">
+                      <thead className="sr-only">
                         <tr>
                           <th className="py-2.5 pl-6 pr-4 text-[11px] font-bold uppercase tracking-widest text-slate-500">Descrição da Fase</th>
                           <th className="px-2 py-2.5 text-[11px] font-bold uppercase tracking-widest text-slate-500">Data Limite</th>
@@ -605,10 +707,20 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {macroFases.map((fase, idx) => (
-                          <tr key={fase.chave} className={`group align-top transition-colors duration-200 hover:bg-slate-50/50 ${fase.chave.startsWith('nova-') ? 'anim-linha-nova' : ''}`}>
+                          <tr key={fase.chave} onClick={event => {
+                            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+                            const numero = event.currentTarget.querySelector<HTMLElement>('[data-phase-number]')
+                            numero?.getAnimations().forEach(animation => animation.cancel())
+                            numero?.animate([
+                              { transform: 'scale(1)', offset: 0 },
+                              { transform: 'translateY(-2px) scale(1.16)', offset: .4 },
+                              { transform: 'translateY(0) scale(.98)', offset: .75 },
+                              { transform: 'scale(1)', offset: 1 },
+                            ], { duration: 520, easing: 'cubic-bezier(.22, 1, .36, 1)' })
+                          }} className={`group align-top transition-colors duration-200 hover:bg-slate-50/50 ${fase.chave.startsWith('nova-') ? 'anim-linha-nova' : ''}`}>
                             <td className="py-1.5 pl-4 pr-1">
                               <div className="flex items-start gap-1.5">
-                                <span className="w-7 shrink-0 py-2.5 text-right text-sm tabular-nums text-slate-500">1.{idx + 1}</span>
+                                <span data-phase-number className="w-7 shrink-0 py-2.5 text-right text-sm tabular-nums text-slate-500">1.{idx + 1}</span>
                                 <TextoQueCresce data-fase={fase.chave} aria-label={`Fase 1.${idx + 1}`} value={fase.fase} onChange={v => updateMacroFase(fase.chave, 'fase', v)} placeholder={`Ex: Fase ${idx + 1}...`} className={`${celulaInput} min-w-0 flex-1 font-semibold text-slate-800`} />
                               </div>
                             </td>
@@ -626,23 +738,21 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                               />
                             </td>
                             <td className="py-1.5 pr-2 text-center">
-                              <button type="button" aria-label={`Remover fase 1.${idx + 1}`} onClick={() => removeMacroFase(fase.chave)} disabled={macroFases.length === 1 && !fase.nodeId} className="mt-0.5 rounded-lg p-2 text-slate-300 transition-all hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent">
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              <AnimatedTrashButton label={`Remover fase 1.${idx + 1}`} onDelete={() => removeMacroFase(fase.chave)} disabled={macroFases.length === 1 && !fase.nodeId} />
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                </section>
+                </GlassCard>
               </fieldset>
             )}
           </div>
 
           {/* ── Coluna lateral: o projeto e as propriedades ── */}
-          <aside className="order-1 space-y-4 lg:order-2 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pb-2">
-            <section className={`${card} overflow-hidden`} aria-label="Projeto">
+          <AnimatedCardStack className="project-card-stack order-1 space-y-4 lg:order-2 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pb-2">
+            <GlassCard className={`overflow-hidden`} aria-label="Projeto">
               <div className="flex items-start gap-3 p-4">
                 <ProjetoLogoUpload nome={form.name} url={form.logoUrl} onChange={url => setForm(f => ({ ...f, logoUrl: url }))} disabled={ocupado} tamanho="md" />
                 <div className="min-w-0 flex-1">
@@ -658,18 +768,18 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                 </div>
               </div>
               {segmentosLinha.length > 0 && (
-                <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3" title="Linha institucional dos documentos">
+                <div className="institution-glass-line border-t border-slate-100 px-4 py-3" title="Linha institucional dos documentos">
                   <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400"><GraduationCap className="h-3.5 w-3.5" />Nos documentos</p>
                   <ul className="flex flex-wrap gap-1.5" aria-label="Linha institucional">
                     {segmentosLinha.map((seg, i) => (
-                      <li key={i} className="rounded-md bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">{seg}</li>
+                      <li key={i} className="institution-glass-chip rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700">{seg}</li>
                     ))}
                   </ul>
                 </div>
               )}
-            </section>
+            </GlassCard>
 
-            <section className={`${card} p-4`} aria-label="Propriedades">
+            <GlassCard className={`p-4`} aria-label="Propriedades">
               <h3 className={tituloLateral}>Propriedades</h3>
               <Propriedade Icone={UserRound} rotulo="Gerente" htmlFor="projeto-gerente">
                 <Select id="projeto-gerente" propriedade disabled={!canAssignRoles} name="initialMemberId" placeholder="Designar depois" value={form.initialMemberId} onChange={v => alterarCampo('initialMemberId', v)}
@@ -681,11 +791,11 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                     {isoToBR(form.startDate) || '—'}<span className="text-[11px] font-normal text-slate-400">1ª tarefa</span>
                   </div>
                 ) : (
-                  <DateInputBR ariaLabel="Data de início" value={form.startDate} onChange={iso => setForm(prev => ({ ...prev, startDate: iso }))} className={propriedadeInput} />
+                  <SeletorData ariaLabel="Data de início" value={form.startDate} onChange={iso => setForm(prev => ({ ...prev, startDate: iso }))} className={propriedadeInput} />
                 )}
               </Propriedade>
               <Propriedade Icone={CalendarClock} rotulo="Fim previsto">
-                <DateInputBR ariaLabel="Data prevista de fim" value={form.endDate} onChange={iso => setForm(prev => ({ ...prev, endDate: iso }))} className={propriedadeInput} />
+                <SeletorData ariaLabel="Data prevista de fim" value={form.endDate} onChange={iso => setForm(prev => ({ ...prev, endDate: iso }))} className={propriedadeInput} />
               </Propriedade>
               <Propriedade Icone={MapPin} rotulo="Local" htmlFor="projeto-local">
                 <input id="projeto-local" name="location" value={form.location} onChange={e => alterarCampo('location', e.target.value)} placeholder="Sede, filial, cliente…" className={propriedadeInput} />
@@ -703,23 +813,16 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                   />
                 </fieldset>
               </div>
-            </section>
+            </GlassCard>
 
-            <section className={`${card} p-4`} aria-label="Turma">
+            <GlassCard className={`p-4`} aria-label="Turma">
               <h3 className={tituloLateral}>Turma</h3>
-              <div role="radiogroup" aria-label="Período" className="mb-2 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 text-xs font-semibold">
-                {[['1', '1º Sem.'], ['2', '2º Sem.'], ['ano', 'Ano']].map(([v, r]) => (
-                  <button key={v} type="button" role="radio" aria-checked={form.semestre === v} onClick={() => alterarCampo('semestre', v)}
-                    className={`rounded-lg px-2 py-1.5 text-center transition ${form.semestre === v ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                    {r}
-                  </button>
-                ))}
-              </div>
+              <GlassSegmentedControl variant="compact" label="Período" value={form.semestre} onChange={v => alterarCampo('semestre', v)} options={[
+                { value: '1', label: '1º Sem.' }, { value: '2', label: '2º Sem.' }, { value: 'ano', label: 'Ano' },
+              ]} />
               <Propriedade Icone={CalendarDays} rotulo="Ano" htmlFor="projeto-ano">
-                <input id="projeto-ano" name="ano" type="number" min={currentYear - 20} max={currentYear + 5} list="anos-sugeridos" value={form.ano} onChange={e => alterarCampo('ano', e.target.value)} placeholder="Ano" className={propriedadeInput} />
-                <datalist id="anos-sugeridos">
-                  {[...new Set([...years, ...(form.ano ? [Number(form.ano)] : [])])].sort((a, b) => a - b).map(y => <option key={y} value={String(y)}>{y}</option>)}
-                </datalist>
+                <Select id="projeto-ano" propriedade name="ano" placeholder="Selecione" value={form.ano} onChange={v => alterarCampo('ano', v)}
+                  options={[...new Set([...years, ...(form.ano ? [Number(form.ano)] : [])])].sort((a, b) => b - a).map(y => ({ value: String(y), label: String(y), ...(y === currentYear ? { description: 'Ano atual' } : {}) }))} />
               </Propriedade>
               {form.semestre === 'ano' && (
                 <Propriedade Icone={GraduationCap} rotulo="Ano do AMS" htmlFor="projeto-ano-ams">
@@ -739,15 +842,14 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                 </>
               )}
               {!form.semestre && <p className="px-1 pt-1 text-xs text-slate-500">Escolha o período para preencher a turma.</p>}
-            </section>
-          </aside>
+            </GlassCard>
+          </AnimatedCardStack>
         </form>
-        {/* ── Barra de salvar: sempre visível. No computador fica logo abaixo das colunas (a página não rola);
-            no celular, presa ao rodapé enquanto a página rola. ── */}
-        <div className="sticky bottom-4 z-40 mx-auto mt-3 w-full max-w-[720px]">
+        {/* Barra centralizada na janela, independente da largura da sidebar. */}
+        <div className="project-save-dock fixed bottom-8 left-1/2 z-40 max-w-[calc(100vw-2rem)] -translate-x-1/2" style={{ width: editId && !pendente ? 420 : 880 }}>
           {editId && (
             <HistoricoProjeto
-              projetoId={editId} aberto={verHistorico} salvo={salvo} recarregar={recarregarHistorico}
+              projetoId={editId} aberto={verHistorico} origemX={origemHistorico} salvo={salvo} recarregar={recarregarHistorico}
               nomeDoUsuario={id => (usuarios.find(u => u.id === id) ?? (gerenteAtual?.id === id ? gerenteAtual : null))?.name ?? 'Membro'}
               onFechar={() => setVerHistorico(false)} onRestaurar={restaurar}
             />
@@ -756,20 +858,20 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
           {pendente && (
             <div
               role="dialog" aria-label="Alterações não salvas" aria-hidden={!verAlteracoes} inert={!verAlteracoes}
-              className={`absolute inset-x-0 bottom-full mb-2 vidro-flutuante max-h-[60vh] origin-bottom overflow-y-auto rounded-[22px] p-2 transition-[opacity,transform] duration-500 [transition-timing-function:var(--ease-mola)] ${verAlteracoes ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-3 scale-[0.96] opacity-0 duration-200'}`}
+              data-open={verAlteracoes} data-visited={alteracoesJaAbertas}
+              style={{ '--history-drop-x': origemHistorico !== undefined ? `${origemHistorico}px` : '50%' } as CSSProperties}
+              className="project-changes-panel project-history-panel absolute bottom-full mb-3 vidro-flutuante rounded-[22px] p-3"
             >
               <div className="flex items-center justify-between px-3 py-2">
                 <h3 className="text-sm font-bold text-slate-900">O que mudou desde o último salvamento</h3>
-                <button type="button" aria-label="Fechar" onClick={() => setVerAlteracoes(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
+                <GlassCloseButton label="Fechar" onClick={() => setVerAlteracoes(false)} className="project-history-close" />
               </div>
-              <ul className="space-y-1">
+              <ul className="space-y-3 px-1 pb-1 pt-2">
                 {alteracoes.map(a => (
-                  <li key={a.chave} className="rounded-xl px-3 py-2.5 hover:bg-slate-50" data-testid="alteracao">
+                  <li key={a.chave} className="history-version-card rounded-2xl px-4 py-3" data-testid="alteracao">
                     <div className="mb-1.5 flex items-center justify-between gap-2">
                       <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{a.rotulo}</span>
-                      <button type="button" onClick={() => desfazer(a.chave)} aria-label={`Desfazer ${a.rotulo}`} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">
-                        <Undo2 className="h-3.5 w-3.5" />Desfazer
-                      </button>
+                      <UndoChangeButton label={a.rotulo} onUndo={() => desfazer(a.chave)} />
                     </div>
                     {a.texto ? <DiffTexto antes={a.antes} depois={a.depois} /> : (
                       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -783,43 +885,61 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               </ul>
             </div>
           )}
-          <div className="vidro-flutuante relative flex items-center gap-2 rounded-[22px] py-1.5 pl-4 pr-1.5">
+          <div className="project-save-dock-surface vidro-flutuante relative flex items-center gap-2 rounded-[22px] py-2 pl-4 pr-2">
+            {confirmacaoSalvo > 0 && !pendente && <span key={confirmacaoSalvo} aria-hidden="true" className="project-save-glint pointer-events-none absolute inset-0 rounded-[22px]" />}
+            {editId && estadoVersoes.ativa > 0 && <span className="project-active-version shrink-0 rounded-xl px-3 py-2 text-xs font-semibold tabular-nums" aria-label={`Versão ativa: ${estadoVersoes.ativa}`} title={pendente ? `Editando a partir da versão ${estadoVersoes.ativa}` : `Versão ${estadoVersoes.ativa} ativa`} aria-live="polite">v{estadoVersoes.ativa}</span>}
             {!editId ? (
               <span className="flex-1 text-sm font-medium text-slate-600">Preencha os dados e crie o projeto.</span>
             ) : pendente ? (
-              <button key="pendente" type="button" onClick={() => { setVerHistorico(false); setVerAlteracoes(v => !v) }} aria-expanded={verAlteracoes} className="anim-entrar flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-sm font-medium text-slate-700 transition-colors hover:text-slate-900">
+              <GlassButton variant="custom" key="pendente" type="button" onClick={event => {
+                const rect = event.currentTarget.getBoundingClientRect()
+                setOrigemHistorico(rect.left + rect.width / 2 - (window.innerWidth - Math.min(680, window.innerWidth - 32)) / 2)
+                setAlteracoesJaAbertas(true)
+                setVerHistorico(false); setVerAlteracoes(v => !v)
+              }} aria-expanded={verAlteracoes} aria-label={`${alteracoes.length} ${alteracoes.length === 1 ? 'alteração não salva' : 'alterações não salvas'}. ${verAlteracoes ? 'Fechar detalhes' : 'Abrir detalhes'}`} className="project-unsaved-status anim-entrar flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left text-sm font-medium text-slate-700 transition-colors hover:text-slate-900">
                 <span className={`anim-surgir h-2 w-2 shrink-0 rounded-full transition-colors duration-300 ${restaurando ? 'bg-blue-500' : 'bg-amber-500'}`} />
                 {restaurando && <span className="shrink-0 font-semibold text-blue-700">Restaurando a v{restaurando} ·</span>}
-                <span className="truncate">{alteracoes.length} {alteracoes.length === 1 ? 'alteração não salva' : 'alterações não salvas'}</span>
-                <span className="shrink-0 text-xs font-semibold text-blue-600">{verAlteracoes ? 'Ocultar' : 'Ver o que mudou'}</span>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 [transition-timing-function:var(--ease-suave)] ${verAlteracoes ? '' : 'rotate-180'}`} />
-              </button>
+                <span className="project-pending-copy flex min-w-0 items-center gap-2"><span className="project-pending-count shrink-0 rounded-lg px-1.5 py-0.5 text-xs font-semibold tabular-nums">{alteracoes.length}</span><span className="truncate">{alteracoes.length === 1 ? 'alteração não salva' : 'alterações não salvas'}</span></span>
+                <ChevronDown data-open={verAlteracoes} className="project-changes-arrow h-4 w-4 shrink-0 text-slate-400" />
+              </GlassButton>
             ) : (
-              <span key="salvo" role="status" className="anim-entrar flex flex-1 items-center gap-2 text-sm font-medium text-slate-500">
-                <CheckCircle2 className="anim-mola h-4 w-4 text-emerald-500" />{isLoadingEdit ? 'Carregando…' : 'Tudo salvo'}
+              <span key="salvo" role="status" className="project-saved-status anim-entrar flex min-w-0 flex-1 items-center gap-2.5 text-sm font-medium text-slate-500">
+                <span className="project-saved-seal flex h-7 w-7 shrink-0 items-center justify-center rounded-full"><CheckCircle2 className="anim-mola h-4 w-4" strokeWidth={1.7} /></span><span>{isLoadingEdit ? 'Carregando…' : 'Tudo salvo'}</span>
               </span>
             )}
             {editId && (
-              <button type="button" onClick={() => { setVerAlteracoes(false); setVerHistorico(v => !v) }} aria-expanded={verHistorico}
-                className={`pressionavel inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold hover:bg-slate-900/[0.05] ${verHistorico ? 'bg-slate-900/[0.07] text-slate-900' : 'text-slate-600'}`}>
+              <GlassButton onClick={event => {
+                const rect = event.currentTarget.getBoundingClientRect()
+                const painelWidth = Math.min(680, window.innerWidth - 32)
+                setOrigemHistorico(rect.left + rect.width / 2 - (window.innerWidth - painelWidth) / 2)
+                setVerAlteracoes(false); setVerHistorico(v => !v)
+              }} aria-expanded={verHistorico} className="project-dock-history">
                 <History className="h-4 w-4" />Histórico
-              </button>
+              </GlassButton>
             )}
             {editId
-              ? pendente && <button type="button" onClick={descartar} disabled={isPending} className="anim-entrar pressionavel rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-900/[0.05] disabled:opacity-50">Descartar</button>
+              ? pendente && <GlassButton onClick={descartar} disabled={isPending} className="project-dock-discard"><Undo2 className="h-4 w-4" />Descartar</GlassButton>
               : <Link href={voltarHref} className="pressionavel rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-900/[0.05]">Cancelar</Link>}
-            <button type="button" onClick={salvar} disabled={ocupado || (!!editId && !pendente)} className="pressionavel flex items-center gap-2 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 px-5 py-2 text-sm font-bold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.28),0_8px_20px_-8px_rgb(37_99_235/0.7)] hover:from-blue-500 hover:to-blue-700 disabled:opacity-40 disabled:shadow-none">
-              {isPending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+            {(!editId || pendente) && <span aria-hidden="true" className="project-dock-divider mx-1 h-6 w-px shrink-0" />}
+            {(!editId || pendente) && <GlassButton variant="primary" onClick={salvar} disabled={ocupado} className="project-dock-save shrink-0">
+              {isPending ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Save className="project-save-icon h-4 w-4" strokeWidth={1.7} />}
               {isPending ? (editId ? 'Salvando…' : 'Criando…') : (editId ? 'Salvar alterações' : 'Criar projeto')}
-            </button>
+            </GlassButton>}
           </div>
         </div>
       </main>
 
+      {confirmarNovoSalvamento && <Modal isOpen title="Salvar como nova versão?" className="phase-delete-dialog" onClose={() => { if (!isPending) setConfirmarNovoSalvamento(false) }}>
+        <p className="phase-delete-muted text-sm leading-relaxed">A versão ativa é a v{estadoVersoes.ativa}. Este salvamento substitui o estado atual e cria a v{estadoVersoes.ultima + 1}. As versões anteriores continuam disponíveis no histórico.</p>
+        {error && <p role="alert" className="mt-3 text-sm text-rose-400">{error}</p>}
+        <div className="mt-5 flex justify-end gap-3"><GlassButton autoFocus disabled={isPending} onClick={() => setConfirmarNovoSalvamento(false)}>Cancelar</GlassButton><GlassButton variant="primary" disabled={isPending} onClick={() => persistirProjeto(form, macroFases, estadoVersoes.ativa, false)}>{isPending ? 'Salvando…' : `Salvar como v${estadoVersoes.ultima + 1}`}</GlassButton></div>
+      </Modal>}
+      {versaoParaRestaurar && <RestaurarVersaoDialog numero={versaoParaRestaurar.numero} fasesMantidas={versaoParaRestaurar.dados.fasesMantidas} alteracoesPendentes={pendente} ocupado={isPending} erro={erroRestauracao} onClose={() => { if (!isPending) setVersaoParaRestaurar(null) }} onConfirm={confirmarRestauracao} />}
       {editId && (
         <ExcluirFaseDialog projetoId={editId} fase={faseAExcluir} versao={versaoDaExclusao} onFechar={() => setFaseAExcluir(null)} onExcluida={faseExcluida} />
       )}
       {dialogoSaida}
     </div>
+    </ProjectAppearance>
   )
 }

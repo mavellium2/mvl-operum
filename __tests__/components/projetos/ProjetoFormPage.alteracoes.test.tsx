@@ -31,7 +31,7 @@ describe('Editar projeto — alterações não salvas', () => {
     await waitFor(() => expect(nome).toHaveValue('JANUS V2'))
     // Sem alteração: a barra continua visível, com "Tudo salvo" e o Salvar desativado.
     expect(screen.getByRole('status')).toHaveTextContent('Tudo salvo')
-    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Salvar alterações' })).not.toBeInTheDocument()
 
     // Diretrizes e Cronograma ficam em abas com resumo.
     expect(screen.getByRole('tab', { name: /Cronograma Financeiro.*1 fase/ })).toBeInTheDocument()
@@ -61,7 +61,7 @@ describe('Editar projeto — alterações não salvas', () => {
     fireEvent.change(screen.getByLabelText('Nome do projeto'), { target: { value: 'JANUS V3' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ name: 'JANUS V3', macroFases: [{ fase: 'Escopo', dataLimite: '2026-09-25', custo: '83,34', nodeId: 'n1' }] }), expect.objectContaining({ alteracoes: expect.any(Array) })))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeDisabled())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Salvar alterações' })).not.toBeInTheDocument())
     expect(screen.getByRole('status')).toHaveTextContent('Tudo salvo')
   })
 
@@ -72,7 +72,7 @@ describe('Editar projeto — alterações não salvas', () => {
     expect(campo).toHaveTextContent('AG') // iniciais no lugar da foto, antes do nome
   })
 
-  it('histórico: restaurar uma versão carrega o formulário e salvar cria uma versão nova (restaurada da vN)', async () => {
+  it('histórico: exige confirmação e ativa a versão antiga sem criar outra', async () => {
     const form = { name: 'JANUS V1', slogan: '', startDate: '', endDate: '2026-11-16', location: '', logoUrl: '', initialMemberId: 'g1', justificativa: 'Equipes grandes (até 10 membros).', objetivos: '', metodologia: '', descricaoProduto: '', premissas: '', restricoes: '', limitesAutoridade: '', semestre: '2', termo: '5', turno: 'Noturno', ano: '2026', anoAms: '', departamentos: [] }
     vi.mocked(listarVersoesProjetoAction).mockResolvedValue({ versoes: [
       { numero: 2, conteudo: { form: { ...form, name: 'JANUS V2' }, fases: [{ fase: 'Escopo', dataLimite: '2026-09-25', custo: '83,34' }] }, alteracoes: ['Nome do projeto'], restauradaDe: null, autorNome: 'Ana', createdAt: '2026-10-31T12:00:00Z' },
@@ -87,10 +87,9 @@ describe('Editar projeto — alterações não salvas', () => {
     expect(versoes[0]).toHaveTextContent('Atual')
     expect(within(versoes[0]).queryByRole('button', { name: /Restaurar/ })).not.toBeInTheDocument()
     fireEvent.click(within(versoes[1]).getByRole('button', { name: /Restaurar esta versão/ }))
-    expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V1')
-    expect(screen.getByText(/Restaurando a v1/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ name: 'JANUS V1' }), expect.objectContaining({ restauradaDe: 1, alteracoes: ['Nome do projeto'] })))
+    expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2')
+    fireEvent.click(await screen.findByRole('button', { name: 'Ativar esta versão' }))
+    await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ name: 'JANUS V1' }), expect.objectContaining({ ativarVersao: 1, alteracoes: ['Nome do projeto'] })))
   })
 
   it('fase já salva: a lixeira abre a confirmação com o impacto em vez de apagar direto', async () => {
@@ -98,10 +97,26 @@ describe('Editar projeto — alterações não salvas', () => {
     render(<ProjetoFormPage />)
     await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
     fireEvent.click(screen.getByRole('tab', { name: /Cronograma Financeiro/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Remover fase 1.1' }))
-    expect(await screen.findByText('Excluir a fase 1.1 Escopo?')).toBeInTheDocument()
-    expect(await screen.findByTestId('impacto-exclusao')).toHaveTextContent('3 itens abaixo dela')
-    expect(screen.getByRole('button', { name: 'Excluir fase' })).toBeDisabled() // falta o motivo
+    fireEvent.click(await screen.findByRole('button', { name: 'Remover fase 1.1' }))
+    expect(await screen.findByRole('dialog', { name: 'Excluir a fase 1.1 Escopo?' })).toBeInTheDocument()
+    expect(await screen.findByTestId('impacto-exclusao')).toHaveTextContent('3 itens da EAP')
+    expect(screen.getByRole('button', { name: 'Confirmar exclusão' })).toBeDisabled() // falta o motivo
     expect(screen.getByLabelText('Fase 1.1')).toHaveValue('Escopo')
   })
+})
+
+it('pede confirmação antes de salvar uma edição sobre versão antiga, preservando o histórico', async () => {
+  vi.mocked(listarVersoesProjetoAction).mockResolvedValue({ versoes: [
+    { numero: 4, ativa: false }, { numero: 1, ativa: true },
+  ] } as never)
+  render(<ProjetoFormPage />)
+  await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+  await screen.findByLabelText('Versão ativa: 1')
+  fireEvent.change(screen.getByLabelText('Nome do projeto'), { target: { value: 'Nova edição' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+  const modal = await screen.findByRole('dialog', { name: 'Salvar como nova versão?' })
+  expect(modal).toHaveTextContent('As versões anteriores continuam disponíveis')
+  expect(updateProjetoAction).not.toHaveBeenCalled()
+  fireEvent.click(within(modal).getByRole('button', { name: 'Salvar como v5' }))
+  await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ name: 'Nova edição' }), expect.objectContaining({ restauradaDe: 1 })))
 })

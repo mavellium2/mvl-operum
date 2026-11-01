@@ -960,6 +960,8 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 
 ## ADR-076 — Histórico de versões do Editar projeto, linear como commits
 
+**Parcialmente substituída pela ADR-078:** versão ativa e restauração. O histórico continua preservado.
+
 - **Data:** 2026-10-31.
 - **Status:** implementada no código; pendente de publicação.
 - **Contexto:** o usuário pediu, no Editar projeto, um histórico das alterações com a possibilidade de voltar a uma versão "como no git", sem nunca existirem duas versões atuais. As edições do projeto não eram registradas (só o Termo tinha versões, pelo fluxo de aprovação).
@@ -979,3 +981,27 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Alternativas consideradas:** excluir no "Salvar" junto com as outras alterações (o impacto ficaria escondido até depois de salvar); fazer a sincronização remover itens que sumiram da lista (apagaria dados sem confirmação).
 - **Consequências:** a exclusão de fase não depende de Salvar e entra no histórico do projeto (ADR-076). Fase nova, ainda não salva, sai do formulário sem confirmação.
 - **Referências:** `app/actions/projetoEdicao.ts` (`impactoExclusaoFaseAction`, `excluirFaseAction`), `components/projetos/ExcluirFaseDialog.tsx`, `app/actions/projetos.ts` (`renomearFasesDaEap`), `services/wbsService.ts` (`deleteNode`).
+
+## ADR-079 — Preferência de aparência local e aplicação inicial em Editar Projeto
+
+- **Data do registro:** 2026-10-31.
+- **Status:** implementada.
+- **Contexto:** adaptar a luminosidade visual ao horário, com liberdade para manter claro, escuro ou seguir o sistema, inicialmente em Editar Projeto.
+- **Escolha:** preferência versionada no localStorage do navegador, automático como padrão, paletas CSS limitadas ao formulário e atualização pelo relógio local a cada 30 segundos. Não aplicar tema global nesta etapa.
+- **Justificativa:** permite adoção restrita à tela solicitada sem mudar contratos de serviços ou o cadastro do usuário.
+- **Alternativas consideradas nesta entrega:** persistir na conta exigiria contrato e sincronização adicionais; tema global ampliaria o escopo além da tela solicitada.
+- **Consequências:** escolha compartilhada entre abas da mesma origem; não sincroniza entre dispositivos ou perfis de navegador e não é específica por usuário em dispositivos compartilhados. Sem armazenamento disponível, o automático continua funcionando, e a configuração informa falha ao salvar. Sem dependências ou migrations.
+- **Condição de revisão:** expansão do tema para outras telas ou necessidade de preferência por conta.
+- **Referências:** `lib/appearance.ts`, `hooks/useAppearance.ts`, `components/aparencia/ProjectAppearance.tsx`, `components/aparencia/AppearanceSettings.tsx`, `app/configuracoes/aparencia/page.tsx`.
+
+## ADR-078 — Versão ativa independente da numeração do histórico
+
+- **Data:** 2026-11-01.
+- **Status:** implementada; substitui a parte de restauração da ADR-076.
+- **Contexto:** restaurar v1 deve mostrar v1 como atual, preservando as versões posteriores recuperáveis.
+- **Escolha:** marcador `ProjetoVersao.ativa` persistido, com índice único parcial por projeto. Restauração troca o marcador dentro de transação sem criar ou apagar versões. O salvamento seguinte usa o maior número mais um e pede confirmação na interface quando a ativa é anterior à última.
+- **Justificativa:** distingue estado atual e sequência de salvamentos sem perder histórico.
+- **Alternativas:** apagar versões posteriores foi rejeitado pelo usuário; criar uma nova versão na restauração não atende ao comportamento solicitado.
+- **Consequências:** migration inicializa a última versão como ativa; listagem e seleção são limitadas por tenant e projeto. A aplicação de dados segue o fluxo existente de atualização do projeto; sua transação é distinta da transação do marcador/histórico, limitação já existente de consistência entre etapas.
+- **Referências:** `services/projetoVersoes.ts`, `components/projetos/ProjetoFormPage.tsx`, migration `20261101074000_projeto_versao_ativa`.
+- **Revisão:** unificação transacional das etapas de atualização e versionamento.

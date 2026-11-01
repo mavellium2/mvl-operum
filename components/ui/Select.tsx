@@ -1,5 +1,7 @@
 'use client'
 
+import GlassButton from '@/components/ui/GlassButton'
+
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Plus, Search } from 'lucide-react'
@@ -144,7 +146,7 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
   return (
     <span className={`inline-flex min-w-0 ${inline || propriedade ? 'w-full align-baseline' : compact ? 'max-w-full align-middle' : 'w-full'} ${className}`}>
       {name && <input type="hidden" name={name} value={value ?? ''} disabled={disabled} />}
-      <button ref={trigger} id={id} type="button" role="combobox" aria-label={ariaLabel} aria-haspopup="listbox"
+      <GlassButton variant="custom" ref={trigger} id={id} type="button" role="combobox" aria-label={ariaLabel} aria-haspopup="listbox"
         aria-expanded={expanded} aria-controls={expanded ? listId : undefined} disabled={disabled}
         onClick={() => expanded ? close() : show()}
         onKeyDown={event => {
@@ -153,9 +155,9 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
         className={`group flex min-w-0 items-center justify-between gap-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${propriedade ? 'h-8 w-full rounded-lg px-2.5 text-[13px] font-medium hover:bg-slate-100 aria-expanded:bg-slate-100' : inline ? 'w-full rounded-sm px-0.5 leading-[inherit]! [font:inherit]! hover:bg-blue-50/60 aria-expanded:bg-[#f5f8ff] aria-expanded:outline aria-expanded:outline-2 aria-expanded:outline-blue-500' : compact ? 'h-7 rounded-md border border-transparent px-1.5 hover:border-slate-200 hover:bg-slate-50' : 'min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm hover:border-blue-300'} ${selected ? (inline ? 'text-inherit' : 'text-slate-800') : 'text-slate-400'}`}>
         <span className="flex min-w-0 items-center gap-2">{selected?.icone && <span className="shrink-0">{selected.icone}</span>}<span className="truncate">{selected?.label ?? placeholder}</span></span>
         <ChevronDown aria-hidden="true" size={compact || inline || propriedade ? 13 : 16} className={`shrink-0 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-      </button>
+      </GlassButton>
       {expanded && createPortal(
-        <div ref={panel} tabIndex={-1} onKeyDown={keys} style={{ position: 'fixed', ...position, zIndex: 10000 }}
+        <div data-glass-select-panel ref={panel} tabIndex={-1} onKeyDown={keys} style={{ position: 'fixed', ...position, zIndex: 10000 }}
           className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-sm shadow-xl shadow-slate-900/10 outline-none">
           {searchable && <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 px-3 py-2.5">
             <Search size={16} aria-hidden="true" className="shrink-0 text-slate-400" />
@@ -166,22 +168,22 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
           <div id={listId} role="listbox" aria-label={ariaLabel ?? 'Opções'} tabIndex={searchable ? undefined : 0}
             aria-activedescendant={!searchable ? activeId : undefined} className="min-h-0 flex-1 overflow-y-auto p-1">
             {visible.length === 0 && <div role="status" className="px-3 py-5 text-center text-slate-400">Nenhuma opção encontrada</div>}
-            {visible.map((option, index) => <div key={option.value} id={`${uid}-option-${index}`} role="option"
+            {visible.map((option, index) => <div key={option.value} id={`${uid}-option-${index}`} role="option" data-active={active === index}
               aria-selected={option.value === value} aria-disabled={option.disabled || undefined}
               onMouseEnter={() => { if (!option.disabled) setActive(index) }} onMouseDown={event => event.preventDefault()}
               onClick={() => choose(index)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 ${option.disabled ? 'cursor-not-allowed text-slate-300' : `cursor-pointer ${active === index ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'}`}`}>
+              className={`glass-select-option flex items-center gap-3 rounded-lg px-3 py-2 ${option.disabled ? 'cursor-not-allowed text-slate-300' : `cursor-pointer ${active === index ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'}`}`}>
               {option.icone && <span className="shrink-0">{option.icone}</span>}
               <span className="min-w-0 flex-1"><span className="block truncate font-medium">{option.label}</span>{option.description && <span className="block truncate text-xs text-slate-400">{option.description}</span>}</span>
               {option.value === value && <Check size={16} aria-hidden="true" className="shrink-0 text-blue-600" />}
             </div>)}
           </div>
           {onCreate && <div className="shrink-0 border-t border-slate-100 p-1">
-            <button id={`${uid}-create`} type="button" onClick={() => choose(visible.length)}
+            <GlassButton variant="custom" id={`${uid}-create`} type="button" onClick={() => choose(visible.length)}
               onFocus={() => setActive(visible.length)}
               className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left font-medium text-blue-600 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${active === visible.length ? 'bg-blue-50' : 'hover:bg-blue-50'}`}>
               <Plus size={16} aria-hidden="true" />{createLabel}
-            </button>
+            </GlassButton>
           </div>}
         </div>, document.body)}
     </span>

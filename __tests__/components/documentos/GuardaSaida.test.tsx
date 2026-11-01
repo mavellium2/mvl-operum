@@ -26,9 +26,9 @@ describe('aviso ao sair com alterações não salvas', () => {
     const descartar = vi.fn()
     render(<Tela saida={{ pendente: true, salvar: vi.fn(), salvarDepois: vi.fn(), descartar }} />)
     fireEvent.click(screen.getByText('Sprints'))
-    expect(screen.getByText('Alterações não salvas')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Alterações não salvas' })).toBeInTheDocument()
     expect(push).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: /Descartar alterações/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Sair sem salvar/ }))
     await waitFor(() => expect(push).toHaveBeenCalledWith('/projetos/p1/sprints'))
     expect(descartar).toHaveBeenCalled()
   })
@@ -37,10 +37,10 @@ describe('aviso ao sair com alterações não salvas', () => {
     const salvarDepois = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     render(<Tela saida={{ pendente: true, salvar: vi.fn(), salvarDepois, descartar: vi.fn() }} />)
     fireEvent.click(screen.getByText('Sprints'))
-    fireEvent.click(screen.getByRole('button', { name: /Salvar mais tarde/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Guardar para depois/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível guardar o rascunho')
     expect(push).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: /Salvar mais tarde/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Guardar para depois/ }))
     await waitFor(() => expect(push).toHaveBeenCalledWith('/projetos/p1/sprints'))
   })
 
@@ -51,7 +51,7 @@ describe('aviso ao sair com alterações não salvas', () => {
     }
     render(<Documento />)
     fireEvent.click(screen.getByText('Sprints'))
-    fireEvent.click(screen.getByRole('button', { name: /^SalvarSalva uma versão/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Salvar e sair/ }))
     expect(push).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('versão salva'))
     await waitFor(() => expect(push).toHaveBeenCalledWith('/projetos/p1/sprints'))
@@ -60,7 +60,7 @@ describe('aviso ao sair com alterações não salvas', () => {
   it('"Salvar mais tarde" não aparece quando o documento não admite rascunho', () => {
     render(<Tela saida={{ pendente: true, salvar: vi.fn(), descartar: vi.fn() }} />)
     fireEvent.click(screen.getByText('Sprints'))
-    expect(screen.queryByRole('button', { name: /Salvar mais tarde/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Guardar para depois/ })).not.toBeInTheDocument()
   })
 
   it('troca de documento pelo menu (navegarComGuarda) também pergunta', () => {
@@ -68,6 +68,6 @@ describe('aviso ao sair com alterações não salvas', () => {
     render(<Tela saida={{ pendente: true, salvar: vi.fn(), descartar: vi.fn() }} />)
     navegarComGuarda(destino)
     expect(destino).not.toHaveBeenCalled()
-    return waitFor(() => expect(screen.getByText('Alterações não salvas')).toBeInTheDocument())
+    return waitFor(() => expect(screen.getByRole('dialog', { name: 'Alterações não salvas' })).toBeInTheDocument())
   })
 })

@@ -106,6 +106,7 @@ export default function SidebarLayout({
       <div ref={overlayRef} tabIndex={-1} role={mobile && mobileOpen ? 'dialog' : undefined} aria-label={mobile && mobileOpen ? 'Menu lateral' : undefined} aria-modal={mobile && mobileOpen ? true : undefined} className={mobile && mobileOpen ? 'fixed inset-0' : 'contents'} style={mobile && mobileOpen ? { zIndex } : undefined}>
       {mobile && mobileOpen && <div className="fixed inset-0 bg-black/50 md:hidden" style={{ zIndex: zIndex - 1 }} onClick={() => setMobileOpen(false)} aria-hidden="true" />}
     <aside
+      data-operum-sidebar
       ref={panelRef} id={panelId} tabIndex={-1}
       aria-hidden={hidden || undefined} inert={hidden}
       style={mobile && mobileOpen ? { zIndex } : undefined}
