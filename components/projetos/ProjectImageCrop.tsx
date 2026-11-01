@@ -6,19 +6,38 @@ import { useEffect, useRef, useState } from 'react'
 import Modal from '@/components/ui/Modal'
 
 export default function ProjectImageCrop({ file, onCancel, onConfirm }: { file: File; onCancel: () => void; onConfirm: (file: File) => void }) {
-  const image = useRef<HTMLImageElement>(null)
-  const [url, setUrl] = useState('')
+  const image = useRef<ImageBitmap | null>(null)
+  const preview = useRef<HTMLCanvasElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [zoom, setZoom] = useState(1)
   const [x, setX] = useState(50)
   const [y, setY] = useState(50)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- cria e revoga o recurso de prévia local com o ciclo de vida do arquivo
-  useEffect(() => { const source = URL.createObjectURL(file); setUrl(source); return () => URL.revokeObjectURL(source) }, [file])
+  useEffect(() => {
+    let active = true
+    let bitmap: ImageBitmap | null = null
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- informa formato inválido ao receber o arquivo
+      setError('Use uma imagem PNG, JPEG ou WebP.')
+      return
+    }
+    void createImageBitmap(file).then(decoded => {
+      if (!active) { decoded.close(); return }
+      bitmap = decoded
+      image.current = decoded
+      setSize({ width: decoded.width, height: decoded.height })
+    }).catch(() => { if (active) setError('Não foi possível abrir a imagem. Use PNG, JPEG ou WebP.') })
+    return () => { active = false; bitmap?.close(); image.current = null }
+  }, [file])
   const minimum = Math.min(size.width, size.height) || 1
-  const width = size.width / minimum * 240 * zoom
-  const height = size.height / minimum * 240 * zoom
+  useEffect(() => {
+    const context = preview.current?.getContext('2d')
+    if (!context || !image.current || !size.width) return
+    const source = minimum / zoom
+    context.clearRect(0, 0, 240, 240)
+    context.drawImage(image.current, (size.width - source) * x / 100, (size.height - source) * y / 100, source, source, 0, 0, 240, 240)
+  }, [minimum, size, zoom, x, y])
   function confirm() {
     if (!image.current || !size.width || busy) return
     setBusy(true)
@@ -36,8 +55,7 @@ export default function ProjectImageCrop({ file, onCancel, onConfirm }: { file: 
   return <Modal isOpen onClose={() => !busy && onCancel()} title="Ajustar imagem do projeto" className="phase-delete-dialog">
     <p className="phase-delete-muted mb-4 text-sm">Ajuste o enquadramento antes de enviar.</p>
     <div className="relative mx-auto overflow-hidden rounded-2xl border border-white/20" style={{ width: 240, height: 240 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {url && <img ref={image} src={url} alt="Prévia do recorte" onLoad={e => setSize({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })} onError={() => setError('Este formato não pôde ser aberto. Use PNG, JPEG ou WebP.')} style={{ position: 'absolute', width, height, maxWidth: 'none', left: -(width - 240) * x / 100, top: -(height - 240) * y / 100 }} />}
+      <canvas ref={preview} width={240} height={240} role="img" aria-label="Prévia do recorte" className="block" />
     </div>
     <div className="mt-5 space-y-3 text-sm">
       <label className="block">Zoom<input aria-label="Zoom da imagem" className="mt-1 block w-full accent-violet-400" type="range" min="1" max="3" step="0.01" value={zoom} onChange={e => setZoom(Number(e.target.value))} /></label>

@@ -13,6 +13,7 @@ funcionalidade depois disso é uma versão MINOR.
 - **Aparência:** paletas de manhã, tarde e noite, automático por horário local, modos fixos claro/tarde/escuro e preferência do sistema em Configurações → Aparência. Escolha local por navegador; aplicação inicial no editor e em seu menu lateral.
 - **Histórico:** versões preservadas, comparação de alterações, desfazer por campo e confirmação de restauração. Restaurar ativa a versão escolhida sem criar outra; o próximo salvamento pede confirmação e usa o maior número do histórico mais um.
 - **Fases:** inclusão com foco e rolagem suave; exclusão de fases salvas com prévia de impacto na EAP, sprints, tarefas, custos e Termo. Campos pareados expandem/recolhem juntos; datas usam calendário compartilhado.
+- **Segurança:** prévia do recorte decodifica PNG/JPEG/WebP e desenha em canvas, evitando interpretar a URL do arquivo como conteúdo HTML (CodeQL js/xss-through-dom).
 - **Imagem do projeto:** visualização ampliada, moldura de vidro e recorte com zoom e posição antes do envio.
 - **Ata e documentação:** lista de atas com resumo/status e revisão de propostas por ata, preservando as correções publicadas na 1.44.1.
 - **Acessibilidade:** foco e teclado nos controles, avisos de alterações pendentes, redução de movimento/transparência e adaptação dos painéis à tela.

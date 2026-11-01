@@ -79,7 +79,7 @@ export default function ProjetoLogoUpload({ nome, url, onChange, disabled = fals
         </div>
       </Modal>}
       {recorte && <ProjectImageCrop file={recorte} onCancel={() => setRecorte(null)} onConfirm={file => { setRecorte(null); void enviar(file) }} />}
-      <input ref={arquivo} type="file" accept="image/*" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) setRecorte(file); e.target.value = '' }} />
+      <input ref={arquivo} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) setRecorte(file); e.target.value = '' }} />
       {erro && <p role="alert" className="mt-1 max-w-20 text-[11px] text-red-600">{erro}</p>}
     </div>
   )
