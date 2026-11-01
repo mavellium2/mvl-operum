@@ -7,6 +7,18 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.45.0] — 2026-11-01
+
+- **Editar Projeto:** layout compacto com abas Diretrizes/Escopo e Cronograma Financeiro, propriedades laterais, barra inferior centralizada e componentes reutilizáveis de vidro para cards, botões e seletores.
+- **Aparência:** paletas de manhã, tarde e noite, automático por horário local, modos fixos claro/tarde/escuro e preferência do sistema em Configurações → Aparência. Escolha local por navegador; aplicação inicial no editor e em seu menu lateral.
+- **Histórico:** versões preservadas, comparação de alterações, desfazer por campo e confirmação de restauração. Restaurar ativa a versão escolhida sem criar outra; o próximo salvamento pede confirmação e usa o maior número do histórico mais um.
+- **Fases:** inclusão com foco e rolagem suave; exclusão de fases salvas com prévia de impacto na EAP, sprints, tarefas, custos e Termo. Campos pareados expandem/recolhem juntos; datas usam calendário compartilhado.
+- **Segurança:** prévia do recorte decodifica PNG/JPEG/WebP e desenha em canvas, evitando interpretar a URL do arquivo como conteúdo HTML (CodeQL js/xss-through-dom).
+- **Imagem do projeto:** visualização ampliada, moldura de vidro e recorte com zoom e posição antes do envio.
+- **Ata e documentação:** lista de atas com resumo/status e revisão de propostas por ata, preservando as correções publicadas na 1.44.1.
+- **Acessibilidade:** foco e teclado nos controles, avisos de alterações pendentes, redução de movimento/transparência e adaptação dos painéis à tela.
+- **Desenvolvimento:** corrige resolução de imports do MCP em `pnpm dev:all`. Sem dependências novas. Inclui migrations de histórico e versão ativa; aplicar migrations e regenerar Prisma antes de executar a versão atualizada.
+
 ## [1.44.1] — 2026-10-31
 
 - **Ata no modelo "01_Form Ata de Reunião":** quadro e seções I a IV numa tabela contínua, rótulos em negrito, "Nome:"/"Setor/Empresa:", assinaturas numa caixa cinza e "Obs:" em negrito; sem o "© 01_Form Ata de Reunião", na folha e no Word. Os botões de adicionar ficam sobre a borda da tabela, sem abrir espaço entre as seções. "Adicionar presente" já abre o seletor de membro da linha nova.
@@ -21,9 +33,6 @@ funcionalidade depois disso é uma versão MINOR.
 - **Termo de Abertura no modelo do professor ("02_Project Charter"):** logo e título "Termo de Abertura de Projeto - Project Charter", quadro com rótulos em negrito, seções com o título acima da caixa (Justificativa, Objetivos, Metodologia, Descrição do produto), premissas e restrições lado a lado item a item, macro fases numeradas (1.1, 1.2…) com custo total, principais envolvidos agrupados e designação de gerente.
 - **EAP no modelo da aula ("04 Aula GP - Modelo de EAP"):** folha paisagem com os títulos "Modelo de Estrutura Analítica do Projeto (EAP - Gráfica)" e "(EAP - Texto)", quadro de identificação em negrito e EAP em texto recuada por nível; a EAP gráfica usa o arranjo em colunas do modelo (fases lado a lado) com as cores dos blocos da aba EAP/WBS, e todas as páginas mostram "Página X de Y". Corrige a EAP gráfica ilegível em projetos com muitos itens (encolhida para caber na folha): com muitas fases os blocos ficam mais estreitos e o texto quebra em linhas, sem diminuir a fonte. O contador "Páginas" do editor passa a contar as folhas reais.
 - **Correção — documentos travando o navegador:** a folha media a página de novo sem parar enquanto o documento ficava aberto (cerca de 2 mil vezes por segundo), o que consumia CPU e memória até travar o navegador, principalmente na EAP. Agora mede de novo só quando o conteúdo, as fontes ou as imagens mudam.
-- **Menu Documentação:** os documentos aparecem logo abaixo do item Documentação, e não no fim do menu.
-- **Partes Interessadas:** sai o aviso fixo acima da folha.
-- **Segurança:** `follow-redirects` 1.16.2 (GHSA-mrwp-f3q8-3g9p, alta) em todo o workspace e nos serviços, via override do pnpm; o pacote chega ao api-gateway por `http-proxy-middleware`.
 
 ## [1.43.0] — 2026-10-30
 
@@ -35,7 +44,7 @@ funcionalidade depois disso é uma versão MINOR.
 - **Seleção (componente único no sistema):** novo seletor com busca, navegação por teclado e lista estilizada, usado em todos os campos de escolha (documentos, filtros, admin, projeto, sprint, EAP/WBS, planilha, notificações, arquivos, integrações). Na folha dos documentos ele segue a fonte e a linha do texto. Nos campos de pessoa, "Criar novo membro" abre o cadastro interno de Stakeholders no painel lateral e, ao salvar, já seleciona a pessoa no campo de origem (Elaborado por, Aprovado por, presentes, responsáveis).
 - **Sair sem salvar:** ao deixar qualquer documento com alterações que ainda não viraram versão (links, menu de documentos ou fechar a aba), o Operum pergunta se a pessoa quer salvar, salvar mais tarde (rascunho só dela, restaurado quando voltar) ou descartar as alterações.
 - **Ata:** o número é preenchido pelo sistema; na ata nova já aparece o próximo número do projeto, confirmado ao salvar.
-- **Menu Documentação:** subitens com bolinha de estado e contador de propostas pendentes. A instituição do Termo passa a vir do cadastro do projeto, como na Ata.
+- **Menu Documentação:** subitens logo abaixo do item Documentação, com bolinha de estado e contador de propostas pendentes. A instituição do Termo passa a vir do cadastro do projeto, como na Ata.
 - **Configurações → Assinatura:** seção própria no menu para desenhar a assinatura (mouse, dedo ou caneta, desfazer e limpar) e salvar em PNG com fundo transparente, ou importar PNG/JPG/PDF, escolher a página do PDF e recortar. Processamento no navegador (Signature Pad, PDF.js e React Image Crop), sem serviço externo; a assinatura anterior é preservada se cancelar ou der erro. Os documentos (folha e Word) usam a assinatura do gerente do projeto, com rótulo e imagem na mesma linha.
 - **Editar projeto → Ano do AMS:** com Período "Ano", aparece o campo 1º/2º, independente do termo e do ano calendário; vai para a linha institucional dos documentos e é limpo ao trocar para semestre. Projetos existentes ficam sem classificação até preencher.
 - **Instalação:** novas dependências do app (`signature_pad`, `pdfjs-dist`, `react-image-crop`) e migration aditiva `20261030210000_project_ano_ams` (coluna opcional `Project.anoAms`); campo MCP opcional `ano_ams` em criar/editar projeto. Aplicar a migration antes de publicar app e project-service; publicar o MCP para expor o campo.

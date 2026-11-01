@@ -92,6 +92,224 @@ textarea:disabled {
   to { stroke-dashoffset: 0; }
 }
 
+/* ── Movimento suave das telas de edição ───────────────────── */
+/* Curva "ease-out" longa: começa rápido e assenta devagar, sem tranco. */
+:root {
+  --ease-suave: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Mola: passa um pouco do ponto e volta (destaques, painéis, ícones). */
+  --ease-mola: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* ── Vidro (estilo "Liquid Glass") ────────────────────────────
+   Superfície translúcida com desfoque do que está atrás, brilho fino na borda
+   superior e sombra longa e suave. */
+.vidro {
+  /* Brilho especular difuso no canto superior esquerdo + corpo translúcido que
+     fica um pouco mais denso embaixo (leitura). */
+  background:
+    radial-gradient(120% 70% at 0% 0%, rgb(255 255 255 / 0.42), transparent 55%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.36) 0%, rgb(255 255 255 / 0.24) 100%);
+  -webkit-backdrop-filter: blur(28px) saturate(210%) brightness(1.06);
+  backdrop-filter: blur(28px) saturate(210%) brightness(1.06);
+  border: 0;
+  position: relative;
+  box-shadow:
+    /* reflexo da luz: forte em cima e à esquerda, sutil embaixo e à direita */
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 1px 0 0 rgb(255 255 255 / 0.55),
+    inset 0 -1px 0 rgb(255 255 255 / 0.25),
+    inset -1px 0 0 rgb(255 255 255 / 0.2),
+    /* contorno fino, para o vidro não "sumir" no céu */
+    0 0 0 1px rgb(255 255 255 / 0.35),
+    0 0 0 1.5px rgb(15 23 42 / 0.04),
+    /* profundidade */
+    0 2px 6px -2px rgb(15 23 42 / 0.06),
+    0 18px 40px -20px rgb(30 41 82 / 0.22);
+}
+.vidro-flutuante {
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgb(255 255 255 / 0.55), transparent 55%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.38) 100%);
+  -webkit-backdrop-filter: blur(36px) saturate(200%) brightness(1.05);
+  backdrop-filter: blur(36px) saturate(200%) brightness(1.05);
+  border: 0;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 1),
+    inset 1px 0 0 rgb(255 255 255 / 0.6),
+    inset 0 -1px 0 rgb(255 255 255 / 0.3),
+    0 0 0 1px rgb(255 255 255 / 0.4),
+    0 0 0 1.5px rgb(15 23 42 / 0.06),
+    0 28px 64px -20px rgb(30 41 82 / 0.38),
+    0 10px 24px -12px rgb(30 41 82 / 0.18);
+}
+/* Borda de luz do vidro: brilhante no canto de cima, quase some no meio e volta
+   de leve embaixo (como a luz contornando uma lâmina de vidro). */
+.vidro::before,
+.vidro-flutuante::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.25px;
+  background: linear-gradient(150deg,
+    rgb(255 255 255 / 0.95) 0%, rgb(255 255 255 / 0.5) 18%,
+    rgb(255 255 255 / 0.08) 45%, rgb(255 255 255 / 0.08) 62%,
+    rgb(255 255 255 / 0.55) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Fundo: céu de manhã clara, difuso. Azul suave no alto, um toque lilás no meio
+   e o brilho morno do nascer do sol perto do horizonte; nuvens brancas e
+   desfocadas passam devagar. Dá ao vidro algo bonito para desfocar. */
+.fundo-vidro {
+  isolation: isolate;
+  /* Recorta as nuvens na área da página (sem virar área de rolagem). */
+  overflow: clip;
+  background:
+    radial-gradient(60rem 26rem at 18% 112%, rgb(255 214 170 / 0.55), transparent 65%),
+    radial-gradient(46rem 22rem at 78% 108%, rgb(255 190 200 / 0.38), transparent 65%),
+    radial-gradient(70rem 40rem at 50% -18%, rgb(170 210 255 / 0.85), transparent 70%),
+    radial-gradient(30rem 20rem at 8% 92%, rgb(255 200 140 / 0.45), transparent 70%),
+    linear-gradient(180deg, #dcebff 0%, #e8eeff 36%, #f3eefa 66%, #fdf1e6 100%);
+  background-attachment: fixed;
+}
+.fundo-vidro::before,
+.fundo-vidro::after {
+  content: '';
+  position: absolute;
+  inset: -6%;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(30px);
+  opacity: 1;
+}
+/* Nuvens altas, largas e espaçadas. */
+.fundo-vidro::before {
+  background:
+    radial-gradient(30rem 8rem at 22% 18%, rgb(255 255 255 / 0.95), transparent 68%),
+    radial-gradient(36rem 9rem at 70% 12%, rgb(255 255 255 / 0.85), transparent 68%),
+    radial-gradient(26rem 7rem at 46% 38%, rgb(255 255 255 / 0.75), transparent 68%),
+    radial-gradient(24rem 6rem at 88% 46%, rgb(255 255 255 / 0.6), transparent 68%);
+  animation: nuvens-a 90s ease-in-out infinite alternate;
+}
+/* Nuvens baixas, mais quentes, perto do horizonte. */
+.fundo-vidro::after {
+  background:
+    radial-gradient(30rem 7rem at 30% 72%, rgb(255 248 240 / 0.7), transparent 70%),
+    radial-gradient(26rem 6rem at 82% 64%, rgb(255 255 255 / 0.6), transparent 70%);
+  animation: nuvens-b 120s ease-in-out infinite alternate;
+}
+@keyframes nuvens-a { from { transform: translate3d(-3%, 0, 0); } to { transform: translate3d(4%, 1.5%, 0); } }
+@keyframes nuvens-b { from { transform: translate3d(3%, 0, 0); } to { transform: translate3d(-4%, -1%, 0); } }
+/* Conteúdo que rola some suavemente nas bordas, em vez de ser cortado. */
+@utility borda-suave-rolagem {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 18px), transparent 100%);
+}
+/* Só a borda de baixo (listas com cabeçalho fixo em cima). */
+@utility borda-suave-rolagem-baixo {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
+}
+/* ── Foco dos campos (estilo iOS) ─────────────────────────────
+   O campo clareia, ganha um halo azul suave e um brilho difuso; tudo com
+   transição macia. Sem contorno duro do navegador. */
+.campo-vidro {
+  background-color: rgb(255 255 255 / 0.45);
+  border: 1px solid rgb(15 23 42 / 0.08);
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.05);
+  transition:
+    background-color 260ms var(--ease-suave),
+    border-color 260ms var(--ease-suave),
+    box-shadow 420ms var(--ease-suave);
+}
+.campo-vidro:hover:not(:focus):not([readonly]) { background-color: rgb(255 255 255 / 0.62); border-color: rgb(15 23 42 / 0.12); }
+.campo-vidro:focus,
+.campo-vidro:focus-visible {
+  outline: none;
+  background-color: rgb(255 255 255 / 0.92);
+  border-color: rgb(59 130 246 / 0.55);
+  box-shadow:
+    0 0 0 4px rgb(59 130 246 / 0.14),
+    0 8px 24px -10px rgb(37 99 235 / 0.35),
+    inset 0 1px 1px rgb(15 23 42 / 0.03);
+}
+/* Campo "sem caixa" (tabela, propriedades, nome): só aparece no hover/foco. */
+.campo-limpo {
+  background-color: transparent;
+  border: 1px solid transparent;
+  transition:
+    background-color 220ms var(--ease-suave),
+    border-color 220ms var(--ease-suave),
+    box-shadow 380ms var(--ease-suave);
+}
+.campo-limpo:hover:not(:focus):not(:disabled) { background-color: rgb(15 23 42 / 0.04); }
+.campo-limpo:focus,
+.campo-limpo:focus-visible {
+  outline: none;
+  background-color: rgb(255 255 255 / 0.92);
+  border-color: rgb(59 130 246 / 0.5);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.13), 0 6px 18px -10px rgb(37 99 235 / 0.35);
+}
+
+/* Calendário: o mês desliza para o lado ao trocar. */
+@keyframes mes-da-direita { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes mes-da-esquerda { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes calendario-abrir {
+  from { opacity: 0; transform: translateY(-6px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.anim-mes-direita { animation: mes-da-direita 320ms var(--ease-suave) both; }
+.anim-mes-esquerda { animation: mes-da-esquerda 320ms var(--ease-suave) both; }
+.anim-calendario { animation: calendario-abrir 420ms var(--ease-mola) both; transform-origin: top center; }
+
+/* Botão que "afunda" ao toque, com retorno de mola. */
+.pressionavel { transition: transform 420ms var(--ease-mola), box-shadow 200ms ease, background-color 200ms ease, opacity 200ms ease; }
+.pressionavel:active:not(:disabled) { transform: scale(0.96); transition-duration: 120ms; }
+@keyframes mola-surgir {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.anim-mola { animation: mola-surgir 460ms var(--ease-suave) both; }
+@keyframes suave-entrar {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes suave-surgir {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes linha-nova {
+  0%   { opacity: 0; transform: translateY(-4px); background-color: rgb(239 246 255); }
+  35%  { opacity: 1; transform: translateY(0); background-color: rgb(239 246 255); }
+  100% { background-color: transparent; }
+}
+.anim-entrar { animation: suave-entrar 280ms var(--ease-suave) both; }
+.anim-surgir { animation: suave-surgir 240ms var(--ease-suave) both; }
+.anim-linha-nova { animation: linha-nova 1100ms var(--ease-suave) both; }
+
+/* Classes de entrada usadas pelo app (modais, menus, painéis): sem a biblioteca de
+   animação elas não faziam nada. Combinam opacidade, escala e deslocamento. */
+@keyframes entrar-composto {
+  from {
+    opacity: var(--entrar-opacidade, 1);
+    transform: translate3d(var(--entrar-x, 0), var(--entrar-y, 0), 0) scale(var(--entrar-escala, 1));
+  }
+}
+.animate-in { animation: entrar-composto 240ms var(--ease-suave) both; }
+.fade-in { --entrar-opacidade: 0; }
+.zoom-in-95 { --entrar-escala: 0.95; }
+.slide-in-from-top-2 { --entrar-y: -0.5rem; }
+.slide-in-from-bottom-4 { --entrar-y: 1rem; }
+.slide-in-from-left-4 { --entrar-x: -1rem; }
+.slide-in-from-right-4 { --entrar-x: 1rem; }
+.slide-in-from-right { --entrar-x: 100%; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation: none !important;
@@ -142,4 +360,12 @@ textarea:disabled {
     background: white !important;
     height: auto !important;
   }
+}
+
+/* Ajustes de altura não devem desligar as transições visuais do campo. */
+.expandable-textarea {
+  transition: background-color 650ms cubic-bezier(.4, 0, .2, 1), border-color 650ms cubic-bezier(.4, 0, .2, 1), box-shadow 700ms cubic-bezier(.4, 0, .2, 1), height var(--expand-height-duration, 0ms) cubic-bezier(.22, 1, .36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .expandable-textarea { transition: none; }
 }

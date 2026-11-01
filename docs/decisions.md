@@ -710,7 +710,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-053 — Documento EAP desenhado com o layout da aba EAP
 
 - **Data:** 2026-10-21.
-- **Status:** implementada na 1.34.0; complementa a ADR-035 (estrutura da aba). Substituída pela [ADR-074](#adr-074--eap-gráfica-no-layout-do-modelo-com-as-cores-da-aba) na 1.44.0 e retomada pela [ADR-075](#adr-075--eap-gráfica-idêntica-à-aba-eapwbs) na 1.44.1.
+- **Status:** implementada nesta entrega (1.34.0); complementa a ADR-035 (estrutura da aba) passando a usar também o desenho da aba. Reafirmada em 2026-10-31 pelo usuário ("EAP gráfica idêntica ao menu EAP/WBS"), mesmo no documento no modelo "04 Aula GP".
 - **Contexto:** o documento lia a estrutura da aba, mas desenhava com layout próprio em colunas e cor única, ignorando o formato do menu Organizar, as cores e os conectores.
 - **Escolha:** `GET /api/projects/:id/eap` devolve também a árvore `WbsNode` (`arvore`); o documento atual desenha a EAP gráfica com `computeLayout` e a mesma medição de larguras da aba (`lib/wbsMedidas.ts`), com nós recolhidos expandidos. Versões antigas e projetos sem WBS mantêm o layout em colunas.
 - **Justificativa:** um só motor de layout garante que documento e aba não divirjam.
@@ -958,24 +958,50 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** a cada alteração a distribuição é recalculada (uma ou duas passadas); um bloco atômico maior que uma folha transborda. Testes em jsdom (sem layout) veem uma folha só.
 - **Referências:** `components/documentos/editor/folha.tsx` (`Folha`, `SecaoTexto`, `SecaoTabela`, `ListaPaginada`, `CampoTexto` com `fragmento`), `lib/printPageStyle.ts` (`printFolhasStyle`).
 
-## ADR-074 — EAP gráfica no layout do modelo, com as cores da aba
+## ADR-076 — Histórico de versões do Editar projeto, linear como commits
+
+**Parcialmente substituída pela ADR-078:** versão ativa e restauração. O histórico continua preservado.
 
 - **Data:** 2026-10-31.
-- **Status:** substituída pela [ADR-075](#adr-075--eap-gráfica-idêntica-à-aba-eapwbs) em 2026-10-31; foi publicada na 1.44.0 e substituía a [ADR-053](#adr-053--documento-eap-desenhado-com-o-layout-da-aba-eap).
-- **Contexto:** o usuário pediu que o documento EAP siga o modelo "04 Aula GP - Modelo de Estrutura Analítica do Projeto" sem mudar as cores da EAP gráfica para azul. Com o layout da aba (ADR-053), um projeto arranjado em "Horizontal" (41 itens numa coluna) era reduzido a cerca de 30% para caber na folha e ficava ilegível — consequência já prevista na ADR-053.
-- **Escolha:** a EAP gráfica usa sempre o layout em colunas do modelo (`computeEapColumnLayout`: raiz no topo, fases lado a lado, itens empilhados abaixo de cada fase) e pinta cada bloco com fundo, borda e cor do texto do nó correspondente da aba (`arvore.nodes[id].style`). Com muitas fases, os blocos ficam mais estreitos (mínimo de 70 px) e o texto quebra em mais linhas em vez de encolher (`eapColunasParaLargura`). Sem a árvore da aba (versões antigas, projetos sem WBS), os blocos usam o azul do modelo.
-- **Justificativa:** o arranjo do modelo cabe numa folha A4 paisagem com texto legível para qualquer formato escolhido na aba; as cores continuam as que a equipe definiu.
-- **Alternativas consideradas:** manter o layout da aba e dividir a árvore em várias folhas (perde a visão de conjunto e foge do modelo); manter o layout da aba e só limitar a escala mínima (a árvore transbordaria a folha).
-- **Consequências:** o documento não reproduz mais o arranjo do menu Organizar da aba, só as cores; `EapGraficaDaAba` foi removido. Árvores com colunas muito longas ainda são reduzidas na altura.
-- **Referências:** `components/projetos/documentacao/EapDocumentSheet.tsx`, `lib/eapLayout.ts` (`computeEapColumnLayout`, `eapColunasParaLargura`), `__tests__/components/projetos/EapGrafica.test.tsx`.
+- **Status:** implementada no código; pendente de publicação.
+- **Contexto:** o usuário pediu, no Editar projeto, um histórico das alterações com a possibilidade de voltar a uma versão "como no git", sem nunca existirem duas versões atuais. As edições do projeto não eram registradas (só o Termo tinha versões, pelo fluxo de aprovação).
+- **Escolha:** tabela `ProjetoVersao` (migration `20261031180000_projeto_versoes`): cada salvamento do Editar projeto grava o conteúdo do formulário (campos e macro fases) com número sequencial, autor e a lista do que mudou; no primeiro salvamento a v1 guarda o estado anterior. A última versão é a atual. "Restaurar" carrega uma versão antiga no formulário como alterações não salvas, com a comparação visível; salvar cria uma versão nova com `restauradaDe` — as versões nunca são reescritas. Restaurar não exclui fases: fases atuais que a versão não tinha continuam, e excluir fase só pela confirmação de impacto (ADR-077). Falha ao gravar a versão não impede o salvamento do projeto.
+- **Justificativa:** histórico linear e imutável é fácil de entender e auditar; restaurar como alteração pendente reaproveita as permissões e validações do salvamento normal.
+- **Alternativas consideradas:** guardar as versões no `AuditLog` (mistura auditoria com conteúdo restaurável); "voltar" reescrevendo o projeto direto pela versão (pularia a revisão e as regras de cada campo); reverter apagando versões posteriores (perderia histórico).
+- **Consequências:** o conteúdo da versão vem do formulário de quem salvou (validado por schema); os textos do Termo continuam indo para aprovação como antes. Versões de antes desta entrega não existem.
+- **Referências:** `prisma/schema.prisma` (`ProjetoVersao`), `services/projetoVersoes.ts`, `app/actions/projetoEdicao.ts`, `components/projetos/HistoricoProjeto.tsx`, `lib/alteracoesProjeto.ts` (`formDaVersao`).
 
-## ADR-075 — EAP gráfica idêntica à aba EAP/WBS
+## ADR-077 — Excluir macro fase pelo Editar projeto com o mesmo efeito da EAP
 
 - **Data:** 2026-10-31.
-- **Status:** implementada no código; pendente de publicação (1.44.1). Substitui a [ADR-074](#adr-074--eap-gráfica-no-layout-do-modelo-com-as-cores-da-aba) e retoma a [ADR-053](#adr-053--documento-eap-desenhado-com-o-layout-da-aba-eap).
-- **Contexto:** depois da 1.44.0, o usuário pediu que a EAP gráfica do documento mostre "exatamente como está no menu EAP/WBS, idêntico", mesmo com o restante do documento no modelo "04 Aula GP".
-- **Escolha:** com a árvore da aba, a EAP gráfica volta a ser desenhada por `EapGraficaDaAba` (mesmo `computeLayout`, larguras, cores, bordas e conectores da aba, nós recolhidos expandidos). O layout em colunas fica só para versões antigas e projetos sem WBS. O restante do modelo da 1.44.0 continua (títulos, quadro, EAP em texto, numeração).
-- **Justificativa:** a aba é a fonte da estrutura e do desenho; o documento deve reproduzi-la sem diferença.
-- **Alternativas consideradas:** manter as colunas do modelo com as cores da aba (ADR-074, recusada pelo usuário).
-- **Consequências:** árvores organizadas de forma muito alta ou larga na aba (ex.: "Horizontal" com muitos itens) são reduzidas para caber numa folha A4 paisagem e ficam com texto pequeno; o ajuste é feito no menu Organizar da aba.
-- **Referências:** `components/projetos/documentacao/EapGraficaDaAba.tsx`, `components/projetos/documentacao/EapDocumentSheet.tsx`, `__tests__/components/projetos/EapGraficaDaAba.test.tsx`.
+- **Status:** implementada no código; pendente de publicação.
+- **Contexto:** a lixeira do Cronograma Financeiro só tirava a linha do formulário. A sincronização das macro fases com a EAP só cria e atualiza itens (por nome), então a fase continuava na EAP, nas sprints, nas tarefas e na planilha, e voltava ao abrir a tela. Renomear uma fase criava outra na EAP pelo mesmo motivo.
+- **Escolha:** fase já salva é excluída na hora, depois de uma confirmação que mostra o impacto (itens da EAP abaixo, sprint e tarefas, horas registradas, orçado/realizado da planilha, Termo) e pede motivo quando a sprint tem dados. A exclusão usa `deleteNode` da EAP (subárvore, tarefas, sprint com histórico e motivo) e remove a fase do cadastro `ProjectMacroFase`, para a sincronização não a recriar. O formulário passa a enviar o id do item da EAP de cada fase existente, e o salvamento renomeia o item antes de sincronizar.
+- **Justificativa:** um único caminho de exclusão mantém EAP, sprints, tarefas, planilha e Termo coerentes, com as mesmas regras de motivo da aba EAP/WBS.
+- **Alternativas consideradas:** excluir no "Salvar" junto com as outras alterações (o impacto ficaria escondido até depois de salvar); fazer a sincronização remover itens que sumiram da lista (apagaria dados sem confirmação).
+- **Consequências:** a exclusão de fase não depende de Salvar e entra no histórico do projeto (ADR-076). Fase nova, ainda não salva, sai do formulário sem confirmação.
+- **Referências:** `app/actions/projetoEdicao.ts` (`impactoExclusaoFaseAction`, `excluirFaseAction`), `components/projetos/ExcluirFaseDialog.tsx`, `app/actions/projetos.ts` (`renomearFasesDaEap`), `services/wbsService.ts` (`deleteNode`).
+
+## ADR-079 — Preferência de aparência local e aplicação inicial em Editar Projeto
+
+- **Data do registro:** 2026-10-31.
+- **Status:** implementada.
+- **Contexto:** adaptar a luminosidade visual ao horário, com liberdade para manter claro, escuro ou seguir o sistema, inicialmente em Editar Projeto.
+- **Escolha:** preferência versionada no localStorage do navegador, automático como padrão, paletas CSS limitadas ao formulário e atualização pelo relógio local a cada 30 segundos. Não aplicar tema global nesta etapa.
+- **Justificativa:** permite adoção restrita à tela solicitada sem mudar contratos de serviços ou o cadastro do usuário.
+- **Alternativas consideradas nesta entrega:** persistir na conta exigiria contrato e sincronização adicionais; tema global ampliaria o escopo além da tela solicitada.
+- **Consequências:** escolha compartilhada entre abas da mesma origem; não sincroniza entre dispositivos ou perfis de navegador e não é específica por usuário em dispositivos compartilhados. Sem armazenamento disponível, o automático continua funcionando, e a configuração informa falha ao salvar. Sem dependências ou migrations.
+- **Condição de revisão:** expansão do tema para outras telas ou necessidade de preferência por conta.
+- **Referências:** `lib/appearance.ts`, `hooks/useAppearance.ts`, `components/aparencia/ProjectAppearance.tsx`, `components/aparencia/AppearanceSettings.tsx`, `app/configuracoes/aparencia/page.tsx`.
+
+## ADR-078 — Versão ativa independente da numeração do histórico
+
+- **Data:** 2026-11-01.
+- **Status:** implementada; substitui a parte de restauração da ADR-076.
+- **Contexto:** restaurar v1 deve mostrar v1 como atual, preservando as versões posteriores recuperáveis.
+- **Escolha:** marcador `ProjetoVersao.ativa` persistido, com índice único parcial por projeto. Restauração troca o marcador dentro de transação sem criar ou apagar versões. O salvamento seguinte usa o maior número mais um e pede confirmação na interface quando a ativa é anterior à última.
+- **Justificativa:** distingue estado atual e sequência de salvamentos sem perder histórico.
+- **Alternativas:** apagar versões posteriores foi rejeitado pelo usuário; criar uma nova versão na restauração não atende ao comportamento solicitado.
+- **Consequências:** migration inicializa a última versão como ativa; listagem e seleção são limitadas por tenant e projeto. A aplicação de dados segue o fluxo existente de atualização do projeto; sua transação é distinta da transação do marcador/histórico, limitação já existente de consistência entre etapas.
+- **Referências:** `services/projetoVersoes.ts`, `components/projetos/ProjetoFormPage.tsx`, migration `20261101074000_projeto_versao_ativa`.
+- **Revisão:** unificação transacional das etapas de atualização e versionamento.

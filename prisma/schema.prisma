@@ -99,6 +99,7 @@ model Project {
   usuariosRole       UserProjectRole[]
   permissoesUsuarios UserPermission[]
   macroFases         ProjectMacroFase[]
+  versoes            ProjetoVersao[]
 
   stakeholders            ProjectStakeholder[]
   documentRevisionsDrafts DocumentDraft[]
@@ -125,6 +126,30 @@ model ProjectMacroFase {
   custo      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+/// Versões do Editar projeto (histórico linear, como commits): cada salvamento
+/// grava o conteúdo do formulário. Restaurar carrega uma versão antiga no
+/// formulário e o salvamento seguinte vira uma versão nova (`restauradaDe`).
+model ProjetoVersao {
+  ativa        Boolean @default(false)
+  id           String   @id @default(cuid())
+  tenantId     String
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  numero       Int
+  /// Campos do Editar projeto e macro fases, como ficaram neste salvamento.
+  conteudo     Json
+  /// Rótulos do que mudou em relação à versão anterior.
+  alteracoes   Json
+  /// Número da versão restaurada quando este salvamento a restaurou.
+  restauradaDe Int?
+  autorId      String?
+  autorNome    String   @default("")
+  createdAt    DateTime @default(now())
+
+  @@unique([projectId, numero])
+  @@index([tenantId, projectId])
 }
 
 model ProjectDraft {

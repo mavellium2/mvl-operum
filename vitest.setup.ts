@@ -23,3 +23,19 @@ vi.mock('next/navigation', () => ({
   usePathname: vi.fn(() => '/'),
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
+
+// Browser appearance APIs used by the adaptive UI; disable motion in DOM tests.
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = vi.fn(query => ({
+    matches: query === '(prefers-reduced-motion: reduce)', media: query, onchange: null,
+    addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn(),
+  }))
+}
+
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}

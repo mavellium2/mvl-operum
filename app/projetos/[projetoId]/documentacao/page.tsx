@@ -5,6 +5,7 @@ import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import { canProjectPermission } from '@/services/projectAccess'
 import { listarAtasPorProjeto } from '@/services/ataService'
+import { resumoDaAta } from '@/lib/atasLista'
 import prisma from '@/lib/prisma'
 import { carregarStakeholdersDoProjeto } from '@/services/stakeholdersDoProjeto'
 
@@ -76,13 +77,7 @@ export default async function DocumentacaoPage({ params, searchParams }: { param
     <div className="h-full flex flex-col overflow-hidden">
       <DocumentacaoLayout
         projetoId={projetoId}
-        atas={atas.map(a => ({
-          id: a.id,
-          numero: a.numero,
-          data: (a.data ?? a.createdAt)?.toISOString() ?? '',
-          elaboradoPor: a.elaboradoPor ?? '',
-          local: a.local,
-        }))}
+        atas={atas.map(a => resumoDaAta(a))}
         gerente={gerente}
         membros={membros}
         cadastroStakeholders={cadastroStakeholders}

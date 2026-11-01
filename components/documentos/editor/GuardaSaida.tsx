@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
+import GlassButton from '@/components/ui/GlassButton'
+import { FileClock, Save, Trash2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 
 /**
@@ -14,6 +17,7 @@ import Modal from '@/components/ui/Modal'
  */
 
 export interface SaidaDocumento {
+  contexto?: 'projeto' | 'documento'
   /** Há alterações que ainda não viraram versão. */
   pendente: boolean
   /** Abre o fluxo de salvar versão; a saída continua quando não houver mais pendência. */
@@ -121,32 +125,24 @@ export function useGuardaSaida(saida: SaidaDocumento | undefined) {
     }
   }
 
+  const projeto = saida?.contexto === 'projeto'
   const dialogo = (
-    <Modal isOpen={destino !== null} onClose={fechar} title="Alterações não salvas" maxWidth="max-w-md">
-      <div className="flex flex-col gap-4 py-2">
-        <p className="text-sm text-slate-600">
-          Você alterou este documento e ainda não salvou uma versão. O que deseja fazer antes de sair?
-        </p>
-        {erro && <p role="alert" className="text-sm text-red-700">{erro}</p>}
-        <div className="flex flex-col gap-2">
-          <button type="button" disabled={ocupado} onClick={() => void escolher('salvar')} className="rounded-lg bg-emerald-600 px-4 py-2.5 text-left text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
-            Salvar
-            <span className="block text-xs font-normal text-emerald-50">Salva uma versão (enviada para aprovação) e depois sai.</span>
-          </button>
-          {saida?.salvarDepois && (
-            <button type="button" disabled={ocupado} onClick={() => void escolher('depois')} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-left text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50">
-              Salvar mais tarde
-              <span className="block text-xs font-normal text-slate-500">Guarda como rascunho só seu; continua de onde parou quando voltar.</span>
-            </button>
-          )}
-          <button type="button" disabled={ocupado} onClick={() => void escolher('descartar')} className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-left text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50">
-            Descartar alterações
-            <span className="block text-xs font-normal text-red-600">Volta ao documento salvo; o que foi alterado se perde.</span>
-          </button>
-          <button type="button" disabled={ocupado} onClick={fechar} className="px-4 py-2 text-sm text-slate-600 hover:underline disabled:opacity-50">
-            Continuar editando
-          </button>
+    <Modal isOpen={destino !== null} onClose={fechar} title="Alterações não salvas" maxWidth="max-w-lg" className="phase-delete-dialog" hideHeader>
+      <div className="px-6 py-6 sm:px-7">
+        <div className="flex items-start justify-between gap-4">
+          <div><p className="phase-delete-muted mb-2 text-xs">Antes de sair</p><h2 className="phase-delete-heading text-2xl font-semibold tracking-tight">Alterações não salvas</h2></div>
+          <GlassCloseButton label="Fechar aviso" disabled={ocupado} onClick={fechar} />
         </div>
+        <p className="phase-delete-muted mb-5 mt-3 text-sm leading-relaxed">{projeto ? 'Suas alterações no projeto ainda não foram salvas.' : 'Você alterou este documento e ainda não salvou uma versão.'} Escolha como deseja continuar.</p>
+        {erro && <p role="alert" className="mb-4 text-sm text-rose-400">{erro}</p>}
+        <div className="flex flex-col gap-3">
+          <GlassButton className="unsaved-choice" disabled={ocupado} onClick={() => void escolher('salvar')}>
+            <Save className="h-4 w-4 shrink-0" /><span><span className="block font-semibold">Salvar e sair</span><span className="mt-1 block text-xs font-normal opacity-75">{projeto ? 'Salva o projeto e registra uma nova versão no histórico.' : 'Salva uma versão para aprovação e depois sai.'}</span></span>
+          </GlassButton>
+          {saida?.salvarDepois && <GlassButton className="unsaved-choice" disabled={ocupado} onClick={() => void escolher('depois')}><FileClock className="h-4 w-4 shrink-0" /><span><span className="block font-semibold">Guardar para depois</span><span className="mt-1 block text-xs font-normal opacity-75">Guarda um rascunho só seu para continuar quando voltar.</span></span></GlassButton>}
+          <GlassButton className="unsaved-choice unsaved-discard" disabled={ocupado} onClick={() => void escolher('descartar')}><Trash2 className="h-4 w-4 shrink-0" /><span><span className="block font-semibold">Sair sem salvar</span><span className="mt-1 block text-xs font-normal opacity-75">Descarta as edições pendentes. O conteúdo já salvo é preservado.</span></span></GlassButton>
+        </div>
+        <div className="mt-5 flex justify-end border-t border-white/10 pt-5"><GlassButton variant="primary" autoFocus disabled={ocupado} onClick={fechar}>Continuar editando</GlassButton></div>
       </div>
     </Modal>
   )

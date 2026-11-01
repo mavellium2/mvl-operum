@@ -11,6 +11,8 @@ interface ModalProps {
   children: React.ReactNode
   maxWidth?: string     // Ex: 'max-w-md', 'max-w-4xl', 'max-w-5xl'
   className?: string    // Para sobrescrever cor de fundo, texto, etc.
+  closeButton?: React.ReactNode
+  scrollContent?: boolean
   hideHeader?: boolean  // Se true, remove o cabeçalho padrão do modal
 }
 
@@ -21,7 +23,9 @@ export default function Modal({
   children,
   maxWidth = 'max-w-md',
   className = 'bg-white text-gray-900',
-  hideHeader = false
+  hideHeader = false,
+  scrollContent = true,
+  closeButton
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
@@ -37,7 +41,7 @@ export default function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+      className={`fixed inset-0 z-[100] flex justify-center p-4 sm:p-6 ${scrollContent ? 'items-center' : 'items-start overflow-y-auto'}`}
       ref={dialogRef}
       tabIndex={-1}
       style={{ zIndex }}
@@ -56,13 +60,14 @@ export default function Modal({
       
       {/* Container Principal do Modal */}
       <div
-        className={`relative z-10 w-full ${maxWidth} rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200 overflow-hidden ${className}`}
+        className={`relative z-10 w-full ${maxWidth} rounded-2xl shadow-2xl flex flex-col ${scrollContent ? 'max-h-[95vh]' : 'my-auto shrink-0'} animate-in zoom-in-95 duration-200 overflow-hidden ${className}`}
         onClick={e => e.stopPropagation()}
       >
         {/* Cabeçalho Padrão (Ocultável) */}
         {!hideHeader && title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200/50 shrink-0">
             <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
+            {closeButton ?? (
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors rounded-lg p-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -72,11 +77,12 @@ export default function Modal({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+            )}
           </div>
         )}
         
         {/* Área de Conteúdo */}
-        <div className={`overflow-y-auto flex-1 ${hideHeader ? '' : 'px-6 py-4'}`}>
+        <div className={`${scrollContent ? 'overflow-y-auto flex-1' : 'overflow-visible'} ${hideHeader ? '' : 'px-6 py-4'}`}>
           {children}
         </div>
       </div>

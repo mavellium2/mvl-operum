@@ -14,6 +14,7 @@ import { getTree } from '@/services/wbsService'
 import { validateAvatarUrl } from '@/lib/validation/avatarUrl'
 import { requireProjectPermission } from '@/services/projectAccess'
 import { reconcileMacroFases } from '@/services/macroFaseSyncService'
+import { registrarVersaoProjeto, type RegistroVersao } from '@/services/projetoVersoes'
 import { parseHoras } from '@/lib/validation/horas'
 import { dependenciasDoProjeto, mensagemDeBloqueio, type DependenciaProjeto } from '@/services/projetoDependencias'
 import { primeiraDataDeTarefa } from '@/services/inicioDoProjeto'
@@ -165,12 +166,16 @@ export async function getProjetoAction(id: string) {
       },
       select: { userId: true },
     })
+    // Nome e foto do gerente: o seletor do Editar projeto mostra mesmo para quem não lista usuários.
+    const gerenteUsuario = gerente
+      ? await prisma.user.findFirst({ where: { id: gerente.userId, tenantId }, select: { id: true, name: true, avatarUrl: true } })
+      : null
 
     const macroFasesSyncPending = (projeto.macroFasesRevision ?? 0) > (projeto.macroFasesSyncedRevision ?? 0)
 
     // Fonte única de macrofases = árvore WBS top-level (EAP/Planilha).
     // Fallback: ProjectMacroFase (projetos legados sem árvore).
-    let macroFasesFromTree: Array<{ fase: string; dataLimite: string; custo: string }> | null = null
+    let macroFasesFromTree: Array<{ nodeId: string; fase: string; dataLimite: string; custo: string }> | null = null
     const tree = await getTree(id, tenantId)
     const planilha = await planilhaDoProjeto(id, tenantId)
     const fasesCalculadas = new Map(planilha?.macrofases.map(f => [f.nodeId, f]) ?? [])
@@ -181,6 +186,7 @@ export async function getProjetoAction(id: string) {
           const fase = tree.nodes[faseId]
           const props = (fase?.properties as Record<string, unknown>) ?? {}
           return {
+            nodeId: faseId,
             fase: fase?.title ?? '',
             dataLimite: fasesCalculadas.get(faseId)?.dataFim ?? (typeof props.dataLimite === 'string' ? props.dataLimite : ''),
             custo: (fasesCalculadas.get(faseId)?.atividades.some(a => a.totalOrcado !== null) ? fasesCalculadas.get(faseId)!.totalOrcado : typeof props.custo === 'number' ? props.custo : null)?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? (typeof props.custo === 'string' ? props.custo : ''),
@@ -203,19 +209,50 @@ export async function getProjetoAction(id: string) {
       },
       departamentosAssociados: associados.map(a => a.department),
       gerenteId: gerente?.userId ?? '',
+      gerente: gerenteUsuario,
     }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao buscar projeto' }
   }
 }
 
+/**
+ * Renomeia na EAP as macro fases editadas no formulário (pelo id do item), antes da
+ * sincronização por nome. Ignora ids que não são fases do projeto e nomes já usados.
+ */
+async function renomearFasesDaEap(projetoId: string, tenantId: string, fases: { nodeId: string; titulo: string }[]) {
+  await prisma.$transaction(async tx => {
+    const raiz = await tx.wbsNode.findFirst({ where: { projectId: projetoId, tenantId, parentId: null }, select: { id: true } })
+    if (!raiz) return
+    const nivel1 = await tx.wbsNode.findMany({ where: { projectId: projetoId, tenantId, parentId: raiz.id }, select: { id: true, title: true } })
+    const porId = new Map(nivel1.map(n => [n.id, n]))
+    const norm = (t: string) => t.trim().toLowerCase()
+    let mudou = false
+    for (const f of fases) {
+      const no = porId.get(f.nodeId)
+      if (!no || no.title === f.titulo) continue
+      if (nivel1.some(n => n.id !== no.id && norm(n.title) === norm(f.titulo))) continue
+      await tx.wbsNode.update({ where: { id: no.id }, data: { title: f.titulo } })
+      no.title = f.titulo
+      mudou = true
+    }
+    // A versão da EAP fica na raiz: avança para quem está com a aba aberta recarregar.
+    if (mudou) await tx.wbsNode.update({ where: { id: raiz.id }, data: { version: { increment: 1 } } })
+  }, { isolationLevel: 'Serializable', timeout: 15000 })
+}
+
 export async function updateProjetoAction(
   _prevState: unknown,
   id: string,
-  data: Record<string, unknown> & { ano?: string | number; macroFases?: Array<{ fase: string; dataLimite: string; custo: string }> },
+  data: Record<string, unknown> & { ano?: string | number; macroFases?: Array<{ fase: string; dataLimite: string; custo: string; nodeId?: string }> },
+  /** Versão do histórico do Editar projeto (conteúdo do formulário e o que mudou). */
+  versao?: RegistroVersao,
 ) {
   try {
     data = { ...data }
+    // Fase já existente na EAP: o id permite renomear o item em vez de criar outro com o nome novo.
+    const renomear = (data.macroFases ?? []).filter(f => typeof f.nodeId === 'string' && f.nodeId && f.fase.trim()).map(f => ({ nodeId: f.nodeId as string, titulo: f.fase.trim() }))
+    if (data.macroFases) data.macroFases = data.macroFases.map(({ fase, dataLimite, custo }) => ({ fase, dataLimite, custo }))
     const session = await verifySession()
     const { tenantId } = session
     await requireProjectPermission(session, id, 'projeto:editar')
@@ -253,6 +290,7 @@ export async function updateProjetoAction(
       ...(endDate !== undefined && { endDate: toISO(endDate) }),
     })
 
+    if (macroFases !== undefined && renomear.length) await renomearFasesDaEap(id, tenantId, renomear)
     const macroFasesSync = macroFases !== undefined ? await reconcileMacroFases(id, tenantId, session.userId) : undefined
 
     const departamentos = rest.departamentos as string[] | undefined
@@ -283,6 +321,10 @@ export async function updateProjetoAction(
     if (Object.keys(complementares).length) {
       const previous = await prisma.documentVersion.findFirst({ where: { projectId: id, documentType: 'CHARTER', status: 'APPROVED' }, orderBy: [{ approvedAt: 'desc' }, { sequence: 'desc' }] })
       await submeterDocumento(session, id, 'CHARTER', { ...((previous?.payload as object) ?? {}), ...complementares }, { commitTitle: 'Dados complementares atualizados na edição do projeto', versao: previous?.versao ?? '1.0', elaboradoPor: '', aprovadoPor: '', dataAprovacao: '' })
+    }
+    if (versao) {
+      // Só confirma o sucesso após persistir a versão ou seu marcador ativo.
+      await registrarVersaoProjeto({ tenantId, projectId: id, userId: session.userId }, versao)
     }
     revalidatePath('/projetos')
     revalidatePath(`/projetos/${id}`, 'layout')

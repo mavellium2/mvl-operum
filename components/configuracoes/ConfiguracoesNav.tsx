@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { UserRound, ShieldCheck, Landmark, Plug, PenLine } from 'lucide-react'
+import { UserRound, ShieldCheck, Landmark, Plug, PenLine, Palette } from 'lucide-react'
 
 const GROUPS = [
   {
     label: 'Conta',
     items: [
+      { href: '/configuracoes/aparencia', label: 'Aparência', Icon: Palette },
       { href: '/configuracoes/perfil', label: 'Perfil', Icon: UserRound },
       { href: '/configuracoes/assinatura', label: 'Assinatura', Icon: PenLine },
       { href: '/configuracoes/seguranca', label: 'Segurança', Icon: ShieldCheck },
