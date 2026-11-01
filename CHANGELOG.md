@@ -9,24 +9,14 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.45.0] — 2026-11-01
 
-- Aparência permite fixar o visual da tarde, independentemente do horário, preservando a escolha neste navegador.
-
-- Restaurar versão aplica os dados e ativa a versão escolhida sem criar outra, preservando todas as demais. O próximo salvamento exige confirmação e cria a próxima versão pelo maior número do histórico. Migration adiciona marcador ativo com unicidade por projeto. Falhas mantêm o modal aberto e as edições atuais; fases já salvas ausentes na versão continuam preservadas.
-- Painel Ver o que mudou volta a ter altura limitada e barra de rolagem adaptada ao tema.
-
-- Corrige a resolução de imports .js para fontes TypeScript no MCP em desenvolvimento, permitindo iniciar o serviço por pnpm dev:all sem dependências novas.
-- Modal de alterações não salvas com vidro, botões reutilizáveis, foco em continuar editando e texto adequado ao projeto.
-
-- Imagem do projeto com moldura de vidro, iniciais, hover suave e ajuste de recorte com zoom e posição antes do upload. Prévia local descartada ao fechar; sem dependências novas.
-
-- Expansão e rolagem centralizadas em ExpandableFieldGroup para campos individuais e pares, evitando comandos de scroll concorrentes em Premissas/Restrições e Objetivos/Descrição.
-- Hover dos campos de Editar Projeto com entrada e saída graduais, preservando resposta rápida ao foco e redução de movimento.
-- Menu lateral acompanha a aparência e os materiais de vidro durante a edição do projeto.
-- Materiais de Editar Projeto refeitos com conteúdo fosco, controles flutuantes translúcidos, reflexos de borda e profundidade; fallback sem desfoque e respeito à redução de transparência. Aproximação web inspirada no Liquid Glass da Apple.
-- Paleta noturna refinada: céu azul profundo com luz violeta, painéis de vidro azul-roxo e detalhes lavanda, inspirada nas diretrizes de materiais e modo escuro da Apple.
-- Editar Projeto mantém o layout Liquid Glass e o calendário do Claude, com aparência automática de manhã, tarde e noite e opções claro, escuro e sistema em Configurações → Aparência.
-- Preferência salva neste navegador; atualização automática pelo relógio local e respeito à redução de movimento. Sem dependências novas; inclui migration de versão ativa.
-- Incremento MINOR de 1.44.0, acima de origin/main 1.44.1; conferir novamente antes do merge.
+- **Editar Projeto:** layout compacto com abas Diretrizes/Escopo e Cronograma Financeiro, propriedades laterais, barra inferior centralizada e componentes reutilizáveis de vidro para cards, botões e seletores.
+- **Aparência:** paletas de manhã, tarde e noite, automático por horário local, modos fixos claro/tarde/escuro e preferência do sistema em Configurações → Aparência. Escolha local por navegador; aplicação inicial no editor e em seu menu lateral.
+- **Histórico:** versões preservadas, comparação de alterações, desfazer por campo e confirmação de restauração. Restaurar ativa a versão escolhida sem criar outra; o próximo salvamento pede confirmação e usa o maior número do histórico mais um.
+- **Fases:** inclusão com foco e rolagem suave; exclusão de fases salvas com prévia de impacto na EAP, sprints, tarefas, custos e Termo. Campos pareados expandem/recolhem juntos; datas usam calendário compartilhado.
+- **Imagem do projeto:** visualização ampliada, moldura de vidro e recorte com zoom e posição antes do envio.
+- **Ata e documentação:** lista de atas com resumo/status e revisão de propostas por ata, preservando as correções publicadas na 1.44.1.
+- **Acessibilidade:** foco e teclado nos controles, avisos de alterações pendentes, redução de movimento/transparência e adaptação dos painéis à tela.
+- **Desenvolvimento:** corrige resolução de imports do MCP em `pnpm dev:all`. Sem dependências novas. Inclui migrations de histórico e versão ativa; aplicar migrations e regenerar Prisma antes de executar a versão atualizada.
 
 ## [1.44.1] — 2026-10-31
 
