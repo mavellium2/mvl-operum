@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 const mock = vi.hoisted(() => ({ findFirst: vi.fn(), create: vi.fn(), updateMany: vi.fn(), update: vi.fn(), autor: vi.fn() }))
-vi.mock('@/lib/prisma', () => ({ default: { user: { findFirst: mock.autor }, $transaction: (fn: (tx: unknown) => unknown) => fn({ projetoVersao: mock }) } }))
+vi.mock('@/lib/prisma', () => ({ default: { user: { findFirst: mock.autor }, $transaction: (fn: (tx: unknown) => unknown) => fn({ projetoVersao: mock, user: { findFirst: mock.autor } }) } }))
 import { registrarVersaoProjeto, ConteudoVersaoSchema } from '@/services/projetoVersoes'
 const form = Object.fromEntries(Object.keys(ConteudoVersaoSchema.shape.form.shape).map(key => [key, key === 'departamentos' ? [] : '']))
 const conteudo = ConteudoVersaoSchema.parse({ form, fases: [] })

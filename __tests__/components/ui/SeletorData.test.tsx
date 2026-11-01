@@ -11,7 +11,7 @@ function Campo({ inicial = '', onChange = vi.fn() }: { inicial?: string; onChang
 }
 
 describe('SeletorData', () => {
-  it('digitar dd/mm/aaaa envia a data em ISO; data inválida não envia', () => {
+  it('digitar dd/mm/aaaa envia a data em ISO; data inválida permanece no rascunho com indicação visual', () => {
     const onChange = vi.fn()
     render(<Campo onChange={onChange} />)
     const campo = screen.getByRole('combobox', { name: 'Data' })
@@ -20,7 +20,12 @@ describe('SeletorData', () => {
     expect(onChange).toHaveBeenLastCalledWith('2026-11-30')
     onChange.mockClear()
     fireEvent.change(campo, { target: { value: '31/02/2026' } })
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenLastCalledWith('2026-02-31')
+    expect(campo).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText('Informe uma data válida (dd/mm/aaaa).')).toBeInTheDocument()
+    fireEvent.change(campo, { target: { value: '28/02/2026' } })
+    expect(campo).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.queryByText('Informe uma data válida (dd/mm/aaaa).')).not.toBeInTheDocument()
   })
 
   it('abre o calendário no mês da data, escolhe um dia e fecha', () => {

@@ -1,11 +1,12 @@
 import prisma from '@/lib/prisma'
+import type { Prisma } from '@/lib/generated/prisma'
 
-export async function getOrCreateGerenteProjetoRole(tenantId: string) {
-  const existing = await prisma.role.findFirst({
+export async function getOrCreateGerenteProjetoRole(tenantId: string, db: Prisma.TransactionClient = prisma) {
+  const existing = await db.role.findFirst({
     where: { tenantId, nameKey: 'gerente', scope: 'PROJETO' },
   })
   if (existing) return existing
-  return prisma.role.create({
+  return db.role.create({
     data: { tenantId, name: 'Gerente de Projeto', nameKey: 'gerente', scope: 'PROJETO' },
   })
 }
@@ -19,18 +20,18 @@ function normalizeCargos(role: string | null | undefined): string[] {
     .filter(Boolean)
 }
 
-export async function setProjectManagerRole(userId: string, projectId: string, tenantId: string) {
-  const role = await getOrCreateGerenteProjetoRole(tenantId)
-  const existing = await prisma.userProjectRole.findUnique({
+export async function setProjectManagerRole(userId: string, projectId: string, tenantId: string, db: Prisma.TransactionClient = prisma) {
+  const role = await getOrCreateGerenteProjetoRole(tenantId, db)
+  const existing = await db.userProjectRole.findUnique({
     where: { userId_projectId: { userId, projectId } },
   })
   if (existing) {
-    await prisma.userProjectRole.update({
+    await db.userProjectRole.update({
       where: { id: existing.id },
       data: { roleId: role.id, deletedAt: null },
     })
   } else {
-    await prisma.userProjectRole.create({
+    await db.userProjectRole.create({
       data: { userId, projectId, roleId: role.id },
     })
   }
@@ -39,25 +40,25 @@ export async function setProjectManagerRole(userId: string, projectId: string, t
   // de "cargos/funções" em Stakeholders — senão o gerente não aparece com a
   // função "Gerente de Projeto", embora o papel (UserProjectRole) exista.
   const cargos = normalizeCargos(
-    (await prisma.userProject.findUnique({
+    (await db.userProject.findUnique({
       where: { userId_projectId: { userId, projectId } },
       select: { role: true },
     }))?.role,
   )
   if (!cargos.some(c => c.toLowerCase() === GERENTE_LABEL.toLowerCase())) {
-    await prisma.userProject.update({
+    await db.userProject.update({
       where: { userId_projectId: { userId, projectId } },
       data: { role: [...cargos, GERENTE_LABEL].join(', ') },
     })
   }
 }
 
-export async function removeProjectRole(userId: string, projectId: string) {
-  const existing = await prisma.userProjectRole.findUnique({
+export async function removeProjectRole(userId: string, projectId: string, db: Prisma.TransactionClient = prisma) {
+  const existing = await db.userProjectRole.findUnique({
     where: { userId_projectId: { userId, projectId } },
   })
   if (existing) {
-    await prisma.userProjectRole.update({
+    await db.userProjectRole.update({
       where: { id: existing.id },
       data: { deletedAt: new Date() },
     })
@@ -66,14 +67,14 @@ export async function removeProjectRole(userId: string, projectId: string) {
   // Remove o "Gerente de Projeto" da lista de cargos do membro, para a
   // listagem de Stakeholders não ficar com a função órfã quando o papel cai.
   const cargos = normalizeCargos(
-    (await prisma.userProject.findUnique({
+    (await db.userProject.findUnique({
       where: { userId_projectId: { userId, projectId } },
       select: { role: true },
     }))?.role,
   )
   const restantes = cargos.filter(c => c.toLowerCase() !== GERENTE_LABEL.toLowerCase())
   if (restantes.length !== cargos.length) {
-    await prisma.userProject.update({
+    await db.userProject.update({
       where: { userId_projectId: { userId, projectId } },
       data: { role: restantes.join(', ') },
     })

@@ -11,8 +11,11 @@ import GlassSegmentedControl from '@/components/ui/GlassSegmentedControl'
 import Select from '@/components/ui/Select'
 import AnimatedTrashButton from '@/components/ui/AnimatedTrashButton'
 import ExpandableFieldGroup from '@/components/ui/ExpandableFieldGroup'
+import { useFloatingPanelFocus } from '@/hooks/useFloatingPanelFocus'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
 import MoedaInput from '@/components/ui/MoedaInput'
+import { LIMITES_TEXTO_PROJETO } from '@/lib/projetoLimites'
+import { validarProjeto } from '@/lib/validacaoProjeto'
 import { parseMoeda } from '@/lib/dinheiro'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import { useState, useTransition, useEffect, useLayoutEffect, useMemo, useRef, Suspense, type ReactNode, type CSSProperties, type TextareaHTMLAttributes } from 'react'
@@ -40,6 +43,19 @@ import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
 import type { VersaoProjeto } from '@/services/projetoVersoes'
 import { diffTexto } from '@/lib/diffTexto'
 
+function agruparFasesDuplicadas(fases: FaseForm[]) {
+  const grupos = new Map<string, { nome: string; numeros: string[] }>()
+  fases.forEach((fase, index) => {
+    const nome = fase.fase.trim()
+    if (!nome) return
+    const chave = nome.toLowerCase()
+    const grupo = grupos.get(chave) ?? { nome, numeros: [] }
+    grupo.numeros.push(`1.${index + 1}`)
+    grupos.set(chave, grupo)
+  })
+  return [...grupos.values()].filter(grupo => grupo.numeros.length > 1)
+}
+
 interface Usuario {
   id: string
   name: string
@@ -65,64 +81,6 @@ export default function NovoProjetoPage({ canAssignRoles = true }: { canAssignRo
 const isoToBR = (iso: string): string => {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
   return m ? `${m[3]}/${m[2]}/${m[1]}` : ''
-}
-
-const maskDateBR = (raw: string): string => {
-  const digits = raw.replace(/\D/g, '').slice(0, 8)
-  if (digits.length <= 2) return digits
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
-}
-
-const brToISO = (br: string): string => {
-  const m = br.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : ''
-}
-
-function DateInputBR({
-  value,
-  onChange,
-  className,
-  disabled = false,
-  ariaLabel,
-}: {
-  value: string
-  onChange: (iso: string) => void
-  className?: string
-  disabled?: boolean
-  ariaLabel?: string
-}) {
-  const [display, setDisplay] = useState(isoToBR(value))
-  const [focused, setFocused] = useState(false)
-  const [lastValue, setLastValue] = useState(value)
-
-  // Sincroniza o campo quando o valor ISO muda externamente (sem sobrescrever
-  // a digitação enquanto o usuário está focado no input).
-  if (lastValue !== value && !focused) {
-    setLastValue(value)
-    setDisplay(isoToBR(value))
-  }
-
-  return (
-    <input
-      type="text"
-      inputMode="numeric"
-      autoComplete="off"
-      placeholder="dd/mm/aaaa"
-      maxLength={10}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      value={display}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      onChange={(e) => {
-        const masked = maskDateBR(e.target.value)
-        setDisplay(masked)
-        onChange(brToISO(masked))
-      }}
-      className={className}
-    />
-  )
 }
 
 // ── Estilo ──────────────────────────────────────────────────
@@ -200,6 +158,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const podeDepartamentos = permissions.has('cadastros:gerenciar')
   const { toast } = useToast()
 
+  const ultimaOperacao = useRef<{ chave: string; id: string } | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isLoadingEdit, setIsLoadingEdit] = useState(!!editId)
 
@@ -207,6 +166,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   /** Gerente atual (nome e foto), vindo do projeto: aparece mesmo sem a lista de usuários. */
   const [gerenteAtual, setGerenteAtual] = useState<Usuario | null>(null)
   const [departamentosExistentes, setDepartamentosExistentes] = useState<string[]>([])
+  const [campoErro, setCampoErro] = useState<string | null>(null)
+  const [validacaoAtiva, setValidacaoAtiva] = useState(false)
   const [error, setError] = useState('')
   const [syncPending, setSyncPending] = useState(false)
   const [syncProjectId, setSyncProjectId] = useState<string | null>(editId)
@@ -261,6 +222,16 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const rolagemFases = useRef<HTMLDivElement>(null)
   const faseNova = useRef<string | null>(null)
   const raizRef = useRef<HTMLDivElement>(null)
+  const dockRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const root = raizRef.current, dock = dockRef.current
+    if (!root || !dock) return
+    const medir = () => root.style.setProperty('--project-dock-height', `${dock.getBoundingClientRect().height}px`)
+    medir()
+    const observer = new ResizeObserver(medir)
+    observer.observe(dock)
+    return () => observer.disconnect()
+  }, [])
   const abaRef = useRef(aba)
   useEffect(() => { abaRef.current = aba }, [aba])
 
@@ -430,7 +401,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   function versaoDaExclusao() {
     if (!salvo || !faseAExcluir) return undefined
     const fases = salvo.fases.filter(f => f.chave !== faseAExcluir.chave)
-    return { conteudo: conteudoDaVersao(salvo.form, fases), anterior: conteudoDaVersao(salvo.form, salvo.fases), alteracoes: [`Fase ${faseAExcluir.numero} ${faseAExcluir.nome} excluída`] }
+    return { conteudo: conteudoDaVersao(salvo.form, fases), anterior: conteudoDaVersao(salvo.form, salvo.fases), alteracoes: [`Fase ${faseAExcluir.numero} ${faseAExcluir.nome} excluída`.slice(0, 200)] }
   }
 
   const total = macroFases
@@ -449,6 +420,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     return listarAlteracoes(salvo, { form, fases: fasesPreenchidas }, nomeDoUsuario)
   }, [salvo, form, fasesPreenchidas, usuarios])
   const pendente = !!editId && alteracoes.length > 0
+  const changesPanel = useRef<HTMLDivElement>(null)
+  useFloatingPanelFocus(changesPanel, verAlteracoes && pendente, () => setVerAlteracoes(false))
 
   function descartar() {
     setRestaurando(null)
@@ -478,6 +451,16 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     if (!restantes.length) setVerAlteracoes(false)
   }
 
+  function irParaErro(campo: string) {
+    const [tipo, posicao] = campo.split(':')
+    const index = Number(posicao)
+    const label = tipo === 'startDate' ? 'Data de início' : tipo === 'endDate' ? 'Data prevista de fim' : posicao === undefined && tipo in ROTULOS_PROJETO ? ROTULOS_PROJETO[tipo as keyof FormProjeto] : tipo === 'name' ? 'Nome do projeto' : tipo === 'fase' ? `Fase 1.${index + 1}` : tipo === 'dataFase' ? `Data limite da fase 1.${index + 1}` : `Custo da fase ${index + 1}`
+    const focar = () => { const field = CAMPOS_TERMO.some(c => c.nome === tipo) ? document.getElementById(`termo-${tipo}`) : raizRef.current?.querySelector<HTMLElement>(`[aria-label="${label}"]`); field?.focus() }
+    if (posicao === undefined && CAMPOS_TERMO.some(c => c.nome === tipo) && abaVisivel !== 'diretrizes') { trocarAba('diretrizes'); window.setTimeout(focar, 300) }
+    else if (posicao !== undefined && abaVisivel !== 'cronograma') { trocarAba('cronograma'); window.setTimeout(focar, 300) }
+    else focar()
+  }
+
   function salvar() {
     if (estadoVersoes.ativa && estadoVersoes.ativa < estadoVersoes.ultima) { setConfirmarNovoSalvamento(true); return }
     persistirProjeto(form, macroFases, restaurando, false)
@@ -487,12 +470,22 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     if (isPending) return
     const falhar = (mensagem: string) => { if (restauracao) setErroRestauracao(mensagem); else setError(mensagem) }
     setError('')
+    setCampoErro(null)
     setErroRestauracao('')
     const fasesValidas = dadosFases.filter(f => f.fase.trim())
     const diferencas = salvo ? listarAlteracoes(salvo, { form: dadosForm, fases: fasesValidas }, id => usuarios.find(u => u.id === id)?.name ?? 'Membro') : []
-    if (!dadosForm.name.trim()) {
-      falhar('O Nome do Projeto é obrigatório.')
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+    setValidacaoAtiva(true)
+    const problemas = validarProjeto({ ...dadosForm, macroFases: canEditCosts ? dadosFases : undefined })
+    if (problemas.length) {
+      falhar(problemas[0].mensagem)
+      setCampoErro(problemas[0].campo)
+      irParaErro(problemas[0].campo)
+      return
+    }
+    const dataInvalida = !restauracao && raizRef.current?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')
+    if (dataInvalida) {
+      falhar(`Confira ${dataInvalida.getAttribute('aria-label') ?? 'a data informada'}. Informe uma data válida no formato dd/mm/aaaa.`)
+      dataInvalida.focus()
       return
     }
     const fasesEnvio = dadosFases.map(({ fase, dataLimite, custo, nodeId }) => ({ fase, dataLimite, custo, ...(nodeId ? { nodeId } : {}) }))
@@ -504,6 +497,11 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
       ...(restauracao && origem ? { ativarVersao: origem } : origem ? { restauradaDe: origem } : {}),
     } : undefined
 
+    if (versao) {
+      const chave = JSON.stringify({ dadosForm, fasesEnvio, origem, restauracao })
+      if (ultimaOperacao.current?.chave !== chave) ultimaOperacao.current = { chave, id: crypto.randomUUID() }
+      Object.assign(versao, { operacaoId: ultimaOperacao.current.id })
+    }
     startTransition(async () => {
       try {
         const update: Record<string, unknown> = { ...dadosForm, anoAms: dadosForm.semestre === 'ano' ? dadosForm.anoAms || null : null }
@@ -521,17 +519,24 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
 
         if ('error' in result) {
           falhar(result.error || 'Erro ao salvar projeto')
-          if (editId) toast(result.error || 'Erro ao salvar projeto', 'error')
           return
         }
+        ultimaOperacao.current = null
         setSyncProjectId(result.projeto.id as string)
         setSyncPending(result.macroFasesSync?.pending ?? false)
-        if (editId) { setConfirmacaoSalvo(n => n + 1); setSalvo(enviado); setRestaurando(null); setRecarregarHistorico(n => n + 1) }
+        const nodes = 'fasesSincronizadas' in result && Array.isArray(result.fasesSincronizadas)
+          ? new Map(result.fasesSincronizadas.map((f: { fase: string; nodeId: string }) => [f.fase.trim().toLowerCase(), f.nodeId])) : new Map<string, string>()
+        const comIds = (fases: FaseForm[]) => fases.map(f => ({ ...f, ...(nodes.has(f.fase.trim().toLowerCase()) ? { nodeId: nodes.get(f.fase.trim().toLowerCase()) } : {}) }))
+        if (editId) {
+          setConfirmacaoSalvo(n => n + 1); setSalvo({ ...enviado, fases: comIds(enviado.fases) }); setRestaurando(null); setRecarregarHistorico(n => n + 1)
+          const porChave = new Map(comIds(dadosFases).map(f => [f.chave, f.nodeId]))
+          setMacroFases(atuais => atuais.map(f => ({ ...f, ...(porChave.get(f.chave) ? { nodeId: porChave.get(f.chave) } : {}) })))
+        }
         setVerAlteracoes(false)
         setConfirmarNovoSalvamento(false)
         if (restauracao) {
           setForm(dadosForm)
-          setMacroFases(dadosFases.length ? dadosFases : [novaFase()])
+          setMacroFases(dadosFases.length ? comIds(dadosFases) : [novaFase()])
           setVersaoParaRestaurar(null)
           setVerHistorico(false)
           setEstadoVersoes(e => ({ ...e, ativa: origem ?? e.ativa }))
@@ -592,14 +597,21 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     return () => { observer.disconnect(); window.removeEventListener('resize', update) }
   }, [verHistorico, verAlteracoes, pendente])
 
+  const errosCampos = validarProjeto({ ...form, macroFases: canEditCosts ? macroFases : undefined })
+  const erroCampo = (campo: string) => (validacaoAtiva || (typeof form[campo as keyof FormProjeto] === 'string' && (form[campo as keyof FormProjeto] as string).length > (LIMITES_TEXTO_PROJETO[campo as keyof typeof LIMITES_TEXTO_PROJETO] ?? Infinity))) ? errosCampos.find(e => e.campo === campo)?.mensagem : undefined
+  const erroAtual = campoErro ? errosCampos.find(e => e.campo === campoErro) : undefined
+  const erroValidacaoAntigo = !!campoErro && !erroAtual
+  const duplicadas = agruparFasesDuplicadas(macroFases)
+  const numerosDuplicados = new Set(duplicadas.flatMap(grupo => grupo.numeros))
+
   return (
-    <ProjectAppearance enabled={Boolean(editId)}>
+    <ProjectAppearance enabled focusProjectName={!editId}>
     <div ref={raizRef} className="fundo-vidro relative min-h-screen font-sans">
       <div aria-hidden="true" data-open={verHistorico || (verAlteracoes && pendente)} onClick={() => { setVerHistorico(false); setVerAlteracoes(false) }} className="project-history-backdrop fixed inset-y-0 right-0 z-30" style={{ left: limiteFundoHistorico }} />
 
-      <main className="relative mx-auto max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
+      <main className="project-editor-main relative mx-auto max-w-[1280px] px-4 pb-24 pt-5 sm:px-6 lg:flex lg:h-dvh lg:min-h-0 lg:flex-col">
         {syncPending && (
-          <div role="status" className="anim-entrar mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div role="status" className="anim-entrar mb-4 shrink-0 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <p>Projeto salvo. A sincronização das macrofases com a EAP está pendente.</p>
             {canEditCosts && syncProjectId && <GlassButton variant="custom" type="button" disabled={isPending} className="mt-2 font-bold underline" onClick={() => startTransition(async () => {
               const result = await retryMacroFasesSyncAction(syncProjectId)
@@ -610,13 +622,25 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
           </div>
         )}
 
-        {error && (
-          <div role="alert" className="anim-entrar mb-4 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm font-semibold text-red-600">
-            <AlertTriangle className="h-4 w-4 shrink-0" />{error}
+        {error && !erroValidacaoAntigo && (error !== 'Macrofases duplicadas' || duplicadas.length > 0) && (
+          <div role="alert" className="project-error-notice anim-entrar fixed right-4 top-4 z-50 flex w-[420px] max-w-[calc(100vw-2rem)] items-start gap-3 rounded-2xl border p-4 shadow-lg sm:right-6 sm:top-6">
+            <span className="project-error-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"><AlertTriangle className="h-4 w-4" /></span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">Não foi possível concluir</p>
+              <p className="mt-1 text-sm leading-relaxed">{erroAtual?.mensagem ?? (error === 'Macrofases duplicadas' ? 'Há fases com o mesmo nome. Diferencie os nomes e tente salvar novamente.' : error)}</p>
+              {(error === 'Macrofases duplicadas' || (campoErro?.startsWith('fase:') && duplicadas.length > 0)) && <ul className="mt-3 max-h-48 space-y-2 overflow-y-auto pr-1" aria-label="Fases com nomes repetidos">
+                {duplicadas.map(grupo => <li key={grupo.nome.toLowerCase()} className="rounded-xl border border-current/10 bg-white/10 px-3 py-2">
+                  <p className="break-words text-sm font-semibold">{grupo.nome}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed">Fases {grupo.numeros.join(', ')}</p>
+                </li>)}
+              </ul>}
+              {erroAtual && <GlassButton className="mt-3 text-xs" onClick={() => { setError(''); irParaErro(erroAtual.campo) }}>Ir para o campo</GlassButton>}
+            </div>
+            <GlassCloseButton onClick={() => setError('')} aria-label="Fechar aviso" />
           </div>
         )}
 
-        <form onSubmit={e => { e.preventDefault(); salvar() }} className="grid grid-cols-1 gap-5 lg:h-[calc(100dvh-7.5rem)] lg:grid-cols-[minmax(0,1fr)_320px]">
+        <form onSubmit={e => { e.preventDefault(); salvar() }} className="grid grid-cols-1 gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_320px]">
           {/* ── Coluna principal: Diretrizes e Escopo | Cronograma Financeiro ── */}
           <div className="order-2 flex min-w-0 flex-col lg:order-1 lg:h-full lg:min-h-0">
             {/* Abas com resumo: as duas partes ficam a um clique, cada uma cabendo na tela. */}
@@ -640,12 +664,12 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                     {controls => campos.map(({ nome, Icone, placeholder, largo }) => (
                     <div key={nome} className={largo ? 'md:col-span-2' : 'min-w-0'}>
                       <ExpandableTextarea
-                        id={`termo-${nome}`} readOnly={!canEditPublished} name={nome} value={form[nome]}
+                        id={`termo-${nome}`} erro={erroCampo(nome)} readOnly={!canEditPublished} name={nome} value={form[nome]}
                         onChange={e => alterarCampo(nome, e.target.value)} placeholder={placeholder} alturaMinima={70} preencher={!largo}
                         {...controls}
                         rotulo={
                           <span className="ml-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 transition-colors duration-300 group-focus-within:text-blue-600">
-                            <Icone className="h-3.5 w-3.5 shrink-0" />{ROTULOS_PROJETO[nome]}
+                            <Icone className="h-3.5 w-3.5 shrink-0" />{ROTULOS_PROJETO[nome]}{form[nome].length >= LIMITES_TEXTO_PROJETO[nome] * .9 && <span className="ml-2 text-[10px] font-medium normal-case tracking-normal tabular-nums">{form[nome].length.toLocaleString('pt-BR')} / {LIMITES_TEXTO_PROJETO[nome].toLocaleString('pt-BR')}</span>}
                             {alterado(nome) && <span className="anim-surgir ml-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Alterado" />}
                           </span>
                         }
@@ -660,8 +684,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
             )}
 
             {abaVisivel === 'cronograma' && (
-              <fieldset disabled={!canEditCosts} className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1">
-                <GlassCard key="cronograma" id="painel-cronograma" role="tabpanel" inert={saindo} data-motion={saindo ? 'exit' : 'enter'} data-direction={direcaoAba} aria-labelledby="aba-cronograma" className={`anim-entrar flex flex-col overflow-hidden lg:min-h-0 lg:flex-1`}>
+              <fieldset disabled={!canEditCosts} className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1 lg:overflow-hidden">
+                <GlassCard key="cronograma" id="painel-cronograma" role="tabpanel" inert={saindo} data-motion={saindo ? 'exit' : 'enter'} data-direction={direcaoAba} aria-labelledby="aba-cronograma" className={`anim-entrar flex flex-col overflow-hidden lg:max-h-full lg:min-h-0 lg:shrink`}>
                   {/* Cabeçalho fixo: título, ação e os números do cronograma. */}
                   <header className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-5">
                     <div className="flex items-start justify-between gap-4">
@@ -688,15 +712,15 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                       </div>
                     </dl>
                   </header>
-                  <div aria-hidden="true" className="finance-stable-heading grid shrink-0 grid-cols-[minmax(0,1fr)_124px_140px_44px] text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                  <div aria-hidden="true" className="finance-stable-heading grid shrink-0 grid-cols-[minmax(0,1fr)_148px_140px_44px] text-[11px] font-bold uppercase tracking-widest text-slate-500">
                     <span className="py-2.5 pl-6 pr-4">Descrição da Fase</span>
                     <span className="px-2 py-2.5">Data Limite</span>
                     <span className="px-3 py-2.5 text-right">Custo Previsto</span>
                     <span />
                   </div>
-                  <div ref={rolagemFases} className="lg:borda-suave-rolagem-baixo lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
+                  <div ref={rolagemFases} className="lg:borda-suave-rolagem-baixo lg:min-h-0 lg:flex-auto lg:overflow-y-auto lg:overscroll-contain">
                     <table className="finance-phase-table w-full table-fixed text-left">
-                      <colgroup><col /><col className="w-[124px]" /><col className="w-[140px]" /><col className="w-11" /></colgroup>
+                      <colgroup><col /><col className="w-[148px]" /><col className="w-[140px]" /><col className="w-11" /></colgroup>
                       <thead className="sr-only">
                         <tr>
                           <th className="py-2.5 pl-6 pr-4 text-[11px] font-bold uppercase tracking-widest text-slate-500">Descrição da Fase</th>
@@ -707,7 +731,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {macroFases.map((fase, idx) => (
-                          <tr key={fase.chave} onClick={event => {
+                          <tr key={fase.chave} data-duplicate={numerosDuplicados.has(`1.${idx + 1}`)} onClick={event => {
                             if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
                             const numero = event.currentTarget.querySelector<HTMLElement>('[data-phase-number]')
                             numero?.getAnimations().forEach(animation => animation.cancel())
@@ -721,11 +745,15 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                             <td className="py-1.5 pl-4 pr-1">
                               <div className="flex items-start gap-1.5">
                                 <span data-phase-number className="w-7 shrink-0 py-2.5 text-right text-sm tabular-nums text-slate-500">1.{idx + 1}</span>
-                                <TextoQueCresce data-fase={fase.chave} aria-label={`Fase 1.${idx + 1}`} value={fase.fase} onChange={v => updateMacroFase(fase.chave, 'fase', v)} placeholder={`Ex: Fase ${idx + 1}...`} className={`${celulaInput} min-w-0 flex-1 font-semibold text-slate-800`} />
+                                <div className="min-w-0 flex-1">
+                                  <TextoQueCresce data-fase={fase.chave} aria-label={`Fase 1.${idx + 1}`} aria-invalid={numerosDuplicados.has(`1.${idx + 1}`) || !!erroCampo(`fase:${idx}`)} aria-describedby={numerosDuplicados.has(`1.${idx + 1}`) ? `fase-duplicada-${fase.chave}` : undefined} value={fase.fase} onChange={v => updateMacroFase(fase.chave, 'fase', v)} placeholder={`Ex: Fase ${idx + 1}...`} className={`${celulaInput} block w-full min-w-0 font-semibold text-slate-800`} />
+                                  {numerosDuplicados.has(`1.${idx + 1}`) && <p id={`fase-duplicada-${fase.chave}`} className="phase-duplicate-hint mt-1 flex items-start gap-1 px-1 text-xs leading-relaxed"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />Mesmo nome nas fases {duplicadas.find(grupo => grupo.numeros.includes(`1.${idx + 1}`))?.numeros.filter(numero => numero !== `1.${idx + 1}`).join(', ')}.</p>}
+                                  {!numerosDuplicados.has(`1.${idx + 1}`) && erroCampo(`fase:${idx}`) && <p className="date-validation-hint mt-1 text-xs">{erroCampo(`fase:${idx}`)}</p>}
+                                </div>
                               </div>
                             </td>
                             <td className="px-1 py-1.5">
-                              <DateInputBR ariaLabel={`Data limite da fase 1.${idx + 1}`} value={fase.dataLimite} onChange={v => updateMacroFase(fase.chave, 'dataLimite', v)} className={`${celulaInput} px-2 font-medium tabular-nums text-slate-600`} />
+                              <SeletorData ariaLabel={`Data limite da fase 1.${idx + 1}`} value={fase.dataLimite} onChange={v => updateMacroFase(fase.chave, 'dataLimite', v)} className={`${celulaInput} px-2 font-medium tabular-nums text-slate-600`} />
                             </td>
                             <td className="px-1 py-1.5">
                               <MoedaInput
@@ -733,9 +761,11 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                                 onValueChange={texto => updateMacroFase(fase.chave, 'custo', texto)}
                                 rotulo="Custo"
                                 aria-label={`Custo da fase ${idx + 1}`}
+                                aria-invalid={!!erroCampo(`custoFase:${idx}`)}
                                 adorno={<span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm font-bold text-slate-400">R$</span>}
                                 className={`${celulaInput} pl-8 text-right font-bold tabular-nums text-slate-800`}
                               />
+                              {erroCampo(`custoFase:${idx}`) && <p className="date-validation-hint mt-1 text-xs">{erroCampo(`custoFase:${idx}`)}</p>}
                             </td>
                             <td className="py-1.5 pr-2 text-center">
                               <AnimatedTrashButton label={`Remover fase 1.${idx + 1}`} onDelete={() => removeMacroFase(fase.chave)} disabled={macroFases.length === 1 && !fase.nodeId} />
@@ -758,13 +788,15 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{editId ? 'Projeto' : 'Novo projeto'}</p>
                   <TextoQueCresce
-                    value={form.name} onChange={v => alterarCampo('name', v.replace(/\n/g, ' '))} aria-label="Nome do projeto" placeholder="Nome do projeto"
+                    data-project-name aria-invalid={!!erroCampo('name')} aria-describedby={erroCampo('name') ? 'erro-nome-projeto' : undefined} value={form.name} onChange={v => alterarCampo('name', v.replace(/\n/g, ' '))} aria-label="Nome do projeto" placeholder="Nome do projeto"
                     className="-mx-1.5 block w-[calc(100%+0.75rem)] campo-limpo rounded-lg px-1.5 py-0.5 text-lg font-extrabold leading-tight tracking-tight text-slate-900 placeholder:text-slate-300"
                   />
+                  {erroCampo('name') && <p id="erro-nome-projeto" className="date-validation-hint mt-1 text-xs">{erroCampo('name')}</p>}
                   <TextoQueCresce
-                    value={form.slogan} onChange={v => alterarCampo('slogan', v.replace(/\n/g, ' '))} aria-label="Slogan / visão" placeholder="Adicione um slogan…"
+                    aria-invalid={!!erroCampo('slogan')} value={form.slogan} onChange={v => alterarCampo('slogan', v.replace(/\n/g, ' '))} aria-label="Slogan / visão" placeholder="Adicione um slogan…"
                     className="-mx-1.5 mt-0.5 block w-[calc(100%+0.75rem)] campo-limpo rounded-lg px-1.5 py-0.5 text-[13px] leading-snug text-slate-500 placeholder:text-slate-400"
                   />
+                  {erroCampo('slogan') && <p className="date-validation-hint mt-1 text-xs">{erroCampo('slogan')}</p>}
                 </div>
               </div>
               {segmentosLinha.length > 0 && (
@@ -791,11 +823,11 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                     {isoToBR(form.startDate) || '—'}<span className="text-[11px] font-normal text-slate-400">1ª tarefa</span>
                   </div>
                 ) : (
-                  <SeletorData ariaLabel="Data de início" value={form.startDate} onChange={iso => setForm(prev => ({ ...prev, startDate: iso }))} className={propriedadeInput} />
+                  <SeletorData ariaLabel="Data de início" error={erroCampo('startDate')} value={form.startDate} onChange={iso => setForm(prev => ({ ...prev, startDate: iso }))} className={propriedadeInput} />
                 )}
               </Propriedade>
               <Propriedade Icone={CalendarClock} rotulo="Fim previsto">
-                <SeletorData ariaLabel="Data prevista de fim" value={form.endDate} onChange={iso => setForm(prev => ({ ...prev, endDate: iso }))} className={propriedadeInput} />
+                <SeletorData ariaLabel="Data prevista de fim" error={erroCampo('endDate')} value={form.endDate} onChange={iso => setForm(prev => ({ ...prev, endDate: iso }))} className={propriedadeInput} />
               </Propriedade>
               <Propriedade Icone={MapPin} rotulo="Local" htmlFor="projeto-local">
                 <input id="projeto-local" name="location" value={form.location} onChange={e => alterarCampo('location', e.target.value)} placeholder="Sede, filial, cliente…" className={propriedadeInput} />
@@ -846,7 +878,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
           </AnimatedCardStack>
         </form>
         {/* Barra centralizada na janela, independente da largura da sidebar. */}
-        <div className="project-save-dock fixed bottom-8 left-1/2 z-40 max-w-[calc(100vw-2rem)] -translate-x-1/2" style={{ width: editId && !pendente ? 420 : 880 }}>
+        <div ref={dockRef} className="project-save-dock fixed bottom-8 left-1/2 z-40 max-w-[calc(100vw-2rem)] -translate-x-1/2" style={{ width: editId && !pendente ? 420 : 880 }}>
           {editId && (
             <HistoricoProjeto
               projetoId={editId} aberto={verHistorico} origemX={origemHistorico} salvo={salvo} recarregar={recarregarHistorico}
@@ -860,7 +892,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               role="dialog" aria-label="Alterações não salvas" aria-hidden={!verAlteracoes} inert={!verAlteracoes}
               data-open={verAlteracoes} data-visited={alteracoesJaAbertas}
               style={{ '--history-drop-x': origemHistorico !== undefined ? `${origemHistorico}px` : '50%' } as CSSProperties}
-              className="project-changes-panel project-history-panel absolute bottom-full mb-3 vidro-flutuante rounded-[22px] p-3"
+              ref={changesPanel} tabIndex={-1} className="project-changes-panel project-history-panel absolute bottom-full mb-3 vidro-flutuante rounded-[22px] p-3"
             >
               <div className="flex items-center justify-between px-3 py-2">
                 <h3 className="text-sm font-bold text-slate-900">O que mudou desde o último salvamento</h3>

@@ -1,21 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { APPEARANCE_KEY, appearancePeriod, parseAppearance, type AppearanceMode, type AppearancePeriod } from '@/lib/appearance'
+import { APPEARANCE_KEY, appearanceFrame, parseAppearance, type AppearanceMode, type AppearanceFrame } from '@/lib/appearance'
 
 export function useAppearance() {
   const [mode, setMode] = useState<AppearanceMode>('automatic')
-  const [period, setPeriod] = useState<AppearancePeriod | null>(null)
+  const [frame, setFrame] = useState<AppearanceFrame | null>(null)
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const refresh = () => {
       let saved: AppearanceMode = 'automatic'
       try { saved = parseAppearance(localStorage.getItem(APPEARANCE_KEY)) } catch { /* Usa horário local se o armazenamento estiver indisponível. */ }
       setMode(saved)
-      setPeriod(appearancePeriod(saved, new Date().getHours(), media.matches))
+      const next = appearanceFrame(saved, new Date(), media.matches)
+      setFrame(previous => previous?.period === next.period && previous?.blend?.from === next.blend?.from && previous?.blend?.to === next.blend?.to && previous?.blend?.progress === next.blend?.progress ? previous : next)
     }
     refresh()
-    const timer = window.setInterval(refresh, 30_000)
+    const timer = window.setInterval(refresh, 1_000)
     window.addEventListener('storage', refresh)
     window.addEventListener('operum-appearance', refresh)
     document.addEventListener('visibilitychange', refresh)
@@ -33,5 +34,5 @@ export function useAppearance() {
     window.dispatchEvent(new Event('operum-appearance'))
     return true
   }
-  return { mode, period, save }
+  return { mode, period: frame?.period ?? null, blend: frame?.blend ?? null, save }
 }

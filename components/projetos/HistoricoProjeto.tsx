@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useFloatingPanelFocus } from '@/hooks/useFloatingPanelFocus'
 import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import GlassButton from '@/components/ui/GlassButton'
 import { ChevronDown, History, RotateCcw } from 'lucide-react'
@@ -11,9 +12,8 @@ import type { VersaoProjeto } from '@/services/projetoVersoes'
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 /**
- * Histórico do Editar projeto, linear como commits: a versão mais recente é a
- * atual. "Restaurar" carrega uma versão antiga no formulário; salvar cria uma
- * versão nova (nunca duas atuais).
+ * Histórico do editor: o marcador de versão ativa independe da ordem dos
+ * salvamentos. Restaurar ativa uma versão preservando as demais.
  */
 export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuario, onFechar, onRestaurar, recarregar, origemX }: {
   origemX?: number
@@ -27,12 +27,15 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
   /** Muda a cada salvamento, para recarregar a lista. */
   recarregar: number
 }) {
+  const panel = useRef<HTMLDivElement>(null)
+  useFloatingPanelFocus(panel, aberto, onFechar)
   const [jaAberto, setJaAberto] = useState(false)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- só habilita a saída depois da primeira abertura
     if (aberto) setJaAberto(true)
   }, [aberto])
   const [versoes, setVersoes] = useState<VersaoProjeto[] | null>(null)
+  const [tentativa, setTentativa] = useState(0)
   const [erro, setErro] = useState<string | null>(null)
   const [comparando, setComparando] = useState<number | null>(null)
   /** Versões já comparadas: o conteúdo fica montado para fechar deslizando. */
@@ -45,9 +48,9 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
       if (!ativo) return
       if ('error' in r) setErro(r.error)
       else { setErro(null); setVersoes(r.versoes) }
-    })
+    }).catch(() => { if (ativo) setErro('Não foi possível carregar o histórico. Suas alterações continuam preservadas.') })
     return () => { ativo = false }
-  }, [aberto, projetoId, recarregar])
+  }, [aberto, projetoId, recarregar, tentativa])
 
   const diferencas = (v: VersaoProjeto) => {
     if (!salvo) return []
@@ -61,7 +64,7 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
   }
 
   return (
-    <div
+    <div ref={panel} tabIndex={-1}
       style={{ '--history-drop-x': origemX !== undefined ? `${origemX}px` : '50%' } as CSSProperties}
       data-open={aberto} data-visited={jaAberto} role="dialog" aria-label="Histórico de versões" aria-hidden={!aberto} inert={!aberto}
       className={`project-history-panel absolute bottom-full mb-3 vidro-flutuante flex max-h-[60vh] origin-bottom flex-col rounded-[22px] transition-[opacity,transform] duration-500 [transition-timing-function:var(--ease-mola)] ${aberto ? 'translate-y-0 scale-100 opacity-100' : 'pointer-events-none translate-y-3 scale-[0.96] opacity-0 duration-200'}`}
@@ -71,7 +74,7 @@ export default function HistoricoProjeto({ projetoId, aberto, salvo, nomeDoUsuar
         <GlassCloseButton label="Fechar histórico" onClick={onFechar} className="project-history-close" />
       </div>
       <div className="borda-suave-rolagem min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
-        {erro && <p role="alert" className="px-3 py-4 text-sm text-red-600">{erro}</p>}
+        {erro && <div className="px-3 py-4"><p role="alert" className="text-sm text-red-600">{erro}</p><GlassButton className="mt-3" onClick={() => setTentativa(n => n + 1)}>Tentar novamente</GlassButton></div>}
         {!erro && versoes === null && <p className="px-3 py-4 text-sm text-slate-500">Carregando…</p>}
         {versoes?.length === 0 && <p className="px-3 py-4 text-sm text-slate-500">Ainda não há versões. Cada vez que você salvar, uma versão nova entra aqui.</p>}
         <ol className="relative space-y-3">

@@ -1,5 +1,7 @@
 'use server'
 
+import { RegistroVersaoSchema } from '@/lib/projetoVersaoSchema'
+import { validarProjeto } from '@/lib/validacaoProjeto'
 import { erroCustosMacroFases, erroMoeda, parseMoeda } from '@/lib/dinheiro'
 import { normalizarContato } from '@/lib/contato'
 import { submeterDocumento } from '@/services/documentRevisionService'
@@ -14,56 +16,13 @@ import { getTree } from '@/services/wbsService'
 import { validateAvatarUrl } from '@/lib/validation/avatarUrl'
 import { requireProjectPermission } from '@/services/projectAccess'
 import { reconcileMacroFases } from '@/services/macroFaseSyncService'
-import { registrarVersaoProjeto, type RegistroVersao } from '@/services/projetoVersoes'
+import { type RegistroVersao } from '@/services/projetoVersoes'
 import { parseHoras } from '@/lib/validation/horas'
 import { dependenciasDoProjeto, mensagemDeBloqueio, type DependenciaProjeto } from '@/services/projetoDependencias'
+import { salvarProjetoEditor } from '@/services/projetoEditorService'
+import { syncProjetoDepartamentos } from '@/services/projetoDepartamentos'
 import { primeiraDataDeTarefa } from '@/services/inicioDoProjeto'
 
-/**
- * Garante que o catálogo (Department) tenha os departamentos escolhidos e
- * sincroniza as associações reais (ProjetoDepartamento) do projeto com essa
- * seleção — o form de projeto agora fica conectado ao cadastro global.
- */
-async function syncProjetoDepartamentos(projetoId: string, tenantId: string, names: string[]) {
-  const uniqueNames = [...new Set(names.map(n => n.trim()).filter(Boolean))]
-
-  // Resolve (ou cria) cada departamento no catálogo global do tenant.
-  const departmentIds: string[] = []
-  for (const name of uniqueNames) {
-    const existing = await prisma.department.findFirst({
-      where: { tenantId, name: { equals: name, mode: 'insensitive' } },
-    })
-    let dept = existing
-    if (!dept) {
-      dept = await prisma.department.create({ data: { tenantId, name } })
-    } else if (dept.deletedAt !== null) {
-      dept = await prisma.department.update({ where: { id: dept.id }, data: { deletedAt: null } })
-    }
-    departmentIds.push(dept.id)
-  }
-
-  const current = await prisma.projetoDepartamento.findMany({
-    where: { projetoId },
-    select: { id: true, departamentoId: true },
-  })
-  const currentIds = new Set(current.map(c => c.departamentoId))
-  const desired = new Set(departmentIds)
-
-  const toCreate = departmentIds.filter(id => !currentIds.has(id))
-  const toDelete = current.filter(c => !desired.has(c.departamentoId))
-
-  if (toCreate.length > 0) {
-    await prisma.projetoDepartamento.createMany({
-      data: toCreate.map(departamentoId => ({ projetoId, departamentoId })),
-      skipDuplicates: true,
-    })
-  }
-  if (toDelete.length > 0) {
-    await prisma.projetoDepartamento.deleteMany({
-      where: { projetoId, departamentoId: { in: toDelete.map(d => d.departamentoId) } },
-    })
-  }
-}
 
 export async function createProjetoAction(
   _prevState: unknown,
@@ -96,6 +55,8 @@ export async function createProjetoAction(
     const session = await verifySession()
     const { tenantId } = session
     if (session.role !== 'admin') throw new Error('Só o administrador cria projetos')
+    const problema = validarProjeto(input)[0]
+    if (problema) return { error: problema.mensagem }
     const { initialMemberId, ano: anoStr, macroFases, startDate, endDate, ...rest } = input
     const erroCusto = erroCustosMacroFases(macroFases)
     if (erroCusto) throw new Error(erroCusto)
@@ -252,10 +213,13 @@ export async function updateProjetoAction(
     data = { ...data }
     // Fase já existente na EAP: o id permite renomear o item em vez de criar outro com o nome novo.
     const renomear = (data.macroFases ?? []).filter(f => typeof f.nodeId === 'string' && f.nodeId && f.fase.trim()).map(f => ({ nodeId: f.nodeId as string, titulo: f.fase.trim() }))
-    if (data.macroFases) data.macroFases = data.macroFases.map(({ fase, dataLimite, custo }) => ({ fase, dataLimite, custo }))
+    if (!versao && data.macroFases) data.macroFases = data.macroFases.map(({ fase, dataLimite, custo }) => ({ fase, dataLimite, custo }))
     const session = await verifySession()
     const { tenantId } = session
     await requireProjectPermission(session, id, 'projeto:editar')
+    if (versao && !RegistroVersaoSchema.safeParse(versao).success) return { error: 'Os dados do histórico excedem os limites permitidos ou estão incompletos. Nenhuma alteração foi gravada. Confira os campos antes de tentar novamente.' }
+    const problema = validarProjeto(data)[0]
+    if (problema) return { error: problema.mensagem }
     const complementares = Object.fromEntries(['justificativa', 'objetivos', 'metodologia', 'descricaoProduto', 'premissas', 'restricoes', 'limitesAutoridade'].filter(key => key in data).map(key => [key, data[key]]))
     if (Object.keys(complementares).length) {
       await requireProjectPermission(session, id, 'documentos:editar')
@@ -278,6 +242,12 @@ export async function updateProjetoAction(
       for (const name of data.departamentos) {
         if (typeof name !== 'string' || !(await prisma.department.findFirst({ where: { tenantId, name: { equals: name.trim(), mode: 'insensitive' }, deletedAt: null }, select: { id: true } }))) throw new Error('Só o administrador cria departamentos')
       }
+    }
+    if (versao) {
+      const resultado = await salvarProjetoEditor(session, id, data, complementares, versao)
+      revalidatePath('/projetos')
+      revalidatePath(`/projetos/${id}`, 'layout')
+      return resultado
     }
     const { ano: anoRaw, macroFases, startDate, endDate, initialMemberId, ...rest } = data
     const ano = anoRaw !== undefined && anoRaw !== '' ? Number(anoRaw) : undefined
@@ -321,10 +291,6 @@ export async function updateProjetoAction(
     if (Object.keys(complementares).length) {
       const previous = await prisma.documentVersion.findFirst({ where: { projectId: id, documentType: 'CHARTER', status: 'APPROVED' }, orderBy: [{ approvedAt: 'desc' }, { sequence: 'desc' }] })
       await submeterDocumento(session, id, 'CHARTER', { ...((previous?.payload as object) ?? {}), ...complementares }, { commitTitle: 'Dados complementares atualizados na edição do projeto', versao: previous?.versao ?? '1.0', elaboradoPor: '', aprovadoPor: '', dataAprovacao: '' })
-    }
-    if (versao) {
-      // Só confirma o sucesso após persistir a versão ou seu marcador ativo.
-      await registrarVersaoProjeto({ tenantId, projectId: id, userId: session.userId }, versao)
     }
     revalidatePath('/projetos')
     revalidatePath(`/projetos/${id}`, 'layout')

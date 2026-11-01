@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import ProjetoFormPage from '@/components/projetos/ProjetoFormPage'
 import { getProjetoAction, updateProjetoAction } from '@/app/actions/projetos'
 import { listarVersoesProjetoAction, impactoExclusaoFaseAction } from '@/app/actions/projetoEdicao'
@@ -11,11 +12,13 @@ vi.mock('@/app/actions/projetos', () => ({ getProjetoAction: vi.fn(), updateProj
 vi.mock('@/app/actions/projetoEdicao', () => ({ listarVersoesProjetoAction: vi.fn(async () => ({ versoes: [] })), impactoExclusaoFaseAction: vi.fn(), excluirFaseAction: vi.fn() }))
 vi.mock('@/app/actions/admin', () => ({ listUsersAction: vi.fn(async () => ({ users: [] })) }))
 vi.mock('@/app/actions/departments', () => ({ getDepartmentsAction: vi.fn(async () => []) }))
-vi.mock('@/components/permissoes/ProjectPermissions', () => ({ useProjectPermissions: () => new Set(['projeto:editar', 'documentos:editar', 'documentos:aprovar', 'planilha:orcado', 'planilha:realizado-todos']) }))
+vi.mock('@/components/permissoes/ProjectPermissions', () => ({ useProjectPermissions: vi.fn(() => new Set(['projeto:editar', 'documentos:editar', 'documentos:aprovar', 'planilha:orcado', 'planilha:realizado-todos'])) }))
 vi.mock('@/components/ui/Toast', () => ({ useToast: () => ({ toast: vi.fn() }) }))
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(useProjectPermissions).mockReturnValue(new Set(['projeto:editar', 'documentos:editar', 'documentos:aprovar', 'planilha:orcado', 'planilha:realizado-todos']))
+  vi.mocked(listarVersoesProjetoAction).mockResolvedValue({ versoes: [] })
   vi.mocked(getProjetoAction).mockResolvedValue({ projeto: {
     id: 'p1', name: 'JANUS V2', semestre: '2', termo: '5', turno: 'Noturno', ano: 2026, departamentos: [],
     justificativa: 'Equipes grandes (até 10 membros).', endDate: '2026-11-16T00:00:00Z',
@@ -119,4 +122,165 @@ it('pede confirmação antes de salvar uma edição sobre versão antiga, preser
   expect(updateProjetoAction).not.toHaveBeenCalled()
   fireEvent.click(within(modal).getByRole('button', { name: 'Salvar como v5' }))
   await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledWith(undefined, 'p1', expect.objectContaining({ name: 'Nova edição' }), expect.objectContaining({ restauradaDe: 1 })))
+})
+
+  it('histórico recebe foco, fecha por Escape e devolve foco ao botão', async () => {
+    render(<ProjetoFormPage />)
+    await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+    const trigger = screen.getByRole('button', { name: 'Histórico' })
+    trigger.focus()
+    fireEvent.click(trigger)
+    expect(screen.getByRole('button', { name: 'Fechar histórico' })).toHaveFocus()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Histórico de versões' })).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
+  it('mostra duplicidade nas fases e remove o aviso quando corrigida, sem enviar', async () => {
+    render(<ProjetoFormPage />)
+    await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+    fireEvent.click(screen.getByRole('tab', { name: /Cronograma Financeiro/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Adicionar Fase' }))
+    fireEvent.change(screen.getByLabelText('Fase 1.2'), { target: { value: ' ESCOPO ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(screen.getByLabelText('Fase 1.1')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent('Nome repetido')
+    expect(updateProjetoAction).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Fase 1.2'), { target: { value: 'Entrega' } })
+    expect(screen.getByLabelText('Fase 1.1')).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('bloqueia data impossível, preserva a digitação e foca a correção', async () => {
+    render(<ProjetoFormPage />)
+    await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+    fireEvent.click(screen.getByRole('tab', { name: /Cronograma Financeiro/ }))
+    const date = await screen.findByLabelText('Data limite da fase 1.1')
+    fireEvent.change(date, { target: { value: '31/02/2027' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(date).toHaveValue('31/02/2027')
+    expect(date).toHaveFocus()
+    expect(date).toHaveAttribute('aria-invalid', 'true')
+    expect(updateProjetoAction).not.toHaveBeenCalled()
+    fireEvent.change(date, { target: { value: '28/02/2027' } })
+    expect(date).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('identifica nome obrigatório e prazo final anterior ao início sem gravar', async () => {
+    render(<ProjetoFormPage />)
+    await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+    const name = screen.getByLabelText('Nome do projeto')
+    fireEvent.change(name, { target: { value: ' ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(name).toHaveFocus()
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Ir para o campo' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(name).toHaveFocus()
+    fireEvent.change(name, { target: { value: 'JANUS V2' } })
+    fireEvent.change(screen.getByLabelText('Data de início'), { target: { value: '20/11/2026' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(screen.getByLabelText('Data prevista de fim')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent('igual ou posterior')
+    expect(updateProjetoAction).not.toHaveBeenCalled()
+  })
+
+it('um salvamento pendente bloqueia novo envio e preserva mudanças feitas durante a resposta', async () => {
+  let resolver!: (value: Awaited<ReturnType<typeof updateProjetoAction>>) => void
+  vi.mocked(updateProjetoAction).mockImplementationOnce(() => new Promise(resolve => { resolver = resolve }))
+  render(<ProjetoFormPage />)
+  await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+  fireEvent.change(screen.getByLabelText('Nome do projeto'), { target: { value: 'Nome enviado' } })
+  const salvar = screen.getByRole('button', { name: 'Salvar alterações' })
+  fireEvent.click(salvar)
+  fireEvent.click(salvar)
+  expect(updateProjetoAction).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('button', { name: 'Salvando…' })).toBeDisabled()
+  fireEvent.change(screen.getByLabelText('Nome do projeto'), { target: { value: 'Nome digitado durante o envio' } })
+  resolver({ projeto: { id: 'p1' } } as never)
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeEnabled())
+  expect(screen.getByLabelText('Nome do projeto')).toHaveValue('Nome digitado durante o envio')
+  expect(screen.getByRole('button', { name: /1 alteração não salva/ })).toBeInTheDocument()
+})
+
+it('falha de conexão preserva o rascunho e permite nova tentativa', async () => {
+  vi.mocked(updateProjetoAction).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ projeto: { id: 'p1' } } as never)
+  render(<ProjetoFormPage />)
+  await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+  fireEvent.change(screen.getByLabelText('Nome do projeto'), { target: { value: 'Rascunho preservado' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Suas edições foram preservadas')
+  expect(screen.getByLabelText('Nome do projeto')).toHaveValue('Rascunho preservado')
+  const tentar = await screen.findByRole('button', { name: 'Salvar alterações' })
+  await waitFor(() => expect(tentar).toBeEnabled())
+  fireEvent.click(tentar)
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Tudo salvo'))
+  expect(updateProjetoAction).toHaveBeenCalledTimes(2)
+})
+
+it('sem acesso a custos e documentos, mantém esses campos protegidos e não os envia', async () => {
+  vi.mocked(useProjectPermissions).mockReturnValue(new Set(['projeto:editar']))
+  render(<ProjetoFormPage canAssignRoles={false} />)
+  await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+  expect(screen.getByLabelText('Justificativa do Projeto')).toHaveAttribute('readonly')
+  fireEvent.click(screen.getByRole('tab', { name: /Cronograma Financeiro/ }))
+  expect(await screen.findByRole('button', { name: 'Adicionar Fase' })).toBeDisabled()
+  expect(screen.getByLabelText('Fase 1.1')).toBeDisabled()
+  expect(screen.getByLabelText('Custo da fase 1')).toBeDisabled()
+  fireEvent.change(screen.getByLabelText('Nome do projeto'), { target: { value: 'Nome permitido' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+  await waitFor(() => expect(updateProjetoAction).toHaveBeenCalled())
+  const payload = vi.mocked(updateProjetoAction).mock.calls[0][2]
+  expect(payload).toHaveProperty('name', 'Nome permitido')
+  expect(payload).not.toHaveProperty('macroFases')
+  expect(payload).not.toHaveProperty('justificativa')
+  expect(payload).not.toHaveProperty('initialMemberId')
+})
+
+it('avisa o excesso de texto junto ao campo, bloqueia envio e remove o erro ao corrigir', async () => {
+  render(<ProjetoFormPage />)
+  await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+  const campo = screen.getByLabelText('Justificativa do Projeto')
+  fireEvent.change(campo, { target: { value: 'a'.repeat(24641) } })
+  expect(campo).toHaveAttribute('aria-invalid', 'true')
+  expect(screen.getByText(/Remova 4.641/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+  expect(campo).toHaveFocus()
+  expect(updateProjetoAction).not.toHaveBeenCalled()
+  fireEvent.change(campo, { target: { value: 'a'.repeat(20000) } })
+  expect(campo).toHaveAttribute('aria-invalid', 'false')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+  await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledTimes(1))
+})
+
+it('mantém a chave da tentativa ao reenviar a mesma edição após perder a resposta', async () => {
+  vi.mocked(updateProjetoAction).mockRejectedValueOnce(new Error('resposta perdida')).mockResolvedValueOnce({ projeto: { id: 'p1' } } as never)
+  render(<ProjetoFormPage />)
+  await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+  fireEvent.change(screen.getByLabelText('Nome do projeto'), { target: { value: 'Pedido repetido' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+  await screen.findByRole('alert')
+  const retry = await screen.findByRole('button', { name: 'Salvar alterações' })
+  fireEvent.click(retry)
+  await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledTimes(2))
+  const first = vi.mocked(updateProjetoAction).mock.calls[0][3]?.operacaoId
+  expect(first).toMatch(/^[0-9a-f-]{36}$/)
+  expect(vi.mocked(updateProjetoAction).mock.calls[1][3]?.operacaoId).toBe(first)
+})
+
+it('fase recém-salva recebe o id da EAP e pode ser renomeada sem recriar a fase', async () => {
+  vi.mocked(updateProjetoAction).mockResolvedValueOnce({ projeto: { id: 'p1' }, fasesSincronizadas: [{ fase: 'Nova fase', nodeId: 'n2' }] } as never)
+  render(<ProjetoFormPage />)
+  await waitFor(() => expect(screen.getByLabelText('Nome do projeto')).toHaveValue('JANUS V2'))
+  fireEvent.click(screen.getByRole('tab', { name: /Cronograma Financeiro/ }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Adicionar Fase' }))
+  fireEvent.change(screen.getByLabelText('Fase 1.2'), { target: { value: 'Nova fase' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Tudo salvo'))
+  fireEvent.change(screen.getByLabelText('Fase 1.2'), { target: { value: 'Fase renomeada' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+  await waitFor(() => expect(updateProjetoAction).toHaveBeenCalledTimes(2))
+  expect(vi.mocked(updateProjetoAction).mock.calls[1][2]).toEqual(expect.objectContaining({ macroFases: expect.arrayContaining([expect.objectContaining({ fase: 'Fase renomeada', nodeId: 'n2' })]) }))
 })
