@@ -48,21 +48,22 @@ describe('UserAvatar', () => {
     expect(screen.getByRole('img')).toHaveAttribute('src', avatarUrl)
   })
 
-  it('bloqueia também navegação para URL insegura no menu Visualizar', () => {
+  it('bloqueia URL insegura na visualização compartilhada', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<AvatarUpload name="João Silva" avatarUrl="javascript:alert(1)" />)
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByRole('button', { name: 'Visualizar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Visualizar foto de perfil' }))
+    expect(document.querySelector('img')).toBeNull()
     expect(open).not.toHaveBeenCalled()
     open.mockRestore()
   })
 
-  it('abre imagem válida sem acesso à janela de origem', () => {
+  it('mostra imagem válida no modal sem abrir outra janela', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<AvatarUpload name="João Silva" avatarUrl="https://storage.example.com/avatar.png" />)
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByRole('button', { name: 'Visualizar' }))
-    expect(open).toHaveBeenCalledWith('https://storage.example.com/avatar.png', '_blank', 'noopener,noreferrer')
+    fireEvent.click(screen.getByRole('button', { name: 'Visualizar foto de perfil' }))
+    expect(screen.getByRole('dialog', { name: 'Foto de perfil' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Foto de João Silva' })).toHaveAttribute('src', 'https://storage.example.com/avatar.png')
+    expect(open).not.toHaveBeenCalled()
     open.mockRestore()
   })
 })

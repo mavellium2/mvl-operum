@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useEffect, useRef } from 'react'
 
 interface ColumnSearchButtonProps {
@@ -11,7 +13,7 @@ interface ColumnSearchButtonProps {
 /** Lupa do cabeçalho da coluna: abre e fecha o campo de busca. */
 export function ColumnSearchButton({ columnTitle, open, onToggle }: ColumnSearchButtonProps) {
   return (
-    <button
+    <OperumButton variant="custom"
       type="button"
       onClick={e => { e.stopPropagation(); onToggle() }}
       aria-label={open ? `Fechar busca na coluna ${columnTitle}` : `Buscar na coluna ${columnTitle}`}
@@ -24,7 +26,7 @@ export function ColumnSearchButton({ columnTitle, open, onToggle }: ColumnSearch
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
       </svg>
-    </button>
+    </OperumButton>
   )
 }
 
@@ -49,7 +51,7 @@ export function ColumnSearchInput({ columnTitle, value, onChange, onClose, shown
   return (
     <div className="px-2 pt-2 shrink-0">
       <div className="relative">
-        <input
+        <OperumInput
           ref={inputRef}
           type="search"
           value={value}
@@ -61,7 +63,7 @@ export function ColumnSearchInput({ columnTitle, value, onChange, onClose, shown
           aria-label={`Buscar cards na coluna ${columnTitle}`}
           className="w-full rounded-xl border border-black/10 bg-white pl-3 pr-8 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
         />
-        <button
+        <OperumButton variant="custom"
           type="button"
           onClick={onClose}
           aria-label="Limpar e fechar a busca"
@@ -70,7 +72,7 @@ export function ColumnSearchInput({ columnTitle, value, onChange, onClose, shown
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </button>
+        </OperumButton>
       </div>
       {value.trim() && (
         <p className="mt-1 px-1 text-[11px] text-gray-500" aria-live="polite">

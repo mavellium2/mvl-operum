@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import { formatReais } from '@/lib/dinheiro'
 import Modal from '@/components/ui/Modal'
@@ -70,7 +72,7 @@ export default function AdminUsersClient({ initialUsers }: Props) {
     <>
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <input
+        <OperumInput
           ref={searchRef}
           type="search"
           placeholder="Buscar por nome ou email…"
@@ -96,12 +98,12 @@ export default function AdminUsersClient({ initialUsers }: Props) {
           placeholder="Todos os status"
           options={[{ value: '', label: 'Todos os status' }, { value: 'active', label: 'Ativo' }, { value: 'inactive', label: 'Inativo' }]}
         />
-        <button
+        <OperumButton variant="primary" type="button"
           onClick={() => setShowCreate(true)}
           className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 whitespace-nowrap"
         >
           + Novo usuário
-        </button>
+        </OperumButton>
       </div>
 
       <p className="text-sm text-gray-500 mb-3">
@@ -161,20 +163,20 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
-                      <button type="button" onClick={() => setPermissoesUser(user)} className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 text-blue-700">Permissões</button>
-                      <button
+                      <OperumButton variant="default" type="button" onClick={() => setPermissoesUser(user)} className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 text-blue-700">Permissões</OperumButton>
+                      <OperumButton variant="default" type="button"
                         onClick={() => setEditUser(user)}
                         className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                       >
                         Editar
-                      </button>
-                      <button
+                      </OperumButton>
+                      <OperumButton variant="default" type="button"
                         onClick={() => handleToggleActive(user)}
                         disabled={loading === user.id + '-active'}
                         className={`px-2.5 py-1 text-xs rounded-lg border text-gray-600 hover:bg-gray-50 disabled:opacity-50 ${user.isActive ? 'border-gray-200' : 'border-green-200 text-green-700 hover:bg-green-50'}`}
                       >
                         {user.isActive ? 'Inativar' : 'Ativar'}
-                      </button>
+                      </OperumButton>
                     </div>
                   </td>
                 </tr>

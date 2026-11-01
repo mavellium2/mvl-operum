@@ -1,5 +1,7 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
 import { useActionState, useState } from 'react'
 import { alterarSenhaObrigatoriaAction } from '@/app/actions/alterarSenha'
 import { PasswordCriteria } from '@/components/auth/PasswordCriteria'
@@ -62,13 +64,13 @@ export default function AlterarSenhaPage() {
           {(state as { error?: string } | undefined)?.error && (
             <p className="text-sm text-red-600">{(state as { error?: string }).error}</p>
           )}
-          <button
+          <FormActions as="span" compact><OperumButton variant="primary"
             type="submit"
             disabled={pending}
             className="w-full py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
             {pending ? 'Salvando…' : 'Definir nova senha'}
-          </button>
+          </OperumButton></FormActions>
         </form>
       </div>
     </div>

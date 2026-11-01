@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { forwardRef, type ReactNode } from 'react'
 import { Users } from 'lucide-react'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
@@ -148,9 +149,9 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
         onAdicionar={ed && (() => { const n = ed.presentes.length; ed.onAdicionarPresente(); abrirSeletor(`ata-presente-${n}`) })}
         rotuloAdicionar="Adicionar presente"
         extrasAdicionar={ed?.onIncluirEquipe && (
-          <button type="button" onClick={ed.onIncluirEquipe} className={pilula}>
+          <OperumButton variant="default" type="button" onClick={ed.onIncluirEquipe} className={pilula}>
             <Users className="h-4 w-4" /> Incluir toda a equipe
-          </button>
+          </OperumButton>
         )}
       >
         {ed

@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { emailValido, formatEmail } from '@/lib/contato'
 import { printFolhasStyle } from '@/lib/printPageStyle'
 import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
@@ -336,16 +338,16 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
       <div className="mt-1 flex flex-col gap-1 font-sans">
         {anexos.map((a, i) => (
           <div key={i} className="group/anexo flex items-center gap-2">
-            <input type="text" value={a.nome} aria-label={`Nome do anexo ${i + 1}`} placeholder="Nome do documento" onChange={e => setAnexos(prev => prev.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} className="min-w-0 flex-1 border-0 border-b border-slate-300 bg-transparent px-0 py-0.5 text-[9pt] outline-none focus:border-blue-500" />
-            <input type="text" value={a.url} aria-label={`Link do anexo ${i + 1}`} placeholder="URL (opcional)" onChange={e => setAnexos(prev => prev.map((x, j) => j === i ? { ...x, url: e.target.value } : x))} className="min-w-0 flex-1 border-0 border-b border-slate-300 bg-transparent px-0 py-0.5 text-[9pt] outline-none focus:border-blue-500" />
+            <OperumInput type="text" value={a.nome} aria-label={`Nome do anexo ${i + 1}`} placeholder="Nome do documento" onChange={e => setAnexos(prev => prev.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} className="min-w-0 flex-1 border-0 border-b border-slate-300 bg-transparent px-0 py-0.5 text-[9pt] outline-none focus:border-blue-500" />
+            <OperumInput type="text" value={a.url} aria-label={`Link do anexo ${i + 1}`} placeholder="URL (opcional)" onChange={e => setAnexos(prev => prev.map((x, j) => j === i ? { ...x, url: e.target.value } : x))} className="min-w-0 flex-1 border-0 border-b border-slate-300 bg-transparent px-0 py-0.5 text-[9pt] outline-none focus:border-blue-500" />
             {a.url && /^https?:\/\//i.test(a.url) && <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Abrir</a>}
-            <button type="button" aria-label={`Remover anexo ${a.nome || i + 1}`} onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))} className="rounded px-1 text-slate-400 hover:bg-red-50 hover:text-red-600">×</button>
+            <OperumButton variant="danger" type="button" aria-label={`Remover anexo ${a.nome || i + 1}`} onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))} className="rounded px-1 text-slate-400 hover:bg-red-50 hover:text-red-600">×</OperumButton>
           </div>
         ))}
         <div className="flex flex-wrap items-center gap-3 pt-1 text-[12px]">
           <input ref={arquivoAnexo} type="file" className="sr-only" aria-label="Arquivo do anexo" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx" onChange={e => void enviarAnexo(e.target.files?.[0])} />
-          <button type="button" onClick={() => arquivoAnexo.current?.click()} disabled={enviandoAnexo} className="font-medium text-blue-600 hover:underline disabled:opacity-60">{enviandoAnexo ? 'Enviando…' : '+ Enviar arquivo'}</button>
-          <button type="button" onClick={() => setAnexos(prev => [...prev, { nome: '', url: '' }])} className="font-medium text-blue-600 hover:underline">+ Adicionar link</button>
+          <OperumButton variant="default" type="button" onClick={() => arquivoAnexo.current?.click()} disabled={enviandoAnexo} className="font-medium text-blue-600 hover:underline disabled:opacity-60">{enviandoAnexo ? 'Enviando…' : '+ Enviar arquivo'}</OperumButton>
+          <OperumButton variant="default" type="button" onClick={() => setAnexos(prev => [...prev, { nome: '', url: '' }])} className="font-medium text-blue-600 hover:underline">+ Adicionar link</OperumButton>
           <span className="text-slate-500">PDF, imagem, Word ou Excel até 10 MB.</span>
         </div>
       </div>
@@ -417,7 +419,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
           {versaoAberta && (
             <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
               Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
-              <button type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar à ata atual</button>
+              <OperumButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar à ata atual</OperumButton>
             </div>
           )}
         </>}

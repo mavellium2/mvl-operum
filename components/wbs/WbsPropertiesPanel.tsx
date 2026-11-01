@@ -1,11 +1,13 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import OperumCloseButton from '@/components/ui/GlassCloseButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import { OPCOES_FASE, OPCOES_ORGANIZAR } from './OrganizarIcons'
 import { formatoDaEap, formatoDaFase } from '@/lib/wbsLayout'
 
 import { useRef, useState, type Dispatch } from 'react'
-import { X } from 'lucide-react'
 import type { WbsNodeClient, WbsNodeStyle, WbsLayoutOrientation } from '@/types/wbs'
 import type { WbsAction } from '@/lib/wbsReducer'
 
@@ -23,13 +25,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   const [open, setOpen] = useState(true)
   return (
     <div className="mb-1">
-      <button
+      <OperumButton variant="default" type="button"
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest py-1.5 hover:text-gray-700 transition-colors cursor-pointer"
       >
         <span className="text-gray-400">{open ? '▾' : '▸'}</span>
         {title}
-      </button>
+      </OperumButton>
       {open && <div className="pb-2">{children}</div>}
     </div>
   )
@@ -82,7 +84,7 @@ function ColorField({
             onChange={e => onChange(e.target.value)}
             className="w-7 h-7 rounded border border-gray-200 p-0.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           />
-          <input
+          <OperumInput
             type="text"
             value={mixed ? '' : localHex}
             maxLength={7}
@@ -97,7 +99,7 @@ function ColorField({
           {OFFICE_PALETTE.map(c => {
             const active = !mixed && value.toLowerCase() === c.toLowerCase()
             return (
-              <button
+              <OperumButton variant="custom"
                 key={c}
                 type="button"
                 title={c}
@@ -129,7 +131,7 @@ function NumField({
   return (
     <FieldRow label={label}>
       <div className="flex items-center gap-1" title={tooltip}>
-        <input
+        <OperumInput
           type="number"
           min={min}
           max={max}
@@ -169,7 +171,7 @@ export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, di
   const count = selectedNodes.length
   if (count === 0) return (
     <aside className="absolute right-4 top-4 z-30 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-sm" aria-label="Estilo">
-      <div className="flex items-center justify-between"><strong>Estilo</strong><button type="button" aria-label="Fechar estilo" onClick={onClose}><X size={18} /></button></div>
+      <div className="flex items-center justify-between"><strong>Estilo</strong><OperumCloseButton type="button" label="Fechar estilo" onClick={onClose} /></div>
       <p className="mt-4 text-sm text-gray-600">Selecione um ou mais elementos para ajustar o estilo.</p>
     </aside>
   )
@@ -219,13 +221,9 @@ export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, di
             <p className="text-[10px] text-gray-400 mt-0.5">{selectedNodes[0].code}</p>
           )}
         </div>
-        <button
-          onClick={onClose}
+        <OperumCloseButton onClick={onClose}
           className="shrink-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded p-1 transition-colors cursor-pointer"
-          aria-label="Fechar painel de estilo"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
+          label="Fechar painel de estilo" />
       </div>
 
       <div className="px-3 pt-2 pb-4 flex-1 overflow-y-auto">
@@ -297,18 +295,18 @@ export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, di
 
           {canEdit && (
             <div className="flex gap-1 mt-2">
-              <button
+              <OperumButton variant="default" type="button"
                 onClick={() => dispatch({ type: 'COPY_STYLE', payload: { nodeId: selectedNodeIds[0] } })}
                 className="flex-1 text-[11px] border border-gray-200 rounded py-1 hover:bg-gray-50 text-gray-700 transition-colors cursor-pointer"
               >
                 Copiar estilo
-              </button>
-              <button
+              </OperumButton>
+              <OperumButton variant="default" type="button"
                 onClick={() => dispatch({ type: 'PASTE_STYLE_TO_SELECTED' })}
                 className="flex-1 text-[11px] border border-gray-200 rounded py-1 hover:bg-gray-50 text-gray-700 transition-colors cursor-pointer"
               >
                 Colar estilo
-              </button>
+              </OperumButton>
             </div>
           )}
         </Section>

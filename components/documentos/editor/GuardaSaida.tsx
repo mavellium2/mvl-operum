@@ -1,5 +1,6 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import GlassCloseButton from '@/components/ui/GlassCloseButton'
@@ -135,13 +136,13 @@ export function useGuardaSaida(saida: SaidaDocumento | undefined) {
         </div>
         <p className="phase-delete-muted mb-5 mt-3 text-sm leading-relaxed">{projeto ? 'Suas alterações no projeto ainda não foram salvas.' : 'Você alterou este documento e ainda não salvou uma versão.'} Escolha como deseja continuar.</p>
         {erro && <p role="alert" className="mb-4 text-sm text-rose-400">{erro}</p>}
-        <div className="flex flex-col gap-3">
+        <FormActions className="flex flex-col gap-3">
           <GlassButton className="unsaved-choice" disabled={ocupado} onClick={() => void escolher('salvar')}>
             <Save className="h-4 w-4 shrink-0" /><span><span className="block font-semibold">Salvar e sair</span><span className="mt-1 block text-xs font-normal opacity-75">{projeto ? 'Salva o projeto e registra uma nova versão no histórico.' : 'Salva uma versão para aprovação e depois sai.'}</span></span>
           </GlassButton>
           {saida?.salvarDepois && <GlassButton className="unsaved-choice" disabled={ocupado} onClick={() => void escolher('depois')}><FileClock className="h-4 w-4 shrink-0" /><span><span className="block font-semibold">Guardar para depois</span><span className="mt-1 block text-xs font-normal opacity-75">Guarda um rascunho só seu para continuar quando voltar.</span></span></GlassButton>}
           <GlassButton className="unsaved-choice unsaved-discard" disabled={ocupado} onClick={() => void escolher('descartar')}><Trash2 className="h-4 w-4 shrink-0" /><span><span className="block font-semibold">Sair sem salvar</span><span className="mt-1 block text-xs font-normal opacity-75">Descarta as edições pendentes. O conteúdo já salvo é preservado.</span></span></GlassButton>
-        </div>
+        </FormActions>
         <div className="mt-5 flex justify-end border-t border-white/10 pt-5"><GlassButton variant="primary" autoFocus disabled={ocupado} onClick={fechar}>Continuar editando</GlassButton></div>
       </div>
     </Modal>

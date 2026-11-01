@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import { printFolhasStyle } from '@/lib/printPageStyle'
 import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
@@ -407,9 +410,9 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
           </Tooltip>
           {!origemWbs && permissions.has('documentos:excluir') && (
             <Tooltip label="Recriar a partir do modelo EAP">
-              <button type="button" aria-label="Recriar a partir do modelo EAP" disabled={!editavel} onClick={() => setConfirmReset(true)} className="flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-100 disabled:opacity-35">
+              <OperumButton variant="custom" type="button" aria-label="Recriar a partir do modelo EAP" disabled={!editavel} onClick={() => setConfirmReset(true)} className="flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-100 disabled:opacity-35">
                 <RotateCcw className="h-4 w-4" />
-              </button>
+              </OperumButton>
             </Tooltip>
           )}
         </>}
@@ -423,7 +426,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
           {versaoAberta && (
             <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
               Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
-              <button type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar ao documento atual</button>
+              <OperumButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar ao documento atual</OperumButton>
             </div>
           )}
         </>}
@@ -482,7 +485,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
             <div className="flex flex-col gap-4 py-2">
               <div>
                 <label className={labelClass} htmlFor="eap-node-title">Título {node.code}</label>
-                <input
+                <OperumInput
                   id="eap-node-title"
                   className={inputClass}
                   value={editingTitle}
@@ -494,7 +497,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <button
+                <OperumButton variant="primary" type="button"
                   onClick={() => {
                     handleSaveTitle(editingNodeId, editingTitle)
                     const next = insertChild(nodes, editingNodeId, defaultChildTitle(node.level))
@@ -504,8 +507,8 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
                   className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <Plus className="w-4 h-4" /> Adicionar filho
-                </button>
-                <button
+                </OperumButton>
+                <OperumButton variant="default" type="button"
                   onClick={() => {
                     handleSaveTitle(editingNodeId, editingTitle)
                     commit(insertSibling(nodes, editingNodeId, defaultSiblingTitle(node.level)))
@@ -514,32 +517,32 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
                   className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
                 >
                   <CornerDownRight className="w-4 h-4" /> Irmão
-                </button>
-                <button
+                </OperumButton>
+                <OperumButton variant="default" type="button"
                   onClick={() => { handleSaveTitle(editingNodeId, editingTitle); handleDuplicate(editingNodeId); setEditingNodeId(null) }}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
                 >
                   <Copy className="w-4 h-4" /> Duplicar
-                </button>
-                <button
+                </OperumButton>
+                <OperumButton variant="danger" type="button"
                   onClick={() => { handleSaveTitle(editingNodeId, editingTitle); setConfirmDeleteId(editingNodeId); setEditingNodeId(null) }}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" /> Excluir
-                </button>
-                <button
+                </OperumButton>
+                <OperumButton variant="default" type="button"
                   onClick={() => { handleSaveTitle(editingNodeId, editingTitle); handleMoveUp(editingNodeId) }}
                   disabled={node.order === 0}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-40"
                 >
                   <ChevronUp className="w-4 h-4" /> Subir
-                </button>
-                <button
+                </OperumButton>
+                <OperumButton variant="default" type="button"
                   onClick={() => { handleSaveTitle(editingNodeId, editingTitle); handleMoveDown(editingNodeId) }}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
                 >
                   <ChevronDown className="w-4 h-4" /> Descer
-                </button>
+                </OperumButton>
               </div>
               <div>
                 <label className={labelClass} htmlFor="eap-move-parent">Mover para (pai)</label>
@@ -550,7 +553,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
                   placeholder="— Escolha um destino —"
                   options={[{ value: 'ROOT', label: 'Raiz (nível 1)' }, ...candidates.map(c => ({ value: c.id, label: `${c.code} — ${c.title || '(sem título)'}` }))]}
                 />
-                <button
+                <OperumButton variant="primary" type="button"
                   onClick={() => {
                     if (!moveParentId) return
                     handleSaveTitle(editingNodeId, editingTitle)
@@ -561,16 +564,16 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
                   className="mt-2 flex items-center gap-1.5 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40"
                 >
                   <FileUp className="w-4 h-4" /> Mover item
-                </button>
+                </OperumButton>
               </div>
-              <div className="flex justify-end pt-2">
-                <button
+              <FormActions className="flex justify-end pt-2">
+                <OperumButton variant="default" type="button"
                   onClick={() => { handleSaveTitle(editingNodeId, editingTitle); setEditingNodeId(null) }}
                   className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                 >
                   Salvar
-                </button>
-              </div>
+                </OperumButton>
+              </FormActions>
             </div>
           )
         })()}

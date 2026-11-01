@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { Fragment, useEffect, useState, useId } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -167,7 +168,7 @@ export default function ProjectSidebar({ projetoId, canManageMembers, canManageG
 
       {collapsed && (
         <Tooltip label="Expandir menu" side="bottom">
-          <button
+          <OperumButton variant="custom"
             type="button"
             onClick={toggleCollapsed}
             aria-label="Expandir menu lateral"
@@ -177,7 +178,7 @@ export default function ProjectSidebar({ projetoId, canManageMembers, canManageG
             className="hidden md:inline-flex fixed top-3.5 left-2 z-30 p-1.5 rounded-lg bg-white border border-gray-200 shadow-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <PanelLeftOpen className="w-4 h-4" />
-          </button>
+          </OperumButton>
         </Tooltip>
       )}
     </>

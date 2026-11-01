@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useRef, useState } from 'react'
 import { CalendarDays } from 'lucide-react'
 
@@ -113,7 +115,7 @@ export default function DateInput({
 
   return (
     <div className="relative">
-      <input
+      <OperumInput
         type="text"
         inputMode="numeric"
         id={id}
@@ -128,7 +130,7 @@ export default function DateInput({
         autoComplete="off"
         className={`${className} pr-9 ${disabled ? 'opacity-60' : ''}`}
       />
-      <button
+      <OperumButton variant="custom"
         type="button"
         onClick={openPicker}
         disabled={disabled}
@@ -137,9 +139,9 @@ export default function DateInput({
         className="absolute inset-y-0 right-0 flex items-center px-2 text-slate-400 hover:text-slate-600 transition-colors"
       >
         <CalendarDays className="w-4 h-4" />
-      </button>
+      </OperumButton>
       {/* Input nativo escondido usado apenas para abrir o calendário do browser */}
-      <input
+      <OperumInput
         ref={hiddenRef}
         type="date"
         tabIndex={-1}

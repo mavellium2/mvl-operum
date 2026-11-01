@@ -1,9 +1,9 @@
 'use client'
 
+import OperumCloseButton from '@/components/ui/GlassCloseButton'
 import { useEffect, useRef, useState, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { useOverlay } from '@/hooks/useOverlay'
-import { X } from 'lucide-react'
 
 interface DrawerProps {
   isOpen: boolean
@@ -57,14 +57,10 @@ export default function Drawer({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
           {title && <h2 id={titleId} className="text-base font-semibold text-slate-800">{title}</h2>}
-          <button
-            ref={firstFocusRef}
+          <OperumCloseButton ref={firstFocusRef}
             onClick={onClose}
             className="ml-auto text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Fechar"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            label="Fechar" />
         </div>
 
         {/* Conteúdo scrollável */}

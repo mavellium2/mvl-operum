@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { formatEmail } from '@/lib/contato'
 import { useActionState, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -80,7 +82,7 @@ export function LoginForm({ from, motivo }: LoginFormProps = {}) {
         {from && <input type="hidden" name="from" value={from} />}
         {/* Email */}
         <div className="relative">
-          <input
+          <OperumInput
             id="email"
             name="email"
             type="email"
@@ -122,7 +124,7 @@ export function LoginForm({ from, motivo }: LoginFormProps = {}) {
         {/* Senha */}
         <div className="flex flex-col gap-1">
           <div className="relative">
-            <input
+            <OperumInput
               id="password"
               name="password"
               type={showPassword ? 'text' : 'password'}
@@ -160,7 +162,7 @@ export function LoginForm({ from, motivo }: LoginFormProps = {}) {
             >
               Senha
             </label>
-            <button
+            <OperumButton variant="custom"
               type="button"
               aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
               onClick={() => setShowPassword((v) => !v)}
@@ -178,7 +180,7 @@ export function LoginForm({ from, motivo }: LoginFormProps = {}) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
               )}
-            </button>
+            </OperumButton>
           </div>
           <div className="flex justify-end">
             <Link
@@ -206,7 +208,7 @@ export function LoginForm({ from, motivo }: LoginFormProps = {}) {
         )}
 
         {/* Botão Entrar */}
-        <button
+        <OperumButton variant="default"
           type="submit"
           disabled={pending}
           className="relative w-full overflow-hidden rounded-xl px-4 py-3 text-sm font-medium text-white transition-transform duration-150 hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 disabled:scale-100"
@@ -233,7 +235,7 @@ export function LoginForm({ from, motivo }: LoginFormProps = {}) {
             )}
             {pending ? 'Entrando…' : 'Entrar'}
           </span>
-        </button>
+        </OperumButton>
       </form>
     </div>
   )

@@ -1,5 +1,7 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import { Textarea as OperumTextarea, Input as OperumInput } from '@/components/ui/Field'
 import AnimatedCardStack from '@/components/ui/AnimatedCardStack'
 import UndoChangeButton from '@/components/ui/UndoChangeButton'
 import Modal from '@/components/ui/Modal'
@@ -132,7 +134,7 @@ function TextoQueCresce({ value, onChange, className, ...resto }: Omit<TextareaH
     el.style.height = '0px'
     el.style.height = `${el.scrollHeight}px`
   }, [value])
-  return <textarea ref={ref} rows={1} value={value} onChange={e => onChange(e.target.value)} className={`${className} resize-none overflow-hidden`} {...resto} />
+  return <OperumTextarea ref={ref} rows={1} value={value} onChange={e => onChange(e.target.value)} className={`${className} resize-none overflow-hidden`} {...resto} />
 }
 
 /** Texto com as palavras removidas (vermelho, riscadas) e incluídas (verde). */
@@ -830,7 +832,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                 <SeletorData ariaLabel="Data prevista de fim" error={erroCampo('endDate')} value={form.endDate} onChange={iso => setForm(prev => ({ ...prev, endDate: iso }))} className={propriedadeInput} />
               </Propriedade>
               <Propriedade Icone={MapPin} rotulo="Local" htmlFor="projeto-local">
-                <input id="projeto-local" name="location" value={form.location} onChange={e => alterarCampo('location', e.target.value)} placeholder="Sede, filial, cliente…" className={propriedadeInput} />
+                <OperumInput id="projeto-local" name="location" value={form.location} onChange={e => alterarCampo('location', e.target.value)} placeholder="Sede, filial, cliente…" className={propriedadeInput} />
               </Propriedade>
               <div className="py-1">
                 <span className="flex items-center gap-2 py-1.5 text-[13px] text-slate-500"><Building2 className="h-4 w-4 text-slate-400" />Departamentos</span>
@@ -865,7 +867,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               {periodoEhSemestral(form.semestre) && (
                 <>
                   <Propriedade Icone={Layers} rotulo="Termo" htmlFor="projeto-termo">
-                    <input id="projeto-termo" name="termo" type="text" inputMode="numeric" maxLength={20} value={form.termo} onChange={e => alterarCampo('termo', e.target.value)} placeholder="Ex.: 5" className={propriedadeInput} />
+                    <OperumInput id="projeto-termo" name="termo" type="text" inputMode="numeric" maxLength={20} value={form.termo} onChange={e => alterarCampo('termo', e.target.value)} placeholder="Ex.: 5" className={propriedadeInput} />
                   </Propriedade>
                   <Propriedade Icone={Flag} rotulo="Turno" htmlFor="projeto-turno">
                     <Select id="projeto-turno" propriedade name="turno" searchable={false} placeholder="Selecione" value={form.turno} onChange={v => alterarCampo('turno', v)}
@@ -964,7 +966,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
       {confirmarNovoSalvamento && <Modal isOpen title="Salvar como nova versão?" className="phase-delete-dialog" onClose={() => { if (!isPending) setConfirmarNovoSalvamento(false) }}>
         <p className="phase-delete-muted text-sm leading-relaxed">A versão ativa é a v{estadoVersoes.ativa}. Este salvamento substitui o estado atual e cria a v{estadoVersoes.ultima + 1}. As versões anteriores continuam disponíveis no histórico.</p>
         {error && <p role="alert" className="mt-3 text-sm text-rose-400">{error}</p>}
-        <div className="mt-5 flex justify-end gap-3"><GlassButton autoFocus disabled={isPending} onClick={() => setConfirmarNovoSalvamento(false)}>Cancelar</GlassButton><GlassButton variant="primary" disabled={isPending} onClick={() => persistirProjeto(form, macroFases, estadoVersoes.ativa, false)}>{isPending ? 'Salvando…' : `Salvar como v${estadoVersoes.ultima + 1}`}</GlassButton></div>
+        <FormActions className="mt-5 flex justify-end gap-3"><GlassButton autoFocus disabled={isPending} onClick={() => setConfirmarNovoSalvamento(false)}>Cancelar</GlassButton><GlassButton variant="primary" disabled={isPending} onClick={() => persistirProjeto(form, macroFases, estadoVersoes.ativa, false)}>{isPending ? 'Salvando…' : `Salvar como v${estadoVersoes.ultima + 1}`}</GlassButton></FormActions>
       </Modal>}
       {versaoParaRestaurar && <RestaurarVersaoDialog numero={versaoParaRestaurar.numero} fasesMantidas={versaoParaRestaurar.dados.fasesMantidas} alteracoesPendentes={pendente} ocupado={isPending} erro={erroRestauracao} onClose={() => { if (!isPending) setVersaoParaRestaurar(null) }} onConfirm={confirmarRestauracao} />}
       {editId && (

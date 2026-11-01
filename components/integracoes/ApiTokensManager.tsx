@@ -1,9 +1,11 @@
 'use client'
 
+import { Input as OperumInput } from '@/components/ui/Field'
+import { matchesIntegrationSearch, useIntegrationSearch } from './IntegrationSearch'
 import Select from '@/components/ui/Select'
 import { useActionState, useState, useTransition } from 'react'
 import { createApiTokenAction, revokeApiTokenAction, type CreateApiTokenState } from '@/app/actions/apiTokens'
-import Button from '@/components/ui/Button'
+import GlassButton from '@/components/ui/GlassButton'
 import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { formatDateBR } from '@/lib/date'
@@ -26,13 +28,14 @@ type ApiTokenSummary = {
 const MCP_SERVER_URL = process.env.NEXT_PUBLIC_MCP_SERVER_URL || 'https://api.operum.adm.br/mcp'
 
 export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[] }) {
+  const { query } = useIntegrationSearch()
   const [state, formAction, isPending] = useActionState(createApiTokenAction, {} as CreateApiTokenState)
   const [revokeTarget, setRevokeTarget] = useState<ApiTokenSummary | null>(null)
   const [isRevoking, startRevoke] = useTransition()
   const [copied, setCopied] = useState(false)
   const [validade, setValidade] = useState('90')
 
-  const active = tokens.filter(t => !t.revokedAt)
+  const active = tokens.filter(t => !t.revokedAt && matchesIntegrationSearch(`${t.name} ${t.prefix} ${t.scopes.join(' ')}`, query))
 
   function handleRevoke(id: string) {
     startRevoke(async () => {
@@ -49,7 +52,7 @@ export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[]
       <form action={formAction} className="space-y-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
         <div>
           <label htmlFor="token-name" className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-          <input
+          <OperumInput
             id="token-name"
             name="name"
             required
@@ -84,15 +87,15 @@ export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[]
 
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
-        <Button type="submit" variant="primary" disabled={isPending}>
+        <GlassButton type="submit" variant="primary" disabled={isPending}>
           {isPending ? 'Gerando...' : 'Gerar token'}
-        </Button>
+        </GlassButton>
       </form>
 
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-2">Tokens ativos</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-2">Seus tokens</h3>
         {active.length === 0 ? (
-          <p className="text-sm text-gray-500">Nenhum token ativo.</p>
+          <p className="text-sm text-gray-500">{query.trim() ? 'Nenhum token corresponde à pesquisa.' : 'Nenhum token ativo.'}</p>
         ) : (
           <ul className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
             {active.map(token => (
@@ -106,14 +109,14 @@ export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[]
                     {token.lastUsedAt && ` · Último uso ${formatDateBR(token.lastUsedAt)}`}
                   </p>
                 </div>
-                <Button
-                  variant="danger"
-                  size="sm"
+                <GlassButton
+                  variant="custom" className="glass-button settings-destructive"
+
                   disabled={isRevoking}
                   onClick={() => setRevokeTarget(token)}
                 >
                   Revogar
-                </Button>
+                </GlassButton>
               </li>
             ))}
           </ul>
@@ -144,9 +147,9 @@ export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[]
               <code className="flex-1 text-xs bg-gray-100 rounded-lg px-3 py-2 overflow-x-auto whitespace-nowrap">
                 {state.created.token}
               </code>
-              <Button
-                variant="secondary"
-                size="sm"
+              <GlassButton
+                variant="default"
+
                 onClick={() => {
                   navigator.clipboard.writeText(state.created!.token)
                   setCopied(true)
@@ -154,7 +157,7 @@ export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[]
                 }}
               >
                 {copied ? 'Copiado!' : 'Copiar'}
-              </Button>
+              </GlassButton>
             </div>
 
             <div>
@@ -163,13 +166,13 @@ export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[]
                 <code className="flex-1 text-xs bg-gray-900 text-gray-100 rounded-lg px-3 py-2 overflow-x-auto whitespace-nowrap">
                   {claudeCommand}
                 </code>
-                <Button
-                  variant="secondary"
-                  size="sm"
+                <GlassButton
+                  variant="default"
+
                   onClick={() => navigator.clipboard.writeText(claudeCommand)}
                 >
                   Copiar
-                </Button>
+                </GlassButton>
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 Participa de outras instituições? Gere um token em cada um e adicione todos ao mesmo servidor com{' '}
@@ -178,7 +181,7 @@ export default function ApiTokensManager({ tokens }: { tokens: ApiTokenSummary[]
             </div>
 
             <div className="flex justify-end">
-              <Button variant="primary" onClick={() => window.location.reload()}>Concluir</Button>
+              <GlassButton variant="primary" onClick={() => window.location.reload()}>Concluir</GlassButton>
             </div>
           </div>
         )}

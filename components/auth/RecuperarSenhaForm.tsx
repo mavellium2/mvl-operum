@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { formatEmail } from '@/lib/contato'
 import { useActionState, useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
@@ -48,7 +50,7 @@ function FloatingInput({
   const [visivel, setVisivel] = useState(false)
   return (
     <div className="relative">
-      <input
+      <OperumInput
         id={id} name={name} type={ehSenha && visivel ? 'text' : type} required={required}
         autoComplete={autoComplete} maxLength={maxLength}
         value={value} placeholder=" "
@@ -58,7 +60,7 @@ function FloatingInput({
         style={{ ...inputBase, ...(focused ? inputFocus : {}) }}
       />
       {ehSenha && (
-        <button
+        <OperumButton variant="custom"
           type="button"
           onClick={() => setVisivel(v => !v)}
           aria-label={visivel ? 'Ocultar senha' : 'Mostrar senha'}
@@ -67,7 +69,7 @@ function FloatingInput({
           style={{ color: 'var(--text-secondary)' }}
         >
           {visivel ? <EyeOff className="w-4 h-4" aria-hidden /> : <Eye className="w-4 h-4" aria-hidden />}
-        </button>
+        </OperumButton>
       )}
       <label
         htmlFor={id}
@@ -142,7 +144,7 @@ function OtpInput({
       {/* Hidden input carries the full value for FormData */}
       <input type="hidden" name={name} value={digits.join('')} />
       {digits.map((d, i) => (
-        <input
+        <OperumInput
           key={i}
           ref={(el) => { refs.current[i] = el }}
           type="text"
@@ -205,14 +207,14 @@ function ResendButton({
   }
 
   return (
-    <button
+    <OperumButton variant="default"
       type="button"
       onClick={handleClick}
       className="text-center text-sm underline-offset-2 hover:underline"
       style={{ color: 'var(--brand-2)' }}
     >
       Reenviar código
-    </button>
+    </OperumButton>
   )
 }
 
@@ -294,7 +296,7 @@ function PrimaryButton({
   disabled?: boolean
 }) {
   return (
-    <button
+    <OperumButton variant="custom"
       type="submit"
       disabled={pending || disabled}
       className="relative w-full overflow-hidden rounded-xl px-4 py-3 text-sm font-medium text-white transition-transform duration-150 hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 disabled:scale-100 motion-reduce:hover:scale-100"
@@ -317,20 +319,20 @@ function PrimaryButton({
         )}
         {pending ? loadingLabel : label}
       </span>
-    </button>
+    </OperumButton>
   )
 }
 
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
+    <OperumButton variant="default"
       type="button"
       onClick={onClick}
       className="text-sm text-center transition-colors duration-150 hover:underline"
       style={{ color: 'var(--text-secondary)' }}
     >
       ← Voltar
-    </button>
+    </OperumButton>
   )
 }
 

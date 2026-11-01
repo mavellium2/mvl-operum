@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput, Textarea as OperumTextarea } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { erroMoeda, parseMoeda } from '@/lib/dinheiro'
@@ -310,13 +313,13 @@ function MultiCreatableSelect({
           <span key={val} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200">
             {val}
             {!disabled && (
-              <button type="button" onClick={e => { e.stopPropagation(); handleRemove(val) }} className="hover:text-red-600">
+              <OperumButton variant="custom" type="button" onClick={e => { e.stopPropagation(); handleRemove(val) }} className="hover:text-red-600">
                 <X className="w-3 h-3" />
-              </button>
+              </OperumButton>
             )}
           </span>
         ))}
-        <input
+        <OperumInput
           ref={inputRef}
           type="text"
           value={search}
@@ -330,14 +333,14 @@ function MultiCreatableSelect({
       {isOpen && !disabled && (
         <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-xl max-h-48 overflow-y-auto py-1">
           {filteredOptions.map(opt => (
-            <button key={opt} onClick={() => handleSelect(opt)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 transition-colors">
+            <OperumButton variant="default" type="button" key={opt} onClick={() => handleSelect(opt)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 transition-colors">
               {opt}
-            </button>
+            </OperumButton>
           ))}
           {showCreateOption && (
-            <button onClick={() => handleSelect(search.trim())} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-blue-700 font-medium bg-blue-50/50 hover:bg-blue-50 transition-colors border-t border-gray-50">
+            <OperumButton variant="default" type="button" onClick={() => handleSelect(search.trim())} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-blue-700 font-medium bg-blue-50/50 hover:bg-blue-50 transition-colors border-t border-gray-50">
               <Plus className="w-3.5 h-3.5" /> Criar &quot;{search.trim()}&quot;
-            </button>
+            </OperumButton>
           )}
           {filteredOptions.length === 0 && !showCreateOption && (
             <div className="px-4 py-3 text-sm text-gray-400 italic text-center">Sem opções</div>
@@ -409,14 +412,14 @@ function MemberSignatureUpload({
           className="max-h-12 max-w-[180px] object-contain border border-gray-100 rounded p-1 bg-gray-50"
         />
       )}
-      <button
+      <OperumButton variant="primary"
         type="button"
         disabled={uploading}
         onClick={() => inputRef.current?.click()}
         className="px-3 py-1.5 text-xs font-semibold bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 transition-colors self-start"
       >
         {uploading ? 'Enviando…' : url ? 'Alterar assinatura' : 'Enviar assinatura'}
-      </button>
+      </OperumButton>
       <input
         ref={inputRef}
         type="file"
@@ -1371,34 +1374,34 @@ export default function ProjetoStakeholdersClient({
             </div>
             <div className="flex items-center gap-1">
               {addMode === 'interno' && (
-                <button
+                <OperumButton variant="custom" type="button"
                   onClick={handleOpenCreateInterno}
                   title="Novo usuário"
                   className="p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
-                </button>
+                </OperumButton>
               )}
               {addMode === 'externo' && (
-                <button
+                <OperumButton variant="custom" type="button"
                   onClick={handleOpenCreateExterno}
                   title="Novo stakeholder"
                   className="p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
-                </button>
+                </OperumButton>
               )}
-              <button
+              <OperumButton variant="custom" type="button"
                 onClick={handleCloseAddMode}
                 className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </OperumButton>
             </div>
           </div>
 
           <div className="px-4 py-3 border-b border-gray-100">
-  <input
+  <OperumInput
     type="search"
     placeholder={addMode === 'interno' ? 'Buscar usuário…' : 'Buscar no diretório…'}
     value={searchDir}
@@ -1422,21 +1425,21 @@ export default function ProjetoStakeholdersClient({
                 </p>
                 {searchDir.trim().length > 0 && (
                   <div className="mt-4 flex flex-col gap-2 items-stretch">
-                    <button
+                    <OperumButton variant="default" type="button"
                       onClick={handleQuickCreateExterno}
                       disabled={quickLoading === 'dir'}
                       className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors disabled:opacity-50"
                     >
                       {quickLoading === 'dir' ? <Spinner /> : <Building2 className="w-4 h-4" />}
                       Criar &quot;{searchDir.trim()}&quot; no diretório
-                    </button>
-                    <button
+                    </OperumButton>
+                    <OperumButton variant="default" type="button"
                       onClick={handleCreateMembroDoDiretorio}
                       className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors"
                     >
                       <Users className="w-4 h-4" />
                       Criar &quot;{searchDir.trim()}&quot; como membro da equipe
-                    </button>
+                    </OperumButton>
                   </div>
                 )}
               </div>
@@ -1454,15 +1457,15 @@ export default function ProjetoStakeholdersClient({
                       )}
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
-                      <button
+                      <OperumButton variant="default" type="button"
                         onClick={() => handleBindExterno(s)}
                         disabled={loadingId === s.id}
                         title="Vincular ao projeto"
                         className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 disabled:opacity-40 transition-colors"
                       >
                         {loadingId === s.id ? <Spinner /> : <UserPlus className="w-4 h-4" />}
-                      </button>
-                      <button
+                      </OperumButton>
+                      <OperumButton variant="custom" type="button"
                         onClick={() => handleOpenEdit({
                           id: s.id, tipo: 'externo', stakeholderId: s.id, tenantId: s.tenantId,
                           name: s.name, email: s.email, avatarUrl: s.logoUrl, phone: s.phone,
@@ -1475,7 +1478,7 @@ export default function ProjetoStakeholdersClient({
                         className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                       >
                         <Pencil className="w-4 h-4" />
-                      </button>
+                      </OperumButton>
                     </div>
                   </li>
                 ))}
@@ -1498,14 +1501,14 @@ export default function ProjetoStakeholdersClient({
                         </p>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
-                        <button
+                        <OperumButton variant="default" type="button"
                           onClick={() => handleAddInterno(u)}
                           disabled={loadingId === u.id}
                           title="Adicionar ao projeto"
                           className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 disabled:opacity-40 transition-colors"
                         >
                           {loadingId === u.id ? <Spinner /> : <UserPlus className="w-4 h-4" />}
-                        </button>
+                        </OperumButton>
                     </div>
                   </li>
                 ))}
@@ -1514,7 +1517,7 @@ export default function ProjetoStakeholdersClient({
               
               {/* Create & Add option when search has no results */}
               {searchDir.trim().length > 0 && filteredDispInterno.length === 0 && (
-                <button
+                <OperumButton variant="default" type="button"
                   onClick={() => {
                     setFormState(f => ({ ...f, name: searchDir.trim() }))
                     handleOpenCreateInterno()
@@ -1522,7 +1525,7 @@ export default function ProjetoStakeholdersClient({
                   className="w-full flex items-center gap-2 px-4 py-3 text-sm text-blue-700 font-medium bg-blue-50/50 hover:bg-blue-50 transition-colors border-t border-gray-50 mx-2 rounded-xl"
                 >
                   <UserPlus className="w-4 h-4" /> Criar e adicionar &quot;{searchDir.trim()}&quot;
-                </button>
+                </OperumButton>
               )}
               
               {/* Empty state when no search term */}
@@ -1547,9 +1550,9 @@ export default function ProjetoStakeholdersClient({
         <div className={`${col3Width} w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in slide-in-from-right-4 duration-300 flex flex-col max-h-[calc(100vh-6rem)]`}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
             <h2 className="text-sm font-semibold text-gray-900">{col3Title}</h2>
-            <button onClick={handleClearSelection} className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+            <OperumButton variant="custom" type="button" onClick={handleClearSelection} className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
               <X className="w-4 h-4" />
-            </button>
+            </OperumButton>
           </div>
 
           <div className="px-5 py-5 space-y-4 overflow-y-auto flex-1 min-h-0">
@@ -1575,7 +1578,7 @@ export default function ProjetoStakeholdersClient({
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 Nome <span className="text-red-400">*</span>
               </label>
-              <input
+              <OperumInput
                 type="text"
                 autoFocus
                 value={formState.name}
@@ -1629,7 +1632,7 @@ export default function ProjetoStakeholdersClient({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Empresa / Instituição</label>
-                  <input
+                  <OperumInput
                     type="text"
                     value={formState.company}
                     onChange={e => setField('company', e.target.value)}
@@ -1640,7 +1643,7 @@ export default function ProjetoStakeholdersClient({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Competência</label>
-                  <input
+                  <OperumInput
                     type="text"
                     value={formState.competence}
                     onChange={e => setField('competence', e.target.value)}
@@ -1674,7 +1677,7 @@ export default function ProjetoStakeholdersClient({
                   <div>
                     <label htmlFor="field-horas-diarias" className="block text-xs font-medium text-gray-600 mb-1">Horas por dia</label>
                     {/* Texto, não type="number": no Firefox o number com vírgula ("8,5") chegava vazio. */}
-                    <input
+                    <OperumInput
                       id="field-horas-diarias"
                       type="text"
                       inputMode="decimal"
@@ -1734,7 +1737,7 @@ export default function ProjetoStakeholdersClient({
                       <span className="text-xs font-medium text-gray-600">Gerente do Projeto</span>
                       <p className="text-[10px] text-gray-400">Concede acesso de gerência</p>
                     </div>
-                    <button
+                    <OperumButton variant="custom"
                       type="button"
                       onClick={() => {
                         if (!isAdmin) return
@@ -1751,7 +1754,7 @@ export default function ProjetoStakeholdersClient({
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shrink-0 ${formState.isGerente ? 'bg-blue-600' : 'bg-gray-200'} ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${formState.isGerente ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
+                    </OperumButton>
                 </div>
 
                 <div>
@@ -1832,7 +1835,7 @@ export default function ProjetoStakeholdersClient({
             {/* Observações */}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Observações</label>
-              <textarea
+              <OperumTextarea
                 value={formState.notes}
                 onChange={e => setField('notes', e.target.value)}
                 disabled={!isAdmin}
@@ -1872,16 +1875,16 @@ export default function ProjetoStakeholdersClient({
               </div>
             )}
 
-            <div className="flex gap-2">
-              <button
+            <FormActions className="flex gap-2">
+              <OperumButton variant="default"
                 type="button"
                 onClick={handleClearSelection}
                 className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Cancelar
-              </button>
+              </OperumButton>
               {canManage && (
-                <button
+                <OperumButton variant="primary"
                   type="button"
                   onClick={handleSave}
                   disabled={loadingId === 'form' || Boolean(horasCheck.erro)}
@@ -1889,9 +1892,9 @@ export default function ProjetoStakeholdersClient({
                 >
                   {loadingId === 'form' && <Spinner />}
                   {isCreating ? 'Criar Stakeholder' : 'Salvar Dados'}
-                </button>
+                </OperumButton>
               )}
-            </div>
+            </FormActions>
           </div>
         </div>
       )}
@@ -1924,7 +1927,7 @@ export default function ProjetoStakeholdersClient({
           </p>
         )}
         <label htmlFor="motivo-inativo" className="block text-xs font-medium text-gray-600 mb-1">Motivo da inativação</label>
-        <textarea
+        <OperumTextarea
           id="motivo-inativo"
           value={motivoInativo}
           onChange={e => { setMotivoInativo(e.target.value); setErroInativo(null) }}
@@ -1953,7 +1956,7 @@ export default function ProjetoStakeholdersClient({
           </div>
           {canManage && (
             <div className="relative" ref={addMenuRef}>
-              <button
+              <OperumButton variant="custom" type="button"
                 onClick={() => setShowAddMenu(v => !v)}
                 title="Adicionar"
                 aria-expanded={showAddMenu}
@@ -1964,23 +1967,23 @@ export default function ProjetoStakeholdersClient({
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 Adicionar pessoa
                 <ChevronDown className="w-3 h-3" />
-              </button>
+              </OperumButton>
               {showAddMenu && (
                 <div id="stakeholder-add-menu" onKeyDown={e => { if (e.key === 'Escape') { setShowAddMenu(false); (addMenuRef.current?.querySelector('button') as HTMLButtonElement | null)?.focus() } }} className="absolute right-0 top-full mt-1 w-60 bg-white rounded-xl border border-gray-100 shadow-xl z-50 py-1 animate-in fade-in duration-150">
-                  <button
+                  <OperumButton variant="default" type="button"
                     onClick={() => handleOpenAddMode('interno')}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                   >
                     <Users className="w-4 h-4 text-blue-500" />
                     Vincular Membro da Equipe
-                  </button>
-                  <button
+                  </OperumButton>
+                  <OperumButton variant="default" type="button"
                     onClick={() => handleOpenAddMode('externo')}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-slate-50 hover:text-slate-700 transition-colors"
                   >
                     <Building2 className="w-4 h-4 text-slate-500" />
                     Stakeholder Externo
-                  </button>
+                  </OperumButton>
                 </div>
               )}
             </div>
@@ -1990,7 +1993,7 @@ export default function ProjetoStakeholdersClient({
         <div className="flex flex-wrap gap-4 px-5 py-4 border-b border-gray-100">
           <label className="flex-1 min-w-0 basis-56 text-sm font-medium text-gray-700">
             Buscar pessoa
-            <input
+            <OperumInput
               type="search"
               placeholder="Buscar por nome, e-mail ou empresa…"
               value={searchProjeto}
@@ -2073,12 +2076,12 @@ export default function ProjetoStakeholdersClient({
                 <div className="text-sm text-gray-700 tabular-nums"><span className={styles.fieldLabel}>Remuneração</span>{s.tipo === 'interno' && (s.remuneracao ?? s.hourlyRate) != null ? <>{(s.remuneracao ?? s.hourlyRate)!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<span className="block text-sm text-gray-600">{s.remuneracao != null ? 'por mês' : 'por hora'}</span></> : <span aria-label="Não informada">—</span>}</div>
                 <div className={`${styles.rowActions} flex flex-wrap items-center gap-1`}>
                   {reorderMode ? <>
-                    <button type="button" disabled={!canReorder || posicao === 0 || exibidos[posicao - 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao - 1]))} aria-label={`Mover ${s.name} para cima`} className={styles.actionButton}><ArrowUp className="w-4 h-4" aria-hidden="true" /></button>
-                    <button type="button" disabled={!canReorder || exibidos[posicao + 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao + 1]))} aria-label={`Mover ${s.name} para baixo`} className={styles.actionButton}><ArrowDown className="w-4 h-4" aria-hidden="true" /></button>
+                    <OperumButton variant="custom" type="button" disabled={!canReorder || posicao === 0 || exibidos[posicao - 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao - 1]))} aria-label={`Mover ${s.name} para cima`} className={styles.actionButton}><ArrowUp className="w-4 h-4" aria-hidden="true" /></OperumButton>
+                    <OperumButton variant="custom" type="button" disabled={!canReorder || exibidos[posicao + 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao + 1]))} aria-label={`Mover ${s.name} para baixo`} className={styles.actionButton}><ArrowDown className="w-4 h-4" aria-hidden="true" /></OperumButton>
                   </> : <>
-                    <button type="button" onClick={() => handleOpenEdit(s)} title="Editar" aria-label={`Editar ${s.name}`} className={`${styles.actionButton} text-blue-700`}><Pencil className="w-4 h-4" aria-hidden="true" /><span>Editar</span></button>
+                    <OperumButton variant="custom" type="button" onClick={() => handleOpenEdit(s)} title="Editar" aria-label={`Editar ${s.name}`} className={`${styles.actionButton} text-blue-700`}><Pencil className="w-4 h-4" aria-hidden="true" /><span>Editar</span></OperumButton>
                     {podeAlterarSituacao(s) && <SituacaoButton ativo={s.isActive !== false} nome={s.name} disabled={loadingId === s.id} onClick={() => (s.isActive === false ? reativar(s) : abrirInativacao(s))} />}
-                    {canManage && <button type="button" onClick={() => handleUnlink(s)} disabled={loadingId === s.id} title="Desvincular do projeto" aria-label={`Desvincular ${s.name} do projeto`} className={`${styles.actionButton} text-gray-600 hover:text-red-700`}>{loadingId === s.id ? <Spinner /> : <UserMinus className="w-4 h-4" aria-hidden="true" />}</button>}
+                    {canManage && <OperumButton variant="danger" type="button" onClick={() => handleUnlink(s)} disabled={loadingId === s.id} title="Desvincular do projeto" aria-label={`Desvincular ${s.name} do projeto`} className={`${styles.actionButton} text-gray-600 hover:text-red-700`}>{loadingId === s.id ? <Spinner /> : <UserMinus className="w-4 h-4" aria-hidden="true" />}</OperumButton>}
                   </>}
                 </div>
               </li>
@@ -2104,7 +2107,7 @@ export default function ProjetoStakeholdersClient({
                         <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
                         {s.company && <p className="text-[11px] text-gray-400 truncate">{s.company}</p>}
                       </div>
-                      <button
+                      <OperumButton variant="default" type="button"
                         onClick={() => { handleBindExterno(s); setSearchProjeto('') }}
                         disabled={loadingId === s.id}
                         aria-label={`Vincular "${s.name}" ao projeto`}
@@ -2112,7 +2115,7 @@ export default function ProjetoStakeholdersClient({
                       >
                         {loadingId === s.id ? <Spinner /> : <UserPlus className="w-3.5 h-3.5" />}
                         Vincular
-                      </button>
+                      </OperumButton>
                     </li>
                   ))}
                 </ul>
@@ -2130,7 +2133,7 @@ export default function ProjetoStakeholdersClient({
                         <p className="text-sm font-medium text-gray-900 truncate">{u.name}</p>
                         <p className="text-[11px] text-gray-400 truncate">{u.email}</p>
                       </div>
-                      <button
+                      <OperumButton variant="default" type="button"
                         onClick={() => { handleAddInterno(u); setSearchProjeto('') }}
                         disabled={loadingId === u.id}
                         aria-label={`Adicionar "${u.name}" ao projeto`}
@@ -2138,7 +2141,7 @@ export default function ProjetoStakeholdersClient({
                       >
                         {loadingId === u.id ? <Spinner /> : <UserPlus className="w-3.5 h-3.5" />}
                         Adicionar
-                      </button>
+                      </OperumButton>
                     </li>
                   ))}
                 </ul>
@@ -2148,21 +2151,21 @@ export default function ProjetoStakeholdersClient({
             {/* Criar: só quando não há um externo com o mesmo nome (evita duplicata) */}
             {!candidatoDiretorio && (
               <div className="flex flex-col gap-2 items-stretch">
-                <button
+                <OperumButton variant="default" type="button"
                   onClick={handleCreateMembroDaBusca}
                   className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors"
                 >
                   <Users className="w-4 h-4" />
                   Criar &quot;{searchProjeto.trim()}&quot; como membro da equipe
-                </button>
-                <button
+                </OperumButton>
+                <OperumButton variant="default" type="button"
                   onClick={handleQuickCreateProjeto}
                   disabled={quickLoading === 'col1'}
                   className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors disabled:opacity-50"
                 >
                   {quickLoading === 'col1' ? <Spinner /> : <Building2 className="w-4 h-4" />}
                   Criar &quot;{searchProjeto.trim()}&quot; como externo
-                </button>
+                </OperumButton>
               </div>
             )}
           </div>
@@ -2178,7 +2181,7 @@ export default function ProjetoStakeholdersClient({
 /** Botão com texto para inativar/reativar: só o ícone não era encontrado. */
 function SituacaoButton({ ativo, nome, disabled, onClick }: { ativo: boolean; nome: string; disabled?: boolean; onClick: () => void }) {
   return (
-    <button
+    <OperumButton variant="default"
       type="button"
       onClick={onClick}
       disabled={disabled}
@@ -2190,6 +2193,6 @@ function SituacaoButton({ ativo, nome, disabled, onClick }: { ativo: boolean; no
     >
       <Power className="w-3.5 h-3.5" aria-hidden="true" />
       {ativo ? 'Inativar' : 'Reativar'}
-    </button>
+    </OperumButton>
   )
 }

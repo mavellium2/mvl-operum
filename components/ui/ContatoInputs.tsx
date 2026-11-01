@@ -1,5 +1,6 @@
 'use client'
 
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { erroEmail, erroTelefone, formatEmail, formatTelefone } from '@/lib/contato'
 
@@ -38,7 +39,7 @@ function CampoContato({ type, formatar, validar, value, defaultValue, onValueCha
   const mostrarErro = tocado && erro !== null
 
   const input = (
-    <input
+    <OperumInput
       {...rest}
       ref={ref}
       id={inputId}

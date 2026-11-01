@@ -1,5 +1,7 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
 import Select from '@/components/ui/Select'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import SignaturePad from 'signature_pad'
@@ -177,13 +179,13 @@ export default function SignatureEditor({ onClose, onSave }: { onClose: () => vo
   return <Modal isOpen onClose={() => { if (!saving) onClose() }} title="Assinatura manuscrita" maxWidth="max-w-2xl">
     <div className="space-y-4" aria-busy={busy || saving}>
       <div className="flex gap-2">
-        <button className={button} disabled={saving} aria-pressed={mode === 'draw'} onClick={() => setMode('draw')}>Desenhar</button>
-        <button className={button} disabled={saving} aria-pressed={mode === 'upload'} onClick={() => setMode('upload')}>Enviar arquivo</button>
+        <OperumButton variant="default" type="button" className={button} disabled={saving} aria-pressed={mode === 'draw'} onClick={() => setMode('draw')}>Desenhar</OperumButton>
+        <OperumButton variant="default" type="button" className={button} disabled={saving} aria-pressed={mode === 'upload'} onClick={() => setMode('upload')}>Enviar arquivo</OperumButton>
       </div>
       {mode === 'draw' ? <>
         <p className="text-sm text-gray-600">Assine com mouse, dedo ou caneta. O fundo será transparente.</p>
         <canvas ref={bindCanvas} aria-label="Área para desenhar assinatura" className="w-full touch-none rounded-lg border border-gray-300 bg-white" style={{ aspectRatio: '3 / 1' }} />
-        <div className="flex gap-2"><button className={button} disabled={saving} onClick={() => { const data = pad.current?.toData(); if (data) { data.pop(); pad.current?.fromData(data) } }}>Desfazer traço</button><button className={button} disabled={saving} onClick={() => pad.current?.clear()}>Limpar</button></div>
+        <div className="flex gap-2"><OperumButton variant="default" type="button" className={button} disabled={saving} onClick={() => { const data = pad.current?.toData(); if (data) { data.pop(); pad.current?.fromData(data) } }}>Desfazer traço</OperumButton><OperumButton variant="default" type="button" className={button} disabled={saving} onClick={() => pad.current?.clear()}>Limpar</OperumButton></div>
       </> : <>
         <label className="block text-sm">PNG, JPG ou PDF — até 10 MB; PDF até 50 páginas.
           <input className="mt-2 block w-full" type="file" accept="image/png,image/jpeg,application/pdf" disabled={saving} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void selectFile(file) }} />
@@ -195,7 +197,7 @@ export default function SignatureEditor({ onClose, onSave }: { onClose: () => vo
         </ReactCrop></>}
       </>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      <div className="flex justify-end gap-2"><button className={button} disabled={saving} onClick={onClose}>Cancelar</button><button className={`${button} bg-slate-900 text-white`} disabled={busy || saving || (mode === 'upload' && !source)} onClick={() => void save()}>{saving ? 'Salvando…' : 'Salvar assinatura'}</button></div>
+      <FormActions className="flex justify-end gap-2"><OperumButton variant="default" type="button" className={button} disabled={saving} onClick={onClose}>Cancelar</OperumButton><OperumButton variant="primary" type="button" className={`${button} bg-slate-900 text-white`} disabled={busy || saving || (mode === 'upload' && !source)} onClick={() => void save()}>{saving ? 'Salvando…' : 'Salvar assinatura'}</OperumButton></FormActions>
     </div>
   </Modal>
 }

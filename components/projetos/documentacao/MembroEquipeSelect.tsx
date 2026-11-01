@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useCallback, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Plus } from 'lucide-react'
@@ -64,7 +65,7 @@ export default function MembroEquipeSelect({ membros, projetoId, value, onChange
         onCreate={projetoId ? () => setCriando(true) : undefined}
         createLabel="Criar novo membro"
       />
-      {!semBotaoCriar && projetoId && <button type="button" onClick={() => setCriando(true)} disabled={disabled} aria-label="Criar novo membro da equipe" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-40"><Plus className="h-4 w-4" /></button>}
+      {!semBotaoCriar && projetoId && <OperumButton variant="custom" type="button" onClick={() => setCriando(true)} disabled={disabled} aria-label="Criar novo membro da equipe" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-40"><Plus className="h-4 w-4" /></OperumButton>}
     </div>
     {criando && <CadastroMembroLateral projetoId={projetoId} onClose={() => setCriando(false)} onSelecionado={selecionarCriado} />}
   </>

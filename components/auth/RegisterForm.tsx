@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { EmailInput } from '@/components/ui/ContatoInputs'
 import { useActionState } from 'react'
 import Link from 'next/link'
@@ -15,7 +17,7 @@ export function RegisterForm() {
         <label htmlFor="name" className="text-sm font-medium text-gray-700">
           Nome
         </label>
-        <input
+        <OperumInput
           id="name"
           name="name"
           type="text"
@@ -58,13 +60,13 @@ export function RegisterForm() {
         <p className="text-sm text-red-600">{state.message}</p>
       )}
 
-      <button
+      <OperumButton variant="primary"
         type="submit"
         disabled={pending}
         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
       >
         {pending ? 'Criando conta...' : 'Criar conta'}
-      </button>
+      </OperumButton>
 
       <p className="text-center text-sm text-gray-600">
         Já tem conta?{' '}

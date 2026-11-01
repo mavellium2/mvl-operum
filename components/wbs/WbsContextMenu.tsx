@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { type Dispatch, useEffect, useRef } from 'react'
 import type { WbsAction } from '@/lib/wbsReducer'
 import type { WbsNodeClient } from '@/types/wbs'
@@ -38,7 +39,7 @@ interface WbsContextMenuProps {
 
 function ItemButton({ item, onClose }: { item: Item; onClose: () => void }) {
   return (
-    <button
+    <OperumButton variant="danger" type="button"
       disabled={item.disabled}
       onClick={() => { if (item.disabled) return; item.action(); onClose() }}
       className={`w-full flex items-center justify-between px-4 py-1.5 text-sm text-left transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none ${
@@ -49,7 +50,7 @@ function ItemButton({ item, onClose }: { item: Item; onClose: () => void }) {
     >
       <span>{item.label}</span>
       {item.shortcut && <span className="ml-8 text-xs text-gray-500 shrink-0">{item.shortcut}</span>}
-    </button>
+    </OperumButton>
   )
 }
 

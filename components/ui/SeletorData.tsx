@@ -1,5 +1,6 @@
 'use client'
 
+import { Input as OperumInput } from '@/components/ui/Field'
 import GlassButton from '@/components/ui/GlassButton'
 
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
@@ -156,7 +157,7 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
   return (
     <>
       <span className="relative block">
-        <input
+        <OperumInput
           ref={campo}
           id={id}
           type="text"

@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useState, useTransition } from 'react'
 import { repetirSincronizacaoAction } from '@/app/actions/sincronizacao'
 import type { StatusSincronizacao as Status } from '@/services/sincronizacaoStatus'
@@ -70,19 +71,19 @@ export default function StatusSincronizacao({ projectId, inicial, podeSincroniza
         {status?.ultimaConclusaoEm && <span className="text-xs opacity-80">Última conclusão: {dataHora(status.ultimaConclusaoEm)}</span>}
         <span className="ml-auto flex items-center gap-2">
           {(status?.pendencias.length || status?.erro || mensagem) ? (
-            <button type="button" onClick={() => setAberto(a => !a)} aria-expanded={aberto} className="text-xs font-medium underline">
+            <OperumButton variant="custom" type="button" onClick={() => setAberto(a => !a)} aria-expanded={aberto} className="text-xs font-medium underline">
               {aberto ? 'Ocultar detalhes' : 'Ver detalhes'}
-            </button>
+            </OperumButton>
           ) : null}
           {podeSincronizar && (
-            <button
+            <OperumButton variant="default"
               type="button"
               onClick={sincronizar}
               disabled={pendente}
               className="rounded-lg border border-current/20 bg-white/70 px-2 py-1 text-xs font-semibold hover:bg-white disabled:opacity-60"
             >
               {situacao === 'FALHA' ? 'Tentar novamente' : 'Sincronizar agora'}
-            </button>
+            </OperumButton>
           )}
         </span>
       </div>

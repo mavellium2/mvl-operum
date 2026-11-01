@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { fmtDataBR } from '@/lib/planilhaCustos'
 
 import React, { type Dispatch, useEffect, useRef } from 'react'
@@ -95,7 +97,7 @@ const WbsNodeCard = React.memo(function WbsNodeCard({
     >
       {/* Collapse toggle — pílula na borda inferior, meio para fora; − expandido / + recolhido */}
       {isParent && (
-        <button
+        <OperumButton variant="custom"
           type="button"
           aria-expanded={!node.collapsed}
           onPointerDown={e => e.stopPropagation()}
@@ -115,7 +117,7 @@ const WbsNodeCard = React.memo(function WbsNodeCard({
           aria-label={node.collapsed ? 'Expandir' : 'Recolher'}
         >
           {node.collapsed ? '+' : '−'}
-        </button>
+        </OperumButton>
       )}
 
       {/* Code + Title */}
@@ -125,7 +127,7 @@ const WbsNodeCard = React.memo(function WbsNodeCard({
             <span style={{ whiteSpace: 'nowrap', fontWeight: 500, color: node.style.textColor, flexShrink: 0 }}>
               {node.code}
             </span>
-            <input
+            <OperumInput
               ref={inputRef}
               autoFocus
               defaultValue={editingInitialText != null ? editingInitialText : node.title}

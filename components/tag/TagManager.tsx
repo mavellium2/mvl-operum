@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useState, useTransition } from 'react'
 import { TagBadge } from './TagBadge'
 import { createTagAction } from '@/app/actions/tags'
@@ -42,7 +44,7 @@ export function TagManager({ tags: initialTags }: TagManagerProps) {
         ))}
       </div>
       <div className="flex gap-2 items-center">
-        <input
+        <OperumInput
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
@@ -52,7 +54,7 @@ export function TagManager({ tags: initialTags }: TagManagerProps) {
         />
         <div className="flex gap-1">
           {PRESET_COLORS.map((color) => (
-            <button
+            <OperumButton variant="custom"
               key={color}
               type="button"
               onClick={() => setSelectedColor(color)}
@@ -62,14 +64,14 @@ export function TagManager({ tags: initialTags }: TagManagerProps) {
             />
           ))}
         </div>
-        <button
+        <OperumButton variant="primary"
           type="button"
           onClick={handleCreate}
           disabled={isPending || !newName.trim()}
           className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
         >
           Criar
-        </button>
+        </OperumButton>
       </div>
     </div>
   )

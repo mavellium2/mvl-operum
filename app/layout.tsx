@@ -4,6 +4,7 @@ import AppShell from "@/components/layout/AppShell";
 import { ToastProvider } from "@/components/ui/Toast";
 import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 import "./globals.css";
+import "@/components/ui/Field.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

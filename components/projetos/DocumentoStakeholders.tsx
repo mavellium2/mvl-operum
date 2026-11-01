@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { erroEmail, erroTelefone, formatEmail, formatTelefone } from '@/lib/contato'
 import { printFolhasStyle } from '@/lib/printPageStyle'
 import { CopiaParaImpressao } from '@/components/documentos/editor/folha'
@@ -523,7 +526,7 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
         avisos={versaoAberta ? (
           <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
             Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
-            <button type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar ao documento atual</button>
+            <OperumButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar ao documento atual</OperumButton>
           </div>
         ) : canEdit && rascunhoRestaurado ? (
           <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve uma versão para enviá-lo à aprovação.</p>
@@ -567,7 +570,7 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
           )}
           <div>
             <label className={labelClass}>Título da alteração <span className="text-red-500">*</span></label>
-            <input
+            <OperumInput
               className={inputClass}
               value={commitTitle}
               onChange={e => setCommitTitle(e.target.value)}
@@ -577,22 +580,22 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
             />
             <p className="text-xs text-slate-500 mt-1">Descreva brevemente o que foi alterado.</p>
           </div>
-          <div className="flex justify-end gap-2">
-            <button
+          <FormActions className="flex justify-end gap-2">
+            <OperumButton variant="default" type="button"
               onClick={() => setCommitModalOpen(false)}
               className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >
               Cancelar
-            </button>
-            <button
+            </OperumButton>
+            <OperumButton variant="default" type="button"
               onClick={handleConfirmCommit}
               disabled={!commitTitle.trim() || savingVersion}
               className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-3.5 h-3.5" />
               {savingVersion ? 'Salvando…' : 'Confirmar'}
-            </button>
-          </div>
+            </OperumButton>
+          </FormActions>
         </div>
       </Modal>
 
@@ -606,7 +609,7 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
         <div className="flex flex-col h-full">
           {/* Busca */}
           <div className="px-4 py-3 border-b border-slate-100">
-            <input
+            <OperumInput
               className={inputClass}
               value={historySearch}
               onChange={e => setHistorySearch(e.target.value)}
@@ -642,20 +645,20 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
                   {/* Botões de aprovação — somente para gerentes e versões pendentes */}
                   {permissions.has('documentos:aprovar') && isManager && v.status === 'PENDING' && (
                     <div className="flex gap-2 mt-2">
-                      <button
+                      <OperumButton variant="default" type="button"
                         onClick={() => handleVersionAction(v.id, 'approve')}
                         disabled={actingVersionId === v.id}
                         className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50"
                       >
                         <Check className="w-3 h-3" /> Aprovar
-                      </button>
-                      <button
+                      </OperumButton>
+                      <OperumButton variant="danger" type="button"
                         onClick={() => handleVersionAction(v.id, 'reject')}
                         disabled={actingVersionId === v.id}
                         className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
                       >
                         <X className="w-3 h-3" /> Rejeitar
-                      </button>
+                      </OperumButton>
                     </div>
                   )}
                 </div>

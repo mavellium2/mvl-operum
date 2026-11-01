@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useState } from 'react'
 import ProjetoStakeholdersClient, { type StakeholderUnificado } from '@/components/projetos/ProjetoStakeholdersClient'
 import { carregarCadastroStakeholdersAction } from '@/app/actions/cadastroStakeholders'
@@ -34,7 +35,7 @@ export default function CadastroMembroLateral({ projetoId, onClose, onSelecionad
 
   return <Drawer isOpen onClose={onClose} title="Adicionar membro da equipe" width="w-[448px]">
     <div className="p-5">
-      {erro ? <><p role="alert" className="text-sm text-red-700">{erro}</p><button type="button" className="mt-3 text-sm font-medium text-blue-700" onClick={() => { setErro(''); setTentativa(n => n + 1) }}>Tentar novamente</button></> : <p role="status" className="text-sm text-slate-500">Carregando cadastro de membros…</p>}
+      {erro ? <><p role="alert" className="text-sm text-red-700">{erro}</p><OperumButton variant="default" type="button" className="mt-3 text-sm font-medium text-blue-700" onClick={() => { setErro(''); setTentativa(n => n + 1) }}>Tentar novamente</OperumButton></> : <p role="status" className="text-sm text-slate-500">Carregando cadastro de membros…</p>}
     </div>
   </Drawer>
 }

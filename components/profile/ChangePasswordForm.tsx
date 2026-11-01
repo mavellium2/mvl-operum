@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import { changePasswordAction, type ProfileActionState } from '@/app/actions/profile'
-import Button from '@/components/ui/Button'
+import GlassButton from '@/components/ui/GlassButton'
 import PasswordInput from '@/components/ui/PasswordInput'
 
 export default function ChangePasswordForm() {
@@ -47,9 +47,9 @@ export default function ChangePasswordForm() {
         <p className="text-sm text-green-600">{state.message as string}</p>
       )}
 
-      <Button type="submit" variant="primary" disabled={isPending}>
+      <GlassButton type="submit" variant="primary" disabled={isPending}>
         {isPending ? 'Alterando...' : 'Alterar senha'}
-      </Button>
+      </GlassButton>
     </form>
   )
 }

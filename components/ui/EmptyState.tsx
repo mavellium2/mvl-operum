@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
@@ -43,9 +44,9 @@ export default function EmptyState({
             {action.label}
           </Link>
         ) : (
-          <button onClick={action.onClick} className="mt-2 text-blue-600 text-sm hover:underline">
+          <OperumButton variant="default" type="button" onClick={action.onClick} className="mt-2 text-blue-600 text-sm hover:underline">
             {action.label}
-          </button>
+          </OperumButton>
         )
       )}
     </div>

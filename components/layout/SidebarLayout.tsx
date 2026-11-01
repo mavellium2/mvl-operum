@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useState, useTransition, useId, useRef } from 'react'
 import Link from 'next/link'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -102,7 +103,7 @@ export default function SidebarLayout({
 
   return (
     <>
-      <button ref={mobileTrigger} type="button" onClick={() => setMobileOpen(true)} aria-expanded={mobile && mobileOpen} aria-controls={panelId} aria-label="Abrir menu lateral" className="md:hidden fixed top-3 left-3 z-40 rounded-lg border bg-white p-2 shadow focus-visible:ring-2 focus-visible:ring-blue-500">☰</button>
+      <OperumButton variant="custom" ref={mobileTrigger} type="button" onClick={() => setMobileOpen(true)} aria-expanded={mobile && mobileOpen} aria-controls={panelId} aria-label="Abrir menu lateral" className="md:hidden fixed top-3 left-3 z-40 rounded-lg border bg-white p-2 shadow focus-visible:ring-2 focus-visible:ring-blue-500">☰</OperumButton>
       <div ref={overlayRef} tabIndex={-1} role={mobile && mobileOpen ? 'dialog' : undefined} aria-label={mobile && mobileOpen ? 'Menu lateral' : undefined} aria-modal={mobile && mobileOpen ? true : undefined} className={mobile && mobileOpen ? 'fixed inset-0' : 'contents'} style={mobile && mobileOpen ? { zIndex } : undefined}>
       {mobile && mobileOpen && <div className="fixed inset-0 bg-black/50 md:hidden" style={{ zIndex: zIndex - 1 }} onClick={() => setMobileOpen(false)} aria-hidden="true" />}
     <aside
@@ -130,7 +131,7 @@ export default function SidebarLayout({
         </Link>
         {(onToggleCollapse || mobile) && (
           <Tooltip label="Recolher menu" side="bottom">
-            <button
+            <OperumButton variant="custom"
               type="button"
               onClick={() => { if (mobile) setMobileOpen(false); else onToggleCollapse?.() }}
               aria-expanded={mobile ? mobileOpen : !collapsed}
@@ -139,7 +140,7 @@ export default function SidebarLayout({
               className="shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             >
               <PanelLeftClose className="w-4 h-4" />
-            </button>
+            </OperumButton>
           </Tooltip>
         )}
       </div>
@@ -192,7 +193,7 @@ export default function SidebarLayout({
           </Link>
 
           <Tooltip label="Sair" side="bottom">
-            <button
+            <OperumButton variant="custom"
               type="button"
               onClick={() => startTransition(() => logoutAction())}
               disabled={isPending}
@@ -200,7 +201,7 @@ export default function SidebarLayout({
               className="shrink-0 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >
               <LogOut className="w-4 h-4" />
-            </button>
+            </OperumButton>
           </Tooltip>
         </div>
         {process.env.NEXT_PUBLIC_APP_VERSION && (

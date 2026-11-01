@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import Select from '@/components/ui/Select'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
@@ -146,13 +147,13 @@ export default function NotificacaoList({ initialNotificacoes }: Props) {
           ]}
         />
         {unreadCount > 0 && (
-          <button
+          <OperumButton variant="default" type="button"
             onClick={handleMarkAllRead}
             disabled={isPending}
             className="sm:ml-auto px-4 py-2 text-sm text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 disabled:opacity-50"
           >
             Marcar todas como lidas
-          </button>
+          </OperumButton>
         )}
       </div>
 
@@ -217,22 +218,22 @@ export default function NotificacaoList({ initialNotificacoes }: Props) {
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   {isUnread && (
-                    <button
+                    <OperumButton variant="default" type="button"
                       onClick={() => handleMarkRead(n.id)}
                       disabled={isPending}
                       className="text-xs text-blue-600 hover:underline disabled:opacity-50"
                     >
                       Marcar como lida
-                    </button>
+                    </OperumButton>
                   )}
                   {n.status !== 'ARCHIVED' && (
-                    <button
+                    <OperumButton variant="default" type="button"
                       onClick={() => handleArchive(n.id)}
                       disabled={isPending}
                       className="text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50"
                     >
                       Arquivar
-                    </button>
+                    </OperumButton>
                   )}
                   {link && (
                     <Link href={link} className="text-xs text-blue-600 hover:underline ml-auto">

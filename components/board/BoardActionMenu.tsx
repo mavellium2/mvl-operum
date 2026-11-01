@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useState, useEffect, useRef } from 'react'
 
 interface BoardActionMenuProps {
@@ -26,7 +27,7 @@ export default function BoardActionMenu({ onImportCsv, onChangeLayout }: BoardAc
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <OperumButton variant="custom" type="button"
         aria-label="Board actions"
         onClick={() => setOpen(o => !o)}
         className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
@@ -36,24 +37,24 @@ export default function BoardActionMenu({ onImportCsv, onChangeLayout }: BoardAc
           <circle cx="12" cy="12" r="1.5" />
           <circle cx="12" cy="19" r="1.5" />
         </svg>
-      </button>
+      </OperumButton>
 
       {open && (
         <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
-          {onImportCsv && <button
+          {onImportCsv && <OperumButton variant="default" type="button"
             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
             onClick={() => { setOpen(false); onImportCsv() }}
           >
             Importar CSV
-          </button>}
-        
+          </OperumButton>}
+
           {onChangeLayout && (
-            <button 
+            <OperumButton variant="default" type="button"
               onClick={() => { setOpen(false); onChangeLayout(); }}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               Alterar Layout (Fundo)
-            </button>
+            </OperumButton>
           )}
         </div>
       )}

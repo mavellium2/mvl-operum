@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { type Dispatch, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
@@ -55,7 +56,7 @@ function IconButton({
 }: { label: string; onClick: () => void; disabled?: boolean; active?: boolean; children: React.ReactNode }) {
   return (
     <Tooltip label={label}>
-      <button
+      <OperumButton variant="default"
         type="button"
         onClick={onClick}
         disabled={disabled}
@@ -67,7 +68,7 @@ function IconButton({
         }`}
       >
         {children}
-      </button>
+      </OperumButton>
     </Tooltip>
   )
 }
@@ -162,7 +163,7 @@ function ManualContent() {
       {/* Sidebar */}
       <nav className="w-44 shrink-0 border-r border-gray-100 space-y-1 pr-4">
         {tabs.map((t, i) => (
-          <button
+          <OperumButton variant="default" type="button"
             key={t}
             onClick={() => setTab(i)}
             className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
@@ -170,7 +171,7 @@ function ManualContent() {
             }`}
           >
             {t}
-          </button>
+          </OperumButton>
         ))}
       </nav>
 

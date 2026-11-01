@@ -1,33 +1,25 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import SearchInput from '@/components/ui/SearchInput'
+import EmptyState from '@/components/ui/EmptyState'
+import { matchesSearch } from '@/lib/search'
+import { Input } from '@/components/ui/Field'
+import GlassButton from '@/components/ui/GlassButton'
+import GlassCard from '@/components/ui/GlassCard'
+import { Landmark, Pencil, ArrowRight, Loader2, Check } from 'lucide-react'
 import { useEffect, useState, useTransition } from 'react'
 import { getMyTenantsAction, switchTenantAction } from '@/app/actions/auth'
+import { updateMyInstitutionAction } from '@/app/actions/instituicoes'
 
 type TenantEntry = {
-  userId: string
-  tenantId: string
-  tenantName: string
-  tenantSubdomain: string
-  role: string
-  isCurrent: boolean
-  /** Conta com o mesmo e-mail ainda não vinculada: a primeira troca pede a senha dela. */
-  requiresPassword?: boolean
-  passwordScope?: 'current' | 'target'
+  userId: string; tenantId: string; tenantName: string; tenantSubdomain: string
+  role: string; isCurrent: boolean; requiresPassword?: boolean; passwordScope?: 'current' | 'target'
 }
+const roleLabel: Record<string, string> = { admin: 'Administrador', gerente: 'Gerente', member: 'Membro' }
 
-const roleBadge: Record<string, string> = {
-  admin: 'bg-purple-100 text-purple-700',
-  gerente: 'bg-blue-100 text-blue-700',
-  member: 'bg-gray-100 text-gray-600',
-}
-
-const roleLabel: Record<string, string> = {
-  admin: 'Admin',
-  gerente: 'Gerente',
-  member: 'Membro',
-}
-
-export default function UserTenantsList() {
+export default function UserTenantsList({ canEditCurrent = false }: { canEditCurrent?: boolean }) {
+  const [query, setQuery] = useState('')
   const [tenants, setTenants] = useState<TenantEntry[] | null>(null)
   const [isPending, startTransition] = useTransition()
   const [switchingId, setSwitchingId] = useState<string | null>(null)
@@ -35,10 +27,16 @@ export default function UserTenantsList() {
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState('')
+  const [subdomain, setSubdomain] = useState('')
+  const [editField, setEditField] = useState<'name' | 'subdomain'>('name')
+  const [editError, setEditError] = useState('')
+  const [message, setMessage] = useState('')
+  const [saving, startSave] = useTransition()
 
   function acessar(tenantId: string, password?: string) {
-    setSwitchingId(tenantId)
-    setErro(null)
+    setSwitchingId(tenantId); setErro(null)
     startTransition(async () => {
       const result = await switchTenantAction(tenantId, password)
       if (!result) return
@@ -46,132 +44,74 @@ export default function UserTenantsList() {
       if (result.error) setErro(result.error)
     })
   }
-
   useEffect(() => {
-    getMyTenantsAction().then(setTenants).catch(() => setTenants([]))
-  }, [])
+    if (!saving && editError) document.getElementById(editField === 'subdomain' ? 'institution-subdomain' : 'institution-name')?.focus()
+  }, [saving, editError, editField])
+  useEffect(() => { getMyTenantsAction().then(setTenants).catch(() => setTenants([])) }, [])
 
-  if (tenants === null) {
-    return (
-      <div className="space-y-3 animate-pulse">
-        {[0, 1].map(i => (
-          <div key={i} className="flex items-center gap-4 p-4 rounded-xl border border-gray-100">
-            <div className="w-9 h-9 rounded-lg bg-gray-200 shrink-0" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-gray-200 rounded w-1/3" />
-              <div className="h-3 bg-gray-100 rounded w-1/2" />
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
+  if (tenants === null) return <div role="status" className="space-y-3 animate-pulse"><span className="sr-only">Carregando instituições</span>{[0, 1].map(i => <div key={i} className="h-24 rounded-2xl border border-gray-200 bg-gray-100/40" />)}</div>
+  if (tenants.length === 0) return <p className="text-sm text-gray-500">Nenhuma instituição encontrada.</p>
 
-  if (tenants.length === 0) {
-    return <p className="text-sm text-gray-500">Nenhuma instituição encontrada.</p>
-  }
-
-  return (
-    <ul className="space-y-2">
-      {tenants.map(t => (
-        <li
-          key={t.tenantId}
-          className={`flex items-center gap-4 p-4 rounded-xl border transition-colors ${
-            t.isCurrent ? 'border-blue-200 bg-blue-50/40' : 'border-gray-100 bg-white hover:bg-gray-50'
-          }`}
-        >
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-gray-900 truncate">{t.tenantName}</span>
-              {t.isCurrent && (
-                <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-green-100 text-green-700 border border-green-200 shrink-0">
-                  Ativo
-                </span>
-              )}
-              <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full border shrink-0 ${roleBadge[t.role] ?? roleBadge.member} border-transparent`}>
-                {roleLabel[t.role] ?? t.role}
-              </span>
-            </div>
-            <p className="text-xs text-gray-400 mt-0.5 truncate">Identificador: {t.tenantSubdomain}</p>
-          </div>
-
-          {!t.isCurrent && senhaPara === t.tenantId && (
-            <form
-              className="flex flex-col items-end gap-1 shrink-0"
-              onSubmit={e => {
-                e.preventDefault()
-                // FormData lê o valor real, inclusive quando preenchido pelo
-                // gerenciador de senhas sem atualizar o estado do React.
-                const password = new FormData(e.currentTarget).get('password')
-                if (typeof password === 'string' && password) acessar(t.tenantId, password)
-              }}
-            >
-              <label className="text-xs text-gray-500" htmlFor={`senha-${t.tenantId}`}>
-                {t.passwordScope === 'current' ? 'Senha da conta que está ativa' : `Senha da sua conta em ${t.tenantName}`}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id={`senha-${t.tenantId}`}
-                  name="password"
-                  type={mostrarSenha ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  autoFocus
-                  value={senha}
-                  onChange={e => setSenha(e.target.value)}
-                  required
-                  className="w-40 px-2 py-1.5 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {isPending && switchingId === t.tenantId ? 'Confirmando…' : 'Confirmar'}
-                </button>
+  const visible = tenants.filter(tenant => matchesSearch(`${tenant.tenantName} ${tenant.tenantSubdomain}`, query))
+  return <div className="space-y-4">
+    <SearchInput label="Pesquisar instituições" placeholder="Buscar por nome ou identificador…" value={query} onChange={event => setQuery(event.target.value)} />
+    {query.trim() && <p role="status" className="text-xs text-gray-500">{visible.length} {visible.length === 1 ? 'instituição encontrada' : 'instituições encontradas'}</p>}
+    {!visible.length && <EmptyState heading="Nenhuma instituição corresponde à pesquisa" subtext="Tente outro nome ou identificador." action={{ label: 'Limpar pesquisa', onClick: () => setQuery('') }} />}
+    {message && <p role="status" className="flex items-center gap-2 text-sm text-green-700"><Check size={16} aria-hidden="true" />{message}</p>}
+    <ul className="space-y-3">
+      {visible.map(t => <li key={t.tenantId}>
+        <GlassCard interactive as="div" className="institution-item p-4 sm:p-5" data-current={t.isCurrent}>
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <span className="institution-item-icon" aria-hidden="true"><Landmark size={23} strokeWidth={1.5} /></span>
+            <div className="min-w-0 flex-1 basis-36">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="break-words text-base font-semibold text-gray-900">{t.tenantName}</h3>
+                {t.isCurrent && <span className="institution-current-badge">Instituição ativa</span>}
               </div>
-              <button type="button" className="text-xs text-blue-600" onClick={() => setMostrarSenha(v => !v)} aria-pressed={mostrarSenha}>
-                {mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-              </button>
-              {t.passwordScope !== 'current' && <p className="text-xs text-gray-500 max-w-64">Esta conta pode ter uma senha diferente da instituição ativa.</p>}
-              {erro && <p role="alert" className="text-xs text-red-600">{erro}</p>}
-            </form>
-          )}
-
-          {!t.isCurrent && senhaPara !== t.tenantId && (
-            <button
-              disabled={isPending}
-              onClick={() => {
-                if (t.requiresPassword) { setSenha(''); setMostrarSenha(false); setErro(null); setSenhaPara(t.tenantId); return }
-                acessar(t.tenantId)
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-60 shrink-0"
-            >
-              {isPending && switchingId === t.tenantId ? (
-                <>
-                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  <span>Acessando…</span>
-                </>
-              ) : (
-                <>
-                  <span>Acessar</span>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </>
-              )}
-            </button>
-          )}
-        </li>
-      ))}
+              <p className="mt-1 break-all text-xs text-gray-500">Identificador: {t.tenantSubdomain}</p>
+              <p className="mt-1 text-xs text-gray-500">{roleLabel[t.role] ?? t.role}</p>
+            </div>
+            {t.isCurrent && canEditCurrent && !editing && <GlassButton disabled={isPending} onClick={() => { setName(t.tenantName); setSubdomain(t.tenantSubdomain); setEditError(''); setMessage(''); setEditing(true) }}><Pencil size={14} aria-hidden="true" />Editar instituição</GlassButton>}
+            {!t.isCurrent && senhaPara !== t.tenantId && <GlassButton variant="primary" disabled={isPending || saving} onClick={() => {
+              if (t.requiresPassword) { setSenha(''); setMostrarSenha(false); setErro(null); setSenhaPara(t.tenantId); return }
+              acessar(t.tenantId)
+            }}>{isPending && switchingId === t.tenantId ? <><Loader2 size={14} className="animate-spin" aria-hidden="true" />Acessando…</> : <>Acessar<ArrowRight size={14} aria-hidden="true" /></>}</GlassButton>}
+          </div>
+          {t.isCurrent && canEditCurrent && editing && <form className="institution-edit-form mt-4 border-t border-gray-200/60 pt-4" onSubmit={event => {
+            event.preventDefault(); setEditError('')
+            startSave(async () => {
+              try {
+                const result = await updateMyInstitutionAction({ name, subdomain })
+                if (result.error) { setEditError(result.error); setEditField(result.field ?? 'name'); return }
+                if (!result.name) { setEditError('Não foi possível salvar. Tente novamente.'); return }
+                setTenants(current => current?.map(item => item.isCurrent ? { ...item, tenantName: result.name!, tenantSubdomain: result.subdomain ?? item.tenantSubdomain } : item) ?? [])
+                setEditing(false); setMessage('Instituição atualizada.')
+                window.dispatchEvent(new Event('operum:instituicao-atualizada'))
+              } catch { setEditError('Não foi possível salvar. Tente novamente.') }
+            })
+          }}>
+            <label htmlFor="institution-name" className="mb-1.5 block text-sm font-medium text-gray-700">Nome da instituição</label>
+            <Input id="institution-name" value={name} onChange={e => setName(e.target.value)} required maxLength={120} autoFocus disabled={saving} aria-invalid={!!editError && editField === 'name'} aria-describedby={editError ? 'institution-name-error' : 'institution-name-help'} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+            <p id="institution-name-help" className="mt-2 text-xs leading-5 text-gray-500">Este nome é compartilhado com todos da instituição.</p>
+            <label htmlFor="institution-subdomain" className="mb-1.5 mt-4 block text-sm font-medium text-gray-700">Identificador</label>
+            <Input id="institution-subdomain" value={subdomain} onChange={e => setSubdomain(e.target.value.toLowerCase())} required minLength={3} maxLength={63} pattern="[a-z0-9-]+" autoCapitalize="none" spellCheck={false} disabled={saving} aria-invalid={!!editError && editField === 'subdomain'} aria-describedby="institution-subdomain-help institution-name-error" className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+            <p id="institution-subdomain-help" className="mt-2 text-xs leading-5 text-gray-500">De 3 a 63 caracteres: letras minúsculas, números e hífens. Após salvar, todos devem usar o novo identificador para entrar nesta instituição.</p>
+            {editError && <p id="institution-name-error" role="alert" className="mt-2 text-sm text-red-600">{editError}</p>}
+            <FormActions className="mt-4 flex flex-wrap justify-end gap-2"><GlassButton disabled={saving} onClick={() => { setEditing(false); setEditError('') }}>Cancelar</GlassButton><GlassButton variant="primary" type="submit" disabled={saving || !name.trim() || (name.trim() === t.tenantName && subdomain.trim().toLowerCase() === t.tenantSubdomain)}>{saving ? 'Salvando…' : 'Salvar alterações'}</GlassButton></FormActions>
+          </form>}
+          {!t.isCurrent && senhaPara === t.tenantId && <form className="mt-4 border-t border-gray-200/60 pt-4" onSubmit={e => {
+            e.preventDefault(); const password = new FormData(e.currentTarget).get('password')
+            if (typeof password === 'string' && password) acessar(t.tenantId, password)
+          }}>
+            <label className="mb-2 block text-xs text-gray-500" htmlFor={`senha-${t.tenantId}`}>{t.passwordScope === 'current' ? 'Senha da conta que está ativa' : `Senha da sua conta em ${t.tenantName}`}</label>
+            <div className="flex flex-wrap gap-2"><Input id={`senha-${t.tenantId}`} name="password" type={mostrarSenha ? 'text' : 'password'} autoComplete="current-password" autoFocus value={senha} onChange={e => setSenha(e.target.value)} required className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm" /><GlassButton variant="primary" type="submit" disabled={isPending}>{isPending && switchingId === t.tenantId ? 'Confirmando…' : 'Confirmar'}</GlassButton></div>
+            <GlassButton className="mt-2" onClick={() => setMostrarSenha(v => !v)} aria-pressed={mostrarSenha}>{mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}</GlassButton>
+            {t.passwordScope !== 'current' && <p className="mt-2 text-xs text-gray-500">Esta conta pode ter uma senha diferente da instituição ativa.</p>}
+            {erro && <p role="alert" className="mt-2 text-sm text-red-600">{erro}</p>}
+          </form>}
+          {!t.isCurrent && senhaPara !== t.tenantId && switchingId === t.tenantId && erro && <p role="alert" className="mt-3 text-sm text-red-600">{erro}</p>}
+        </GlassCard>
+      </li>)}
     </ul>
-  )
+  </div>
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useState } from 'react'
 import { RefreshCw, X } from 'lucide-react'
 
@@ -78,22 +79,22 @@ export default function ServiceWorkerRegistrar() {
       style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
     >
       <span className="flex-1">Nova versão do Operum disponível.</span>
-      <button
+      <OperumButton variant="default"
         type="button"
         onClick={atualizar}
         className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-white px-3 font-medium text-slate-900 hover:bg-slate-100"
       >
         <RefreshCw className="h-4 w-4" aria-hidden="true" />
         Atualizar
-      </button>
-      <button
+      </OperumButton>
+      <OperumButton variant="custom"
         type="button"
         onClick={() => setDismissed(true)}
         aria-label="Atualizar depois"
         className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
       >
         <X className="h-4 w-4" aria-hidden="true" />
-      </button>
+      </OperumButton>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useMemo, useState } from 'react'
 import { alteracoesLocais, mesclarRascunho, type Alteracao, type ArvoreEap, type ResultadoMescla } from '@/lib/wbsMerge'
 import type { RascunhoEap } from '@/lib/wbsRascunho'
@@ -77,20 +78,20 @@ export default function RecuperarRascunhoEap({ rascunho, atual, onAplicar, onDes
         {confirmarDescarte ? (
           <>
             <span className="self-center text-xs text-red-700">Descartar apaga suas alterações guardadas.</span>
-            <button type="button" onClick={() => setConfirmarDescarte(false)} className="rounded-lg border px-3 py-1.5 text-sm">Voltar</button>
-            <button type="button" onClick={onDescartar} className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white">Descartar alterações</button>
+            <OperumButton variant="default" type="button" onClick={() => setConfirmarDescarte(false)} className="rounded-lg border px-3 py-1.5 text-sm">Voltar</OperumButton>
+            <OperumButton variant="danger" type="button" onClick={onDescartar} className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white">Descartar alterações</OperumButton>
           </>
         ) : (
           <>
-            <button type="button" onClick={() => setConfirmarDescarte(true)} className="rounded-lg border px-3 py-1.5 text-sm">Descartar</button>
-            <button
+            <OperumButton variant="default" type="button" onClick={() => setConfirmarDescarte(true)} className="rounded-lg border px-3 py-1.5 text-sm">Descartar</OperumButton>
+            <OperumButton variant="primary"
               type="button"
               onClick={() => onAplicar(previa)}
               disabled={previa.aplicadas.length === 0}
               className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
             >
               Reaplicar minhas alterações
-            </button>
+            </OperumButton>
           </>
         )}
       </div>

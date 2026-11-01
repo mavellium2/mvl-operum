@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 interface Sprint {
   id: string
   name: string
@@ -15,7 +16,7 @@ interface SprintSelectorProps {
 export function SprintSelector({ sprints, selectedSprintId, onSelect }: SprintSelectorProps) {
   return (
     <div className="flex flex-col gap-1">
-      <button
+      <OperumButton variant="default"
         type="button"
         onClick={() => onSelect(null)}
         className={`rounded px-3 py-1.5 text-sm text-left hover:bg-gray-100 ${
@@ -23,9 +24,9 @@ export function SprintSelector({ sprints, selectedSprintId, onSelect }: SprintSe
         }`}
       >
         Nenhum sprint
-      </button>
+      </OperumButton>
       {sprints.map((sprint) => (
-        <button
+        <OperumButton variant="default"
           key={sprint.id}
           type="button"
           data-selected={selectedSprintId === sprint.id ? 'true' : undefined}
@@ -36,7 +37,7 @@ export function SprintSelector({ sprints, selectedSprintId, onSelect }: SprintSe
         >
           {sprint.name}
           <span className="ml-2 text-xs text-gray-500">({sprint.status})</span>
-        </button>
+        </OperumButton>
       ))}
     </div>
   )

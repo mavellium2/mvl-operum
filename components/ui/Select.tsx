@@ -1,5 +1,6 @@
 'use client'
 
+import { Input as OperumInput } from '@/components/ui/Field'
 import GlassButton from '@/components/ui/GlassButton'
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
@@ -152,7 +153,7 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
         onKeyDown={event => {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); show(event.key === 'ArrowUp') }
         }}
-        className={`group flex min-w-0 items-center justify-between gap-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${propriedade ? 'h-8 w-full rounded-lg px-2.5 text-[13px] font-medium hover:bg-slate-100 aria-expanded:bg-slate-100' : inline ? 'w-full rounded-sm px-0.5 leading-[inherit]! [font:inherit]! hover:bg-blue-50/60 aria-expanded:bg-[#f5f8ff] aria-expanded:outline aria-expanded:outline-2 aria-expanded:outline-blue-500' : compact ? 'h-7 rounded-md border border-transparent px-1.5 hover:border-slate-200 hover:bg-slate-50' : 'min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm hover:border-blue-300'} ${selected ? (inline ? 'text-inherit' : 'text-slate-800') : 'text-slate-400'}`}>
+        className={`operum-field group flex min-w-0 items-center justify-between gap-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${propriedade ? 'h-8 w-full rounded-lg px-2.5 text-[13px] font-medium hover:bg-slate-100 aria-expanded:bg-slate-100' : inline ? 'w-full rounded-sm px-0.5 leading-[inherit]! [font:inherit]! hover:bg-blue-50/60 aria-expanded:bg-[#f5f8ff] aria-expanded:outline aria-expanded:outline-2 aria-expanded:outline-blue-500' : compact ? 'h-7 rounded-md border border-transparent px-1.5 hover:border-slate-200 hover:bg-slate-50' : 'min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm hover:border-blue-300'} ${selected ? (inline ? 'text-inherit' : 'text-slate-800') : 'text-slate-400'}`}>
         <span className="flex min-w-0 items-center gap-2">{selected?.icone && <span className="shrink-0">{selected.icone}</span>}<span className="truncate">{selected?.label ?? placeholder}</span></span>
         <ChevronDown aria-hidden="true" size={compact || inline || propriedade ? 13 : 16} className={`shrink-0 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
       </GlassButton>
@@ -161,7 +162,7 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
           className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-sm shadow-xl shadow-slate-900/10 outline-none">
           {searchable && <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 px-3 py-2.5">
             <Search size={16} aria-hidden="true" className="shrink-0 text-slate-400" />
-            <input ref={search} value={query} onChange={event => { setQuery(event.target.value); setActive(-1) }}
+            <OperumInput ref={search} value={query} onChange={event => { setQuery(event.target.value); setActive(-1) }}
               role="combobox" aria-label={`Buscar ${ariaLabel ?? 'opções'}`} aria-expanded="true" aria-controls={listId} aria-autocomplete="list" aria-activedescendant={activeId}
               placeholder="Buscar..." className="min-w-0 flex-1 bg-transparent text-slate-700 outline-none placeholder:text-slate-400" />
           </div>}

@@ -1,8 +1,9 @@
 'use client'
 
+import OperumCloseButton from '@/components/ui/GlassCloseButton'
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react'
+import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 
 type ToastVariant = 'success' | 'error' | 'warning'
 
@@ -43,13 +44,9 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
     >
       {ICONS[toast.variant]}
       <span className="flex-1">{toast.message}</span>
-      <button
-        onClick={() => onDismiss(toast.id)}
+      <OperumCloseButton onClick={() => onDismiss(toast.id)}
         className="opacity-70 hover:opacity-100 transition-opacity ml-1"
-        aria-label="Fechar notificação"
-      >
-        <X className="w-3.5 h-3.5" />
-      </button>
+        label="Fechar notificação" />
     </div>
   )
 }

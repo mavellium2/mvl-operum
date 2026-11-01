@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   BookOpen, ChevronDown, ChevronUp, CircleHelp, Eraser, FileCheck2, FileText, FileType2, History, ListPlus,
@@ -54,7 +55,7 @@ export interface EditorDocumentoProps {
 function Botao({ rotulo, onClick, disabled, children, contador, ativo }: { rotulo: string; onClick?: () => void; disabled?: boolean; children: ReactNode; contador?: number; ativo?: boolean }) {
   return (
     <Tooltip label={rotulo}>
-      <button
+      <OperumButton variant="default"
         type="button"
         aria-label={rotulo}
         onClick={onClick}
@@ -67,7 +68,7 @@ function Botao({ rotulo, onClick, disabled, children, contador, ativo }: { rotul
             {contador > 99 ? '99+' : contador}
           </span>
         )}
-      </button>
+      </OperumButton>
     </Tooltip>
   )
 }
@@ -232,7 +233,7 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
           {versao && (
             <Grupo titulo="Versão">
               <div className="relative">
-                <button
+                <OperumButton variant="custom"
                   type="button"
                   aria-haspopup="listbox"
                   aria-expanded={versaoAberta}
@@ -242,20 +243,20 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
                   <FileText className={ICONE} />
                   <span className="max-w-[9rem] truncate">{versao.rotulo}</span>
                   <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-                </button>
+                </OperumButton>
                 {versaoAberta && (
                   <ul role="listbox" aria-label="Versões" className="fixed z-50 mt-1 max-h-72 w-64 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg" onMouseLeave={() => setVersaoAberta(false)}>
                     <li>
-                      <button type="button" role="option" aria-selected={versao.selecionada === null} onClick={() => { versao.onSelecionar(null); setVersaoAberta(false) }} className={`flex w-full flex-col px-3 py-1.5 text-left hover:bg-slate-50 ${versao.selecionada === null ? 'bg-blue-50 text-blue-700' : ''}`}>
+                      <OperumButton variant="custom" type="button" role="option" aria-selected={versao.selecionada === null} onClick={() => { versao.onSelecionar(null); setVersaoAberta(false) }} className={`flex w-full flex-col px-3 py-1.5 text-left hover:bg-slate-50 ${versao.selecionada === null ? 'bg-blue-50 text-blue-700' : ''}`}>
                         <span>{versao.rotuloAtual ?? 'Rascunho atual (editável)'}</span>
-                      </button>
+                      </OperumButton>
                     </li>
                     {versao.opcoes.map(o => (
                       <li key={o.id}>
-                        <button type="button" role="option" aria-selected={versao.selecionada === o.id} onClick={() => { versao.onSelecionar(o.id); setVersaoAberta(false) }} className={`flex w-full flex-col px-3 py-1.5 text-left hover:bg-slate-50 ${versao.selecionada === o.id ? 'bg-blue-50 text-blue-700' : ''}`}>
+                        <OperumButton variant="custom" type="button" role="option" aria-selected={versao.selecionada === o.id} onClick={() => { versao.onSelecionar(o.id); setVersaoAberta(false) }} className={`flex w-full flex-col px-3 py-1.5 text-left hover:bg-slate-50 ${versao.selecionada === o.id ? 'bg-blue-50 text-blue-700' : ''}`}>
                           <span>{o.rotulo}</span>
                           {o.detalhe && <span className="text-xs text-slate-500">{o.detalhe}</span>}
-                        </button>
+                        </OperumButton>
                       </li>
                     ))}
                   </ul>

@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
@@ -42,7 +44,7 @@ interface SprintHeaderProps {
   currentUser?: CurrentUser | null
   tags?: Tag[]
   // NOVA PROP: Para avisar a tela principal que o fundo mudou
-  onChangeBackground?: (bg: string) => void 
+  onChangeBackground?: (bg: string) => void
   /** Projeto da sprint: o dashboard abre dentro do projeto (menu do projeto). */
   projectId?: string | null
   /** Filtros do quadro (aplicados na hora; sem eles o botão Filtros fica oculto). */
@@ -64,7 +66,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 // PRESETS PARA O LAYOUT DO BOARD
 const PRESET_COLORS = [
-  'bg-slate-100', 'bg-blue-50', 'bg-indigo-50', 'bg-emerald-50', 'bg-rose-50', 
+  'bg-slate-100', 'bg-blue-50', 'bg-indigo-50', 'bg-emerald-50', 'bg-rose-50',
   'bg-amber-50', 'bg-purple-50', 'bg-gray-900', 'bg-blue-900', 'bg-emerald-900'
 ]
 
@@ -89,7 +91,7 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
   const [csvOpen, setCsvOpen] = useState(false)
   const [tagOpen, setTagOpen] = useState(false)
   const [editSprintOpen, setEditSprintOpen] = useState(false)
-  
+
   // NOVOS ESTADOS PARA FILTRO E LAYOUT
   const [filterOpen, setFilterOpen] = useState(false)
   const [layoutOpen, setLayoutOpen] = useState(false)
@@ -100,7 +102,7 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
     startDate: sprint.startDate,
     endDate: sprint.endDate,
   })
-  
+
   const [editingName, setEditingName] = useState(false)
   const [sprintName, setSprintName] = useState(sprint.name)
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -142,23 +144,23 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
     <>
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 h-16">
-          
+
           {/* LADO ESQUERDO: Voltar, Título e Meta */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <button 
+            <OperumButton variant="custom" type="button"
               onClick={() => router.back()}
-              className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Voltar"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-            </button>
+            </OperumButton>
 
             <div className="h-6 w-px bg-gray-200 hidden sm:block mx-1"></div>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 min-w-0">
               {editingName ? (
                 <div className="relative flex items-center min-w-0">
-                  <input
+                  <OperumInput
                     ref={nameInputRef}
                     value={sprintName}
                     onChange={e => setSprintName(e.target.value)}
@@ -204,11 +206,11 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
 
           {/* LADO DIREITO: Ações */}
           <div className="flex items-center gap-2 shrink-0 ml-4">
-            
+
             {/* Filtros do quadro */}
             {filters && onFiltersChange && (
             <div className="relative" ref={filterRef}>
-              <button
+              <OperumButton variant="custom" type="button"
                 onClick={() => setFilterOpen(!filterOpen)}
                 aria-expanded={filterOpen}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${filterOpen || filtrosAtivos(filters) ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200'}`}
@@ -216,7 +218,7 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                 Filtros
                 {filtrosAtivos(filters) && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" aria-label="filtros ativos" />}
-              </button>
+              </OperumButton>
 
               {filterOpen && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4 z-50 animate-in fade-in slide-in-from-top-2">
@@ -264,13 +266,13 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
                     {filtrosAtivos(filters) && (
                       <>
                         <p className="text-[11px] text-gray-400">Com filtros ativos, arrastar cards fica desativado.</p>
-                        <button
+                        <OperumButton variant="default"
                           type="button"
                           onClick={() => onFiltersChange(FILTROS_PADRAO)}
                           className="w-full py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                         >
                           Limpar filtros
-                        </button>
+                        </OperumButton>
                       </>
                     )}
                   </div>
@@ -287,14 +289,14 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
               Dashboard
             </Link>
 
-            <button
+            <OperumButton variant="custom" type="button"
               disabled={!canManage}
               onClick={() => setEditSprintOpen(true)}
               className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none"
               title="Configurações da Sprint"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            </button>
+            </OperumButton>
 
             <div className="h-6 w-px bg-gray-200 mx-1"></div>
 
@@ -313,24 +315,24 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
       <Modal isOpen={layoutOpen} onClose={() => setLayoutOpen(false)} title="Personalizar Layout">
         <div className="space-y-6">
           <div className="flex border-b border-gray-200">
-            <button
+            <OperumButton variant="default" type="button"
               onClick={() => setLayoutTab('color')}
               className={`pb-2 px-4 text-sm font-medium ${layoutTab === 'color' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
             >
               Cores Sólidas
-            </button>
-            <button
+            </OperumButton>
+            <OperumButton variant="default" type="button"
               onClick={() => setLayoutTab('image')}
               className={`pb-2 px-4 text-sm font-medium ${layoutTab === 'image' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
             >
               Imagens
-            </button>
+            </OperumButton>
           </div>
 
           {layoutTab === 'color' && (
             <div className="grid grid-cols-5 gap-3">
               {PRESET_COLORS.map(color => (
-                <button
+                <OperumButton variant="custom" type="button"
                   key={color}
                   onClick={() => applyBackground(color)}
                   className={`w-full aspect-square rounded-xl shadow-sm border border-black/5 hover:scale-105 transition-transform ${color}`}
@@ -344,32 +346,32 @@ export default function SprintHeader({ sprint, tags = [], onChangeBackground, pr
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 {PRESET_IMAGES.map((img, i) => (
-                  <button
+                  <OperumButton variant="default" type="button"
                     key={i}
                     onClick={() => applyBackground(`url(${img})`)}
                     className="w-full h-24 rounded-xl shadow-sm overflow-hidden border border-black/5 hover:scale-[1.02] transition-transform relative"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={img} alt={`Fundo ${i}`} className="w-full h-full object-cover" />
-                  </button>
+                  </OperumButton>
                 ))}
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-700 mb-1.5 block">Ou cole a URL de uma imagem:</label>
                 <div className="flex gap-2">
-                  <input 
-                    type="url" 
+                  <OperumInput
+                    type="url"
                     value={customImageUrl}
                     onChange={e => setCustomImageUrl(e.target.value)}
-                    placeholder="https://..." 
+                    placeholder="https://..."
                     className="flex-1 text-sm border-gray-200 rounded-lg p-2"
                   />
-                  <button 
+                  <OperumButton variant="primary" type="button"
                     onClick={() => { if(customImageUrl) applyBackground(`url(${customImageUrl})`) }}
                     className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
                   >
                     Aplicar
-                  </button>
+                  </OperumButton>
                 </div>
               </div>
             </div>

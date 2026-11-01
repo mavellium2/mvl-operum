@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { parseMoeda as parseMoedaLib } from '@/lib/dinheiro'
@@ -281,7 +284,7 @@ export default function PlanilhaCustosView({
           <span>Fim do Projeto: <strong className="text-gray-900">{fimProjeto}</strong></span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+        <FormActions className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
           <a
             href={exportUrl}
             download
@@ -289,17 +292,17 @@ export default function PlanilhaCustosView({
           >
             <Download className="h-4 w-4" /> Exportar .xlsx
           </a>
-          <button
+          <OperumButton variant="default"
             type="button"
             onClick={() => { router.refresh() }}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             title="Re-cria a lista de atividades a partir da árvore mais recente da EAP"
           >
             <RefreshCw className="h-4 w-4" /> Recalcular a partir da EAP
-          </button>
+          </OperumButton>
           {canManageMembers && (
             <>
-              <button
+              <OperumButton variant="default"
                 type="button"
                 onClick={desfazer}
                 disabled={historia.length === 0}
@@ -307,27 +310,27 @@ export default function PlanilhaCustosView({
                 title="Desfazer última alteração (Ctrl+Z)"
               >
                 <Undo2 className="h-4 w-4" /> Desfazer
-              </button>
-              <button
+              </OperumButton>
+              <OperumButton variant="default"
                 type="button"
                 onClick={() => setMostrarNovoMembro(v => !v)}
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 <UserPlus className="h-4 w-4" /> Adicionar elaborador
-              </button>
+              </OperumButton>
             </>
           )}
           {(canEdit || canEditOwnActual || canEditAllActual) && dirtyCount > 0 && (
-            <button
+            <OperumButton variant="default"
               type="button"
               onClick={salvarManual}
               disabled={salvando}
               className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
             >
               {salvando ? 'Salvando…' : `Salvar (${dirtyCount})`}
-            </button>
+            </OperumButton>
           )}
-        </div>
+        </FormActions>
 
         {canManageMembers && mostrarNovoMembro && (
           <AdicionarElaborador
@@ -445,7 +448,7 @@ function NovaLinha({ onConfirmar, onCancelar }: { onConfirmar: (titulo: string) 
       <td className="border border-gray-100 px-2 py-1"></td>
       <td colSpan={17} className="border border-gray-100 px-2 py-1">
         <div className="flex items-center gap-2">
-          <input
+          <OperumInput
             autoFocus
             value={titulo}
             onChange={e => setTitulo(e.target.value)}
@@ -455,10 +458,10 @@ function NovaLinha({ onConfirmar, onCancelar }: { onConfirmar: (titulo: string) 
             maxLength={500}
             className="w-80 rounded border border-blue-300 bg-white px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
           />
-          <button type="button" onClick={() => void confirmar()} disabled={busy || !titulo.trim()} className="rounded bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+          <OperumButton variant="primary" type="button" onClick={() => void confirmar()} disabled={busy || !titulo.trim()} className="rounded bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">
             {busy ? 'Inserindo…' : 'Inserir'}
-          </button>
-          <button type="button" onClick={onCancelar} className="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50">Cancelar</button>
+          </OperumButton>
+          <OperumButton variant="default" type="button" onClick={onCancelar} className="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50">Cancelar</OperumButton>
         </div>
       </td>
     </tr>
@@ -529,7 +532,7 @@ const FaseFragment = memo(function FaseFragment({
       )
     }
     return (
-      <input
+      <OperumInput
         type="text"
         inputMode={campo === 'minOrcado' || campo === 'minReal' ? 'numeric' : undefined}
         value={valorDe(nodeId, campo, original)}
@@ -557,7 +560,7 @@ const FaseFragment = memo(function FaseFragment({
   const campoHoras = (nodeId: string, campo: 'minOrcado' | 'minReal', minAtual: number) => {
     const key = `${nodeId}:${campo}:horas`
     return (
-      <input
+      <OperumInput
         type="text"
         inputMode="decimal"
         value={drafts[key] ?? hhmm(minAtual)}
@@ -578,7 +581,7 @@ const FaseFragment = memo(function FaseFragment({
   const campoDias = (nodeId: string, campo: 'minOrcado' | 'minReal', minAtual: number, jornada: number) => {
     const key = `${nodeId}:${campo}:dias`
     return (
-      <input
+      <OperumInput
         type="text"
         inputMode="decimal"
         value={drafts[key] ?? dois(minAtual / 60 / jornada)}
@@ -607,9 +610,9 @@ const FaseFragment = memo(function FaseFragment({
           <div className="flex items-center justify-between gap-2">
             <span>{fase.codigo} {fase.titulo}</span>
             {acoes && (
-              <button type="button" onClick={() => acoes.onInserir('filho', fase.nodeId)} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100" title="Adicionar atividade no fim desta fase">
+              <OperumButton variant="default" type="button" onClick={() => acoes.onInserir('filho', fase.nodeId)} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100" title="Adicionar atividade no fim desta fase">
                 <Plus className="h-3.5 w-3.5" /> Atividade
-              </button>
+              </OperumButton>
             )}
           </div>
         </td>
@@ -634,12 +637,12 @@ const FaseFragment = memo(function FaseFragment({
             <td className="border border-gray-100 px-1 py-1">
               {acoes && (
                 <div className="flex items-center justify-center gap-0.5 opacity-40 group-hover:opacity-100 focus-within:opacity-100">
-                  <button type="button" onClick={() => acoes.onInserir('irmao', a.nodeId)} className="rounded p-0.5 text-gray-600 hover:bg-blue-100 hover:text-blue-700" aria-label={`Inserir linha abaixo de ${nome}`} title="Inserir linha abaixo">
+                  <OperumButton variant="custom" type="button" onClick={() => acoes.onInserir('irmao', a.nodeId)} className="rounded p-0.5 text-gray-600 hover:bg-blue-100 hover:text-blue-700" aria-label={`Inserir linha abaixo de ${nome}`} title="Inserir linha abaixo">
                     <Plus className="h-3.5 w-3.5" />
-                  </button>
-                  <button type="button" onClick={() => acoes.onExcluir(a.nodeId, nome)} className="rounded p-0.5 text-gray-600 hover:bg-red-100 hover:text-red-700" aria-label={`Excluir linha ${nome}`} title="Excluir linha">
+                  </OperumButton>
+                  <OperumButton variant="custom" type="button" onClick={() => acoes.onExcluir(a.nodeId, nome)} className="rounded p-0.5 text-gray-600 hover:bg-red-100 hover:text-red-700" aria-label={`Excluir linha ${nome}`} title="Excluir linha">
                     <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  </OperumButton>
                 </div>
               )}
             </td>
@@ -788,21 +791,21 @@ function AdicionarElaborador({
             placeholder="Selecionar usuário…"
             options={disponiveis.map(u => ({ value: u.id, label: u.name, description: u.email }))}
           />
-          <button
+          <OperumButton variant="primary"
             type="button"
             onClick={adicionar}
             disabled={busy || !userId}
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
             <UserPlus className="h-4 w-4" /> {busy ? 'Adicionando…' : 'Adicionar'}
-          </button>
-          <button
+          </OperumButton>
+          <OperumButton variant="default"
             type="button"
             onClick={onFechar}
             className="rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Fechar
-          </button>
+          </OperumButton>
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { Textarea as OperumTextarea } from '@/components/ui/Field'
 import GlassButton from '@/components/ui/GlassButton'
 import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 
@@ -160,7 +161,7 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
           {botao('relative')}
         </div>
       )}
-      <textarea
+      <OperumTextarea
         readOnly={readOnly}
         aria-invalid={!!erro}
         aria-describedby={erro && id ? `${id}-erro` : undefined}

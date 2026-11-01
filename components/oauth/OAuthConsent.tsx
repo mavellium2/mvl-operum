@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useState, useTransition } from 'react'
 import { approveOAuthAction, denyOAuthAction } from '@/app/actions/oauth'
 import type { OAuthAuthorizeCheck, OAuthAuthorizeRequest } from '@/lib/api-client'
@@ -124,15 +125,15 @@ export default function OAuthConsent({ request, check }: { request: OAuthAuthori
       {error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}
 
       <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button
+        <OperumButton variant="default"
           type="button"
           onClick={() => decide(false)}
           disabled={busy}
           className="min-h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           Negar
-        </button>
-        <button
+        </OperumButton>
+        <OperumButton variant="default"
           type="button"
           onClick={() => decide(true)}
           disabled={busy || selected.length === 0}
@@ -140,7 +141,7 @@ export default function OAuthConsent({ request, check }: { request: OAuthAuthori
           style={{ background: 'var(--brand-2)' }}
         >
           {busy ? 'Aguarde…' : 'Permitir'}
-        </button>
+        </OperumButton>
       </div>
 
       <p className="mt-4 text-xs text-gray-500">

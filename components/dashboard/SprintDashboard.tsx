@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
@@ -296,7 +299,7 @@ export default function SprintDashboard({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="qualidade" className="block text-xs font-medium text-gray-600 mb-1">Qualidade (0–10)</label>
-              <input
+              <OperumInput
                 id="qualidade"
                 type="number"
                 min={0}
@@ -309,7 +312,7 @@ export default function SprintDashboard({
             </div>
             <div>
               <label htmlFor="dificuldade" className="block text-xs font-medium text-gray-600 mb-1">Dificuldade (0–10)</label>
-              <input
+              <OperumInput
                 id="dificuldade"
                 type="number"
                 min={0}
@@ -321,13 +324,13 @@ export default function SprintDashboard({
               />
             </div>
           </div>
-          <button
+          <FormActions as="span" compact><OperumButton variant="primary" type="button"
             onClick={handleSaveMeta}
             disabled={isPending}
             className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50"
           >
             {isPending ? 'Salvando…' : 'Salvar avaliação'}
-          </button>
+          </OperumButton></FormActions>
         </div>
       </main>
     </div>

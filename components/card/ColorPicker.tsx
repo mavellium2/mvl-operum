@@ -1,3 +1,4 @@
+import OperumButton from '@/components/ui/GlassButton'
 import { CardColor, CARD_COLORS } from '@/types/kanban'
 
 interface ColorPickerProps {
@@ -9,7 +10,7 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
   return (
     <div className="flex flex-wrap gap-2">
       {CARD_COLORS.map(({ value: color, label }) => (
-        <button
+        <OperumButton variant="custom"
           key={color}
           type="button"
           title={label}

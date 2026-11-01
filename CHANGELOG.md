@@ -7,6 +7,15 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.47.0] — 2026-11-01
+
+- **Configurações:** aparência adaptativa e vidro em todas as seções, navegação fixa, cabeçalho compacto e animações suaves no submenu, cards e botões. Perfil reorganizado em colunas com visualização e recorte da foto compartilhados com a logo do projeto.
+- **Salvar acessível:** rodapés compartilham FormActions. Perfil usa card de altura automática limitada ao espaço disponível, campos roláveis em FormBody e botão Salvar embaixo, sem faixa de fundo e sem cortar a borda do card.
+- **Integrações:** áreas separadas para conectar aplicativos, gerenciar conexões e tokens; pesquisa, contadores, cabeçalho fixo e formulários preservados ao alternar. Guias em modal de vidro com passos numerados e conexão copiável.
+- **Instituições:** pesquisa por nome/identificador e edição da instituição ativa por administrador, com validação de formato, unicidade do identificador e auditoria na mesma transação. A UI informa o uso do novo identificador na entrada. Status e acesso a outros tenants permanecem fora dessa edição.
+- **Componentes compartilhados:** 106 campos em 51 arquivos e 308 botões nativos em 80 arquivos migram para bases reutilizáveis, preservando referências, tipos e submissão nativa. Busca e interação dos cards também são compartilhadas. Regras em AGENTS.md e verificações automáticas impedem campos/botões nativos paralelos.
+- **Documentação:** arquitetura atualizada; ADRs 081/082 registram o escopo de edição da instituição. Sem migrations ou novas dependências de produção.
+
 ## [1.46.0] — 2026-11-01
 
 - **Aparência:** novo visual diurno entre 12h e 17h e entardecer entre 17h e 19h, com escolha manual nas configurações. No automático, céu e vidro se misturam por dez minutos em cada virada, respeitando redução de movimento. Indicadores financeiros e Adicionar Fase recebem cores e vidro próprios para o entardecer.

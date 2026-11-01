@@ -1,5 +1,6 @@
 'use client'
 
+import { Textarea as OperumTextarea } from '@/components/ui/Field'
 import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import GlassButton from '@/components/ui/GlassButton'
 
@@ -130,7 +131,7 @@ export default function ExcluirFaseDialog({ projetoId, fase, versao, onFechar, o
           {impacto.exigeMotivo && (
             <div className="phase-delete-reason mt-5">
               <label htmlFor="motivo-exclusao-fase" className="mb-1 block text-sm font-medium text-slate-700">Registre o motivo <span className="phase-delete-muted text-xs font-normal">Obrigatório</span></label>
-              <textarea ref={motivoRef} required aria-describedby="motivo-exclusao-ajuda" id="motivo-exclusao-fase" value={motivo} onChange={e => setMotivo(e.target.value)} rows={3} maxLength={1000}
+              <OperumTextarea ref={motivoRef} required aria-describedby="motivo-exclusao-ajuda" id="motivo-exclusao-fase" value={motivo} onChange={e => setMotivo(e.target.value)} rows={3} maxLength={1000}
                 placeholder="Descreva o motivo da exclusão…"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/40" />
               <p id="motivo-exclusao-ajuda" className="phase-delete-muted mt-2 text-xs">Use pelo menos {MOTIVO_MINIMO} caracteres. O motivo fica registrado no histórico das sprints.</p>

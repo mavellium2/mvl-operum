@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useState } from 'react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { GripVertical } from 'lucide-react'
@@ -125,7 +126,7 @@ export default function DocumentSidebar({ activeDoc, onSelect, embedded = false,
                       >
                         <GripVertical className="w-3.5 h-3.5" />
                       </span>
-                      <button
+                      <OperumButton variant="default" type="button"
                         onClick={() => navegarComGuarda(() => onSelect(doc.id))}
                         aria-current={activeDoc === doc.id ? 'page' : undefined}
                         className={`flex flex-1 items-center gap-2 text-left rounded-lg px-2 py-1.5 text-sm transition-colors ${
@@ -139,7 +140,7 @@ export default function DocumentSidebar({ activeDoc, onSelect, embedded = false,
                         {(pendentes[doc.id] ?? 0) > 0 && (
                           <span className="text-xs tabular-nums text-slate-500" aria-label={`${pendentes[doc.id]} proposta(s) pendente(s)`}>{pendentes[doc.id]}</span>
                         )}
-                      </button>
+                      </OperumButton>
                     </div>
                   )}
                 </Draggable>
