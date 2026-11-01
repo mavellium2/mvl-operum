@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -61,9 +63,9 @@ function MenuAta({ href, podeExcluir, onExcluir, numero }: { href: string; podeE
   return (
     <div ref={raiz} className="relative">
       <Tooltip label="Mais ações">
-        <button type="button" aria-label={`Mais ações da ata ${numeroAta(numero)}`} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)} className={botaoIcone}>
+        <OperumButton variant="custom" type="button" aria-label={`Mais ações da ata ${numeroAta(numero)}`} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto(a => !a)} className={botaoIcone}>
           <MoreHorizontal className="h-4 w-4" />
-        </button>
+        </OperumButton>
       </Tooltip>
       {aberto && (
         <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-52 rounded-xl border border-slate-100 bg-white py-1 text-sm shadow-xl">
@@ -71,7 +73,7 @@ function MenuAta({ href, podeExcluir, onExcluir, numero }: { href: string; podeE
           {podeExcluir && (
             <>
               <div className="my-1 border-t border-slate-100" />
-              <button role="menuitem" type="button" onClick={() => { setAberto(false); onExcluir() }} className="flex w-full items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" />Excluir ata…</button>
+              <OperumButton variant="custom" role="menuitem" type="button" onClick={() => { setAberto(false); onExcluir() }} className="flex w-full items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" />Excluir ata…</OperumButton>
             </>
           )}
         </div>
@@ -114,7 +116,7 @@ function CartaoAta({ ata, projetoId, status, podeExcluir, onExcluir }: { ata: At
           <a href={`/api/atas/${ata.id}/export`} download aria-label={`Baixar Word da ata ${numeroAta(ata.numero)}`} className={botaoIcone}><Download className="h-4 w-4" /></a>
         </Tooltip>
         <Tooltip label="Histórico da ata">
-          <button type="button" aria-label={`Histórico da ata ${numeroAta(ata.numero)}`} onClick={() => abrirHistorico(projetoId, ata.id)} className={botaoIcone}><History className="h-4 w-4" /></button>
+          <OperumButton variant="custom" type="button" aria-label={`Histórico da ata ${numeroAta(ata.numero)}`} onClick={() => abrirHistorico(projetoId, ata.id)} className={botaoIcone}><History className="h-4 w-4" /></OperumButton>
         </Tooltip>
         <MenuAta href={href} podeExcluir={podeExcluir} onExcluir={onExcluir} numero={ata.numero} />
       </div>
@@ -189,7 +191,7 @@ export default function DocumentoAtas({ projetoId, atas }: Props) {
               <label className="relative flex-1 sm:flex-none">
                 <span className="sr-only">Buscar atas</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
+                <OperumInput
                   type="search" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por assunto, pessoa ou nº"
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:w-72"
                 />
@@ -211,7 +213,7 @@ export default function DocumentoAtas({ projetoId, atas }: Props) {
           <div role="status" className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <Clock className="h-4 w-4 shrink-0" />
             <span className="flex-1"><strong>{pendentes === 1 ? '1 ata aguardando aprovação.' : `${pendentes} atas aguardando aprovação.`}</strong> A versão vigente não muda até a aprovação.</span>
-            <button type="button" onClick={() => abrirHistorico(projetoId)} className="rounded-lg bg-white px-3 py-1.5 font-medium text-amber-900 ring-1 ring-amber-300 hover:bg-amber-100">Revisar</button>
+            <OperumButton variant="default" type="button" onClick={() => abrirHistorico(projetoId)} className="rounded-lg bg-white px-3 py-1.5 font-medium text-amber-900 ring-1 ring-amber-300 hover:bg-amber-100">Revisar</OperumButton>
           </div>
         )}
 
@@ -227,18 +229,18 @@ export default function DocumentoAtas({ projetoId, atas }: Props) {
           <>
             <div className="mt-5 flex flex-wrap items-center gap-1 text-sm" role="group" aria-label="Filtrar atas">
               {filtros.map(f => (
-                <button
+                <OperumButton variant="primary"
                   key={f.id} type="button" aria-pressed={filtro === f.id} onClick={() => setFiltro(f.id)}
                   className={`rounded-full px-3 py-1 ${filtro === f.id ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
                 >
                   {f.rotulo} ({f.total})
-                </button>
+                </OperumButton>
               ))}
             </div>
             {visiveis.length === 0 ? (
               <div className="mt-3 rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
                 Nenhuma ata encontrada.{' '}
-                <button type="button" onClick={() => { setBusca(''); setFiltro('todas') }} className="font-medium text-blue-600 hover:underline">Limpar busca e filtros</button>
+                <OperumButton variant="default" type="button" onClick={() => { setBusca(''); setFiltro('todas') }} className="font-medium text-blue-600 hover:underline">Limpar busca e filtros</OperumButton>
               </div>
             ) : (
               <ul className="mt-3 space-y-2">

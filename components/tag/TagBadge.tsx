@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 interface TagBadgeProps {
   name: string
   color: string
@@ -10,7 +11,7 @@ interface TagBadgeProps {
 
 export function TagBadge({ name, color, selected, onClick, className = '' }: TagBadgeProps) {
   return (
-    <button
+    <OperumButton variant="default"
       type="button"
       aria-pressed={selected}
       data-selected={selected ? 'true' : undefined}
@@ -32,6 +33,6 @@ export function TagBadge({ name, color, selected, onClick, className = '' }: Tag
       }}
     >
       {name}
-    </button>
+    </OperumButton>
   )
 }

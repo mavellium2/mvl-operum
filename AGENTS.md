@@ -29,3 +29,30 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Cada decisão deve ter ID estável, título, data do registro, status, contexto, escolha, justificativa, alternativas consideradas, consequências e referências ao código, SDD, commit ou PR. Incluir condições de revisão quando conhecidas. Propostas ainda não aprovadas devem permanecer identificadas como propostas.
 - Para decisões antigas, usar apenas evidências do repositório ou informações confirmadas pelo usuário. Identificar registros retrospectivos; não inventar data de aprovação, participantes, alternativas avaliadas ou motivos históricos. Marcar o que não estiver documentado como tal.
 - Preservar o histórico: uma mudança de direção cria uma nova decisão e marca a anterior como substituída, com links entre ambas. `architecture.md` descreve como o sistema funciona hoje; `decisions.md` explica por que as escolhas foram feitas; `CHANGELOG.md` resume o que mudou em cada versão.
+
+
+# Reutilização obrigatória de componentes de interface
+
+- Antes de implementar ou alterar uma interface, procurar o componente existente em `components/ui` e os componentes de domínio. Reutilizá-lo; não recriar marcação, estilos ou comportamento equivalentes na página.
+- Criou um componente reutilizável: aplicar aos demais usos equivalentes no escopo solicitado, em vez de manter versões paralelas. Corrigir o componente compartilhado quando a melhoria for comum a todos os consumidores.
+- Campos de texto usam `Input` e `Textarea` de `components/ui/Field.tsx`. Campos compostos usam `FieldGroup` para compartilhar o foco externo sem duplicar o aro no input interno. Campos especializados (senha, contato, moeda, data, edição expansível) compõem essa base e mantêm suas máscaras, validações e acessibilidade. Seletores novos usam `Select`; seletores nativos existentes usam `NativeSelect` da mesma base.
+- Hover, pressão e foco dos campos têm fonte única em `components/ui/Field.css`. Não duplicar esses estados por página, nem adicionar anéis grossos ou sobrescritas locais para reproduzir o mesmo efeito. Preservar indicação de erro, navegação por teclado, desabilitado, somente leitura e preferências de acessibilidade.
+- Não criar `<button>` nativo fora de `GlassButton`: ações usam suas variantes e controles específicos usam `custom`, preservando type e semântica. A API legada `Button` delega à mesma base. Botões de vidro usam `GlassButton`; fechar usa `GlassCloseButton`; cards de vidro usam `GlassCard` (ou `SettingsCard` nas configurações); visualização/recorte de imagem usa `GlassImageUpload`. Estender a API do componente quando necessário, preservando seus consumidores.
+- Inputs nativos ficam restritos à implementação da base e controles de outra natureza: hidden, arquivo, checkbox, radio, range, cor e botões nativos. Qualquer outra exceção exige motivo técnico explícito junto ao código e na descrição da PR; conveniência visual não justifica duplicação.
+- Antes de concluir, verificar se restaram usos equivalentes fora do componente e executar as verificações pertinentes. Não declarar migração global concluída se houver telas pendentes.
+
+# Animação e resposta visual da interface
+
+- Toda nova interface ou melhoria deve comunicar interação: hover, foco por teclado, pressão, seleção, carregamento, sucesso e erro, conforme o controle. O ponto de partida aplicado é Configurações (submenu, cards e botões).
+- Reutilizar a animação no componente compartilhado, não copiar keyframes e transições por página. Ações usam GlassButton; fechamento usa GlassCloseButton; cards usam GlassCard com `interactive` quando recebem esse tratamento. Controles específicos, como tabs e opções de menus, usam o modo `custom` para preservar dimensões e semântica.
+- Priorizar transições suaves, curtas e discretas. Nada de pulsação permanente, deslocamentos grandes ou efeitos que atrapalhem leitura, digitação ou cliques. Estados de carregamento devem desabilitar apenas as ações pertinentes e não aceitar envios duplicados.
+- Respeitar `prefers-reduced-motion`, `prefers-reduced-transparency`, foco visível, disabled e readonly. A interface deve continuar compreensível sem animação e utilizável por teclado.
+- Entradas e saídas devem acompanhar o ciclo real do componente; cancelar animações no descarte. Não atrasar confirmação de segurança ou disparar uma exclusão apenas para mostrar um efeito. Animações de remoção de linha do editor permanecem específicas desse fluxo confirmado.
+
+# Prioridade e posição das ações de salvar
+
+- Salvar deve ficar visível e acessível enquanto o usuário edita, sem exigir rolagem até o fim. A ação permanece no rodapé; mover o botão para o cabeçalho não resolve essa exigência.
+- Reutilizar `FormActions` para o rodapé e `FormBody` para os dados roláveis. Em painéis de altura limitada, usar `form-layout`, manter somente FormBody com overflow e deixar o rodapé fora dessa rolagem. Não criar uma faixa sobreposta que esconda os últimos campos ou corte a borda inferior do card.
+- O rodapé usa o material do card e a paleta atual, sem fundo branco opaco imposto a todos os temas. Preservar padding, borda inteira e espaço para alcançar o último campo.
+- Preservar o formulário nativo, type, validação, estado de carregamento e foco; não duplicar botões em portais para simular um rodapé. Manter os docks/rodapés existentes que já cumprem a regra.
+- Antes de concluir, verificar o primeiro e o último campo e confirmar que Salvar continua visível no topo e no fim da rolagem. Testar também modais e janelas com menor altura nas áreas alteradas.

@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput, Textarea as OperumTextarea } from '@/components/ui/Field'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { erroMoeda, formatReais, moedaParaCampo, parseMoeda } from '@/lib/dinheiro'
 import { EmailInput, TelefoneInput } from '@/components/ui/ContatoInputs'
@@ -171,22 +174,22 @@ function MultiCreatableSelect({ values = [], onChange, options, placeholder, dis
           <span key={val} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200">
             {val}
             {!disabled && (
-              <button type="button" onClick={(e) => { e.stopPropagation(); handleRemove(val); }} className="hover:text-red-600 focus:outline-none transition-colors"><IconClose /></button>
+              <OperumButton variant="custom" type="button" onClick={(e) => { e.stopPropagation(); handleRemove(val); }} className="hover:text-red-600 focus:outline-none transition-colors"><IconClose /></OperumButton>
             )}
           </span>
         ))}
-        <input ref={inputRef} type="text" value={search} disabled={disabled} onChange={(e) => { setSearch(e.target.value); setIsOpen(true) }} onFocus={() => !disabled && setIsOpen(true)} placeholder={values.length === 0 ? placeholder : ''} className="flex-1 min-w-[120px] outline-none bg-transparent text-sm disabled:cursor-not-allowed" />
+        <OperumInput ref={inputRef} type="text" value={search} disabled={disabled} onChange={(e) => { setSearch(e.target.value); setIsOpen(true) }} onFocus={() => !disabled && setIsOpen(true)} placeholder={values.length === 0 ? placeholder : ''} className="flex-1 min-w-[120px] outline-none bg-transparent text-sm disabled:cursor-not-allowed" />
       </div>
 
       {isOpen && !disabled && (
         <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-xl max-h-48 overflow-y-auto py-1">
           {filteredOptions.length > 0 && filteredOptions.map((opt) => (
-            <button key={opt} onClick={() => handleSelect(opt)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 transition-colors">{opt}</button>
+            <OperumButton variant="default" type="button" key={opt} onClick={() => handleSelect(opt)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 transition-colors">{opt}</OperumButton>
           ))}
           {showCreateOption && (
-            <button onClick={() => handleSelect(search.trim())} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-blue-700 font-medium bg-blue-50/50 hover:bg-blue-50 transition-colors border-t border-gray-50">
+            <OperumButton variant="default" type="button" onClick={() => handleSelect(search.trim())} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-blue-700 font-medium bg-blue-50/50 hover:bg-blue-50 transition-colors border-t border-gray-50">
               <IconPlus /> Criar tag {'"'}{search.trim()}{'"'}
-            </button>
+            </OperumButton>
           )}
           {filteredOptions.length === 0 && !showCreateOption && (
             <div className="px-4 py-3 text-sm text-gray-400 italic text-center">
@@ -551,14 +554,14 @@ export default function ProjetoMembrosClient({
             <p className="text-xs text-gray-400 mt-0.5">{membros.length} membro{membros.length !== 1 ? 's' : ''}</p>
           </div>
           {isAdmin && (
-            <button onClick={() => setShowSystemUsers(true)} title="Adicionar membros" className="p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+            <OperumButton variant="custom" type="button" onClick={() => setShowSystemUsers(true)} title="Adicionar membros" className="p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors">
               <IconPlus />
-            </button>
+            </OperumButton>
           )}
         </div>
 
         <div className="px-4 py-3 border-b border-gray-100">
-          <input type="search" placeholder="Buscar membro…" value={searchMembros} onChange={e => setSearchMembros(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <OperumInput type="search" placeholder="Buscar membro…" value={searchMembros} onChange={e => setSearchMembros(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
 
         {filteredMembros.length === 0 ? (
@@ -569,33 +572,33 @@ export default function ProjetoMembrosClient({
         ) : (
           <ul className="divide-y-0 space-y-2 overflow-y-auto max-h-[600px] px-2 py-2">
   {filteredMembros.map(m => (
-    <li 
-      key={m.userId} 
+    <li
+      key={m.userId}
       className={`
-        group flex flex-col sm:flex-row sm:items-center justify-between gap-3 
+        group flex flex-col sm:flex-row sm:items-center justify-between gap-3
         p-3 transition-all duration-200 rounded-xl bg-white
         'border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300'}
       `}
     >
-      
+
       {/* ESQUERDA: Avatar e Info */}
       <div className="flex items-center gap-3.5 flex-1 min-w-0">
-        
+
         {/* Avatar mantido grande, mas sem o container extra do ícone */}
-        <div className={`rounded-full shrink-0 ${m.isGerente 
+        <div className={`rounded-full shrink-0 ${m.isGerente
           ? 'border-2 border-amber-500 shadow-sm'
           : 'border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300'}`}>
           <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size="lg" />
         </div>
-        
+
         {/* Informações do Usuário (Mais compactas) */}
         <div className="flex flex-col gap-1 w-full min-w-0">
-          
+
           {/* Nome Completo */}
           <span className="text-[15px] leading-none font-bold text-slate-800 tracking-tight truncate">
             {m.name}
           </span>
-          
+
           {/* Badges: Função e Dinheiro */}
           <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
             {(m.cargos.length > 0 || m.departamento.length > 0) && (
@@ -615,14 +618,14 @@ export default function ProjetoMembrosClient({
               </span>
             )}
           </div>
-          
+
           {/* Contatos Menores na mesma linha ou bem próximos */}
           <div className="flex flex-wrap items-center gap-2.5 text-[11px] font-medium text-slate-400 mt-0.5">
             <span className="flex items-center gap-1 truncate">
               <IconMail />
               {m.email}
             </span>
-            
+
             {m.phone && (
               <span className="flex items-center gap-1 truncate">
                 <IconPhone />
@@ -637,27 +640,27 @@ export default function ProjetoMembrosClient({
       {/* DIREITA: Botões de Ação */}
       <div className="flex items-center justify-end gap-1 w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-100 sm:border-0 shrink-0">
         <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-          <button 
-            onClick={() => handleOpenEdit(m, 'member')} 
-            title="Editar Detalhes" 
+          <OperumButton variant="custom" type="button"
+            onClick={() => handleOpenEdit(m, 'member')}
+            title="Editar Detalhes"
             className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
           >
             <IconEdit />
-          </button>
-          
+          </OperumButton>
+
           {isAdmin && (
-            <button 
-              onClick={() => handleRemoveMember(m)} 
-              disabled={loadingId === m.userId || isPending} 
-              title="Remover do projeto" 
+            <OperumButton variant="danger" type="button"
+              onClick={() => handleRemoveMember(m)}
+              disabled={loadingId === m.userId || isPending}
+              title="Remover do projeto"
               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-40"
             >
               {loadingId === m.userId ? <IconSpinner /> : <IconTrash />}
-            </button>
+            </OperumButton>
           )}
         </div>
       </div>
-      
+
     </li>
   ))}
 </ul>
@@ -673,12 +676,12 @@ export default function ProjetoMembrosClient({
               <p className="text-xs text-gray-400 mt-0.5">{disponiveis.length} disponíveis</p>
             </div>
             <div className="flex items-center gap-1">
-              <button onClick={handleOpenCreate} className="p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"><IconPlus /></button>
-              <button onClick={() => setShowSystemUsers(false)} className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"><IconClose /></button>
+              <OperumButton variant="custom" type="button" onClick={handleOpenCreate} className="p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"><IconPlus /></OperumButton>
+              <OperumButton variant="custom" type="button" onClick={() => setShowSystemUsers(false)} className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"><IconClose /></OperumButton>
             </div>
           </div>
           <div className="px-4 py-3 border-b border-gray-100">
-            <input type="search" placeholder="Buscar usuário…" value={searchDisponiveis} onChange={e => setSearchDisponiveis(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <OperumInput type="search" placeholder="Buscar usuário…" value={searchDisponiveis} onChange={e => setSearchDisponiveis(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           {filteredDisponiveis.length === 0 ? (
             <div className="px-5 py-10 text-center">
@@ -696,9 +699,9 @@ export default function ProjetoMembrosClient({
                     </p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
-                    <button onClick={() => handleAddMember(u)} disabled={loadingId === u.id || isPending} className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 disabled:opacity-40">{loadingId === u.id ? <IconSpinner /> : <IconPlus />}</button>
-                    <button onClick={() => handleOpenEdit(u, 'system')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50"><IconEdit /></button>
-                    <button onClick={() => handleDeleteUser(u.id)} disabled={loadingId === u.id || isPending} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40">{loadingId === u.id ? <IconSpinner /> : <IconTrash />}</button>
+                    <OperumButton variant="default" type="button" onClick={() => handleAddMember(u)} disabled={loadingId === u.id || isPending} className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 disabled:opacity-40">{loadingId === u.id ? <IconSpinner /> : <IconPlus />}</OperumButton>
+                    <OperumButton variant="custom" type="button" onClick={() => handleOpenEdit(u, 'system')} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50"><IconEdit /></OperumButton>
+                    <OperumButton variant="danger" type="button" onClick={() => handleDeleteUser(u.id)} disabled={loadingId === u.id || isPending} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40">{loadingId === u.id ? <IconSpinner /> : <IconTrash />}</OperumButton>
                   </div>
                 </li>
               ))}
@@ -712,7 +715,7 @@ export default function ProjetoMembrosClient({
         <div className={`${col3Width} w-full bg-white rounded-2xl shadow-sm border border-gray-100 max-h-[calc(100vh-6rem)] flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300`}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
             <h2 className="text-sm font-semibold text-gray-900">{col3Title}</h2>
-            <button onClick={handleClearSelection} className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"><IconClose /></button>
+            <OperumButton variant="custom" type="button" onClick={handleClearSelection} className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"><IconClose /></OperumButton>
           </div>
 
           <div className="px-5 py-5 space-y-4 overflow-y-auto flex-1 min-h-0">
@@ -727,7 +730,7 @@ export default function ProjetoMembrosClient({
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Nome</label>
-              <input type="text" value={formState.name} onChange={e => setField('name', e.target.value)} disabled={!isAdmin} className={`${inputCls} ${disabledCls}`} />
+              <OperumInput type="text" value={formState.name} onChange={e => setField('name', e.target.value)} disabled={!isAdmin} className={`${inputCls} ${disabledCls}`} />
             </div>
 
             <div>
@@ -816,20 +819,20 @@ export default function ProjetoMembrosClient({
                   <span className="text-xs font-medium text-gray-600">Gerente do Projeto</span>
                   <p className="text-[10px] text-gray-400 mt-0.5">Concede acesso de gerência neste projeto</p>
                 </div>
-                <button
+                <OperumButton variant="custom"
                   type="button"
                   onClick={() => isAdmin && setField('isGerente', !formState.isGerente)}
                   disabled={!isAdmin}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${formState.isGerente ? 'bg-blue-600' : 'bg-gray-200'} ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${formState.isGerente ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
+                </OperumButton>
               </div>
             )}
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Observações</label>
-              <textarea
+              <OperumTextarea
                 value={formState.notes}
                 onChange={e => setField('notes', e.target.value)}
                 disabled={!isAdmin}
@@ -841,9 +844,9 @@ export default function ProjetoMembrosClient({
 
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs font-medium text-gray-600">Status</span>
-              <button type="button" onClick={() => isAdmin && setField('isActive', !formState.isActive)} disabled={!isAdmin} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${formState.isActive ? 'bg-green-500' : 'bg-gray-200'} ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+              <OperumButton variant="custom" type="button" onClick={() => isAdmin && setField('isActive', !formState.isActive)} disabled={!isAdmin} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${formState.isActive ? 'bg-green-500' : 'bg-gray-200'} ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${formState.isActive ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
+              </OperumButton>
             </div>
 
             {isCreating && (
@@ -855,13 +858,13 @@ export default function ProjetoMembrosClient({
 
             {formError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>}
 
-            <div className="flex gap-2 pt-4">
-              <button type="button" onClick={handleClearSelection} className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
-              <button type="button" onClick={handleSaveUser} disabled={loadingId === 'form' || isPending} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            <FormActions className="flex gap-2 pt-4">
+              <OperumButton variant="default" type="button" onClick={handleClearSelection} className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</OperumButton>
+              <OperumButton variant="primary" type="button" onClick={handleSaveUser} disabled={loadingId === 'form' || isPending} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors">
                 {loadingId === 'form' && <IconSpinner cls="w-3.5 h-3.5" />}
                 {isCreating ? 'Criar Usuário' : 'Salvar Dados'}
-              </button>
-            </div>
+              </OperumButton>
+            </FormActions>
           </div>
         </div>
       )}

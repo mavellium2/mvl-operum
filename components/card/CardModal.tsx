@@ -1,5 +1,9 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import OperumCloseButton from '@/components/ui/GlassCloseButton'
+import { Input as OperumInput, Textarea as OperumTextarea } from '@/components/ui/Field'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import { useState, useEffect, useRef, useCallback, useId } from 'react'
@@ -434,7 +438,7 @@ export default function CardModal({
           {readOnly ? (
             <h2 className="flex-1 text-xl font-semibold text-slate-900 rounded px-1 truncate">{title}</h2>
           ) : (
-            <input
+            <OperumInput
               autoFocus
               value={title}
               disabled={saving}
@@ -443,16 +447,10 @@ export default function CardModal({
               placeholder="Título da tarefa..."
             />
           )}
-          <button
-            onClick={handleCancel}
+          <OperumCloseButton onClick={handleCancel}
             disabled={saving}
-            aria-label="Fechar"
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+            label="Fechar"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0" />
         </div>
 
         {error && <p role="alert" className="shrink-0 border-b bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
@@ -476,7 +474,7 @@ export default function CardModal({
                 <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Descrição</h3>
                 <div className="flex items-center gap-2">
                   {autosaveInfo && (
-                    <button
+                    <OperumButton variant="default"
                       type="button"
                       aria-live="polite"
                       disabled={descAutosave.status !== 'error'}
@@ -484,18 +482,18 @@ export default function CardModal({
                       className={`text-[11px] font-medium ${autosaveInfo.cls}`}
                     >
                       {autosaveInfo.text}
-                    </button>
+                    </OperumButton>
                   )}
                   {!autosaveEnabled && hasUnsavedDescription && !isEditingDesc && (
                     <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">não salvo</span>
                   )}
                   {!isEditingDesc && !readOnly && (
-                    <button
+                    <OperumButton variant="default" type="button"
                       onClick={() => setIsEditingDesc(true)}
                       className="text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                     >
                       Editar
-                    </button>
+                    </OperumButton>
                   )}
                 </div>
               </div>
@@ -510,11 +508,11 @@ export default function CardModal({
               ) : isEditingDesc ? (
                 <div className="border border-blue-400 rounded-lg overflow-hidden bg-white ring-1 ring-blue-400">
                   <div className="flex items-center gap-1 p-1.5 bg-slate-50 border-b border-slate-200">
-                    <button type="button" onClick={() => insertMarkdown('**', '**')} className="px-2 py-1 text-xs hover:bg-slate-200 rounded font-bold text-slate-600 cursor-pointer">B</button>
-                    <button type="button" onClick={() => insertMarkdown('*', '*')} className="px-2 py-1 text-xs hover:bg-slate-200 rounded italic text-slate-600 cursor-pointer">I</button>
-                    <button type="button" onClick={() => insertMarkdown('- ')} className="px-2 py-1 text-xs hover:bg-slate-200 rounded text-slate-600 cursor-pointer">• Lista</button>
+                    <OperumButton variant="default" type="button" onClick={() => insertMarkdown('**', '**')} className="px-2 py-1 text-xs hover:bg-slate-200 rounded font-bold text-slate-600 cursor-pointer">B</OperumButton>
+                    <OperumButton variant="default" type="button" onClick={() => insertMarkdown('*', '*')} className="px-2 py-1 text-xs hover:bg-slate-200 rounded italic text-slate-600 cursor-pointer">I</OperumButton>
+                    <OperumButton variant="default" type="button" onClick={() => insertMarkdown('- ')} className="px-2 py-1 text-xs hover:bg-slate-200 rounded text-slate-600 cursor-pointer">• Lista</OperumButton>
                   </div>
-                  <textarea
+                  <OperumTextarea
                     autoFocus
                     value={draftDescription}
                     onChange={e => setDraftDescription(e.target.value)}
@@ -522,16 +520,16 @@ export default function CardModal({
                     placeholder="Adicione detalhes, critérios de aceite..."
                     className="w-full p-3 text-sm text-slate-700 outline-none min-h-[120px] resize-y"
                   />
-                  <div className="flex gap-2 p-2 bg-slate-50 border-t border-slate-200">
+                  <FormActions className="flex gap-2 p-2 bg-slate-50 border-t border-slate-200">
                     {autosaveEnabled ? (
-                      <button onClick={handleCloseDescEditor} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Concluir</button>
+                      <OperumButton variant="primary" type="button" onClick={handleCloseDescEditor} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Concluir</OperumButton>
                     ) : (
                       <>
-                        <button onClick={handleSaveDescription} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Salvar</button>
-                        <button onClick={() => { setDraftDescription(savedDescription); setIsEditingDesc(false) }} className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer">Cancelar</button>
+                        <OperumButton variant="primary" type="button" onClick={handleSaveDescription} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Salvar</OperumButton>
+                        <OperumButton variant="default" type="button" onClick={() => { setDraftDescription(savedDescription); setIsEditingDesc(false) }} className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer">Cancelar</OperumButton>
                       </>
                     )}
-                  </div>
+                  </FormActions>
                 </div>
               ) : (
                 <div
@@ -552,14 +550,14 @@ export default function CardModal({
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Anexos</h3>
                   {!readOnly && (
-                    <button
+                    <OperumButton variant="default" type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={enviandoAnexo}
                       title={`${ATTACHMENT_TYPES_LABEL}, até ${MAX_ATTACHMENT_MB} MB`}
                       className="text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer disabled:cursor-wait disabled:opacity-60"
                     >
                       {enviandoAnexo ? 'Enviando…' : '+ Adicionar'}
-                    </button>
+                    </OperumButton>
                   )}
                   <input
                     ref={fileInputRef}
@@ -598,7 +596,7 @@ export default function CardModal({
                         </svg>
                         <span className="flex-1 min-w-0 truncate text-sm text-slate-700">{f.name}</span>
                         <span className="text-xs text-slate-400 shrink-0">{formatBytes(f.size)}</span>
-                        <button
+                        <OperumButton variant="custom" type="button"
                           onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
                           className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer shrink-0"
                           aria-label={`Remover ${f.name}`}
@@ -606,7 +604,7 @@ export default function CardModal({
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                           </svg>
-                        </button>
+                        </OperumButton>
                       </li>
                     ))}
                   </ul>
@@ -640,26 +638,26 @@ export default function CardModal({
                                 setRenamingId(null)
                               }}
                             >
-                              <input
+                              <OperumInput
                                 autoFocus
                                 value={renameValue}
                                 onChange={e => setRenameValue(e.target.value)}
                                 aria-label="Novo nome do anexo"
                                 className="flex-1 min-w-0 rounded border border-slate-500 bg-white px-1.5 py-0.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/40"
                               />
-                              <button type="submit" className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer shrink-0">OK</button>
-                              <button type="button" onClick={() => setRenamingId(null)} className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer shrink-0">Cancelar</button>
+                              <OperumButton variant="default" type="submit" className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer shrink-0">OK</OperumButton>
+                              <OperumButton variant="default" type="button" onClick={() => setRenamingId(null)} className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer shrink-0">Cancelar</OperumButton>
                             </form>
                           ) : (
                             <>
                               {podeVer ? (
-                                <button
+                                <OperumButton variant="default"
                                   type="button"
                                   onClick={() => setPreview(a)}
                                   className="flex-1 min-w-0 truncate text-left text-sm text-blue-600 hover:underline cursor-pointer"
                                 >
                                   {a.fileName}
-                                </button>
+                                </OperumButton>
                               ) : abrir ? (
                                 <a
                                   href={abrir}
@@ -675,7 +673,7 @@ export default function CardModal({
                               <span className="text-xs text-slate-400 shrink-0">{href ? linkHost(href) : formatBytes(a.fileSize)}</span>
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                 {podeVer ? (
-                                  <button
+                                  <OperumButton variant="custom"
                                     type="button"
                                     title="Ver imagem"
                                     aria-label={`Ver ${a.fileName}`}
@@ -686,7 +684,7 @@ export default function CardModal({
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                     </svg>
-                                  </button>
+                                  </OperumButton>
                                 ) : abrir && (
                                   <a
                                     href={abrir}
@@ -702,7 +700,7 @@ export default function CardModal({
                                   </a>
                                 )}
                                 {!readOnly && onAttachmentRename && (
-                                  <button
+                                  <OperumButton variant="custom" type="button"
                                     title="Renomear"
                                     onClick={() => { setRenamingId(a.id); setRenameValue(a.fileName) }}
                                     className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 cursor-pointer"
@@ -710,10 +708,10 @@ export default function CardModal({
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
                                     </svg>
-                                  </button>
+                                  </OperumButton>
                                 )}
                                 {!readOnly && a.fileType.startsWith('image/') && onAttachmentSetCover && (
-                                  <button
+                                  <OperumButton variant="custom" type="button"
                                     title={a.isCover ? 'Capa atual' : 'Definir como capa'}
                                     onClick={() => onAttachmentSetCover(a.id)}
                                     className={`p-1 rounded cursor-pointer ${a.isCover ? 'text-yellow-500' : 'hover:bg-slate-200 text-slate-400 hover:text-yellow-500'}`}
@@ -721,10 +719,10 @@ export default function CardModal({
                                     <svg className="w-3.5 h-3.5" fill={a.isCover ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
                                     </svg>
-                                  </button>
+                                  </OperumButton>
                                 )}
                                 {!readOnly && onAttachmentDelete && (
-                                  <button
+                                  <OperumButton variant="custom" type="button"
                                     title="Excluir"
                                     onClick={() => onAttachmentDelete(a.id)}
                                     className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer"
@@ -732,7 +730,7 @@ export default function CardModal({
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                                     </svg>
-                                  </button>
+                                  </OperumButton>
                                 )}
                               </div>
                             </>
@@ -752,7 +750,7 @@ export default function CardModal({
 
               {!readOnly && (
                 <div className={`border rounded-lg overflow-hidden bg-white mb-4 transition-all ${isCommenting ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200'}`}>
-                  <textarea
+                  <OperumTextarea
                     value={commentText}
                     onChange={e => setCommentText(e.target.value)}
                     onFocus={() => setIsCommenting(true)}
@@ -761,8 +759,8 @@ export default function CardModal({
                   />
                   {isCommenting && (
                     <div className="p-2 bg-slate-50 border-t border-slate-200 flex gap-2">
-                      <button onClick={handleCommentSubmit} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Comentar</button>
-                      <button onClick={() => { setIsCommenting(false); setCommentText('') }} className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer">Cancelar</button>
+                      <OperumButton variant="primary" type="button" onClick={handleCommentSubmit} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Comentar</OperumButton>
+                      <OperumButton variant="default" type="button" onClick={() => { setIsCommenting(false); setCommentText('') }} className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer">Cancelar</OperumButton>
                     </div>
                   )}
                 </div>
@@ -781,31 +779,31 @@ export default function CardModal({
                           <span className="text-[11px] text-slate-400">há pouco</span>
                           {isOwner && !isEditingThis && !readOnly && (
                             <div className="ml-auto flex gap-1">
-                              <button
+                              <OperumButton variant="default" type="button"
                                 onClick={() => { setEditingCommentId(comment.id); setEditCommentContent(comment.content) }}
                                 className="text-[11px] text-slate-400 hover:text-blue-600 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
                               >
                                 Editar
-                              </button>
-                              <button
+                              </OperumButton>
+                              <OperumButton variant="danger" type="button"
                                 onClick={() => onDeleteComment?.(comment.id)}
                                 className="text-[11px] text-slate-400 hover:text-red-600 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
                               >
                                 Excluir
-                              </button>
+                              </OperumButton>
                             </div>
                           )}
                         </div>
                         {isEditingThis ? (
                           <div className="border border-blue-400 ring-1 ring-blue-400 rounded-lg overflow-hidden bg-white">
-                            <textarea
+                            <OperumTextarea
                               autoFocus
                               value={editCommentContent}
                               onChange={e => setEditCommentContent(e.target.value)}
                               className="w-full bg-transparent text-slate-800 p-3 outline-none resize-none text-sm min-h-[64px]"
                             />
-                            <div className="p-2 bg-slate-50 border-t border-slate-200 flex gap-2">
-                              <button
+                            <FormActions className="p-2 bg-slate-50 border-t border-slate-200 flex gap-2">
+                              <OperumButton variant="primary" type="button"
                                 onClick={async () => {
                                   if (!editCommentContent.trim()) return
                                   await onEditComment?.(comment.id, editCommentContent.trim())
@@ -815,14 +813,14 @@ export default function CardModal({
                                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer"
                               >
                                 Salvar
-                              </button>
-                              <button
+                              </OperumButton>
+                              <OperumButton variant="default" type="button"
                                 onClick={() => { setEditingCommentId(null); setEditCommentContent('') }}
                                 className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer"
                               >
                                 Cancelar
-                              </button>
-                            </div>
+                              </OperumButton>
+                            </FormActions>
                           </div>
                         ) : (
                           <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-700 border border-slate-200">
@@ -889,7 +887,7 @@ export default function CardModal({
                   ) : (
                     <div className="flex gap-1.5">
                       {(['baixa', 'media', 'alta'] as const).map(p => (
-                        <button
+                        <OperumButton variant="default" type="button"
                           key={p}
                           onClick={() => setPriority(p)}
                           className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer border ${
@@ -899,7 +897,7 @@ export default function CardModal({
                           }`}
                         >
                           {PRIORITY_LABELS[p].label}
-                        </button>
+                        </OperumButton>
                       ))}
                     </div>
                   )}
@@ -931,7 +929,7 @@ export default function CardModal({
                         <div key={f.id}>
                           <label htmlFor={f.id} className="block text-[11px] text-slate-500 mb-0.5">{f.label}</label>
                           <div className="flex items-center gap-1">
-                            <input
+                            <OperumInput
                               id={f.id}
                               type="datetime-local"
                               value={f.value}
@@ -940,14 +938,14 @@ export default function CardModal({
                               className="flex-1 min-w-0 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
                             />
                             {f.value && (
-                              <button
+                              <OperumButton variant="custom"
                                 type="button"
                                 onClick={() => f.set('')}
                                 aria-label={`Remover ${f.label.toLowerCase()}`}
                                 className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                              </button>
+                              </OperumButton>
                             )}
                           </div>
                         </div>
@@ -956,9 +954,9 @@ export default function CardModal({
                         <p role="alert" className="text-[11px] text-red-600">O prazo não pode ser antes do início.</p>
                       )}
                       {!datasInvalidas && autosaveEnabled && datasAutosave.status === 'error' && (
-                        <button type="button" onClick={() => { void datasAutosave.flush() }} className="text-[11px] text-red-600 hover:underline cursor-pointer">
+                        <OperumButton variant="danger" type="button" onClick={() => { void datasAutosave.flush() }} className="text-[11px] text-red-600 hover:underline cursor-pointer">
                           Erro ao salvar as datas. Tentar de novo
-                        </button>
+                        </OperumButton>
                       )}
                     </div>
                   )}
@@ -1013,7 +1011,7 @@ export default function CardModal({
                   </div>
 
                   {/* Toggle Lançamento Manual */}
-                  <button
+                  <OperumButton variant="default" type="button"
                     onClick={() => { setShowManualForm(v => !v); setTimeError('') }}
                     className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer border border-dashed border-slate-300"
                   >
@@ -1024,31 +1022,31 @@ export default function CardModal({
                       }
                     </svg>
                     {showManualForm ? 'Ocultar lançamento manual' : 'Lançamento manual'}
-                  </button>
+                  </OperumButton>
 
                   {showManualForm && (
                     <div className="mt-2 bg-white rounded-lg border border-slate-200 p-3 space-y-2">
                       <div className="flex gap-1.5">
-                        <input
+                        <OperumInput
                           type="number" min="0" placeholder="0h"
                           value={manualHours}
                           onChange={e => { setManualHours(e.target.value); setTimeError('') }}
                           className="w-1/3 border border-slate-200 rounded-md px-2 py-1.5 text-sm outline-none focus:border-blue-400 text-slate-700"
                         />
-                        <input
+                        <OperumInput
                           type="number" min="0" max="59" placeholder="00m"
                           value={manualMinutes}
                           onChange={e => { setManualMinutes(e.target.value); setTimeError('') }}
                           className="w-1/3 border border-slate-200 rounded-md px-2 py-1.5 text-sm outline-none focus:border-blue-400 text-slate-700"
                         />
-                        <input
+                        <OperumInput
                           type="number" min="0" max="59" placeholder="00s"
                           value={manualSeconds}
                           onChange={e => { setManualSeconds(e.target.value); setTimeError('') }}
                           className="w-1/3 border border-slate-200 rounded-md px-2 py-1.5 text-sm outline-none focus:border-blue-400 text-slate-700"
                         />
                       </div>
-                      <input
+                      <OperumInput
                         type="text"
                         placeholder="O que foi feito?"
                         value={manualDesc}
@@ -1056,13 +1054,13 @@ export default function CardModal({
                         className="w-full border border-slate-200 rounded-md px-2 py-1.5 text-sm outline-none focus:border-blue-400 text-slate-700"
                       />
                       {timeError && <p className="text-red-500 text-xs">{timeError}</p>}
-                      <button
+                      <OperumButton variant="primary" type="button"
                         onClick={handleRegisterTime}
                         disabled={!manualDesc.trim()}
                         className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-md transition-colors cursor-pointer"
                       >
                         Registrar
-                      </button>
+                      </OperumButton>
                     </div>
                   )}
                 </section>
@@ -1075,18 +1073,18 @@ export default function CardModal({
                   <section>
                     {/* Abas */}
                     <div className="flex gap-1 mb-3 bg-slate-100 rounded-lg p-0.5">
-                      <button
+                      <OperumButton variant="default" type="button"
                         onClick={() => setActiveHistoryTab('tempo')}
                         className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${activeHistoryTab === 'tempo' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                         Tempo {timeEntries.length > 0 && <span className="text-slate-400">({timeEntries.length})</span>}
-                      </button>
-                      <button
+                      </OperumButton>
+                      <OperumButton variant="default" type="button"
                         onClick={() => setActiveHistoryTab('movimentos')}
                         className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${activeHistoryTab === 'movimentos' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                         Movimentos {movements.length > 0 && <span className="text-slate-400">({movements.length})</span>}
-                      </button>
+                      </OperumButton>
                     </div>
 
                     {/* Aba Tempo */}
@@ -1098,14 +1096,14 @@ export default function CardModal({
                             editingEntryId === entry.id ? (
                               <div key={entry.id} className="bg-white rounded-lg border border-blue-300 p-2.5 space-y-2">
                                 <div className="flex gap-1.5">
-                                  <input type="number" min="0" value={editHours} onChange={e => setEditHours(e.target.value)} placeholder="0h" className="w-1/2 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-400" />
-                                  <input type="number" min="0" max="59" value={editMinutes} onChange={e => setEditMinutes(e.target.value)} placeholder="00m" className="w-1/2 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-400" />
+                                  <OperumInput type="number" min="0" value={editHours} onChange={e => setEditHours(e.target.value)} placeholder="0h" className="w-1/2 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-400" />
+                                  <OperumInput type="number" min="0" max="59" value={editMinutes} onChange={e => setEditMinutes(e.target.value)} placeholder="00m" className="w-1/2 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-400" />
                                 </div>
-                                <input type="text" value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Descrição" className="w-full border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-400" />
-                                <div className="flex gap-1.5">
-                                  <button onClick={handleSaveEditEntry} className="flex-1 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md transition-colors cursor-pointer">Salvar</button>
-                                  <button onClick={() => setEditingEntryId(null)} className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-md transition-colors cursor-pointer">Cancelar</button>
-                                </div>
+                                <OperumInput type="text" value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Descrição" className="w-full border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-400" />
+                                <FormActions className="flex gap-1.5">
+                                  <OperumButton variant="primary" type="button" onClick={handleSaveEditEntry} className="flex-1 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md transition-colors cursor-pointer">Salvar</OperumButton>
+                                  <OperumButton variant="default" type="button" onClick={() => setEditingEntryId(null)} className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-md transition-colors cursor-pointer">Cancelar</OperumButton>
+                                </FormActions>
                               </div>
                             ) : (
                               <div key={entry.id} className="group bg-white rounded-lg border border-slate-200 px-3 py-2 flex items-start justify-between gap-2">
@@ -1114,20 +1112,20 @@ export default function CardModal({
                                   {entry.description && <p className="text-xs text-slate-500 truncate mt-0.5">{entry.description}</p>}
                                 </div>
                                 <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button
+                                  <OperumButton variant="custom" type="button"
                                     onClick={() => handleStartEditEntry(entry)}
                                     title="Editar"
                                     className="p-1 hover:bg-slate-100 rounded cursor-pointer"
                                   >
                                     <svg className="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                  </button>
-                                  <button
+                                  </OperumButton>
+                                  <OperumButton variant="custom" type="button"
                                     onClick={() => handleDeleteEntry(entry.id)}
                                     title="Excluir"
                                     className="p-1 hover:bg-red-50 rounded cursor-pointer"
                                   >
                                     <svg className="w-3 h-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                  </button>
+                                  </OperumButton>
                                 </div>
                               </div>
                             )
@@ -1164,34 +1162,34 @@ export default function CardModal({
         </div>
 
         {/* ── Footer ── */}
-        <div className="shrink-0 border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between">
+        <FormActions className="shrink-0 border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between">
           {readOnly ? (
-            <button
+            <OperumButton variant="primary" type="button"
               onClick={handleCancel}
                 disabled={saving}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer shadow-sm"
             >
               Fechar
-            </button>
+            </OperumButton>
           ) : (
             <>
-              <button
+              <OperumButton variant="default" type="button"
                 onClick={handleCancel}
                 disabled={saving}
                 className="px-4 py-2 text-sm text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
                 {isEditing ? 'Fechar sem salvar' : 'Cancelar'}
-              </button>
-              <button
+              </OperumButton>
+              <OperumButton variant="primary" type="button"
                 onClick={handleSave}
                 disabled={saving}
                 className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer shadow-sm"
               >
                 {saving ? 'Salvando…' : isEditing ? 'Salvar alterações' : 'Criar card'}
-              </button>
+              </OperumButton>
             </>
           )}
-        </div>
+        </FormActions>
       </div>
 
       {preview && initialCard && (
@@ -1212,17 +1210,11 @@ export default function CardModal({
             >
               Abrir em nova aba
             </a>
-            <button
-              type="button"
+            <OperumCloseButton type="button"
               autoFocus
-              aria-label="Fechar visualização"
+              label="Fechar visualização"
               onClick={() => setPreview(null)}
-              className="shrink-0 rounded-md p-1.5 hover:bg-white/10 cursor-pointer"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+              className="shrink-0 rounded-md p-1.5 hover:bg-white/10 cursor-pointer" />
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

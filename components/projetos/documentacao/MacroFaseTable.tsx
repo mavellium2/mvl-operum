@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { useEffect, useRef } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
@@ -68,7 +70,7 @@ export default function MacroFaseTable({ fases, onChange, onAdd, onRemove, autoF
           {fases.map(f => (
             <tr key={f.id} className="group hover:bg-slate-50 transition-colors border-b border-slate-100">
               <td className={tdClass}>
-                <input
+                <OperumInput
                   ref={el => {
                     if (el) faseInputRefs.current.set(f.id, el)
                     else faseInputRefs.current.delete(f.id)
@@ -100,14 +102,14 @@ export default function MacroFaseTable({ fases, onChange, onAdd, onRemove, autoF
                 />
               </td>
               <td className={`${tdClass} text-center`}>
-                <button
+                <OperumButton variant="custom" type="button"
                   onClick={() => onRemove(f.id)}
                   disabled={disabled}
                   className="text-slate-300 hover:text-red-500 transition-colors disabled:opacity-30"
                   aria-label="Remover fase"
                 >
                   <Trash2 className="w-4 h-4" />
-                </button>
+                </OperumButton>
               </td>
             </tr>
           ))}
@@ -115,14 +117,14 @@ export default function MacroFaseTable({ fases, onChange, onAdd, onRemove, autoF
         <tfoot>
           <tr className="bg-slate-50 border-t-2 border-slate-300 font-semibold">
             <td className="px-3 py-2 text-sm text-slate-700" colSpan={2}>
-              <button
+              <OperumButton variant="default" type="button"
                 onClick={onAdd}
                 disabled={disabled}
                 className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 text-sm font-medium disabled:opacity-50 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Adicionar fase
-              </button>
+              </OperumButton>
             </td>
             <td className="px-3 py-2 text-sm text-slate-800 text-right" colSpan={2}>
               Total:{' '}

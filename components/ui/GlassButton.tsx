@@ -4,7 +4,7 @@ import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import './GlassButton.css'
 
 export interface GlassButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'primary' | 'icon' | 'custom'
+  variant?: 'default' | 'primary' | 'danger' | 'ghost' | 'icon' | 'custom'
 }
 
 const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(function GlassButton({ variant = 'default', className = '', type = 'button', children, ...props }, ref) {

@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { expireSessionAction, touchSessionAction } from '@/app/actions/auth'
@@ -109,13 +110,13 @@ export default function IdleLogout() {
       <p className="flex-1 text-sm text-gray-700">
         Sua sessão vai expirar em 1 minuto por inatividade.
       </p>
-      <button
+      <OperumButton variant="primary"
         type="button"
         onClick={continuar}
         className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
       >
         Continuar conectado
-      </button>
+      </OperumButton>
     </div>
   )
 }

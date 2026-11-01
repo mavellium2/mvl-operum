@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import Select from '@/components/ui/Select'
 import { useEffect, useState, useTransition } from 'react'
 import { listarAjustesUsuarioAction, salvarAjusteUsuarioAction } from '@/app/actions/permissoes'
@@ -45,7 +46,7 @@ export default function PermissoesUsuario({ userId, projectId }: { userId: strin
     <p className="text-gray-600">{projectId ? 'Os ajustes deste projeto prevalecem sobre os globais. Herdar remove o ajuste neste projeto.' : 'Valem em todos os projetos dos quais a pessoa é membro ativo. A permissão herdada depende das funções em cada projeto.'} Administradores sempre têm acesso completo.</p>
     {erro && <p role="alert" className="text-red-700">{erro}</p>}
     {mensagem && <p role="status" className="text-green-700">{mensagem}</p>}
-    {!dados ? erro ? <button type="button" onClick={() => setTentativa(t => t + 1)}>Tentar novamente</button> : <p role="status">Carregando permissões…</p> :
+    {!dados ? erro ? <OperumButton variant="default" type="button" onClick={() => setTentativa(t => t + 1)}>Tentar novamente</OperumButton> : <p role="status">Carregando permissões…</p> :
       <fieldset disabled={pending} className="space-y-2">
         <legend className="sr-only">Ajustes por permissão</legend>
         {PERMISSOES.map(p => <label key={p.chave} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 p-2">

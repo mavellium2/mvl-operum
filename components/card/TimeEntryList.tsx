@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useState, useEffect } from 'react'
 import { getTimeEntriesAction, updateTimeEntryAction, deleteTimeEntryAction } from '@/app/actions/time'
 
@@ -108,7 +111,7 @@ export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) 
               <div className="flex items-center gap-2">
                 <div>
                   <label className="block text-xs text-gray-500 mb-0.5">Horas</label>
-                  <input
+                  <OperumInput
                     type="number"
                     min="0"
                     value={editHours}
@@ -119,7 +122,7 @@ export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) 
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-0.5">Minutos</label>
-                  <input
+                  <OperumInput
                     type="number"
                     min="0"
                     max="59"
@@ -130,7 +133,7 @@ export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) 
                   />
                 </div>
               </div>
-              <input
+              <OperumInput
                 type="text"
                 placeholder="Descrição (opcional)"
                 value={editDescription}
@@ -139,8 +142,8 @@ export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) 
                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
               {editError && <p className="text-xs text-red-500">{editError}</p>}
-              <div className="flex gap-2">
-                <button
+              <FormActions className="flex gap-2">
+                <OperumButton variant="primary"
                   type="button"
                   aria-label="Salvar edição"
                   onClick={(e) => { e.stopPropagation(); handleSaveEdit(entry.id) }}
@@ -148,15 +151,15 @@ export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) 
                   className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
                 >
                   Salvar
-                </button>
-                <button
+                </OperumButton>
+                <OperumButton variant="default"
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setEditingId(null) }}
                   className="px-3 py-1 border border-gray-200 text-gray-600 text-xs rounded hover:bg-gray-50"
                 >
                   Cancelar
-                </button>
-              </div>
+                </OperumButton>
+              </FormActions>
             </div>
           ) : (
             <div className="flex items-start justify-between gap-2">
@@ -170,15 +173,15 @@ export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) 
                 <span className="text-xs text-gray-400">{formatDate(entry.createdAt)}</span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button
+                <OperumButton variant="default"
                   type="button"
                   aria-label="Editar registro"
                   onClick={(e) => { e.stopPropagation(); startEdit(entry) }}
                   className="text-xs text-blue-500 hover:text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 hover:bg-blue-50"
                 >
                   Editar
-                </button>
-                <button
+                </OperumButton>
+                <OperumButton variant="danger"
                   type="button"
                   aria-label="Excluir registro"
                   onClick={(e) => { e.stopPropagation(); handleDelete(entry.id) }}
@@ -186,7 +189,7 @@ export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) 
                   className="text-xs text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded border border-red-100 hover:bg-red-50 disabled:opacity-50"
                 >
                   Excluir
-                </button>
+                </OperumButton>
               </div>
             </div>
           )}

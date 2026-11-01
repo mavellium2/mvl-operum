@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useTransition } from 'react'
 import Link from 'next/link'
 import UserAvatar from '@/components/user/UserAvatar'
@@ -105,12 +106,12 @@ export default function NoProjectCard({ name, email, avatarUrl, cargo, departame
 
       {/* RODAPÉ */}
       <form action={logoutAction} className="mt-6 pt-4 border-t border-gray-100">
-        <button
+        <OperumButton variant="default"
           type="submit"
           className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors py-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 cursor-pointer"
         >
           Sair
-        </button>
+        </OperumButton>
       </form>
     </div>
   )

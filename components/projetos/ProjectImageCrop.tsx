@@ -1,11 +1,12 @@
 'use client'
 
 import GlassButton from '@/components/ui/GlassButton'
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 
 import { useEffect, useRef, useState } from 'react'
 import Modal from '@/components/ui/Modal'
 
-export default function ProjectImageCrop({ file, onCancel, onConfirm }: { file: File; onCancel: () => void; onConfirm: (file: File) => void }) {
+export default function ProjectImageCrop({ file, title = 'Ajustar imagem do projeto', onCancel, onConfirm }: { file: File; title?: string; onCancel: () => void; onConfirm: (file: File) => void }) {
   const image = useRef<ImageBitmap | null>(null)
   const preview = useRef<HTMLCanvasElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
@@ -52,7 +53,7 @@ export default function ProjectImageCrop({ file, onCancel, onConfirm }: { file: 
       else { setError('Não foi possível preparar a imagem.'); setBusy(false) }
     }, 'image/png')
   }
-  return <Modal isOpen onClose={() => !busy && onCancel()} title="Ajustar imagem do projeto" className="phase-delete-dialog">
+  return <Modal isOpen onClose={() => !busy && onCancel()} title={title} closeButton={<GlassCloseButton label="Fechar modal" onClick={onCancel} disabled={busy} />} className="phase-delete-dialog image-crop-dialog">
     <p className="phase-delete-muted mb-4 text-sm">Ajuste o enquadramento antes de enviar.</p>
     <div className="relative mx-auto overflow-hidden rounded-2xl border border-white/20" style={{ width: 240, height: 240 }}>
       <canvas ref={preview} width={240} height={240} role="img" aria-label="Prévia do recorte" className="block" />
@@ -63,6 +64,6 @@ export default function ProjectImageCrop({ file, onCancel, onConfirm }: { file: 
       <label className="block">Posição vertical<input aria-label="Posição vertical" className="mt-1 block w-full accent-violet-400" type="range" min="0" max="100" value={y} onChange={e => setY(Number(e.target.value))} /></label>
     </div>
     {error && <p role="alert" className="mt-3 text-sm text-rose-400">{error}</p>}
-    <div className="phase-delete-actions mt-5 flex justify-end gap-2 pb-2"><GlassButton variant="custom" type="button" className="phase-delete-confirm rounded-xl px-4 py-2" onClick={onCancel} disabled={busy}>Cancelar</GlassButton><GlassButton variant="custom" type="button" className="phase-delete-cancel rounded-xl px-4 py-2" onClick={confirm} disabled={!size.width || busy || !!error}>{busy ? 'Preparando…' : 'Usar imagem'}</GlassButton></div>
+    <div className="image-dialog-actions mt-5 flex flex-wrap justify-end gap-2.5 pb-2"><GlassButton type="button" onClick={onCancel} disabled={busy}>Cancelar</GlassButton><GlassButton variant="primary" type="button" onClick={confirm} disabled={!size.width || busy || !!error}>{busy ? 'Preparando…' : 'Usar imagem'}</GlassButton></div>
   </Modal>
 }

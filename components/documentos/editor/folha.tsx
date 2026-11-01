@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Textarea as OperumTextarea } from '@/components/ui/Field'
 import { Children, Fragment, cloneElement, createContext, forwardRef, isValidElement, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react'
 import { ChevronDown, Plus, X } from 'lucide-react'
 import DateInput from '@/components/ui/DateInput'
@@ -623,7 +625,7 @@ export function SecaoTabela({ titulo, colunas, children, rodape, faixaNasColunas
           ? { position: 'absolute', left: 0, right: 0, bottom: 0, transform: 'translateY(50%)', zIndex: 2 }
           : { marginTop: rodape ? -14 : 4, marginBottom: rodape ? -4 : 0, position: 'relative', zIndex: 1 }}>
           <span className="relative">
-            <button
+            <OperumButton variant="custom"
               type="button"
               onClick={menuAdicionar ? () => menuAdicionar.onAbrir(!menuAdicionar.aberto) : onAdicionar}
               aria-haspopup={menuAdicionar ? 'menu' : undefined}
@@ -633,14 +635,14 @@ export function SecaoTabela({ titulo, colunas, children, rodape, faixaNasColunas
             >
               <Plus className="h-4 w-4" /> {rotuloAdicionar}
               {menuAdicionar && <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />}
-            </button>
+            </OperumButton>
             {menuAdicionar?.aberto && (
               <span role="menu" className="absolute left-1/2 top-full z-30 mt-1 flex w-64 -translate-x-1/2 flex-col rounded-xl border border-slate-100 bg-white py-1 font-sans text-left shadow-xl" onKeyDown={e => { if (e.key === 'Escape') menuAdicionar.onAbrir(false) }}>
                 {menuAdicionar.opcoes.map(o => (
-                  <button key={o.rotulo} type="button" role="menuitem" onClick={() => { menuAdicionar.onAbrir(false); o.onClick() }} className="flex flex-col px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700">
+                  <OperumButton variant="custom" key={o.rotulo} type="button" role="menuitem" onClick={() => { menuAdicionar.onAbrir(false); o.onClick() }} className="flex flex-col px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700">
                     <span className="font-medium">{o.rotulo}</span>
                     {o.descricao && <span className="text-xs text-slate-500">{o.descricao}</span>}
-                  </button>
+                  </OperumButton>
                 ))}
               </span>
             )}
@@ -786,7 +788,7 @@ export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max =
   }
   return (
     <div {...(primeiro ? { 'data-campo': id, 'data-vazio': valor.trim() ? undefined : 'true' } : { 'data-campo-continuacao': id })} className={`${preencher ? 'min-h-full' : ''} ${FOCO}`} style={{ padding: pad }}>
-      <textarea
+      <OperumTextarea
         ref={ref}
         {...(primeiro ? { 'data-campo-foco': '' } : {})}
         data-fragmento-de={id}
@@ -919,7 +921,7 @@ export function LinhaLista({ children, onRemover, rotuloRemover = 'Remover linha
       {children}
       {editavel && onRemover && (
         <td style={{ border: 0, padding: 0, width: 0, position: 'relative' }}>
-          <button
+          <OperumButton variant="custom"
             type="button"
             onClick={onRemover}
             aria-label={rotuloRemover}
@@ -927,7 +929,7 @@ export function LinhaLista({ children, onRemover, rotuloRemover = 'Remover linha
             className="absolute left-1 top-0.5 hidden h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 group-hover/linha:flex group-focus-within/linha:flex"
           >
             <X className="h-3.5 w-3.5" />
-          </button>
+          </OperumButton>
         </td>
       )}
     </tr>

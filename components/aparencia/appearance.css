@@ -1510,23 +1510,6 @@ body[data-operum-period='night'] .project-logo-dialog .project-logo-preview { ba
 }
 
 /* Fechar a visualização: sem fundo branco, integrado ao vidro. */
-.project-logo-dialog > div:first-child > button[aria-label='Fechar modal'] {
-  color: #6b6885;
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-}
-.project-logo-dialog > div:first-child > button[aria-label='Fechar modal']:hover {
-  color: #453a66;
-  background: rgb(144 120 183 / .1);
-  border-color: rgb(144 120 183 / .14);
-}
-body[data-operum-period='night'] .project-logo-dialog > div:first-child > button[aria-label='Fechar modal'] { color: #aaa4c3; }
-body[data-operum-period='night'] .project-logo-dialog > div:first-child > button[aria-label='Fechar modal']:hover {
-  color: #d7caed;
-  background: rgb(183 158 223 / .1);
-  border-color: rgb(183 158 223 / .14);
-}
 
 .project-save-dock { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .project-dock-divider { background: var(--glass-edge); }
@@ -2904,3 +2887,80 @@ body[data-operum-blending='true'] [data-operum-sidebar] :is(a, button, [class*='
   background: linear-gradient(145deg, var(--blend-budgetStart), var(--blend-budgetEnd));
 }
 .project-appearance[data-blending='true'] .finance-budget-glass :is(dt, dd) { color: var(--blend-budgetText); }
+
+/* Entardecer: vidro neutro azulado para visualizar imagens sem banho amarelo. */
+body[data-operum-period='afternoon'] :is(.project-logo-dialog, .image-crop-dialog).phase-delete-dialog {
+  --delete-bg: #edf0f8d9;
+  --delete-text: #303b55;
+  --delete-muted: #626d84;
+  --delete-line: #8796b438;
+  --delete-tint: #aebde51c;
+  color: var(--delete-text);
+  background: linear-gradient(155deg, #f7f5ff80, #cbdaf426), #edf0f8b8;
+  border-color: #f5f4ffbd;
+  box-shadow: inset 0 1px 0 #ffffffb8, inset 0 -1px 0 #9aa8c22b, 0 8px 20px -12px #4a507e33, 0 26px 60px -28px #343b6866;
+  backdrop-filter: blur(32px) saturate(120%);
+  -webkit-backdrop-filter: blur(32px) saturate(120%);
+}
+body[data-operum-period='afternoon'] .project-logo-dialog .project-logo-preview {
+  background: #e0e6f333;
+  border-color: #9ba9c43b;
+  box-shadow: inset 0 1px 0 #ffffff85;
+}
+body[data-operum-period='afternoon'] :is(.project-logo-dialog, .image-crop-dialog) .glass-button {
+  --gb-text: #4b5879; --gb-fill: #b0bedf20; --gb-edge: #94a5c63d;
+  box-shadow: inset 0 1px 0 #ffffff8c, 0 3px 8px -6px #4e5c8540;
+}
+body[data-operum-period='afternoon'] .project-logo-dialog .glass-button--primary {
+  --gb-text: #344d7a; --gb-fill: #92b2e138; --gb-edge: #6f91c15c;
+}
+body[data-operum-period='afternoon'] :is(.project-logo-dialog, .image-crop-dialog) .glass-button:hover:not(:disabled) {
+  background-color: #a2b5dc40;
+  border-color: #879dca75;
+}
+body[data-operum-period='afternoon'] .image-crop-dialog .phase-delete-confirm {
+  color: #53607d; background: #aebbd024; border-color: #94a5c63d;
+}
+body[data-operum-period='afternoon'] .image-crop-dialog .phase-delete-cancel {
+  color: #344d7a; background: #92b2e138; border-color: #6f91c15c;
+}
+@media (prefers-reduced-transparency: reduce) {
+  body[data-operum-period='afternoon'] :is(.project-logo-dialog, .image-crop-dialog).phase-delete-dialog { background: #edf0f8; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* Ações das imagens: vidro elevado e reflexo vivo, sem cores destrutivas. */
+:is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button {
+  min-height: 42px;
+  padding: 10px 17px;
+  font-weight: 600;
+  background: linear-gradient(180deg, #ffffff30, #ffffff04), var(--gb-fill);
+  border-color: var(--gb-edge);
+  box-shadow: inset 0 1px 0 #ffffff70, inset 0 -1px 0 #8a90b21a, 0 3px 5px -3px #35416820, 0 8px 15px -10px #35416838;
+}
+:is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--gb-fill), #b5c6ec 22%);
+  border-color: color-mix(in srgb, var(--gb-edge), #9aafd8 55%);
+  box-shadow: inset 0 1px 0 #ffffffb0, inset 0 -1px 0 #b0c6ed38, 0 4px 8px -4px #3541682b, 0 12px 21px -12px #617caf55;
+}
+body[data-operum-period='night'] :is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button {
+  background-image: linear-gradient(180deg, #ded6ff12, #ffffff02);
+  box-shadow: inset 0 1px 0 #e4dcff38, inset 0 -1px 0 #c2b6f014, 0 7px 16px -10px #02061785;
+}
+body[data-operum-period='afternoon'] :is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button--primary {
+  --gb-text: #304c7b; --gb-fill: #8caee34a; --gb-edge: #7392c367;
+}
+:is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button:focus-visible { outline: 2px solid var(--gb-text); outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  :is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button {
+    transition: color 280ms ease, background-color 350ms ease, border-color 350ms ease, box-shadow 350ms ease, transform 280ms cubic-bezier(.2,.8,.2,1);
+  }
+  :is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button:hover:not(:disabled) { transform: translateY(-2px); }
+  :is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button:active:not(:disabled) { transform: translateY(0) scale(.975); box-shadow: inset 0 2px 4px #43547c18, inset 0 1px 0 #ffffff50, 0 2px 6px -4px #35416835; }
+  .image-dialog-actions .glass-button svg { transition: transform 350ms cubic-bezier(.2,.8,.2,1); }
+  .image-dialog-actions .glass-button:hover:not(:disabled) svg { transform: translateY(-1px) rotate(-5deg); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button { background: #e2daed; }
+  body[data-operum-period='afternoon'] :is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button { background: #dce3f1; }
+  body[data-operum-period='night'] :is(.project-logo-dialog, .image-crop-dialog) .image-dialog-actions .glass-button { background: #302a41; }
+}

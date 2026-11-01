@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { erroMoeda, formatReais, moedaParaCampo, parseMoeda } from '@/lib/dinheiro'
@@ -232,14 +235,14 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
             </div>
 
             {error && <p className="text-sm text-red-500">{error}</p>}
-            <div className="flex gap-2 pt-1">
-              <button type="button" onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm">
+            <FormActions className="flex gap-2 pt-1">
+              <OperumButton variant="default" type="button" onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm">
                 Cancelar
-              </button>
-              <button type="submit" disabled={loading} className="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
+              </OperumButton>
+              <OperumButton variant="primary" type="submit" disabled={loading} className="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
                 {loading ? 'Salvando…' : 'Salvar'}
-              </button>
-            </div>
+              </OperumButton>
+            </FormActions>
           </form>
 
           {/* Projects section */}
@@ -248,12 +251,12 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
             <h3 className="text-sm font-semibold text-gray-900">
               Projetos ({userProjetos.filter(p => p.active).length} active{userProjetos.filter(p => p.active).length !== 1 ? 's' : ''})
             </h3>
-            <button
+            <OperumButton variant="default" type="button"
               onClick={() => setShowAddProject(v => !v)}
               className="text-xs text-blue-600 hover:underline"
             >
               + Adicionar a projeto
-            </button>
+            </OperumButton>
           </div>
 
           {showAddProject && (
@@ -266,13 +269,13 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                 placeholder="Selecionar projeto…"
                 options={projetosNaoMembro.map(p => ({ value: p.id, label: p.name }))}
               />
-              <button
+              <OperumButton variant="primary" type="button"
                 onClick={handleAddProject}
                 disabled={!selectedProjetoId || isPending}
                 className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 Adicionar
-              </button>
+              </OperumButton>
             </div>
           )}
 
@@ -291,20 +294,20 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {up.active && editingProjetoId !== up.projectId && (
-                        <button
+                        <OperumButton variant="default" type="button"
                           onClick={() => handleStartEdit(up)}
                           className="text-xs text-gray-500 hover:text-gray-700"
                         >
                           Editar
-                        </button>
+                        </OperumButton>
                       )}
-                      <button
+                      <OperumButton variant="danger" type="button"
                         onClick={() => handleToggleAtivo(up)}
                         disabled={isPending}
                         className={`text-xs px-2 py-1 rounded-lg border disabled:opacity-50 ${up.active ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-600 hover:bg-green-50'}`}
                       >
                         {up.active ? 'Desativar' : 'Ativar'}
-                      </button>
+                      </OperumButton>
                     </div>
                   </div>
 
@@ -314,7 +317,7 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Cargo</label>
-                          <input
+                          <OperumInput
                             type="text"
                             value={editForm.cargo}
                             onChange={e => setEditForm(f => ({ ...f, cargo: e.target.value }))}
@@ -324,7 +327,7 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                         </div>
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Departamento</label>
-                          <input
+                          <OperumInput
                             type="text"
                             value={editForm.departamento}
                             onChange={e => setEditForm(f => ({ ...f, departamento: e.target.value }))}
@@ -343,23 +346,23 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                           className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                      <div className="flex gap-2 pt-1">
-                        <button
+                      <FormActions className="flex gap-2 pt-1">
+                        <OperumButton variant="default"
                           type="button"
                           onClick={() => setEditingProjetoId(null)}
                           className="flex-1 px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"
                         >
                           Cancelar
-                        </button>
-                        <button
+                        </OperumButton>
+                        <OperumButton variant="primary"
                           type="button"
                           onClick={() => handleSaveEdit(up)}
                           disabled={isPending}
                           className="flex-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                         >
                           {isPending ? '…' : 'Salvar'}
-                        </button>
-                      </div>
+                        </OperumButton>
+                      </FormActions>
                     </div>
                   )}
 
@@ -404,7 +407,7 @@ function Field({
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       ) : (
-        <input
+        <OperumInput
           type={type}
           value={value}
           onChange={e => onChange(e.target.value)}

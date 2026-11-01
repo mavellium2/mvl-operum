@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
@@ -24,7 +25,11 @@ export default function TenantSwitcher() {
   const dropRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    getMyTenantsAction().then(setTenants).catch(() => {})
+    let active = true
+    const reload = () => { getMyTenantsAction().then(items => { if (active) setTenants(items) }).catch(() => {}) }
+    reload()
+    window.addEventListener('operum:instituicao-atualizada', reload)
+    return () => { active = false; window.removeEventListener('operum:instituicao-atualizada', reload) }
   }, [])
 
   useEffect(() => {
@@ -62,7 +67,7 @@ export default function TenantSwitcher() {
 
   return (
     <div className="relative" ref={ref}>
-      <button
+      <OperumButton variant="default" type="button"
         onClick={() => setOpen(v => !v)}
         disabled={isPending}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-100"
@@ -81,7 +86,7 @@ export default function TenantSwitcher() {
             </svg>
           )
         )}
-      </button>
+      </OperumButton>
 
       {open && tenants.length > 1 && dropRect && createPortal(
         <div
@@ -91,7 +96,7 @@ export default function TenantSwitcher() {
         >
           <p className="px-3 pt-1 pb-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Trocar de instituição</p>
           {tenants.map(t => (
-            <button
+            <OperumButton variant="default" type="button"
               key={t.tenantId}
               disabled={t.isCurrent || isPending}
               onClick={() => {
@@ -109,7 +114,7 @@ export default function TenantSwitcher() {
               <span className="flex-1 truncate text-gray-800">{t.tenantName}</span>
               {t.isCurrent && <span className="text-xs text-blue-500 font-medium shrink-0">atual</span>}
               {!t.isCurrent && t.requiresPassword && <span className="text-xs text-gray-400 shrink-0">confirmar senha</span>}
-            </button>
+            </OperumButton>
           ))}
         </div>,
         document.body,

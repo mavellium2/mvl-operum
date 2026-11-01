@@ -1017,3 +1017,29 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** operações do editor dependem do banco compartilhado e de um bloqueio por projeto; continuam respeitando permissões por campo e tenant. Recibos não expiram automaticamente. O caminho sem histórico de outros consumidores permanece legado. Não há alteração de dependências nem de APIs públicas dos microsserviços.
 - **Condições de revisão:** separação física dos bancos, alto volume de recibos ou necessidade de retenção/arquivamento.
 - **Referências:** `services/projetoEditorService.ts`, `services/projetoOperacaoService.ts`, `services/projetoVersoes.ts`, `app/actions/projetoEdicao.ts`, migration `20261101170000_projeto_operacao_atomica`, `__tests__/integration/projetoEditor.atomicidade.test.ts`.
+
+
+## ADR-081 — Administrador edita o nome da própria instituição
+
+- **Data do registro:** 2026-11-01.
+- **Status:** substituída pela ADR-082, que inclui o identificador a pedido do usuário.
+- **Contexto:** Configurações listava instituições e permitia alternar contas, mas renomear dependia do fluxo do operador da plataforma. O usuário solicitou editar sua instituição nessa tela.
+- **Escolha:** adicionar Server Action exclusiva para o nome da instituição ativa; tenant derivado da sessão, administrador confirmado no banco, nome validado e escrita/auditoria na mesma transação. Não aceitar identificador, status, configuração nem tenant alvo do navegador.
+- **Justificativa:** permite manutenção do nome por quem administra aquela instituição sem ampliar o acesso à gestão global da plataforma.
+- **Alternativas consideradas:** reutilizar a action global do operador (exige privilégio de plataforma); permitir escolher um tenant no cliente (introduz autorização cruzada desnecessária).
+- **Consequências:** administradores podem renomear sua instituição ativa; membros e gerentes não podem. Para outras instituições, é necessário acessar a conta correspondente. Nome é compartilhado com todos os membros e a alteração fica auditada. Sem migration ou nova dependência.
+- **Condições de revisão:** expansão para outros dados institucionais requer validar cada campo e sua autorização.
+- **Referências:** `app/actions/instituicoes.ts`, `components/UserTenantsList.tsx`, `__tests__/unit/app/actions/instituicoes.test.ts`.
+
+
+## ADR-082 — Edição do identificador da instituição ativa
+
+- **Data do registro:** 2026-11-01.
+- **Status:** implementada; substitui a ADR-081.
+- **Contexto:** após a edição do nome, o usuário solicitou poder alterar também o identificador usado na entrada.
+- **Escolha:** a mesma transação e autorização da instituição ativa passam a atualizar nome e identificador. O identificador reutiliza a validação do cadastro (normalização, caracteres e mínimo), recebe limite de 63 caracteres e é protegido pelo índice único; conflito é apresentado junto ao campo, sem expor dados da outra instituição.
+- **Justificativa:** entrega a edição solicitada sem aceitar tenant alvo, status ou configuração do cliente e mantém alteração/auditoria consistentes.
+- **Alternativas consideradas:** manter identificador imutável (não atende ao pedido); disponibilizar edição global do operador (amplia acesso desnecessariamente).
+- **Consequências:** os usuários passam a informar o novo identificador na entrada; a UI avisa disso antes do salvamento. IDs internos, vínculos e permissões não mudam. Sem alias automático para o identificador antigo e sem migration.
+- **Condições de revisão:** necessidade de alias, redirecionamento ou migração de identificadores publicados.
+- **Referências:** `app/actions/instituicoes.ts`, `components/UserTenantsList.tsx`, `__tests__/unit/app/actions/instituicoes.test.ts`.

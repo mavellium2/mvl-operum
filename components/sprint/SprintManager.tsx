@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { SprintBadge } from './SprintBadge'
@@ -74,7 +76,7 @@ export function SprintManager({ sprints: initialSprints, onSprintCreated }: Spri
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor="sprint-name" className="text-xs font-medium text-gray-600">Nome</label>
-        <input
+        <OperumInput
           id="sprint-name"
           type="text"
           value={newName}
@@ -107,14 +109,14 @@ export function SprintManager({ sprints: initialSprints, onSprintCreated }: Spri
           </div>
         </div>
         {dateError && <p className="text-xs text-red-500">{dateError}</p>}
-        <button
+        <OperumButton variant="primary"
           type="button"
           onClick={handleCreate}
           disabled={isPending || !newName.trim()}
           className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {isPending ? 'Criando...' : 'Criar'}
-        </button>
+        </OperumButton>
       </div>
     </div>
   )

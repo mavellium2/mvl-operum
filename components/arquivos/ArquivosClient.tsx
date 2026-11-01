@@ -1,5 +1,6 @@
 'use client'
 
+import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -92,7 +93,7 @@ export default function ArquivosClient({ initialAttachments }: Props) {
     <div>
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <input
+        <OperumInput
           type="search"
           placeholder="Buscar por nome ou card…"
           value={search}

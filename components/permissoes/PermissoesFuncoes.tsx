@@ -1,5 +1,7 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useState, useTransition } from 'react'
 import { listarPermissoesFuncoesAction, salvarPermissoesFuncaoAction, restaurarPadraoFuncaoAction } from '@/app/actions/permissoes'
 import { PERMISSOES, type Permissao } from '@/lib/permissoes'
@@ -19,7 +21,7 @@ export default function PermissoesFuncoes() {
     return () => { ativo = false }
   }, [tentativa])
   if (!funcoes) return <section className="rounded-xl border bg-white p-5" aria-label="Permissões por função">
-    {erro ? <><p role="alert">{erro}</p><button type="button" onClick={() => setTentativa(t => t + 1)}>Tentar novamente</button></> : <p role="status">Carregando permissões…</p>}
+    {erro ? <><p role="alert">{erro}</p><OperumButton variant="default" type="button" onClick={() => setTentativa(t => t + 1)}>Tentar novamente</OperumButton></> : <p role="status">Carregando permissões…</p>}
   </section>
   return <section className="space-y-3" aria-label="Permissões por função">
     <h2 className="text-lg font-semibold text-gray-900">Permissões por função</h2>
@@ -59,10 +61,10 @@ function EditorFuncao({ funcao, onSaved }: { funcao: FuncaoComPermissoes; onSave
           {p.rotulo}
         </label>)}
       </div>)}
-      <div className="flex gap-3">
-        <button type="button" onClick={() => salvar()} className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white">{pending ? 'Salvando…' : 'Salvar permissões'}</button>
-        {funcao.definidasEm && <button type="button" onClick={() => salvar(true)} className="rounded-lg border px-3 py-2 text-sm">Restaurar padrão</button>}
-      </div>
+      <FormActions className="flex gap-3">
+        <OperumButton variant="primary" type="button" onClick={() => salvar()} className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white">{pending ? 'Salvando…' : 'Salvar permissões'}</OperumButton>
+        {funcao.definidasEm && <OperumButton variant="default" type="button" onClick={() => salvar(true)} className="rounded-lg border px-3 py-2 text-sm">Restaurar padrão</OperumButton>}
+      </FormActions>
     </fieldset>
     {erro && <p role="alert" className="mt-2 text-sm text-red-700">{erro}</p>}
     {mensagem && <p role="status" className="mt-2 text-sm text-green-700">{mensagem}</p>}

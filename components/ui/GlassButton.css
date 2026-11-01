@@ -28,3 +28,30 @@ body[data-operum-period='night'] .glass-button--primary { --gb-text: #e9dcff; --
  .glass-button { backdrop-filter: none; -webkit-backdrop-filter: none; background: #e2daed; }
  body[data-operum-period='night'] .glass-button { background: #302a41; }
 }
+/* Comportamento comum das ações; controles de navegação usam custom sem mudar dimensões. */
+.glass-button--danger { --gb-text: #a34328; --gb-fill: #d9876524; --gb-edge: #c87a584d; }
+.glass-button--ghost { --gb-fill: transparent; --gb-edge: transparent; }
+.glass-button--small { min-height: 32px; padding: 6px 11px; font-size: 12px; }
+body[data-operum-period='night'] .glass-button--danger { --gb-text: #ffc4b4; --gb-fill: #d3826620; --gb-edge: #e3a08245; }
+.glass-button--danger:hover:not(:disabled) { background-color: color-mix(in srgb, var(--gb-fill), #ec8a61 22%); border-color: color-mix(in srgb, var(--gb-edge), #e78363 40%); }
+.glass-button--danger:focus-visible { outline-color: #c77353; }
+@media (prefers-reduced-motion: no-preference) {
+  .glass-button { transition: color 280ms ease, background-color 320ms ease, border-color 320ms ease, box-shadow 320ms ease, transform 240ms cubic-bezier(.2,.8,.2,1); }
+  .glass-button:not(.glass-button--icon):hover:not(:disabled) { transform: translateY(-1px); box-shadow: inset 0 1px 0 #ffffff60, 0 5px 12px -8px #6a6b9d55; }
+  .glass-button:not(.glass-button--icon):active:not(:disabled) { transform: translateY(0) scale(.98); }
+}
+/* Fechamento mantém o mesmo vidro em qualquer modal ou painel. */
+.glass-button.glass-close-button {
+  background: var(--gb-fill);
+  border-color: var(--gb-edge);
+  box-shadow: inset 0 1px 0 #ffffff45, 0 3px 7px -5px #40385c35;
+}
+.glass-button.glass-close-button:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--gb-fill), #df966c 20%);
+  border-color: color-mix(in srgb, var(--gb-edge), #d68a68 30%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .glass-close-button:hover:not(:disabled) svg { transform: rotate(8deg); }
+  .glass-close-button svg { transition: transform 260ms cubic-bezier(.2,.8,.2,1); }
+  .glass-close-button:active:not(:disabled) { transform: scale(.94); }
+}

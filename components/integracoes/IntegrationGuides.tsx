@@ -1,6 +1,7 @@
-import Image from 'next/image'
-import { ArrowUpRight, BookOpen, ChevronDown, Link2, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 import CopyConnectionValue from './CopyConnectionValue'
+import IntegrationGuideCard from './IntegrationGuideCard'
+import IntegrationCatalog from './IntegrationCatalog'
 
 const MCP_SERVER_URL = process.env.NEXT_PUBLIC_MCP_SERVER_URL || 'https://api.operum.adm.br/mcp'
 
@@ -42,7 +43,7 @@ const guides = [
       'No terminal do computador em que você usa o Claude Code, execute o comando abaixo para cadastrar o servidor remoto do Operum.',
       'Abra o Claude Code, execute /mcp e selecione o Operum para autenticar. O navegador abrirá o login e a autorização do Operum.',
       'Confira que o retorno é para localhost ou 127.0.0.1 no seu computador, escolha as instituições e autorize as permissões necessárias.',
-      'Volte ao Claude Code e faça o primeiro pedido. Se preferir token pessoal, gere um na seção abaixo: ao gerar, o Operum mostra o comando de conexão com o token. Não compartilhe esse comando.',
+      'Volte ao Claude Code e faça o primeiro pedido. Se preferir token pessoal, gere um na área Acesso por token: ao gerar, o Operum mostra o comando de conexão com o token. Não compartilhe esse comando.',
     ],
     command: `claude mcp add --transport http operum ${MCP_SERVER_URL}`,
     help: 'Use claude mcp list para conferir o cadastro. Se já houver uma conexão antiga, remova-a com claude mcp remove operum antes de cadastrar de novo. Tokens pessoais valem para a instituição em que foram gerados e precisam ser renovados ao vencer.',
@@ -57,7 +58,7 @@ const guides = [
       'No terminal do seu computador, execute os comandos abaixo para cadastrar o Operum e iniciar o login OAuth.',
       'No navegador, entre no Operum. Confira o retorno local para o seu computador, escolha as instituições e autorize as permissões necessárias.',
       'Volte ao Codex e confira se o Operum aparece entre os servidores MCP. Reabra a sessão caso a lista de ferramentas ainda não tenha sido atualizada.',
-      'Faça o primeiro pedido. Para remover as credenciais locais, use codex mcp logout operum. Para revogar o acesso no Operum, use Apps conectados nesta página.',
+      'Faça o primeiro pedido. Para remover as credenciais locais, use codex mcp logout operum. Para revogar o acesso no Operum, use a área Apps conectados nas Integrações.',
     ],
     command: `codex mcp add operum --url ${MCP_SERVER_URL}\ncodex mcp login operum`,
     help: 'Se o navegador não concluir o login, confira se o Codex está atualizado e se pode receber o retorno local. A configuração local não conecta automaticamente ambientes de nuvem.',
@@ -67,40 +68,29 @@ const guides = [
 
 export default function IntegrationGuides() {
   return (
-    <section aria-labelledby="integration-guides-title" className="space-y-5">
-      <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-6 sm:p-8">
-        <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1 text-xs font-medium text-blue-700"><Link2 size={14} aria-hidden="true" /> Operum + seus assistentes</span>
-        <h2 id="integration-guides-title" className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">Seus projetos, na conversa.</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">Conecte o assistente que você já usa para consultar projetos, criar tarefas, comentar e registrar tempo. Escolha um app e siga o guia de conexão.</p>
-        <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-gray-600"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" aria-hidden="true" /> Você escolhe o acesso. O assistente respeita suas permissões no Operum e você pode desconectá-lo a qualquer momento.</p>
-      </div>
-
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+    <section aria-label="Aplicativos disponíveis" className="space-y-5">
+      <IntegrationCatalog searchTexts={guides.map(guide => `${guide.name} ${guide.surface} ${guide.description} ${guide.method}`)}>
         {guides.map(guide => (
-          <details key={guide.id} id={`guia-${guide.id}`} className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm open:border-blue-200">
-            <summary className="cursor-pointer list-none p-5 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${guide.color}`}>
-                  <Image src={`/integrations/${guide.logo}.svg`} alt="" width={28} height={28} />
-                </div>
-                <div className="min-w-0 flex-1"><h3 className="text-base font-semibold text-gray-900">{guide.name}</h3><p className="mt-0.5 text-xs text-gray-500">{guide.surface}</p></div>
-                <ChevronDown size={18} className="shrink-0 text-gray-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+          <IntegrationGuideCard key={guide.id} guide={guide}>
+            <div className="space-y-5 text-sm leading-6 text-gray-600">
+              <div className="integration-guide-note rounded-2xl p-4">
+                <h3 className="text-sm font-semibold text-gray-900">Antes de começar</h3>
+                <p className="mt-1">{guide.requirement}</p>
+                <p className="mt-2 text-xs leading-5">Você precisa de acesso aos projetos no Operum. O login por OAuth deve estar habilitado pelo administrador.</p>
               </div>
-              <p className="mt-4 text-sm leading-6 text-gray-600">{guide.description}</p>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">{guide.method}</span><span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700"><BookOpen size={14} aria-hidden="true" /> Como conectar</span></div>
-            </summary>
-            <div className="space-y-5 border-t border-gray-100 p-5 text-sm leading-6 text-gray-600">
-              <div><h4 className="font-semibold text-gray-900">Antes de começar</h4><p className="mt-1">{guide.requirement}</p><p className="mt-2">Você também precisa de uma conta no Operum com acesso aos projetos que deseja usar. O login por OAuth precisa estar habilitado pelo administrador do Operum.</p></div>
-              <div><h4 className="mb-2 font-semibold text-gray-900">Passo a passo</h4><ol className="list-decimal space-y-3 pl-5 marker:font-semibold marker:text-blue-600">{guide.steps.map(step => <li key={step} className="pl-1">{step}</li>)}</ol></div>
-              <div><h4 className="mb-2 font-semibold text-gray-900">{guide.command ? 'Comandos de conexão' : 'URL do servidor MCP'}</h4><CopyConnectionValue value={guide.command ?? MCP_SERVER_URL} label={guide.command ? `comandos do ${guide.name}` : `URL para ${guide.name}`} /></div>
-              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4"><h4 className="font-semibold text-blue-900">Seu primeiro pedido</h4><p className="mt-1 text-blue-800">“Liste os meus projetos no Operum.”</p></div>
-              <div><h4 className="font-semibold text-gray-900">Permissões e desconexão</h4><p className="mt-1">Só leitura permite consultar. Leitura e escrita permite criar e alterar, dentro do seu acesso aos projetos. Com OAuth, você pode selecionar várias instituições vinculadas à sua conta. Para encerrar o acesso, use Desconectar em Apps conectados abaixo.</p></div>
-              <div><h4 className="font-semibold text-gray-900">Se algo não funcionar</h4><p className="mt-1">{guide.help}</p><p className="mt-2">Se um projeto não aparecer, confira a instituição autorizada e seu acesso ao projeto. Para ampliar as permissões, desconecte e autorize novamente.</p></div>
-              <a href={guide.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 font-medium text-blue-700 hover:underline">Documentação do {guide.name}<ArrowUpRight size={15} aria-hidden="true" /></a>
+              <section aria-label="Passo a passo">
+                <h3 className="mb-3 text-sm font-semibold text-gray-900">Passo a passo</h3>
+                <ol className="space-y-3">{guide.steps.map((step, index) => <li key={step} className="integration-guide-step flex gap-3 rounded-2xl p-4"><span aria-hidden="true" className="integration-step-number">{index + 1}</span><p className="min-w-0 flex-1">{step}</p></li>)}</ol>
+              </section>
+              <section><h3 className="mb-2 text-sm font-semibold text-gray-900">{guide.command ? 'Comandos de conexão' : 'URL do servidor MCP'}</h3><CopyConnectionValue value={guide.command ?? MCP_SERVER_URL} label={guide.command ? `comandos do ${guide.name}` : `URL para ${guide.name}`} /></section>
+              <div className="integration-guide-note rounded-2xl p-4"><h3 className="text-xs font-semibold text-gray-500">PARA EXPERIMENTAR</h3><p className="mt-1 font-medium text-gray-900">“Liste os meus projetos no Operum.”</p></div>
+              <details className="rounded-2xl border border-gray-200 p-4"><summary className="cursor-pointer font-medium text-gray-900">Permissões e desconexão</summary><p className="mt-3">Só leitura permite consultar. Leitura e escrita permite criar e alterar, dentro do seu acesso aos projetos. Com OAuth, você pode selecionar várias instituições vinculadas à sua conta. Para encerrar o acesso, use Desconectar em Apps conectados.</p></details>
+              <details className="rounded-2xl border border-gray-200 p-4"><summary className="cursor-pointer font-medium text-gray-900">Se algo não funcionar</summary><p className="mt-3">{guide.help}</p><p className="mt-2">Se um projeto não aparecer, confira a instituição autorizada e seu acesso ao projeto. Para ampliar as permissões, desconecte e autorize novamente.</p></details>
+              <a href={guide.url} target="_blank" rel="noopener noreferrer" className="integration-guide-link inline-flex min-h-10 items-center gap-1.5 text-sm font-medium">Documentação do {guide.name}<ArrowUpRight size={15} aria-hidden="true" /></a>
             </div>
-          </details>
+          </IntegrationGuideCard>
         ))}
-      </div>
+      </IntegrationCatalog>
       <p className="text-xs leading-5 text-gray-500">Outros clientes compatíveis com MCP remoto por HTTP podem usar a mesma URL, com OAuth ou token pessoal, conforme o suporte de cada app. A conexão nesses clientes depende de configuração e validação próprias. As marcas identificam os aplicativos; não indicam parceria ou endosso.</p>
     </section>
   )

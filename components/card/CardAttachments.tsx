@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useRef } from 'react'
 import { Attachment } from '@/types/kanban'
 import { ATTACHMENT_ACCEPT } from '@/lib/attachmentTypes'
@@ -66,22 +67,22 @@ export default function CardAttachments({ attachments, onUpload, onDelete, onSet
                   </a>
                   <div className="flex items-center gap-1 shrink-0">
                     {isImage && onSetCover && !att.isCover && (
-                      <button
+                      <OperumButton variant="default"
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onSetCover(att.id) }}
                         className="text-xs text-amber-600 hover:text-amber-800 px-1.5 py-0.5 rounded border border-amber-200 hover:bg-amber-50"
                       >
                         Definir capa
-                      </button>
+                      </OperumButton>
                     )}
-                    <button
+                    <OperumButton variant="danger"
                       type="button"
                       aria-label="Excluir anexo"
                       onClick={(e) => { e.stopPropagation(); onDelete(att.id) }}
                       className="text-xs text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded border border-red-200 hover:bg-red-50"
                     >
                       Excluir
-                    </button>
+                    </OperumButton>
                   </div>
                 </div>
               </li>

@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useRef, useState } from 'react'
 import { addManualTimeAction } from '@/app/actions/time'
 import { useCardTimer } from '@/hooks/useCardTimer'
@@ -63,7 +66,7 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
         </span>
 
         {isRunning ? (
-          <button
+          <OperumButton variant="default"
             type="button"
             onClick={e => { e.stopPropagation(); handlePause() }}
             disabled={loading || manualSaving || !timer.known}
@@ -74,9 +77,9 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
             </svg>
             Pausar
-          </button>
+          </OperumButton>
         ) : (
-          <button
+          <OperumButton variant="default"
             type="button"
             onClick={e => { e.stopPropagation(); handleStart() }}
             disabled={loading || manualSaving || !timer.known}
@@ -87,7 +90,7 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
               <path d="M8 5v14l11-7z" />
             </svg>
             Iniciar
-          </button>
+          </OperumButton>
         )}
       </div>
 
@@ -96,22 +99,22 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
         return aviso ? <p role="status" className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">{aviso}</p> : null
       })()}
 
-      {error && <p role="alert" className="text-xs text-red-500">{error} <button type="button" disabled={loading} onClick={() => void timer.refresh()}>Atualizar timer</button></p>}
+      {error && <p role="alert" className="text-xs text-red-500">{error} <OperumButton variant="default" type="button" disabled={loading} onClick={() => void timer.refresh()}>Atualizar timer</OperumButton></p>}
 
       {!showManualForm ? (
-        <button
+        <OperumButton variant="default"
           type="button"
           onClick={e => { e.stopPropagation(); setShowManualForm(true); setManualError('') }}
           className="text-xs text-slate-500 hover:text-slate-700 underline transition-colors cursor-pointer self-start"
         >
           Adicionar manualmente
-        </button>
+        </OperumButton>
       ) : (
         <div className="flex flex-col gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
           <div className="flex gap-3">
             <div className="flex flex-col gap-1">
               <label htmlFor={`manual-hours-${cardId}`} className="text-xs text-slate-500">Horas</label>
-              <input
+              <OperumInput
                 id={`manual-hours-${cardId}`}
                 type="number"
                 min={0}
@@ -123,7 +126,7 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor={`manual-minutes-${cardId}`} className="text-xs text-slate-500">Minutos</label>
-              <input
+              <OperumInput
                 id={`manual-minutes-${cardId}`}
                 type="number"
                 min={0}
@@ -135,23 +138,23 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
             </div>
           </div>
           {manualError && <p className="text-xs text-red-500">{manualError}</p>}
-          <div className="flex gap-2">
-            <button
+          <FormActions className="flex gap-2">
+            <OperumButton variant="default"
               type="button"
               onClick={() => { setShowManualForm(false); setManualError('') }}
               className="px-3 py-1 text-xs text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
             >
               Cancelar
-            </button>
-            <button
+            </OperumButton>
+            <OperumButton variant="primary"
               type="button"
               onClick={e => { e.stopPropagation(); handleSaveManual() }}
               disabled={loading || manualSaving || !timer.known}
               className="px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-60 cursor-pointer"
             >
               Salvar
-            </button>
-          </div>
+            </OperumButton>
+          </FormActions>
         </div>
       )}
     </div>

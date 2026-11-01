@@ -1,0 +1,24 @@
+.form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-block: 12px;
+  border-top: 1px solid var(--ap-border, #dbe3ee);
+  background: linear-gradient(180deg, #ffffff0a, #ffffff16), color-mix(in srgb, var(--ap-surface, #f8fafc) 32%, transparent);
+  box-shadow: 0 -8px 20px -18px var(--glass-shadow, #33476c60);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.form-actions--compact { display: inline-flex; padding: 4px; border: 0; border-radius: 12px; }
+.form-actions > button { flex-shrink: 0; }
+@media (prefers-reduced-transparency: reduce) { .form-actions { background: var(--ap-input, #f5f8fc); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+
+.form-layout { display: flex; flex-direction: column; min-height: 0; }
+.form-body { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 8px 18px; margin: -4px -8px 0; scrollbar-width: thin; scrollbar-color: var(--ap-border, #cbd5e1) transparent; }
+.form-layout > .form-actions { position: relative; bottom: auto; flex-shrink: 0; margin-top: 0; }

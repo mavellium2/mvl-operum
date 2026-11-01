@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { printFolhasStyle } from '@/lib/printPageStyle'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
@@ -559,26 +562,26 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
         }}
         avisos={<>
           {recovery.backup && <div role="alert" className="rounded border bg-amber-50 p-3 text-sm">Há uma cópia local de alterações não confirmadas nesta aba.
-            <button type="button" onClick={restoreLocalDraft} className="ml-2 underline">Restaurar cópia local</button>
-            <button type="button" onClick={recovery.discard} className="ml-2 underline">Descartar cópia local</button>
+            <OperumButton variant="default" type="button" onClick={restoreLocalDraft} className="ml-2 underline">Restaurar cópia local</OperumButton>
+            <OperumButton variant="default" type="button" onClick={recovery.discard} className="ml-2 underline">Descartar cópia local</OperumButton>
           </div>}
           {draftError && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {draftError}
-              <button type="button" className="ml-3 font-medium underline" onClick={() => { setDraftError(''); setDraftAttempt(value => value + 1) }}>Tentar novamente</button>
+              <OperumButton variant="default" type="button" className="ml-3 font-medium underline" onClick={() => { setDraftError(''); setDraftAttempt(value => value + 1) }}>Tentar novamente</OperumButton>
             </div>
           )}
           {draftAutosave.status === 'error' && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               Falha ao salvar o rascunho. Seu texto foi preservado.
-              <button type="button" onClick={() => void draftAutosave.flush()} className="ml-2 underline">Tentar salvar novamente</button>
+              <FormActions as="span" compact><OperumButton variant="default" type="button" onClick={() => void draftAutosave.flush()} className="ml-2 underline">Tentar salvar novamente</OperumButton></FormActions>
             </div>
           )}
           {selectedVersion && (
             <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
               Versão {selectedVersion.versao} · {STATUS_LABEL[selectedVersion.status]} — somente leitura.
               {!context && <span role="alert">Esta versão antiga não registrou cabeçalho e equipe. Os dados atuais não substituem o histórico.</span>}
-              <button type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setSelectedVersion(null)}>Voltar ao rascunho</button>
+              <OperumButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setSelectedVersion(null)}>Voltar ao rascunho</OperumButton>
             </div>
           )}
         </>}
@@ -603,7 +606,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
           )}
           <div>
             <label className={labelClass}>Título da alteração <span className="text-red-500">*</span></label>
-            <input
+            <OperumInput
               className={inputClass}
               value={commitTitle}
               onChange={e => setCommitTitle(e.target.value)}
@@ -613,17 +616,17 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
             />
             <p className="text-xs text-slate-500 mt-1">Descreva brevemente o que foi alterado.</p>
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
-            <button disabled={savingVersion} onClick={() => setCommitModalOpen(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancelar</button>
-            <button
+          <FormActions className="flex flex-wrap justify-end gap-2">
+            <OperumButton variant="default" type="button" disabled={savingVersion} onClick={() => setCommitModalOpen(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancelar</OperumButton>
+            <OperumButton variant="default" type="button"
               onClick={handleConfirmCommit}
               disabled={!draftReady || !commitTitle.trim() || savingVersion}
               className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-3.5 h-3.5" />
               {savingVersion ? 'Salvando…' : 'Confirmar'}
-            </button>
-          </div>
+            </OperumButton>
+          </FormActions>
         </div>
       </Modal>
 
@@ -636,7 +639,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
       >
         <div className="flex flex-col h-full">
           <div className="px-4 py-3 border-b border-slate-100">
-            <input
+            <OperumInput
               className={inputClass}
               value={historySearch}
               onChange={e => setHistorySearch(e.target.value)}
@@ -658,26 +661,26 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
                   <div className="text-xs text-slate-500">
                     v{v.versao} · {v.author?.name ?? 'Desconhecido'} · {new Date(v.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  <button disabled={!v.payload} className="text-left text-sm text-blue-700 disabled:opacity-50" onClick={() => { setSelectedVersion(v); setHistoryOpen(false) }}>Abrir documento desta versão</button>
+                  <OperumButton variant="default" type="button" disabled={!v.payload} className="text-left text-sm text-blue-700 disabled:opacity-50" onClick={() => { setSelectedVersion(v); setHistoryOpen(false) }}>Abrir documento desta versão</OperumButton>
                   <details><summary className="text-xs cursor-pointer">Alterações desta versão</summary>
                     {v.changes ? v.changes.length ? v.changes.map(change => <div key={change.field} className="my-2 text-xs"><strong>{change.field}</strong><p>Antes</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap">{JSON.stringify(change.before, null, 2)}</pre><p>Depois</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap">{JSON.stringify(change.after, null, 2)}</pre></div>) : <p>Sem alterações de conteúdo.</p> : <p>Diff não registrado nesta versão antiga.</p>}
                   </details>
                   {isManager && v.status === 'PENDING' && (
                     <div className="flex gap-2 mt-1">
-                      <button
+                      <OperumButton variant="default" type="button"
                         disabled={actingVersionId === v.id}
                         onClick={() => handleVersionAction(v.id, 'approve')}
                         className="flex items-center gap-1 px-2 py-1 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                       >
                         Aprovar
-                      </button>
-                      <button
+                      </OperumButton>
+                      <OperumButton variant="danger" type="button"
                         disabled={actingVersionId === v.id}
                         onClick={() => handleVersionAction(v.id, 'reject')}
                         className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50 transition-colors"
                       >
                         Rejeitar
-                      </button>
+                      </OperumButton>
                     </div>
                   )}
                 </div>

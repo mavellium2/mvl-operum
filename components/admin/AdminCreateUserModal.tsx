@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useState } from 'react'
 import { adminCreateUserAction } from '@/app/actions/admin'
 import { EmailInput } from '@/components/ui/ContatoInputs'
@@ -87,7 +89,7 @@ export default function AdminCreateUserModal({ onClose, onCreated }: Props) {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Nome *</label>
-            <input
+            <OperumInput
               type="text"
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -148,12 +150,12 @@ export default function AdminCreateUserModal({ onClose, onCreated }: Props) {
 
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm">
+            <OperumButton variant="default" type="button" onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm">
               Cancelar
-            </button>
-            <button type="submit" disabled={loading} className="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
+            </OperumButton>
+            <OperumButton variant="primary" type="submit" disabled={loading} className="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
               {loading ? 'Criando…' : 'Criar'}
-            </button>
+            </OperumButton>
           </div>
         </form>
       </div>

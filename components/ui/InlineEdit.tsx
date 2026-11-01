@@ -1,5 +1,6 @@
 'use client'
 
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useState, useRef, useEffect } from 'react'
 
 interface InlineEditProps {
@@ -35,7 +36,7 @@ export default function InlineEdit({ value, onSave, className = '', inputClassNa
 
   if (isEditing) {
     return (
-      <input
+      <OperumInput
         ref={inputRef}
         value={draft}
         onChange={e => setDraft(e.target.value)}

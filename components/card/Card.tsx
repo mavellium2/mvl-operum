@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { MENSAGEM_RESPONSAVEL_INATIVO } from '@/lib/responsavelInativo'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
@@ -164,11 +165,11 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
 
               {/* Título + botões de ação (prioridade + lixeira) */}
               <div className="flex items-start justify-between gap-2 mb-2">
-                <button type="button" onClick={event => { event.stopPropagation(); onClick() }} aria-label={`Abrir tarefa ${tituloExibido}`} className="text-[14px] font-bold text-gray-800 leading-snug flex-1 break-words text-left rounded focus-visible:ring-2 focus-visible:ring-blue-500">
+                <OperumButton variant="default" type="button" onClick={event => { event.stopPropagation(); onClick() }} aria-label={`Abrir tarefa ${tituloExibido}`} className="text-[14px] font-bold text-gray-800 leading-snug flex-1 break-words text-left rounded focus-visible:ring-2 focus-visible:ring-blue-500">
                   {tituloExibido}
-                </button>
+                </OperumButton>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0 -mt-1 -mr-1">
-                  <button
+                  <OperumButton variant="custom" type="button"
                     disabled={!permissions.has('quadro:excluir')}
                     onClick={e => { e.stopPropagation(); if (permissions.has('quadro:excluir')) setConfirmOpen(true) }}
                     className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
@@ -177,7 +178,7 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                  </button>
+                  </OperumButton>
                 </div>
               </div>
 
@@ -252,7 +253,7 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
 
               <div className="flex-1" />
 
-              {timer.error && <p role="alert" className="text-xs text-red-600">{timer.error} <button type="button" onClick={event => { event.stopPropagation(); void timer.refresh() }} disabled={timer.loading}>Atualizar timer</button></p>}
+              {timer.error && <p role="alert" className="text-xs text-red-600">{timer.error} <OperumButton variant="default" type="button" onClick={event => { event.stopPropagation(); void timer.refresh() }} disabled={timer.loading}>Atualizar timer</OperumButton></p>}
               {/* Rodapé */}
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 gap-2">
 
@@ -268,7 +269,7 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
                   )}
 
                   {/* Timer */}
-                  <button type="button"
+                  <OperumButton variant="default" type="button"
                     disabled={timer.loading || !timer.known || (!isTimerRunning && !permissions.has('quadro:cards'))}
                     aria-label={isTimerRunning ? 'Pausar timer' : 'Iniciar timer'}
                     className={`flex items-center gap-1.5 px-2 py-1 -ml-2 rounded-md transition-colors ${isTimerRunning ? 'bg-green-50' : 'hover:bg-gray-100'}`}
@@ -286,7 +287,7 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
                       </div>
                     )}
                     <span className={`text-xs font-mono font-bold tracking-tight mt-px ${isTimerRunning ? 'text-green-700' : 'text-gray-600'}`}>{timer.known ? formatCardTimer(elapsedSeconds) : '—'}</span>
-                  </button>
+                  </OperumButton>
                 </div>
 
                 {/* Direita: tempo planejado/realizado + avatares */}

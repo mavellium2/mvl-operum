@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
+import SettingsCard from '@/components/configuracoes/SettingsCard'
 import { Sunrise, Sun, Sunset, Moon, Monitor } from 'lucide-react'
 import { useAppearance } from '@/hooks/useAppearance'
 import type { AppearanceMode } from '@/lib/appearance'
@@ -20,13 +21,13 @@ export default function AppearanceSettings() {
   const change = (value: AppearanceMode) => {
     setError(save(value) ? '' : 'Não foi possível salvar. Verifique se o navegador permite armazenamento local.')
   }
-  return <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+  return <SettingsCard>
     <h2 className="text-xl font-semibold tracking-tight text-slate-900">Aparência</h2>
-    <p className="mt-2 text-sm leading-relaxed text-slate-600">Um ambiente que acompanha o seu dia. Por enquanto, esta preferência se aplica às telas de criação e edição de projetos.</p>
+    <p className="mt-2 text-sm leading-relaxed text-slate-600">Um ambiente que acompanha o seu dia. Esta preferência se aplica às configurações e às telas de criação e edição de projetos.</p>
     <fieldset className="mt-6 grid gap-3 sm:grid-cols-2">
       <legend className="mb-3 text-sm font-medium text-slate-700">Escolha como você quer ver o Operum</legend>
-      {options.map(({ value, title, description, Icon, gradient }) => <label key={value}
-        className={`relative cursor-pointer rounded-2xl border p-3 transition-colors focus-within:ring-2 focus-within:ring-blue-500 ${mode === value ? 'border-blue-500 bg-blue-50/60' : 'border-slate-200 hover:bg-slate-50'}`}>
+      {options.map(({ value, title, description, Icon, gradient }, index) => <label style={{ '--option-order': index } as CSSProperties} key={value} data-selected={mode === value}
+        className={`settings-appearance-option relative cursor-pointer rounded-2xl border p-3 transition-colors focus-within:ring-2 focus-within:ring-blue-500 ${mode === value ? 'border-blue-500 bg-blue-50/60' : 'border-slate-200 hover:bg-slate-50'}`}>
         <div aria-hidden="true" className={`mb-3 h-20 rounded-xl bg-gradient-to-br ${gradient} p-3`}>
           <div className="h-full w-3/4 rounded-lg border border-white/40 bg-white/20 p-2 backdrop-blur-sm"><div className="mb-2 h-1.5 w-2/3 rounded bg-white/60" /><div className="h-1.5 w-1/2 rounded bg-white/40" /></div>
         </div>
@@ -37,5 +38,5 @@ export default function AppearanceSettings() {
     <p role="status" className="mt-5 text-sm text-slate-600">{period ? `Agora: ${period === 'morning' ? 'manhã' : period === 'day' ? 'dia' : period === 'afternoon' ? 'entardecer' : 'noite'}. Preferência salva automaticamente neste navegador.` : 'Carregando preferência…'}</p>
     <p className="mt-2 text-xs leading-relaxed text-slate-500">Automático: manhã das 6h às 12h · dia das 12h às 17h · entardecer das 17h às 19h · noite das 19h às 6h. Cada virada mistura as cores durante dez minutos, começando cinco minutos antes e terminando cinco minutos depois. Usa o horário do dispositivo. Não sincroniza entre dispositivos.</p>
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
-  </section>
+  </SettingsCard>
 }

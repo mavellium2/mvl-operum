@@ -1,5 +1,6 @@
 'use client'
 
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { erroMoeda, formatMoeda, moedaParaCampo, parseMoeda } from '@/lib/dinheiro'
 
@@ -36,7 +37,7 @@ export default function MoedaInput({ value, defaultValue, onValueChange, comSimb
   const mostrarErro = tocado && erro !== null
 
   const input = (
-    <input
+    <OperumInput
       {...rest}
       ref={ref}
       id={inputId}

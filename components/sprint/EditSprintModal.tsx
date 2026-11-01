@@ -1,5 +1,9 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import OperumCloseButton from '@/components/ui/GlassCloseButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useState } from 'react'
 import { updateSprintMetaAction } from '@/app/actions/sprintBoard'
 import DateInput from '@/components/ui/DateInput'
@@ -68,13 +72,9 @@ export default function EditSprintModal({ sprint, onClose, onUpdated }: Props) {
         {/* Cabeçalho */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
           <h2 className="text-lg font-semibold text-gray-900">Configurações da Sprint</h2>
-          <button
-            onClick={onClose}
+          <OperumCloseButton onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors focus:outline-none"
-            aria-label="Fechar"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+            label="Fechar" />
         </div>
 
         {/* Formulário */}
@@ -85,7 +85,7 @@ export default function EditSprintModal({ sprint, onClose, onUpdated }: Props) {
             <label htmlFor="sprint-name" className="block text-sm font-medium text-gray-700 mb-1.5">
               Nome da Sprint <span className="text-red-500">*</span>
             </label>
-            <input
+            <OperumInput
               id="sprint-name"
               type="text"
               value={name}
@@ -128,15 +128,15 @@ export default function EditSprintModal({ sprint, onClose, onUpdated }: Props) {
           </div>
 
           {/* Rodapé de Ações */}
-          <div className="flex items-center justify-end gap-3 pt-6 mt-2 border-t border-gray-100">
-            <button
+          <FormActions className="flex items-center justify-end gap-3 pt-6 mt-2 border-t border-gray-100">
+            <OperumButton variant="default"
               type="button"
               onClick={onClose}
               className="px-5 py-2.5 rounded-xl font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 text-sm transition-colors focus:outline-none"
             >
               Cancelar
-            </button>
-            <button
+            </OperumButton>
+            <OperumButton variant="primary"
               type="submit"
               disabled={loading}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-70 disabled:pointer-events-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -149,8 +149,8 @@ export default function EditSprintModal({ sprint, onClose, onUpdated }: Props) {
               ) : (
                 'Salvar Alterações'
               )}
-            </button>
-          </div>
+            </OperumButton>
+          </FormActions>
         </form>
       </div>
     </div>

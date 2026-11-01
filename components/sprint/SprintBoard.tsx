@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput, Textarea as OperumTextarea } from '@/components/ui/Field'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
@@ -484,7 +486,7 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
       className={`h-full w-full flex flex-col overflow-hidden bg-cover bg-center bg-fixed transition-all duration-700 selection:bg-blue-500/30 ${!isImageBg ? boardBg : ''}`}
       style={isImageBg ? { backgroundImage: boardBg } : {}}
     >
-      {Object.entries(mutationErrors).map(([key, failure]) => <div key={key} role="alert" className="bg-red-50 text-red-800 p-3 text-sm">{failure.message} <button type="button" onClick={() => void failure.retry()} className="underline">Tentar novamente</button></div>)}
+      {Object.entries(mutationErrors).map(([key, failure]) => <div key={key} role="alert" className="bg-red-50 text-red-800 p-3 text-sm">{failure.message} <OperumButton variant="default" type="button" onClick={() => void failure.retry()} className="underline">Tentar novamente</OperumButton></div>)}
       <SprintHeader 
         sprint={sprint} 
         currentUser={currentUser} 
@@ -589,14 +591,14 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
 
                 {/* Footer — igual ao das outras colunas */}
                 <div className="p-2 border-t border-black/5 bg-gray-100 rounded-b-2xl shrink-0">
-                  <button
+                  <OperumButton variant="default" type="button"
                     disabled={!permissions.has('quadro:cards')}
                     onClick={() => setAddingBacklogCard(true)}
                     className="w-full flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 hover:text-blue-600 hover:bg-white rounded-xl transition-all active:scale-[0.98]"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     Adicionar card
-                  </button>
+                  </OperumButton>
                 </div>
               </div>
             )}
@@ -633,7 +635,7 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
                     <div className="w-72 shrink-0 h-full">
                       {addingCol ? (
                         <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/20 animate-in fade-in zoom-in-95 duration-300">
-                          <input
+                          <OperumInput
                             autoFocus
                             value={newColTitle}
                             onChange={e => setNewColTitle(e.target.value)}
@@ -645,22 +647,22 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
                             className="w-full px-4 py-2.5 bg-gray-100/50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 transition-all mb-3"
                           />
                           <div className="flex gap-2">
-                            <button
+                            <OperumButton variant="primary" type="button"
                               onClick={handleAddColumn}
                               className="flex-1 bg-blue-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
                             >
                               Criar Coluna
-                            </button>
-                            <button
+                            </OperumButton>
+                            <OperumButton variant="custom" type="button"
                               onClick={() => setAddingCol(false)}
                               className="px-3 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition-all"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
+                            </OperumButton>
                           </div>
                         </div>
                       ) : (
-                        <button
+                        <OperumButton variant="default" type="button"
                           disabled={!permissions.has('quadro:sprints')}
                           onClick={() => setAddingCol(true)}
                           className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 rounded-2xl text-sm text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] group"
@@ -669,7 +671,7 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                           </div>
                           Nova Coluna
-                        </button>
+                        </OperumButton>
                       )}
                     </div>
 
@@ -815,7 +817,7 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
             <p className="text-sm text-gray-500 mb-4">
               Por que este card está voltando para uma etapa anterior?
             </p>
-            <textarea
+            <OperumTextarea
               autoFocus
               value={pendingMove.reason}
               onChange={e => setPendingMove(prev => prev ? { ...prev, reason: e.target.value } : null)}
@@ -828,19 +830,19 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
             />
             <div className="flex gap-2 justify-end">
-              <button
+              <OperumButton variant="default" type="button"
                 onClick={cancelPendingMove}
                 className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 Cancelar
-              </button>
-              <button
+              </OperumButton>
+              <OperumButton variant="primary" type="button"
                 onClick={confirmPendingMove}
                 disabled={!pendingMove.reason.trim()}
                 className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Confirmar
-              </button>
+              </OperumButton>
             </div>
           </div>
         </Modal>

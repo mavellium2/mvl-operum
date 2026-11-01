@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { SprintBadge } from './SprintBadge'
@@ -126,14 +127,14 @@ export default function SprintListPage({
 
           {currentUser && (
             <div className="relative" ref={userMenuRef}>
-              <button
+              <OperumButton variant="custom" type="button"
                 onClick={() => setUserMenuOpen(v => !v)}
                 className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-100 transition-colors"
                 aria-label="Menu do usuário"
               >
                 <UserAvatar name={currentUser.name} avatarUrl={currentUser.avatarUrl} size="sm" />
                 <span className="text-sm text-gray-600 hidden sm:block">{currentUser.name}</span>
-              </button>
+              </OperumButton>
               {userMenuOpen && (
                 <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20">
                   <Link
@@ -152,12 +153,12 @@ export default function SprintListPage({
                   </Link>
                   <div className="border-t border-gray-100 my-1" />
                   <form action={logoutAction}>
-                    <button
+                    <OperumButton variant="danger"
                       type="submit"
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
                       Sair
-                    </button>
+                    </OperumButton>
                   </form>
                 </div>
               )}
@@ -181,7 +182,7 @@ export default function SprintListPage({
               {sprintsWithMetrics.length} sprint{sprintsWithMetrics.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <button
+          <OperumButton variant="primary" type="button"
             onClick={() => setShowCreate(v => !v)}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
           >
@@ -189,7 +190,7 @@ export default function SprintListPage({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             Nova Sprint
-          </button>
+          </OperumButton>
         </div>
 
         {showCreate && (
@@ -210,9 +211,9 @@ export default function SprintListPage({
                 setShowCreate(false)
               }}
             />
-            <button onClick={() => setShowCreate(false)} className="mt-3 text-xs text-gray-400 hover:text-gray-600">
+            <OperumButton variant="default" type="button" onClick={() => setShowCreate(false)} className="mt-3 text-xs text-gray-400 hover:text-gray-600">
               Cancelar
-            </button>
+            </OperumButton>
           </div>
         )}
 
@@ -222,9 +223,9 @@ export default function SprintListPage({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
             <p className="text-gray-400 text-sm">Nenhuma sprint criada ainda</p>
-            <button onClick={() => setShowCreate(true)} className="mt-2 text-blue-600 text-sm hover:underline">
+            <OperumButton variant="default" type="button" onClick={() => setShowCreate(true)} className="mt-2 text-blue-600 text-sm hover:underline">
               Criar a primeira sprint
-            </button>
+            </OperumButton>
           </div>
         ) : (
           <div className="flex flex-col gap-3">

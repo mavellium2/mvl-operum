@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useId, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 
@@ -57,7 +58,7 @@ export default function ElaboradoresSelect({ tarefa, value, options, onChange }:
 
   return (
     <div ref={rootRef} className="w-full">
-      <button
+      <OperumButton variant="custom"
         ref={buttonRef}
         type="button"
         onClick={() => (open ? setOpen(false) : abrir())}
@@ -70,7 +71,7 @@ export default function ElaboradoresSelect({ tarefa, value, options, onChange }:
       >
         <span className="flex-1 truncate">{nomes.length ? nomes.join(', ') : '—'}</span>
         <ChevronDown className="h-3 w-3 shrink-0 text-gray-400" aria-hidden="true" />
-      </button>
+      </OperumButton>
       {open && (
         <div
           ref={panelRef}

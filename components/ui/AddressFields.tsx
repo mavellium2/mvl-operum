@@ -1,5 +1,6 @@
 'use client'
 
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useRef, useState } from 'react'
 import { lookupCep, formatCep } from '@/lib/viacep'
 import { Loader2 } from 'lucide-react'
@@ -38,6 +39,8 @@ interface AddressFieldsProps {
   disabled?: boolean
   /** Quando true, inclui atributos `name` nos inputs para submissão via FormData */
   withNames?: boolean
+  /** Distribui CEP e logradouro na mesma linha em painéis largos. */
+  compact?: boolean
 }
 
 // ─────────────────────────────────────────────
@@ -52,7 +55,7 @@ const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
 // Componente
 // ─────────────────────────────────────────────
 
-export default function AddressFields({ values, onChange, disabled = false, withNames = false }: AddressFieldsProps) {
+export default function AddressFields({ values, onChange, disabled = false, withNames = false, compact = false }: AddressFieldsProps) {
   const [cepLoading, setCepLoading] = useState(false)
   const [cepError, setCepError] = useState(false)
   const numeroRef = useRef<HTMLInputElement>(null)
@@ -93,12 +96,12 @@ export default function AddressFields({ values, onChange, disabled = false, with
   const fieldsDisabled = disabled || cepLoading
 
   return (
-    <div className="space-y-3">
+    <div className={compact ? 'grid grid-cols-12 gap-3' : 'space-y-3'}>
       {/* CEP */}
-      <div>
+      <div className={compact ? 'col-span-12 sm:col-span-3 min-w-0' : undefined}>
         <label className={labelCls}>CEP</label>
         <div className="relative">
-          <input
+          <OperumInput
             type="text"
             value={values.cep}
             onChange={handleCepChange}
@@ -122,10 +125,10 @@ export default function AddressFields({ values, onChange, disabled = false, with
       </div>
 
       {/* Logradouro + Número */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className={`grid grid-cols-3 gap-3 ${compact ? 'col-span-12 sm:col-span-9' : ''}`}>
         <div className="col-span-2">
           <label className={labelCls}>Logradouro</label>
-          <input
+          <OperumInput
             type="text"
             value={values.logradouro}
             onChange={e => onChange('logradouro', e.target.value)}
@@ -137,7 +140,7 @@ export default function AddressFields({ values, onChange, disabled = false, with
         </div>
         <div>
           <label className={labelCls}>Número</label>
-          <input
+          <OperumInput
             ref={numeroRef}
             type="text"
             value={values.numero}
@@ -151,9 +154,9 @@ export default function AddressFields({ values, onChange, disabled = false, with
       </div>
 
       {/* Complemento */}
-      <div>
+      <div className={compact ? 'col-span-12' : undefined}>
         <label className={labelCls}>Complemento</label>
-        <input
+        <OperumInput
           type="text"
           value={values.complemento}
           onChange={e => onChange('complemento', e.target.value)}
@@ -165,10 +168,10 @@ export default function AddressFields({ values, onChange, disabled = false, with
       </div>
 
       {/* Bairro + Cidade + Estado */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className={`grid grid-cols-5 gap-3 ${compact ? 'col-span-12' : ''}`}>
         <div className="col-span-2">
           <label className={labelCls}>Bairro</label>
-          <input
+          <OperumInput
             type="text"
             value={values.bairro}
             onChange={e => onChange('bairro', e.target.value)}
@@ -180,7 +183,7 @@ export default function AddressFields({ values, onChange, disabled = false, with
         </div>
         <div className="col-span-2">
           <label className={labelCls}>Cidade</label>
-          <input
+          <OperumInput
             type="text"
             value={values.cidade}
             onChange={e => onChange('cidade', e.target.value)}
@@ -192,7 +195,7 @@ export default function AddressFields({ values, onChange, disabled = false, with
         </div>
         <div>
           <label className={labelCls}>UF</label>
-          <input
+          <OperumInput
             type="text"
             value={values.estado}
             onChange={e => onChange('estado', e.target.value.toUpperCase().slice(0, 2))}

@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useId, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 
@@ -94,7 +95,7 @@ export default function ToolbarSelect<T extends string>({ title, value, options,
   return (
     <div ref={rootRef} className="relative flex flex-col gap-0.5 border border-gray-200 rounded-md bg-white p-1 shadow-sm shrink-0">
       <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400 px-0.5">{title}</span>
-      <button
+      <OperumButton variant="custom"
         ref={buttonRef}
         type="button"
         disabled={disabled}
@@ -110,7 +111,7 @@ export default function ToolbarSelect<T extends string>({ title, value, options,
         <span className="flex items-center justify-center w-7 h-7">{atual?.icon ?? options[0]?.icon}</span>
         <span className="text-[11px] font-medium max-w-[7.5rem] truncate">{atual?.label ?? placeholder}</span>
         <ChevronDown className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
-      </button>
+      </OperumButton>
 
       {open && (
         <ul

@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import PermissoesFuncoes from '@/components/permissoes/PermissoesFuncoes'
 
 import { useState, useTransition } from 'react'
@@ -187,7 +190,7 @@ function CatalogCrud({
           <h2 className="text-base font-semibold text-gray-900">{title}</h2>
           <p className="text-xs text-gray-500 mt-0.5">{items.length} cadastrados · só o admin edita; projetos apenas associam</p>
         </div>
-        <button
+        <OperumButton variant="primary" type="button"
           onClick={() => setShowAdd(true)}
           className="flex items-center justify-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
         >
@@ -195,11 +198,11 @@ function CatalogCrud({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Novo
-        </button>
+        </OperumButton>
       </div>
 
       <div className="px-6 py-3 border-b border-gray-100">
-        <input
+        <OperumInput
           type="search"
           placeholder="Buscar... (enter cria se não existir)"
           value={search}
@@ -215,7 +218,7 @@ function CatalogCrud({
 
       {showAdd && (
         <div className="px-6 py-3 bg-blue-50/50 border-b border-blue-100 flex items-center gap-3">
-          <input
+          <OperumInput
             type="text"
             autoFocus
             placeholder={placeholder}
@@ -224,12 +227,12 @@ function CatalogCrud({
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
             className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 bg-white hover:bg-gray-50">
+          <OperumButton variant="default" type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 bg-white hover:bg-gray-50">
             Cancelar
-          </button>
-          <button onClick={handleAdd} disabled={!novoNome.trim() || isPending} className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50">
+          </OperumButton>
+          <FormActions as="span" compact><OperumButton variant="primary" type="button" onClick={handleAdd} disabled={!novoNome.trim() || isPending} className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50">
             {loadingId === 'new' ? 'Salvando...' : 'Salvar'}
-          </button>
+          </OperumButton></FormActions>
         </div>
       )}
 
@@ -242,7 +245,7 @@ function CatalogCrud({
               <p className="text-sm text-gray-600">
                 <span className="text-gray-500">“{term}” não existe ainda.</span>
               </p>
-              <button
+              <OperumButton variant="primary" type="button"
                 onClick={handleCreateFromSearch}
                 disabled={isPending}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 whitespace-nowrap"
@@ -260,7 +263,7 @@ function CatalogCrud({
                     Criar “{term}”
                   </>
                 )}
-              </button>
+              </OperumButton>
             </div>
           )}
 
@@ -268,7 +271,7 @@ function CatalogCrud({
             <div key={item.id} className="px-6 py-3 flex items-center justify-between gap-4 hover:bg-gray-50/50">
               {editingId === item.id ? (
                 <div className="flex-1 flex items-center gap-3">
-                  <input
+                  <OperumInput
                     type="text"
                     autoFocus
                     value={editNome}
@@ -276,23 +279,23 @@ function CatalogCrud({
                     onKeyDown={e => e.key === 'Enter' && handleSaveEdit(item.id)}
                     className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <button onClick={() => { setEditingId(null); setEditNome('') }} className="text-xs font-medium text-gray-500 hover:text-gray-700">Cancelar</button>
-                  <button onClick={() => handleSaveEdit(item.id)} className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <OperumButton variant="default" type="button" onClick={() => { setEditingId(null); setEditNome('') }} className="text-xs font-medium text-gray-500 hover:text-gray-700">Cancelar</OperumButton>
+                  <FormActions as="span" compact><OperumButton variant="primary" type="button" onClick={() => handleSaveEdit(item.id)} className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                     Salvar
-                  </button>
+                  </OperumButton></FormActions>
                 </div>
               ) : (
                 <>
                   <p className="font-medium text-sm text-gray-900">{item.name}</p>
                   <div className="flex items-center gap-2">
-                    <button
+                    <OperumButton variant="custom" type="button"
                       onClick={() => { setEditingId(item.id); setEditNome(item.name) }}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Editar"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                    </button>
-                    <button
+                    </OperumButton>
+                    <OperumButton variant="danger" type="button"
                       onClick={() => handleDelete(item.id)}
                       disabled={loadingId === item.id || isPending}
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
@@ -303,7 +306,7 @@ function CatalogCrud({
                       ) : (
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       )}
-                    </button>
+                    </OperumButton>
                   </div>
                 </>
               )}

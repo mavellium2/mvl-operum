@@ -1,5 +1,6 @@
 'use client'
 
+import { Textarea as OperumTextarea } from '@/components/ui/Field'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 // useLayoutEffect no cliente (mede antes do paint), useEffect no servidor (no-op em SSR)
@@ -929,7 +930,7 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
               A exclusão fica no histórico de alterações das sprints.
             </p>
             <label htmlFor="wbs-motivo-exclusao" className="text-sm font-medium text-gray-700">Motivo da exclusão *</label>
-            <textarea
+            <OperumTextarea
               id="wbs-motivo-exclusao"
               value={motivoExclusao}
               onChange={e => setMotivoExclusao(e.target.value)}

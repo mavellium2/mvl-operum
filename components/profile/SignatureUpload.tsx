@@ -1,5 +1,7 @@
 'use client'
 
+import GlassButton from '@/components/ui/GlassButton'
+
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { uploadSignatureAction } from '@/app/actions/profile'
@@ -41,7 +43,7 @@ export default function SignatureUpload({ signatureUrl: initial }: { signatureUr
       </div>
     ) : <p className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">Você ainda não cadastrou sua assinatura.</p>}
     <div className="flex flex-wrap gap-3">
-      <button type="button" onClick={() => { setSuccess(false); setOpen(true) }} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">{signatureUrl ? 'Alterar assinatura' : 'Criar assinatura'}</button>
+      <GlassButton variant="primary" onClick={() => { setSuccess(false); setOpen(true) }}>{signatureUrl ? 'Alterar assinatura' : 'Criar assinatura'}</GlassButton>
 
     </div>
     {success && <p role="status" className="text-sm text-green-700">Assinatura salva com sucesso.</p>}

@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import { useState } from 'react'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
@@ -154,7 +155,7 @@ export default function Column({
 
           {/* RODAPÉ: Adicionar Card */}
           <div className="p-2 border-t border-black/5 bg-gray-100 rounded-b-2xl shrink-0">
-            <button
+            <OperumButton variant="default" type="button"
               disabled={!permissions.has('quadro:cards')}
               onClick={() => onAddCard(column.id)} // Repassa o evento pro pai
               className="w-full flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 hover:text-blue-600 hover:bg-white rounded-xl transition-all active:scale-[0.98]"
@@ -163,7 +164,7 @@ export default function Column({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               Adicionar card
-            </button>
+            </OperumButton>
           </div>
         </div>
       )}

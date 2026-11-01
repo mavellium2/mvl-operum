@@ -1,5 +1,6 @@
 'use client'
 
+import { Input as OperumInput, FieldGroup } from '@/components/ui/Field'
 import GlassButton from '@/components/ui/GlassButton'
 
 import { useState, useRef, useEffect, useLayoutEffect, KeyboardEvent } from 'react'
@@ -95,11 +96,10 @@ export default function MultiCreatableSelect({
 
   return (
     <div data-glass-multiselect data-open={isOpen && !disabled && (filtered.length > 0 || showCreate)} ref={containerRef} className="relative">
-      <div
+      <FieldGroup aria-disabled={disabled}
         className={`
           min-h-[46px] w-full px-3 py-2 bg-slate-50/50 border border-slate-200/60 rounded-xl
           flex flex-wrap gap-1.5 items-center cursor-text
-          focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500
           transition-all duration-200
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         `}
@@ -132,8 +132,9 @@ export default function MultiCreatableSelect({
           </span>
         ))}
 
-        <input
+        <OperumInput
           ref={inputRef}
+          data-field-embedded
           type="text"
           value={inputValue}
           onChange={e => { setInputValue(e.target.value); setIsOpen(true) }}
@@ -144,7 +145,7 @@ export default function MultiCreatableSelect({
           disabled={disabled}
           className="flex-1 min-w-[120px] bg-transparent outline-none text-sm text-slate-800 font-medium"
         />
-      </div>
+      </FieldGroup>
 
       {isOpen && !disabled && position && (filtered.length > 0 || showCreate) && createPortal(
         <div ref={panelRef} data-glass-select-panel style={{ position: 'fixed', ...position, zIndex: 10000, overflowY: 'auto', padding: 4 }} className="bg-white border border-slate-200 rounded-xl shadow-lg">

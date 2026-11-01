@@ -1,4 +1,5 @@
 'use client'
+import OperumButton from '@/components/ui/GlassButton'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { fetchWithSession } from '@/lib/clientFetch'
@@ -235,7 +236,7 @@ export default function HistoricoDocumento({
         conferir a proposta antes de aprovar.
       </p>
       <div className="flex gap-2">
-        <button
+        <OperumButton variant="default"
           type="button"
           disabled={busy}
           onClick={() => load('historico')}
@@ -243,8 +244,8 @@ export default function HistoricoDocumento({
           className="rounded border px-3 py-2"
         >
           Histórico
-        </button>
-        <button
+        </OperumButton>
+        <OperumButton variant="default"
           type="button"
           disabled={busy}
           onClick={() => load('registro')}
@@ -252,7 +253,7 @@ export default function HistoricoDocumento({
           className="rounded border px-3 py-2"
         >
           Registro
-        </button>
+        </OperumButton>
       </div>
       {busy && <p role="status">Carregando…</p>}
       {error && (
@@ -287,33 +288,33 @@ export default function HistoricoDocumento({
                 </p>
               )}
               {canDelete && v.status !== 'APPROVED' && (
-                <button
+                <OperumButton variant="danger"
                   type="button"
                   disabled={busy}
                   onClick={() => remove(v.id)}
                   className="my-2 text-sm text-red-700"
                 >
                   Excluir versão
-                </button>
+                </OperumButton>
               )}
               {canApprove && v.status === 'PENDING' && (
                 <div className="flex gap-3">
-                  <button
+                  <OperumButton variant="primary"
                     type="button"
                     disabled={busy || !v.payload}
                     onClick={() => review(v.id, 'approve')}
                     className="rounded bg-blue-600 px-3 py-1 text-white"
                   >
                     Aprovar
-                  </button>
-                  <button
+                  </OperumButton>
+                  <OperumButton variant="default"
                     type="button"
                     disabled={busy}
                     onClick={() => review(v.id, 'reject')}
                     className="rounded border px-3 py-1"
                   >
                     Rejeitar
-                  </button>
+                  </OperumButton>
                 </div>
               )}
             </article>

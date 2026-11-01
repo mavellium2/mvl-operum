@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useState, type ComponentProps } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 
@@ -18,8 +20,8 @@ export default function PasswordInput({ className = '', wrapperClassName = '', d
   const [visivel, setVisivel] = useState(false)
   return (
     <div className={`relative ${wrapperClassName}`}>
-      <input {...props} disabled={disabled} type={visivel ? 'text' : 'password'} className={`${className} pr-10`} />
-      <button
+      <OperumInput {...props} disabled={disabled} type={visivel ? 'text' : 'password'} className={`${className} pr-10`} />
+      <OperumButton variant="custom"
         type="button"
         onClick={() => setVisivel(v => !v)}
         disabled={disabled}
@@ -28,7 +30,7 @@ export default function PasswordInput({ className = '', wrapperClassName = '', d
         className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
       >
         {visivel ? <EyeOff className="w-4 h-4" aria-hidden /> : <Eye className="w-4 h-4" aria-hidden />}
-      </button>
+      </OperumButton>
     </div>
   )
 }

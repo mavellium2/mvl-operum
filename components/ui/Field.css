@@ -1,0 +1,63 @@
+/* Única fonte dos estados interativos dos campos em todo o Operum.
+   Não define dimensões: formulários, tabelas e documentos preservam seu layout. */
+:root body .operum-field.operum-field.operum-field:not([data-field-embedded]):not(:disabled):not([readonly]):not([type='hidden']):not([type='file']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']) {
+  --field-accent: var(--ap-accent, #3975bc);
+  --field-border: var(--ap-border, #cbd5e1);
+  --field-surface: var(--ap-surface, #ffffff);
+  --field-glow: var(--ap-glow, #e5effa);
+}
+:root body .operum-field.operum-field.operum-field:not([data-field-embedded]):not(:disabled):not([readonly]):hover {
+  border-color: color-mix(in srgb, var(--field-accent) 42%, var(--field-border));
+  background-color: color-mix(in srgb, var(--field-surface) 88%, var(--field-glow));
+  box-shadow: inset 0 1px 0 var(--glass-light, #ffffff70), 0 3px 8px -6px var(--glass-shadow, #33476c30);
+}
+:root body .operum-field.operum-field.operum-field:not([data-field-embedded]):not(:disabled):not([readonly]):active {
+  border-color: color-mix(in srgb, var(--field-accent) 65%, var(--field-border));
+  background-color: color-mix(in srgb, var(--field-surface) 78%, var(--field-glow));
+  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--field-accent) 8%, transparent);
+}
+:root body .operum-field.operum-field.operum-field:not([data-field-embedded]):not(:disabled):not([readonly]):focus {
+  border-color: color-mix(in srgb, var(--field-accent) 60%, var(--field-border));
+  background-color: color-mix(in srgb, var(--field-surface) 90%, var(--field-glow));
+  outline: none;
+  box-shadow: inset 0 1px 0 var(--glass-light, #ffffff70), 0 0 0 1px color-mix(in srgb, var(--field-accent) 10%, transparent);
+}
+:root body .operum-field.operum-field.operum-field:not([data-field-embedded]):not(:disabled):not([readonly]):focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--field-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+/* Erros continuam reconhecíveis mesmo sob o ponteiro e durante a correção. */
+:root body .operum-field.operum-field.operum-field:not([data-field-embedded])[aria-invalid='true']:not(:disabled):not([readonly]):is(:hover, :active, :focus, :focus-visible) {
+  border-color: #bf7245; outline-color: #bf7245;
+  box-shadow: 0 0 0 1px #bf724526;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root body .operum-field.operum-field.operum-field:not([data-field-embedded]) {
+    transition: background-color 320ms ease, border-color 300ms ease, box-shadow 320ms ease, color 250ms ease;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root body .operum-field.operum-field.operum-field:not([data-field-embedded]):not(:disabled):not([readonly]):is(:hover, :active, :focus) { background-color: var(--ap-input, #f5f8fc); }
+}
+:root body label:has(+ .operum-field:focus):not(:has(+ [aria-invalid='true'])) {
+  color: var(--ap-accent, #3975bc);
+}
+
+:root body .operum-field-group {
+  --field-accent: var(--ap-accent, #3975bc); --field-border: var(--ap-border, #cbd5e1);
+  --field-surface: var(--ap-surface, #ffffff); --field-glow: var(--ap-glow, #e5effa);
+}
+:root body .operum-field-group:not([aria-disabled='true']):hover {
+  background-color: color-mix(in srgb, var(--field-surface) 88%, var(--field-glow));
+  border-color: color-mix(in srgb, var(--field-accent) 42%, var(--field-border));
+}
+:root body .operum-field-group:not([aria-disabled='true']):focus-within {
+  background-color: color-mix(in srgb, var(--field-surface) 90%, var(--field-glow));
+  border-color: color-mix(in srgb, var(--field-accent) 60%, var(--field-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--field-accent) 10%, transparent);
+}
+:root body .operum-field-group:has(:focus-visible) { outline: 1px solid var(--field-accent); outline-offset: 2px; }
+:root body .operum-field-group .operum-field[data-field-embedded] { outline: none; box-shadow: none; background: transparent; }
+@media (prefers-reduced-motion: no-preference) {
+  :root body .operum-field-group { transition: background-color 320ms ease, border-color 300ms ease, box-shadow 320ms ease; }
+}

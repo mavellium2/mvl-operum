@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useState } from 'react'
 import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd'
 import { BoardState, CardColor } from '@/types/kanban'
@@ -106,7 +108,7 @@ export default function ColumnList({ state, dispatch, users, boardTags, setAddin
             <div className="flex-shrink-0 w-72">
               {addingList ? (
                 <div className="bg-white/90 rounded-xl p-3 shadow-sm space-y-2">
-                  <input
+                  <OperumInput
                     autoFocus
                     value={newListTitle}
                     onChange={e => setNewListTitle(e.target.value)}
@@ -116,13 +118,13 @@ export default function ColumnList({ state, dispatch, users, boardTags, setAddin
                     aria-label="Nome da nova lista"
                   />
                   <div className="flex gap-2">
-                    <button
+                    <OperumButton variant="primary" type="button"
                       onClick={handleAddList}
                       className="flex-1 bg-blue-600 text-white text-sm py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                     >
                       Adicionar lista
-                    </button>
-                    <button
+                    </OperumButton>
+                    <OperumButton variant="custom" type="button"
                       onClick={() => { setAddingList(false); setNewListTitle('') }}
                       className="p-1.5 text-gray-400 hover:text-gray-600"
                       aria-label="Cancelar"
@@ -130,11 +132,11 @@ export default function ColumnList({ state, dispatch, users, boardTags, setAddin
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                    </button>
+                    </OperumButton>
                   </div>
                 </div>
               ) : (
-                <button
+                <OperumButton variant="default" type="button"
                   onClick={() => setAddingList(true)}
                   className="w-full flex items-center gap-2 px-4 py-3 bg-white/50 hover:bg-white/70 rounded-xl text-sm text-gray-600 hover:text-gray-800 transition-all font-medium"
                 >
@@ -142,7 +144,7 @@ export default function ColumnList({ state, dispatch, users, boardTags, setAddin
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Adicionar outra lista
-                </button>
+                </OperumButton>
               )}
             </div>
           </div>

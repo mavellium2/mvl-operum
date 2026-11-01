@@ -1,5 +1,6 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
 import Select from '@/components/ui/Select'
 import { useMemo, useState } from 'react'
 import type { WbsNodeClient } from '@/types/wbs'
@@ -37,9 +38,9 @@ export default function WbsGantt({ nodes, rootId, today }: {
         const schedule = plannedSchedule(node)
         return <div key={node.id} className="flex h-11 border-b">
           <div className="w-[280px] shrink-0 sticky left-0 bg-white z-20 flex items-center gap-1 overflow-hidden" style={{ paddingLeft: 8 + depth * 16 }}>
-            {node.childrenIds.length > 0 ? <button type="button" aria-label={`${collapsed.has(node.id) ? 'Expandir' : 'Recolher'} ${node.title}`} aria-expanded={!collapsed.has(node.id)} onClick={() => setCollapsed(previous => {
+            {node.childrenIds.length > 0 ? <OperumButton variant="custom" type="button" aria-label={`${collapsed.has(node.id) ? 'Expandir' : 'Recolher'} ${node.title}`} aria-expanded={!collapsed.has(node.id)} onClick={() => setCollapsed(previous => {
               const next = new Set(previous); if (next.has(node.id)) next.delete(node.id); else next.add(node.id); return next
-            })} className="w-5 shrink-0">{collapsed.has(node.id) ? '+' : '−'}</button> : <span className="w-5 shrink-0" />}
+            })} className="w-5 shrink-0">{collapsed.has(node.id) ? '+' : '−'}</OperumButton> : <span className="w-5 shrink-0" />}
             <span className="truncate" title={`${node.code} ${node.title}`}>{node.code} {node.title}</span>
           </div>
           <div className="relative" style={{ width }}>

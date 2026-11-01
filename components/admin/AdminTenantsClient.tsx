@@ -1,5 +1,8 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import { useState, useTransition, useRef, useEffect } from 'react'
 import {
@@ -45,7 +48,7 @@ function InlineNameEdit({
 
   return (
     <div className="flex items-center gap-2">
-      <input
+      <OperumInput
         ref={inputRef}
         type="text"
         value={value}
@@ -54,18 +57,18 @@ function InlineNameEdit({
         disabled={disabled}
         className="flex-1 px-2 py-1 text-sm font-semibold text-gray-900 border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white min-w-0"
       />
-      <button onClick={() => onSave(id, value)} disabled={disabled || !value.trim()} title="Salvar"
+      <FormActions as="span" compact><OperumButton variant="custom" type="button" onClick={() => onSave(id, value)} disabled={disabled || !value.trim()} title="Salvar"
         className="p-1 text-blue-600 hover:text-blue-800 disabled:opacity-40 transition-colors">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
-      </button>
-      <button onClick={onCancel} title="Cancelar"
+      </OperumButton></FormActions>
+      <OperumButton variant="custom" type="button" onClick={onCancel} title="Cancelar"
         className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
-      </button>
+      </OperumButton>
     </div>
   )
 }
@@ -142,7 +145,7 @@ export default function AdminTenantsClient({
       {/* Toolbar */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">{tenants.length} {tenants.length !== 1 ? 'instituições' : 'instituição'}</p>
-        <button
+        <OperumButton variant="primary" type="button"
           onClick={() => { setShowForm(v => !v); setFormError('') }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors"
         >
@@ -150,7 +153,7 @@ export default function AdminTenantsClient({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Nova instituição
-        </button>
+        </OperumButton>
       </div>
 
       {/* Create form */}
@@ -160,7 +163,7 @@ export default function AdminTenantsClient({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Nome</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)}
+              <OperumInput type="text" value={name} onChange={e => setName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCreate()}
                 placeholder="Acme Corp"
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
@@ -168,7 +171,7 @@ export default function AdminTenantsClient({
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Subdomínio</label>
               <div className="flex items-center">
-                <input type="text" value={subdomain} onChange={e => handleSubdomainInput(e.target.value)}
+                <OperumInput type="text" value={subdomain} onChange={e => handleSubdomainInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleCreate()}
                   placeholder="acme"
                   maxLength={63}
@@ -179,14 +182,14 @@ export default function AdminTenantsClient({
           </div>
           {formError && <p className="text-xs text-red-600">{formError}</p>}
           <div className="flex items-center gap-2 justify-end">
-            <button onClick={() => { setShowForm(false); setFormError('') }}
+            <OperumButton variant="default" type="button" onClick={() => { setShowForm(false); setFormError('') }}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">
               Cancelar
-            </button>
-            <button onClick={handleCreate} disabled={isPending}
+            </OperumButton>
+            <OperumButton variant="primary" type="button" onClick={handleCreate} disabled={isPending}
               className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60">
               {isPending ? 'Criando…' : 'Criar instituição'}
-            </button>
+            </OperumButton>
           </div>
         </div>
       )}
@@ -222,12 +225,12 @@ export default function AdminTenantsClient({
                             com acesso
                           </span>
                         )}
-                        <button onClick={() => setEditingId(t.id)} title="Editar nome"
+                        <OperumButton variant="custom" type="button" onClick={() => setEditingId(t.id)} title="Editar nome"
                           className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-gray-600 transition-all">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
-                        </button>
+                        </OperumButton>
                       </div>
                     )}
                     <p className="text-xs text-gray-400 mt-0.5">
@@ -240,7 +243,7 @@ export default function AdminTenantsClient({
 
                   <div className="flex items-center gap-2 shrink-0">
                     {!hasAccess && (
-                      <button
+                      <OperumButton variant="default" type="button"
                         onClick={() => handleJoin(t.id)}
                         disabled={isPending}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors disabled:opacity-60 cursor-pointer"
@@ -249,7 +252,7 @@ export default function AdminTenantsClient({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                         </svg>
                         Entrar
-                      </button>
+                      </OperumButton>
                     )}
 
                     <Select

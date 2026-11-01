@@ -1,5 +1,7 @@
 'use client'
 
+import OperumButton from '@/components/ui/GlassButton'
+import { Input as OperumInput } from '@/components/ui/Field'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import { Suspense, useState, useTransition, useEffect } from 'react'
@@ -93,7 +95,7 @@ function NovaSprintForm() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nome <span className="text-red-500">*</span>
               </label>
-              <input
+              <OperumInput
                 type="text"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -130,13 +132,13 @@ function NovaSprintForm() {
               >
                 Cancelar
               </Link>
-              <button
+              <OperumButton variant="primary"
                 type="submit"
                 disabled={isPending || !canCreate}
                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50"
               >
                 {isPending ? 'Criando…' : 'Criar Sprint'}
-              </button>
+              </OperumButton>
             </div>
           </form>
         </div>

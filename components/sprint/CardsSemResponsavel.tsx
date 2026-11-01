@@ -1,5 +1,7 @@
 'use client'
 
+import FormActions from '@/components/ui/FormActions'
+import OperumButton from '@/components/ui/GlassButton'
 import Select from '@/components/ui/Select'
 import { useState } from 'react'
 import { UserX } from 'lucide-react'
@@ -43,7 +45,7 @@ export default function CardsSemResponsavel({ pendentes, users, onAtribuir, onAb
 
   return (
     <>
-      <button
+      <OperumButton variant="custom"
         type="button"
         onClick={() => setAberto(true)}
         className="mx-6 mt-3 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-sm text-amber-900 hover:bg-amber-100"
@@ -53,7 +55,7 @@ export default function CardsSemResponsavel({ pendentes, users, onAtribuir, onAb
           <strong>{pendentes.length} {pendentes.length === 1 ? 'card está' : 'cards estão'} sem responsável ativo</strong>{' '}
           em &quot;Em andamento&quot; ou depois. Defina quem é o responsável.
         </span>
-      </button>
+      </OperumButton>
 
       <Modal isOpen={aberto} onClose={() => setAberto(false)} title="Cards sem responsável">
         <p className="mb-3 text-sm text-gray-600">
@@ -63,9 +65,9 @@ export default function CardsSemResponsavel({ pendentes, users, onAtribuir, onAb
           {pendentes.map(c => (
             <li key={c.id} className="flex flex-wrap items-center gap-2 py-2">
               <div className="min-w-0 flex-1">
-                <button type="button" onClick={() => { setAberto(false); onAbrirCard(c.id) }} className="block truncate text-left text-sm font-medium text-gray-900 hover:text-blue-700 hover:underline">
+                <OperumButton variant="default" type="button" onClick={() => { setAberto(false); onAbrirCard(c.id) }} className="block truncate text-left text-sm font-medium text-gray-900 hover:text-blue-700 hover:underline">
                   {c.title}
-                </button>
+                </OperumButton>
                 <span className="text-xs text-gray-500">
                   {c.coluna} · {c.motivo === 'sem' ? 'sem responsável' : 'responsável inativo'}
                 </span>
@@ -79,14 +81,14 @@ export default function CardsSemResponsavel({ pendentes, users, onAtribuir, onAb
                 placeholder="Escolher…"
                 options={users.map(u => ({ value: u.id, label: u.name }))}
               />
-              <button
+              <FormActions as="span" compact><OperumButton variant="primary"
                 type="button"
                 disabled={!escolha[c.id] || salvando === c.id}
                 onClick={() => atribuir(c.id)}
                 className="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
               >
                 {salvando === c.id ? 'Salvando…' : 'Atribuir'}
-              </button>
+              </OperumButton></FormActions>
             </li>
           ))}
         </ul>
