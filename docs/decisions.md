@@ -987,7 +987,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Data do registro:** 2026-10-31.
 - **Status:** implementada.
 - **Contexto:** adaptar a luminosidade visual ao horário, com liberdade para manter claro, escuro ou seguir o sistema, inicialmente em Editar Projeto.
-- **Escolha:** preferência versionada no localStorage do navegador, automático como padrão, paletas CSS limitadas ao formulário e atualização pelo relógio local a cada 30 segundos. Não aplicar tema global nesta etapa.
+- **Escolha:** preferência versionada no localStorage do navegador, automático como padrão, paletas CSS limitadas ao formulário e atualização pelo relógio local, com progresso por segundo nas janelas de mistura de dez minutos. Não aplicar tema global nesta etapa.
 - **Justificativa:** permite adoção restrita à tela solicitada sem mudar contratos de serviços ou o cadastro do usuário.
 - **Alternativas consideradas nesta entrega:** persistir na conta exigiria contrato e sincronização adicionais; tema global ampliaria o escopo além da tela solicitada.
 - **Consequências:** escolha compartilhada entre abas da mesma origem; não sincroniza entre dispositivos ou perfis de navegador e não é específica por usuário em dispositivos compartilhados. Sem armazenamento disponível, o automático continua funcionando, e a configuração informa falha ao salvar. Sem dependências ou migrations.
@@ -1004,4 +1004,16 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Alternativas:** apagar versões posteriores foi rejeitado pelo usuário; criar uma nova versão na restauração não atende ao comportamento solicitado.
 - **Consequências:** migration inicializa a última versão como ativa; listagem e seleção são limitadas por tenant e projeto. A aplicação de dados segue o fluxo existente de atualização do projeto; sua transação é distinta da transação do marcador/histórico, limitação já existente de consistência entre etapas.
 - **Referências:** `services/projetoVersoes.ts`, `components/projetos/ProjetoFormPage.tsx`, migration `20261101074000_projeto_versao_ativa`.
-- **Revisão:** unificação transacional das etapas de atualização e versionamento.
+- **Revisão:** unificação transacional implementada pela ADR-080, que substitui a limitação de consistência descrita acima.
+
+## ADR-080 — Unidade transacional e recibo de operação do editor de projetos
+
+- **Data do registro:** 2026-11-01.
+- **Status:** implementada; substitui as limitações de gravação separada das ADR-076/078, preservando a política de versões.
+- **Contexto:** a atualização por HTTP e as gravações de documentos, vínculos e histórico em transações independentes podiam deixar efeitos parciais. Perder a resposta após o commit também tornava o reenvio ambíguo.
+- **Escolha:** o app coordena o agregado do editor em uma única transação PostgreSQL, reutilizando serviços com TransactionClient explícito. Uma tabela de recibos identifica operações por instituição/projeto/autor/UUID e verifica um hash do conteúdo. A exclusão confirmada de fase usa a mesma unidade transacional.
+- **Justificativa:** dados e histórico já estão no mesmo banco; uma transação local oferece rollback real sem compensações de exclusões ou documentos e sem transação distribuída. O recibo distingue repetição de nova edição.
+- **Alternativas consideradas:** compensar operações HTTP já confirmadas (deixaria estado parcial observável e exigiria reversão complexa); migrar todas as responsabilidades de documentos/EAP/papéis para project-service (escopo maior, sem necessidade para esta correção); suprimir o erro do histórico (não garante consistência).
+- **Consequências:** operações do editor dependem do banco compartilhado e de um bloqueio por projeto; continuam respeitando permissões por campo e tenant. Recibos não expiram automaticamente. O caminho sem histórico de outros consumidores permanece legado. Não há alteração de dependências nem de APIs públicas dos microsserviços.
+- **Condições de revisão:** separação física dos bancos, alto volume de recibos ou necessidade de retenção/arquivamento.
+- **Referências:** `services/projetoEditorService.ts`, `services/projetoOperacaoService.ts`, `services/projetoVersoes.ts`, `app/actions/projetoEdicao.ts`, migration `20261101170000_projeto_operacao_atomica`, `__tests__/integration/projetoEditor.atomicidade.test.ts`.

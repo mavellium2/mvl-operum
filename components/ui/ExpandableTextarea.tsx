@@ -9,6 +9,7 @@ interface ExpandableTextareaProps {
   placeholder?: string;
   className?: string;
   readOnly?: boolean;
+  erro?: string;
   /** Altura mínima e altura recolhida, em px. */
   alturaMinima?: number;
   /** Título do campo: com ele, o botão de recolher fica na linha do título e o texto usa a largura toda. */
@@ -28,6 +29,7 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
   placeholder,
   className,
   readOnly = false,
+  erro,
   alturaMinima = 100,
   rotulo,
   preencher = false,
@@ -160,6 +162,8 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
       )}
       <textarea
         readOnly={readOnly}
+        aria-invalid={!!erro}
+        aria-describedby={erro && id ? `${id}-erro` : undefined}
         ref={textareaRef}
         id={id}
         name={name}
@@ -172,6 +176,7 @@ const ExpandableTextarea: React.FC<ExpandableTextareaProps> = ({
           isCollapsed ? 'cursor-pointer' : ''
         }`}
       />
+      {erro && <p id={id ? `${id}-erro` : undefined} className="date-validation-hint mt-1 text-xs leading-relaxed">{erro}</p>}
       {!rotulo && botao('absolute top-2 right-2')}
     </div>
   );

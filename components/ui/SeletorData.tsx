@@ -39,12 +39,13 @@ const diasNoMes = (a: number, m: number) => new Date(a, m + 1, 0).getDate()
 const hojeIso = () => { const h = new Date(); return paraIso(h.getFullYear(), h.getMonth(), h.getDate()) }
 const somarDias = (iso: string, n: number) => { const x = deIso(iso)!; const dt = new Date(x.a, x.m, x.d + n); return paraIso(dt.getFullYear(), dt.getMonth(), dt.getDate()) }
 
-export default function SeletorData({ value, onChange, ariaLabel, id, disabled = false, placeholder = 'dd/mm/aaaa', className = '' }: {
+export default function SeletorData({ value, onChange, ariaLabel, id, disabled = false, placeholder = 'dd/mm/aaaa', error, className = '' }: {
   value: string
   onChange: (iso: string) => void
   ariaLabel?: string
   id?: string
   disabled?: boolean
+  error?: string
   placeholder?: string
   /** Classes do campo (o visual do campo segue quem usa). */
   className?: string
@@ -54,6 +55,9 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
   const painel = useRef<HTMLDivElement>(null)
   const [texto, setTexto] = useState(isoParaBr(value))
   const [ultimoValor, setUltimoValor] = useState(value)
+  const [touched, setTouched] = useState(false)
+  const invalid = texto !== '' && !brParaIso(texto)
+  const showError = invalid && (touched || texto.length === 10)
   const [aberto, setAberto] = useState(false)
   const [posicao, setPosicao] = useState<{ top: number; left: number } | null>(null)
   const inicial = deIso(value) ?? deIso(hojeIso())!
@@ -160,6 +164,8 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
           autoComplete="off"
           role="combobox"
           aria-label={ariaLabel}
+          aria-invalid={invalid || !!error}
+          aria-describedby={showError || error ? `${uid}-error` : undefined}
           aria-haspopup="dialog"
           aria-expanded={aberto}
           aria-controls={aberto ? `${uid}-cal` : undefined}
@@ -168,6 +174,7 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
           disabled={disabled}
           value={texto}
           onClick={abrir}
+          onBlur={() => setTouched(true)}
           onFocus={abrir}
           onKeyDown={e => {
             if (e.key === 'ArrowDown' && aberto) { e.preventDefault(); painel.current?.querySelector<HTMLButtonElement>(`[data-dia="${foco}"]`)?.focus() }
@@ -178,13 +185,18 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
             const m = mascara(e.target.value)
             setTexto(m)
             const iso = brParaIso(m)
-            if (iso || !m) onChange(iso)
+            // Mantém datas completas inválidas no rascunho para indicar pendência;
+            // o formulário bloqueia o salvamento até a correção.
+            const draft = m.length === 10 ? `${m.slice(6)}-${m.slice(3, 5)}-${m.slice(0, 2)}` : m
+            setUltimoValor(draft)
+            onChange(draft)
             if (iso) { const x = deIso(iso)!; setMes({ a: x.a, m: x.m }); setFoco(iso) }
           }}
           className={`${className} pr-8`}
         />
         <CalendarDays aria-hidden="true" className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 transition-colors ${aberto ? 'text-blue-500' : 'text-slate-400'}`} />
       </span>
+      {(showError || error) && <span id={`${uid}-error`} className="date-validation-hint mt-1 block text-xs leading-relaxed">{error || 'Informe uma data válida (dd/mm/aaaa).'}</span>}
 
       {aberto && posicao && createPortal(
         <div
@@ -194,7 +206,7 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
           aria-label={`Calendário${ariaLabel ? ` — ${ariaLabel}` : ''}`}
           onKeyDown={teclas}
           style={{ position: 'fixed', top: posicao.top, left: posicao.left, width: 296, zIndex: 10000 }}
-          className="vidro-flutuante anim-calendario rounded-[24px] p-3 font-sans"
+          className="project-date-calendar vidro-flutuante anim-calendario rounded-[24px] p-3 font-sans"
         >
           <div className="mb-2 flex items-center justify-between px-1">
             <p className="text-[15px] font-bold tracking-tight text-slate-900" aria-live="polite">

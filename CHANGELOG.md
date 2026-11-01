@@ -7,6 +7,14 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.46.0] — 2026-11-01
+
+- **Aparência:** novo visual diurno entre 12h e 17h e entardecer entre 17h e 19h, com escolha manual nas configurações. No automático, céu e vidro se misturam por dez minutos em cada virada, respeitando redução de movimento. Indicadores financeiros e Adicionar Fase recebem cores e vidro próprios para o entardecer.
+- **Editor:** criação de projetos usa o mesmo visual da edição e inicia com foco no nome. Altura do cronograma e reserva do menu inferior se adaptam ao espaço disponível; melhorias de contraste, calendário e painéis.
+- **Validação:** avisos junto aos campos e atalhos para corrigir nome obrigatório, datas inválidas ou invertidas, fases duplicadas ou incompletas e limites de texto. Histórico e alterações recebem foco, fecham com Esc e devolvem o foco ao botão.
+- **Salvamento atômico:** dados, EAP, vínculos, Termo e histórico do editor confirmam na mesma transação, incluindo restauração e exclusão de fase. Recibos por tentativa permitem reenviar após perda de resposta sem duplicar versões ou documentos. Aplicar a migration `20261101170000_projeto_operacao_atomica` e regenerar o Prisma Client.
+- **Documentação:** arquitetura atualizada e ADR 080 para transações e repetição segura das operações do editor. Sem novas dependências de produção.
+
 ## [1.45.0] — 2026-11-01
 
 - **Editar Projeto:** layout compacto com abas Diretrizes/Escopo e Cronograma Financeiro, propriedades laterais, barra inferior centralizada e componentes reutilizáveis de vidro para cards, botões e seletores.

@@ -366,15 +366,17 @@ export async function submeterDocumento(
   payload: unknown,
   meta: z.infer<typeof metaDocumento>,
   resourceId = '',
+  transaction?: Prisma.TransactionClient,
 ) {
+  const db = transaction ?? prisma
   await acesso(s, projectId, 'documentos:editar')
   validarRecurso(documentType, resourceId, true)
   if (documentType === 'ATA' && !resourceId)
     throw new DocumentRevisionError('Identificação da ata obrigatória')
   const metadata = metaDocumento.parse(meta)
   const [user, gerente] = await Promise.all([
-    prisma.user.findFirst({ where: { id: s.userId, tenantId: s.tenantId }, select: { name: true } }),
-    gerenteDoProjeto(projectId),
+    db.user.findFirst({ where: { id: s.userId, tenantId: s.tenantId }, select: { name: true } }),
+    gerenteDoProjeto(projectId, db),
   ])
   metadata.elaboradoPor = metadata.elaboradoPor.trim() || user?.name || ''
   metadata.aprovadoPor = gerente.nome
@@ -384,8 +386,11 @@ export async function submeterDocumento(
   if (documentType === 'ATA') { input.elaboradoPor = metadata.elaboradoPor; input.aprovadoPor = gerente.nome; input.aprovadoPorUserId = gerente.userIds?.[0] ?? null }
   const proposed = JSON.parse(JSON.stringify(input)) as Prisma.InputJsonValue
   const approve = await can(s, projectId, 'documentos:aprovar')
-  if (documentType === 'EAP') await getOrCreateDocument(projectId, s.tenantId)
-  return prisma.$transaction(async (tx) => {
+  if (documentType === 'EAP') {
+    if (transaction) throw new DocumentRevisionError('EAP não pode ser submetida nesta transação')
+    await getOrCreateDocument(projectId, s.tenantId)
+  }
+  const executar = async (tx: Prisma.TransactionClient) => {
     // Serializa aprovação/submissão e define uma ordem inequívoca de vigência.
     await bloquearProjeto(tx, s, projectId)
     const content =
@@ -450,7 +455,8 @@ export async function submeterDocumento(
       },
     })
     return version
-  })
+  }
+  return transaction ? executar(transaction) : prisma.$transaction(executar)
 }
 export async function revisarDocumento(
   s: SessaoAuthz,

@@ -12,6 +12,7 @@ vi.mock('@/services/projectAccess', () => ({ requireProjectPermission: vi.fn().m
 vi.mock('@/services/planilhaService', () => ({ planilhaDoProjeto: vi.fn().mockResolvedValue(null) }))
 vi.mock('@/services/documentRevisionService', () => ({ submeterDocumento: vi.fn() }))
 vi.mock('@/services/macroFaseSyncService', () => ({ reconcileMacroFases: vi.fn().mockResolvedValue({ pending: false }) }))
+vi.mock('@/services/projetoEditorService', () => ({ salvarProjetoEditor: vi.fn() }))
 vi.mock('@/services/projetoVersoes', () => ({ registrarVersaoProjeto: vi.fn().mockResolvedValue(2) }))
 vi.mock('@/lib/dal', () => ({ verifySession: vi.fn().mockResolvedValue({ userId: 'u1', tenantId: 't1', role: 'admin' }) }))
 vi.mock('@/lib/api-client', () => ({ projectsApi: { update: vi.fn().mockResolvedValue({ id: 'p1' }) }, adminApi: {} }))
@@ -21,6 +22,8 @@ vi.mock('@/lib/prisma', () => ({ default: { $transaction: vi.fn(async (cb: (t: t
 import { projectsApi } from '@/lib/api-client'
 import { reconcileMacroFases } from '@/services/macroFaseSyncService'
 import { registrarVersaoProjeto } from '@/services/projetoVersoes'
+import { salvarProjetoEditor } from '@/services/projetoEditorService'
+import { LIMITES_TEXTO_PROJETO } from '@/lib/projetoLimites'
 import { updateProjetoAction } from '@/app/actions/projetos'
 
 beforeEach(() => vi.clearAllMocks())
@@ -43,10 +46,33 @@ describe('salvar o Editar projeto', () => {
   })
 
   it('não informa sucesso quando falha a gravação da versão', async () => {
-    const versao = { conteudo: { form: {} as never, fases: [] }, alteracoes: ['Nome do projeto'], restauradaDe: 1 }
-    vi.mocked(registrarVersaoProjeto).mockRejectedValueOnce(new Error('banco fora'))
+    const versao = { conteudo: { form: { ...Object.fromEntries(Object.keys(LIMITES_TEXTO_PROJETO).map(key => [key, ''])), departamentos: [] } as never, fases: [] }, alteracoes: ['Nome do projeto'], restauradaDe: 1 }
+    vi.mocked(salvarProjetoEditor).mockRejectedValueOnce(new Error('banco fora'))
     const r = await updateProjetoAction({}, 'p1', { name: 'P' }, versao as never)
     expect(r).toHaveProperty('error', 'banco fora')
-    expect(registrarVersaoProjeto).toHaveBeenCalledWith({ tenantId: 't1', projectId: 'p1', userId: 'u1' }, versao)
+    expect(salvarProjetoEditor).toHaveBeenCalledWith({ tenantId: 't1', userId: 'u1', role: 'admin' }, 'p1', { name: 'P' }, {}, versao)
   })
+  it.each([
+    { name: ' ' },
+    { startDate: '2027-02-31' },
+    { startDate: '2027-03-02', endDate: '2027-03-01' },
+    { macroFases: [{ fase: 'Escopo', dataLimite: '2027-02-31', custo: '' }] },
+    { macroFases: [{ fase: '', dataLimite: '', custo: '100,00' }] },
+    { macroFases: [{ fase: 'Escopo', dataLimite: '', custo: '' }, { fase: ' escopo ', dataLimite: '', custo: '' }] },
+  ])('recusa dados inválidos antes de alterar EAP, projeto ou versões: %j', async dados => {
+    const result = await updateProjetoAction({}, 'p1', dados)
+    expect(result).toHaveProperty('error')
+    expect(projectsApi.update).not.toHaveBeenCalled()
+    expect(tx.wbsNode.update).not.toHaveBeenCalled()
+    expect(registrarVersaoProjeto).not.toHaveBeenCalled()
+  })
+
+  it('valida o snapshot antes de modificar qualquer dado do projeto', async () => {
+    const result = await updateProjetoAction({}, 'p1', { name: 'Novo nome' }, { conteudo: { form: {}, fases: [] }, alteracoes: [] } as never)
+    expect(result).toHaveProperty('error', expect.stringContaining('Nenhuma alteração foi gravada'))
+    expect(projectsApi.update).not.toHaveBeenCalled()
+    expect(tx.wbsNode.update).not.toHaveBeenCalled()
+    expect(registrarVersaoProjeto).not.toHaveBeenCalled()
+  })
+
 })

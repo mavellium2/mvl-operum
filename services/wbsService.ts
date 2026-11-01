@@ -396,8 +396,9 @@ async function refletirExclusoesDaEap(
 export async function deleteNode(
   input: DeleteNodeInput,
   userId?: string,
+  transaction?: Tx,
 ): Promise<MutationResult> {
-  return prisma.$transaction(async tx => {
+  const executar = async (tx: Tx) => {
     const { nodeId, projectId, tenantId } = input
 
     const node = await tx.wbsNode.findFirst({ where: { id: nodeId, projectId, tenantId } })
@@ -417,10 +418,11 @@ export async function deleteNode(
       await registrarAcao({
         tenantId, userId, action: 'DELETE', entity: 'WbsNode',
         entityId: nodeId, details: { subtreeSize: subtreeIds.length },
-      })
+      }, tx)
     }
     return { serverVersion }
-  })
+  }
+  return transaction ? executar(transaction) : prisma.$transaction(executar)
 }
 
 /**

@@ -11,7 +11,8 @@ vi.mock('@/services/sprintHistoricoService', () => ({
   resumoDaSprint: vi.fn().mockResolvedValue({ projectId: 'p1', nome: '1.1 Escopo', cards: 3, segundosRegistrados: 7200 }),
   sprintTemDados: vi.fn().mockReturnValue(true),
 }))
-vi.mock('@/services/projetoVersoes', () => ({ registrarVersaoProjeto: vi.fn().mockResolvedValue(3), listarVersoesProjeto: vi.fn().mockResolvedValue([]) }))
+vi.mock('@/services/projetoOperacaoService', () => ({ executarOperacaoProjeto: vi.fn(async (_s, _id, _key, _payload, fn) => fn((await import('@/lib/prisma')).default)) }))
+vi.mock('@/services/projetoVersoes', () => ({ registrarVersaoProjetoEmTransacao: vi.fn().mockResolvedValue(3), listarVersoesProjeto: vi.fn().mockResolvedValue([]) }))
 
 const nos: Record<string, { id: string; title: string; code: string; parentId: string | null; properties: object }> = {
   raiz: { id: 'raiz', title: 'Projeto', code: '1', parentId: null, properties: {} },
@@ -31,9 +32,10 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
+import { LIMITES_TEXTO_PROJETO } from '@/lib/projetoLimites'
 import prisma from '@/lib/prisma'
 import { deleteNode } from '@/services/wbsService'
-import { registrarVersaoProjeto } from '@/services/projetoVersoes'
+import { registrarVersaoProjetoEmTransacao } from '@/services/projetoVersoes'
 import { excluirFaseAction, impactoExclusaoFaseAction } from '@/app/actions/projetoEdicao'
 
 beforeEach(() => vi.clearAllMocks())
@@ -48,12 +50,12 @@ describe('excluir macro fase pelo Editar projeto', () => {
   })
 
   it('exclui pela rotina da EAP (com motivo), tira a fase do cadastro de macro fases e grava a versão', async () => {
-    const versao = { conteudo: { form: {} as never, fases: [] }, alteracoes: ['Fase 1.1 Escopo excluída'] }
+    const versao = { conteudo: { form: { ...Object.fromEntries(Object.keys(LIMITES_TEXTO_PROJETO).map(key => [key, ''])), departamentos: [] } as never, fases: [] }, alteracoes: ['Fase 1.1 Escopo excluída'] }
     const r = await excluirFaseAction('p1', 'f1', 'Fase cancelada pelo cliente', versao as never)
     expect(r).toEqual({ ok: true })
-    expect(deleteNode).toHaveBeenCalledWith({ nodeId: 'f1', projectId: 'p1', tenantId: 't1', motivoExclusao: 'Fase cancelada pelo cliente' }, 'u1')
+    expect(deleteNode).toHaveBeenCalledWith({ nodeId: 'f1', projectId: 'p1', tenantId: 't1', motivoExclusao: 'Fase cancelada pelo cliente' }, 'u1', prisma)
     expect(prisma.projectMacroFase.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['m1'] }, projectId: 'p1' } })
-    expect(registrarVersaoProjeto).toHaveBeenCalledWith({ tenantId: 't1', projectId: 'p1', userId: 'u1' }, versao)
+    expect(registrarVersaoProjetoEmTransacao).toHaveBeenCalledWith(prisma, { tenantId: 't1', projectId: 'p1', userId: 'u1' }, versao)
   })
 
   it('não exclui o que não é macro fase nem aceita motivo curto', async () => {
@@ -61,4 +63,13 @@ describe('excluir macro fase pelo Editar projeto', () => {
     expect(await excluirFaseAction('p1', 'f1', 'abc')).toEqual({ error: expect.stringContaining('motivo') })
     expect(deleteNode).not.toHaveBeenCalled()
   })
+  it('mostra orçamento manual da EAP separado dos totais da planilha', async () => {
+    const props = nos.f1.properties
+    nos.f1.properties = { ...props, custo: 100 }
+    try {
+      const result = await impactoExclusaoFaseAction('p1', 'f1')
+      expect(result).toEqual({ impacto: expect.objectContaining({ orcamentoCronograma: 100, orcado: 500, realizado: 120 }) })
+    } finally { nos.f1.properties = props }
+  })
+
 })

@@ -107,6 +107,7 @@ model Project {
   drafts                  ProjectDraft[]
   wbsNodes                WbsNode[]
 
+  salvamentosEditor ProjetoOperacao[]
   projetoDepartamentos ProjetoDepartamento[]
   projetoFuncoes       ProjetoFuncao[]
   atas                 Ata[]
@@ -114,6 +115,21 @@ model Project {
   eapDocument          EapDocument?
 
   @@unique([name, tenantId])
+}
+
+/// Recibo de uma operação do editor: gravado na mesma transação dos dados e histórico.
+model ProjetoOperacao {
+  id String @id @default(cuid())
+  tenantId String
+  projectId String
+  userId String
+  requestId String
+  payloadHash String
+  resultado Json
+  createdAt DateTime @default(now())
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, projectId, userId, requestId])
 }
 
 model ProjectMacroFase {

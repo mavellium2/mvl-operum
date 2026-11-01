@@ -28,6 +28,7 @@ export default function ExcluirFaseDialog({ projetoId, fase, versao, onFechar, o
   onFechar: () => void
   onExcluida: () => void
 }) {
+  const operacao = useRef<{ chave: string; id: string } | null>(null)
   const [impacto, setImpacto] = useState<ImpactoExclusaoFase | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [motivo, setMotivo] = useState('')
@@ -48,7 +49,7 @@ export default function ExcluirFaseDialog({ projetoId, fase, versao, onFechar, o
       if (!ativo) return
       if ('error' in r) setErro(r.error)
       else setImpacto(r.impacto)
-    })
+    }).catch(() => { if (ativo) setErro('Não foi possível calcular o impacto. Feche e tente novamente; nenhuma fase foi excluída.') })
     return () => { ativo = false }
   }, [fase, projetoId])
 
@@ -56,10 +57,19 @@ export default function ExcluirFaseDialog({ projetoId, fase, versao, onFechar, o
     if (!fase) return
     setExcluindo(true)
     setErro(null)
-    const r = await excluirFaseAction(projetoId, fase.nodeId, motivo, versao())
-    setExcluindo(false)
-    if ('error' in r) { setErro(r.error); return }
-    onExcluida()
+    try {
+      const registro = versao()
+      if (registro) {
+        const chave = JSON.stringify({ fase: fase.nodeId, motivo, registro })
+        if (operacao.current?.chave !== chave) operacao.current = { chave, id: crypto.randomUUID() }
+        registro.operacaoId = operacao.current.id
+      }
+      const r = await excluirFaseAction(projetoId, fase.nodeId, motivo, registro)
+      if ('error' in r) { setErro(r.error); return }
+      onExcluida()
+    } catch {
+      setErro('Não foi possível confirmar o resultado. Confira a fase antes de tentar novamente.')
+    } finally { setExcluindo(false) }
   }
 
   const faltaMotivo = !!impacto?.exigeMotivo && motivo.trim().length < MOTIVO_MINIMO
@@ -73,9 +83,12 @@ export default function ExcluirFaseDialog({ projetoId, fase, versao, onFechar, o
       texto: `Exclui a sprint${s.tarefas ? ` com ${plural(s.tarefas, 'tarefa', 'tarefas')}` : ''}${s.segundosRegistrados ? ` e ${horas(s.segundosRegistrados)} registradas` : ''}. Tarefas fora da EAP voltam ao backlog. O histórico registra a exclusão.`,
       alerta: s.comDados,
     })),
-    { Icone: Wallet, titulo: 'Impacto nos custos', texto: impacto.orcado || impacto.realizado
-      ? `${brl(impacto.orcado)} orçados e ${brl(impacto.realizado)} realizados deixam de compor os totais do projeto.`
-      : 'Remove a fase da planilha. Não há valores lançados.' },
+    { Icone: Wallet, titulo: 'Impacto nos custos', texto: [
+      (impacto.orcamentoCronograma ?? 0) > 0 ? `Remove ${brl(impacto.orcamentoCronograma!)} do orçamento do cronograma.` : 'Remove a fase do cronograma.',
+      impacto.orcado || impacto.realizado
+        ? `Na planilha, deixam de contar ${brl(impacto.orcado)} orçados e ${brl(impacto.realizado)} realizados.`
+        : 'Não há valores lançados na planilha.',
+    ].join(' ') },
     { Icone: FileText, titulo: 'Termo de Abertura', texto: 'Remove a fase do cronograma do documento.' },
   ] : []
 

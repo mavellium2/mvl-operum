@@ -8,7 +8,8 @@ import type { AppearanceMode } from '@/lib/appearance'
 const options = [
   { value: 'automatic', title: 'Ao longo do dia', description: 'O Operum acompanha seu horário, da manhã à noite.', Icon: Sunrise, gradient: 'from-sky-200 via-orange-100 to-slate-800' },
   { value: 'light', title: 'Sempre claro', description: 'Luz suave e tons claros em qualquer horário.', Icon: Sun, gradient: 'from-sky-100 to-white' },
-  { value: 'afternoon', title: 'Sempre tarde', description: 'Vidro em tons quentes da tarde em qualquer horário.', Icon: Sunset, gradient: 'from-[#d8ddef] via-[#eadbd6] to-[#f4d6b4]' },
+  { value: 'day', title: 'Sempre dia', description: 'Céu azul e vidro claro com a luz da tarde.', Icon: Sun, gradient: 'from-[#a9d5f3] via-[#d1e9f9] to-[#f6f4df]' },
+  { value: 'afternoon', title: 'Sempre entardecer', description: 'Vidro em tons quentes do fim da tarde em qualquer horário.', Icon: Sunset, gradient: 'from-[#d8ddef] via-[#eadbd6] to-[#f4d6b4]' },
   { value: 'dark', title: 'Sempre escuro', description: 'Superfícies escuras e brilho visual reduzido.', Icon: Moon, gradient: 'from-[#0a1234] via-[#192554] to-[#45256c]' },
   { value: 'system', title: 'Seguir o sistema', description: 'Usa a preferência clara ou escura do dispositivo.', Icon: Monitor, gradient: 'from-slate-100 via-slate-400 to-slate-900' },
 ] as const
@@ -21,7 +22,7 @@ export default function AppearanceSettings() {
   }
   return <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
     <h2 className="text-xl font-semibold tracking-tight text-slate-900">Aparência</h2>
-    <p className="mt-2 text-sm leading-relaxed text-slate-600">Um ambiente que acompanha o seu dia. Por enquanto, esta preferência se aplica à tela Editar Projeto.</p>
+    <p className="mt-2 text-sm leading-relaxed text-slate-600">Um ambiente que acompanha o seu dia. Por enquanto, esta preferência se aplica às telas de criação e edição de projetos.</p>
     <fieldset className="mt-6 grid gap-3 sm:grid-cols-2">
       <legend className="mb-3 text-sm font-medium text-slate-700">Escolha como você quer ver o Operum</legend>
       {options.map(({ value, title, description, Icon, gradient }) => <label key={value}
@@ -33,8 +34,8 @@ export default function AppearanceSettings() {
         <p className="mt-1 text-xs leading-relaxed text-slate-600">{description}</p>
       </label>)}
     </fieldset>
-    <p role="status" className="mt-5 text-sm text-slate-600">{period ? `Agora: ${period === 'morning' ? 'manhã' : period === 'afternoon' ? 'tarde' : 'noite'}. Preferência salva automaticamente neste navegador.` : 'Carregando preferência…'}</p>
-    <p className="mt-2 text-xs leading-relaxed text-slate-500">Automático: manhã das 6h às 12h · tarde das 12h às 18h · noite das 18h às 6h. Usa o horário do dispositivo. Não sincroniza entre dispositivos.</p>
+    <p role="status" className="mt-5 text-sm text-slate-600">{period ? `Agora: ${period === 'morning' ? 'manhã' : period === 'day' ? 'dia' : period === 'afternoon' ? 'entardecer' : 'noite'}. Preferência salva automaticamente neste navegador.` : 'Carregando preferência…'}</p>
+    <p className="mt-2 text-xs leading-relaxed text-slate-500">Automático: manhã das 6h às 12h · dia das 12h às 17h · entardecer das 17h às 19h · noite das 19h às 6h. Cada virada mistura as cores durante dez minutos, começando cinco minutos antes e terminando cinco minutos depois. Usa o horário do dispositivo. Não sincroniza entre dispositivos.</p>
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
   </section>
 }
