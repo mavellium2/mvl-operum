@@ -361,6 +361,9 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
     setForm(prev => ({ ...prev, [name]: value, ...(name === 'semestre' && value !== 'ano' ? { anoAms: '' } : {}) }))
     if (error && name === 'name') setError('')
   }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    alterarCampo(e.target.name, e.target.value)
+  }
 
   const scrollNovaFase = useRef<number | null>(null)
   useEffect(() => () => { if (scrollNovaFase.current !== null) cancelAnimationFrame(scrollNovaFase.current) }, [])

@@ -28,6 +28,14 @@ funcionalidade depois disso é uma versão MINOR.
 - Preferência salva neste navegador; atualização automática pelo relógio local e respeito à redução de movimento. Sem dependências novas; inclui migration de versão ativa.
 - Incremento MINOR de 1.44.0, acima de origin/main 1.44.1; conferir novamente antes do merge.
 
+## [1.44.1] — 2026-10-31
+
+- **Ata no modelo "01_Form Ata de Reunião":** quadro e seções I a IV numa tabela contínua, rótulos em negrito, "Nome:"/"Setor/Empresa:", assinaturas numa caixa cinza e "Obs:" em negrito; sem o "© 01_Form Ata de Reunião", na folha e no Word. Os botões de adicionar ficam sobre a borda da tabela, sem abrir espaço entre as seções. "Adicionar presente" já abre o seletor de membro da linha nova.
+- **Correção — presentes da Ata:** "Incluir toda a equipe" e "Adicionar presente" só mostravam a primeira linha (a folha escondia as linhas novas das tabelas).
+- **Correção — texto sobreposto no Termo (Firefox):** a caixa de texto ficava presa à altura mínima da célula e o texto passava por cima das seções seguintes; a paginação também via tudo numa folha só. Agora a caixa cresce com o texto e os blocos da folha não encolhem.
+- **"Página X de Y" em todos os documentos**, inclusive no Termo de Abertura.
+- **EAP gráfica idêntica à aba EAP/WBS** (formato, cores e conectores), no lugar das colunas do modelo da 1.44.0 (ADR-075).
+
 ## [1.44.0] — 2026-10-31
 
 - **Folhas A4 de verdade, como no Word:** cada documento é distribuído em folhas A4 separadas (210 × 297 mm; paisagem 297 × 210 mm), na tela e no PDF. Blocos inteiros (cabeçalho, quadro, assinaturas) não se partem; tabelas quebram entre linhas, sem cortar uma linha, com o cabeçalho das colunas repetido quando o modelo pede; textos longos continuam na folha seguinte a partir de uma linha inteira e seguem editáveis atravessando a quebra (setas, apagar e cursor acompanham). Rodapé "Página X de Y" em cada folha (e "Operum · documento · versão" na Ata). Margens laterais estreitas (10 mm) para aproveitar a folha. O PDF imprime as mesmas folhas.

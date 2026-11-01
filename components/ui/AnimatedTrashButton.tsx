@@ -69,7 +69,7 @@ export default function AnimatedTrashButton({ label, disabled, onDelete }: {
         floatingIcon?.remove()
         flash()
         onDelete()
-        if (row) row.style.transformOrigin = '' 
+        if (row) row.style.transformOrigin = ''
         suction.current?.cancel()
         suction.current = null
         setOpening(false)
