@@ -1,5 +1,7 @@
 'use client'
 
+
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput, Textarea as OperumTextarea } from '@/components/ui/Field'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
@@ -653,12 +655,7 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
                             >
                               Criar Coluna
                             </OperumButton>
-                            <OperumButton variant="custom" type="button"
-                              onClick={() => setAddingCol(false)}
-                              className="px-3 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition-all"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </OperumButton>
+                            <GlassCloseButton type="button" onClick={() => setAddingCol(false)} className="px-3   rounded-lg  transition-all" label="Fechar" />
                           </div>
                         </div>
                       ) : (

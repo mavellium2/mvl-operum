@@ -1,3 +1,4 @@
+import { registrarAcao } from './auditoriaService'
 import prisma from '@/lib/prisma'
 import { CreateTenantSchema, UpdateTenantSchema } from '@/lib/validation/tenantSchemas'
 import type { CreateTenantInput, UpdateTenantInput } from '@/lib/validation/tenantSchemas'
@@ -9,7 +10,7 @@ export class ConflictError extends Error {
   }
 }
 
-export async function createTenant(input: CreateTenantInput) {
+export async function createTenant(input: CreateTenantInput, creatorUserId?: string) {
   const parsed = CreateTenantSchema.safeParse(input)
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0].message)
@@ -23,6 +24,21 @@ export async function createTenant(input: CreateTenantInput) {
   if (existing) {
     throw new ConflictError('Subdomínio já está em uso')
   }
+
+  if (creatorUserId) return prisma.$transaction(async tx => {
+    const creator = await tx.user.findUnique({ where: { id: creatorUserId } })
+    if (!creator?.platformOperator || !creator.isActive || creator.deletedAt) throw new Error('Acesso restrito ao operador da plataforma')
+    const identityId = creator.identityId ?? creator.id
+    const tenant = await tx.tenant.create({ data: { name, subdomain, config: config ?? undefined } })
+    await tx.user.update({ where: { id: creator.id }, data: { identityId } })
+    await tx.user.create({ data: {
+      tenantId: tenant.id, name: creator.name, email: creator.email,
+      passwordHash: creator.passwordHash, identityId, role: 'admin',
+    } })
+    await registrarAcao({ tenantId: tenant.id, userId: creator.id, action: 'INSTITUICAO_CRIAR', entity: 'Tenant', entityId: tenant.id, details: { name, subdomain, autorTenantId: creator.tenantId } }, tx)
+    await registrarAcao({ tenantId: tenant.id, userId: creator.id, action: 'INSTITUICAO_PROVISIONAR_ADMIN', entity: 'Tenant', entityId: tenant.id, details: { autorTenantId: creator.tenantId } }, tx)
+    return tenant
+  })
 
   return prisma.tenant.create({
     data: { name, subdomain, config: config ?? undefined },
@@ -55,7 +71,7 @@ export async function updateTenant(id: string, input: UpdateTenantInput) {
 
   return prisma.tenant.update({
     where: { id },
-    data: parsed.data,
+    data: { ...parsed.data, ...(parsed.data.status === 'REMOVED' ? { deletedAt: new Date() } : {}) },
   })
 }
 
@@ -70,7 +86,7 @@ export async function listTenants(callerUserId: string) {
   }
   return prisma.tenant.findMany({
     where: { deletedAt: null },
-    include: { _count: { select: { users: true } } },
+    include: { _count: { select: { users: true, projects: { where: { deletedAt: null } } } } },
     orderBy: { createdAt: 'desc' },
   })
 }

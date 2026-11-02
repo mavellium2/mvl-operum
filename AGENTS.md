@@ -56,3 +56,5 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - O rodapé usa o material do card e a paleta atual, sem fundo branco opaco imposto a todos os temas. Preservar padding, borda inteira e espaço para alcançar o último campo.
 - Preservar o formulário nativo, type, validação, estado de carregamento e foco; não duplicar botões em portais para simular um rodapé. Manter os docks/rodapés existentes que já cumprem a regra.
 - Antes de concluir, verificar o primeiro e o último campo e confirmar que Salvar continua visível no topo e no fim da rolagem. Testar também modais e janelas com menor altura nas áreas alteradas.
+
+- Painéis de alterações devem reutilizar `ChangesPanel` (editor de projeto e acessos). Não criar resumos paralelos com marcação, animação ou estilos próprios. Ao encontrar uma implementação ainda inline que precisa de novo consumidor, extraí-la e migrar o original na mesma alteração.

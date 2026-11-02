@@ -259,3 +259,25 @@ describe('AuthService.login — resolução de tenant por subdomínio', () => {
     ).rejects.toThrow('Credenciais inválidas')
   })
 })
+
+describe('instituição lembrada após logout', () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.mocked(bcrypt.compare).mockResolvedValue(true as never) })
+  it('prioriza o último ambiente sobre o host compartilhado e valida a senha', async () => {
+    const user = makeUser({ tenantId: 'fabio', tenant: makeTenant({ id: 'fabio' }) })
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(user as never)
+    await makeService().login({ email: 'ana@x.com', password: 'senha', preferredTenantId: 'fabio' }, 'mavellium')
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { email: 'ana@x.com', tenantId: 'fabio', deletedAt: null } }))
+    expect(bcrypt.compare).toHaveBeenCalledWith('senha', 'hashed')
+    expect(prisma.tenant.findFirst).not.toHaveBeenCalled()
+  })
+  it('não permite que a preferência contorne a senha', async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(makeUser({ tenant: makeTenant() }) as never)
+    vi.mocked(bcrypt.compare).mockResolvedValue(false as never)
+    await expect(makeService().login({ email: 'ana@x.com', password: 'errada', preferredTenantId: 'fabio' })).rejects.toThrow('Credenciais inválidas')
+  })
+  it('não troca silenciosamente para outro ambiente quando o lembrado está suspenso', async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(makeUser({ tenant: makeTenant({ status: 'SUSPENDED' }) }) as never)
+    await expect(makeService().login({ email: 'ana@x.com', password: 'senha', preferredTenantId: 'fabio' })).rejects.toThrow('Instituição inativa')
+    expect(prisma.user.findMany).not.toHaveBeenCalled()
+  })
+})

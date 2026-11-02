@@ -163,3 +163,17 @@ describe('proxy — arquivos do PWA ficam fora da sessão', () => {
     },
   )
 })
+
+
+describe('documentos legais públicos', () => {
+  it.each(['/privacidade', '/termos', '/privacidade?origem=sobre'])(
+    '%s pode ser consultado sem sessão', url => {
+      expect(doesProxyMatch({ config, nextConfig: {}, url })).toBe(false)
+    },
+  )
+  it.each(['/privacidade-interna', '/termos-admin', '/privacidade/dados', '/termos/editar'])(
+    '%s não herda a exceção pública', url => {
+      expect(doesProxyMatch({ config, nextConfig: {}, url })).toBe(true)
+    },
+  )
+})

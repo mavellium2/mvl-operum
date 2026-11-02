@@ -1,6 +1,6 @@
 import type { AppearanceBlend, AppearancePeriod } from './appearance'
 
-const palettes: Record<AppearancePeriod, Record<string, string>> = {
+export const palettes: Record<AppearancePeriod, Record<string, string>> = {
   morning: { bg: '#f1f6fc', surface: '#ffffffde', input: '#f5f8fc', text: '#202c40', muted: '#52627a', border: '#d7e1ee', glow: '#dbeafe', accent: '#2563eb', glass: '#ffffff5c', float: '#ffffff40', edge: '#ffffff47', light: '#ffffffb8', shadow: '#1c23462b', sidebar: '#e6e9f5e8', status: '#52766e' },
   day: { bg: '#dceefa', surface: '#f7fcffe0', input: '#eaf4fb', text: '#20364b', muted: '#49677f', border: '#bed8eb', glow: '#b1daf5', accent: '#2476bc', glass: '#ffffff5c', float: '#ffffff40', edge: '#ffffff47', light: '#ffffffb8', shadow: '#24557c2e', sidebar: '#e4f3fce0', status: '#52766e' },
   afternoon: { bg: '#f5efe7', surface: '#fffcf5e8', input: '#f5efe5', text: '#393128', muted: '#71604c', border: '#e0d5c5', glow: '#f5d5ad', accent: '#916236', glass: '#ffffff5c', float: '#ffffff40', edge: '#ffffff47', light: '#ffffffb8', shadow: '#1c23462b', sidebar: '#eddfd1ed', status: '#28584a' },

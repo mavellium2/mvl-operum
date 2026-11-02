@@ -596,15 +596,7 @@ export default function CardModal({
                         </svg>
                         <span className="flex-1 min-w-0 truncate text-sm text-slate-700">{f.name}</span>
                         <span className="text-xs text-slate-400 shrink-0">{formatBytes(f.size)}</span>
-                        <OperumButton variant="custom" type="button"
-                          onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
-                          className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer shrink-0"
-                          aria-label={`Remover ${f.name}`}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </OperumButton>
+                        <OperumCloseButton type="button" onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))} className="p-1 rounded    cursor-pointer shrink-0" aria-label={`Remover ${f.name}`} />
                       </li>
                     ))}
                   </ul>
@@ -938,14 +930,7 @@ export default function CardModal({
                               className="flex-1 min-w-0 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
                             />
                             {f.value && (
-                              <OperumButton variant="custom"
-                                type="button"
-                                onClick={() => f.set('')}
-                                aria-label={`Remover ${f.label.toLowerCase()}`}
-                                className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                              </OperumButton>
+                              <OperumCloseButton type="button" onClick={() => f.set('')} aria-label={`Remover ${f.label.toLowerCase()}`} className="p-1   rounded cursor-pointer" />
                             )}
                           </div>
                         </div>

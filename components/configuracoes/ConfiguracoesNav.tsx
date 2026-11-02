@@ -13,7 +13,7 @@ const GROUPS = [
       { href: '/configuracoes/perfil', label: 'Perfil', Icon: UserRound },
       { href: '/configuracoes/assinatura', label: 'Assinatura', Icon: PenLine },
       { href: '/configuracoes/seguranca', label: 'Segurança', Icon: ShieldCheck },
-      { href: '/configuracoes/instituicoes', label: 'Instituições', Icon: Landmark },
+      { href: '/configuracoes/instituicoes', label: 'Minhas instituições', Icon: Landmark },
     ],
   },
   {

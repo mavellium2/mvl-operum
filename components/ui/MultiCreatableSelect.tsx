@@ -1,5 +1,7 @@
 'use client'
 
+
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import { Input as OperumInput, FieldGroup } from '@/components/ui/Field'
 import GlassButton from '@/components/ui/GlassButton'
 
@@ -117,17 +119,7 @@ export default function MultiCreatableSelect({
           >
             {val}
             {!disabled && (
-              <GlassButton variant="custom"
-                type="button"
-                onClick={e => { e.stopPropagation(); removeValue(val) }}
-                aria-label={`Remover ${val}`}
-                className="text-blue-500 hover:text-blue-800 transition-colors leading-none"
-                tabIndex={-1}
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </GlassButton>
+              <GlassCloseButton type="button" onClick={e => { e.stopPropagation(); removeValue(val) }} aria-label={`Remover ${val}`} className="  transition-colors leading-none" tabIndex={-1} />
             )}
           </span>
         ))}

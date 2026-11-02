@@ -14,11 +14,11 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
   }
 }
 
-export async function authServiceLogin(email: string, password: string, subdomain?: string) {
+export async function authServiceLogin(email: string, password: string, subdomain?: string, preferredTenantId?: string) {
   const res = await fetch(`${AUTH_URL}/auth/login`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ email, password, ...(subdomain ? { subdomain } : {}) }),
+    body: JSON.stringify({ email, password, ...(subdomain ? { subdomain } : {}), ...(preferredTenantId ? { preferredTenantId } : {}) }),
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))

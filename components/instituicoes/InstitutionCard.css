@@ -1,0 +1,19 @@
+.project-appearance[data-period] .institution-item {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ap-surface) 55%, transparent), color-mix(in srgb, var(--ap-glow) 14%, transparent));
+  border: 1px solid var(--glass-edge, #ffffff80);
+  box-shadow: inset 0 1px 0 var(--glass-light, #ffffffa0), 0 8px 20px -15px var(--glass-shadow, #33476c50);
+}
+.project-appearance[data-period] .institution-item[data-current='true'] { border-color: color-mix(in srgb, var(--ap-accent) 25%, var(--glass-edge, #ffffff80)); }
+.institution-item-icon { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: 16px; color: var(--ap-accent); background: color-mix(in srgb, var(--ap-glow) 35%, transparent); border: 1px solid var(--glass-edge, #ffffff80); box-shadow: inset 0 1px 0 var(--glass-light, #ffffffa0); }
+.institution-current-badge { border: 1px solid #58947b35; background: #82bd9f20; color: #3c725c; padding: 3px 8px; border-radius: 100px; font-size: 10px; font-weight: 600; }
+.project-appearance[data-period='night'] .institution-current-badge { color: #a7d8be; background: #75b19115; }
+
+@media (prefers-reduced-transparency: reduce) { .project-appearance[data-period] .institution-item { background: var(--ap-surface); } }
+
+body .project-appearance[data-period] .institution-item[data-suspended='true'] {
+  background: color-mix(in srgb, var(--ap-surface) 28%, transparent);
+  border-color: color-mix(in srgb, var(--ap-muted) 20%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-light, #ffffff80) 45%, transparent);
+}
+.institution-item[data-suspended='true'] .institution-item-icon { filter: grayscale(1); opacity: .6; }
+.institution-item[data-suspended='true'] h3 { color: var(--ap-muted); }

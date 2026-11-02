@@ -1,11 +1,12 @@
 'use client'
 
+import './AnimatedTrashButton.css'
 import GlassButton from '@/components/ui/GlassButton'
 
 import { useEffect, useRef, useState } from 'react'
 
-export default function AnimatedTrashButton({ label, disabled, onDelete }: {
-  label: string; disabled?: boolean; onDelete: () => void
+export default function AnimatedTrashButton({ label, disabled, onDelete, effect = 'row' }: {
+  label: string; disabled?: boolean; onDelete: () => void | Promise<void>; effect?: 'row' | 'button'
 }) {
   const [opening, setOpening] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -15,6 +16,10 @@ export default function AnimatedTrashButton({ label, disabled, onDelete }: {
   function activate() {
     if (disabled || opening) return
     setOpening(true)
+    if (effect === 'button') {
+      Promise.resolve().then(onDelete).finally(() => setOpening(false))
+      return
+    }
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     timer.current = setTimeout(() => {
       const row = button.current?.closest('tr')
@@ -146,7 +151,7 @@ export default function AnimatedTrashButton({ label, disabled, onDelete }: {
       } else finish()
     }, reduced ? 0 : 140)
   }
-  return <GlassButton variant="custom" ref={button} type="button" aria-label={label} disabled={disabled} aria-busy={opening} onClick={activate}
+  return <GlassButton variant="custom" ref={button} type="button" aria-label={label} title={label} disabled={disabled} aria-busy={opening} onClick={activate}
     data-opening={opening} className="animated-trash mt-0.5 rounded-lg p-2 text-slate-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-30">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
       <g className="trash-lid"><path d="M3 6h18" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></g>

@@ -11,7 +11,7 @@ vi.mock('@/lib/authClient', () => ({
 }))
 vi.mock('@/lib/session', () => ({
   encrypt: vi.fn(),
-  decrypt: vi.fn(),
+  decrypt: vi.fn().mockResolvedValue(null),
 }))
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
@@ -136,7 +136,7 @@ describe('loginAction', () => {
 
     await loginAction(undefined, makeFormData({ email: 'a@b.com', password: 'Test@1234' }))
 
-    expect(mockLogin).toHaveBeenCalledWith('a@b.com', 'Test@1234', 'b')
+    expect(mockLogin).toHaveBeenCalledWith('a@b.com', 'Test@1234', 'b', undefined)
   })
 
   it('host sem subdomínio (ex.: localhost) repassa subdomain undefined', async () => {
@@ -151,7 +151,7 @@ describe('loginAction', () => {
 
     await loginAction(undefined, makeFormData({ email: 'a@b.com', password: 'Test@1234' }))
 
-    expect(mockLogin).toHaveBeenCalledWith('a@b.com', 'Test@1234', undefined)
+    expect(mockLogin).toHaveBeenCalledWith('a@b.com', 'Test@1234', undefined, undefined)
   })
 
   it('host com porta (ex.: localhost:3000, dev local) também repassa subdomain undefined', async () => {
@@ -166,7 +166,7 @@ describe('loginAction', () => {
 
     await loginAction(undefined, makeFormData({ email: 'a@b.com', password: 'Test@1234' }))
 
-    expect(mockLogin).toHaveBeenCalledWith('a@b.com', 'Test@1234', undefined)
+    expect(mockLogin).toHaveBeenCalledWith('a@b.com', 'Test@1234', undefined, undefined)
   })
 
   it('host com subdomínio e porta (ex.: b.example.com:3000) extrai só o subdomínio', async () => {
@@ -181,7 +181,7 @@ describe('loginAction', () => {
 
     await loginAction(undefined, makeFormData({ email: 'a@b.com', password: 'Test@1234' }))
 
-    expect(mockLogin).toHaveBeenCalledWith('a@b.com', 'Test@1234', 'b')
+    expect(mockLogin).toHaveBeenCalledWith('a@b.com', 'Test@1234', 'b', undefined)
   })
 })
 

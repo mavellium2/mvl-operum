@@ -9,3 +9,7 @@ export const SESSION_COOKIE_OPTIONS = {
   sameSite: 'strict' as const,
   path: '/',
 }
+
+/** Preferência de instituição; nunca substitui autenticação ou autorização. */
+export const LAST_TENANT_COOKIE = 'operum_last_tenant'
+export const LAST_TENANT_COOKIE_OPTIONS = { ...SESSION_COOKIE_OPTIONS, maxAge: 60 * 60 * 24 * 30 }

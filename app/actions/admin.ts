@@ -4,6 +4,8 @@ import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { adminApi, authApi } from '@/lib/api-client'
 import { createTenant, updateTenant, ConflictError } from '@/services/tenantService'
+import { CreateTenantSchema } from '@/lib/validation/tenantSchemas'
+import { availableInstitutionIdentifier } from '@/lib/institutionIdentifier'
 import { normalizarContato } from '@/lib/contato'
 import { erroMoeda } from '@/lib/dinheiro'
 import { exigirOperadorDaPlataforma } from '@/lib/platformOperator'
@@ -134,21 +136,27 @@ export async function setUserRoleAction(userId: string, role: string) {
 const VALID_STATUSES = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'REMOVED'] as const
 type TenantStatus = typeof VALID_STATUSES[number]
 
+export async function checkInstitutionIdentifierAction(identifier: string) {
+  try {
+    await exigirOperadorDaPlataforma()
+    const parsed = CreateTenantSchema.shape.subdomain.safeParse(identifier)
+    if (!parsed.success) return { error: parsed.error.issues[0].message }
+    // Inclui instituições removidas: a restrição única também reserva seus identificadores.
+    const occupied = await prisma.tenant.findMany({ where: { subdomain: { startsWith: parsed.data.slice(0, 55) } }, select: { subdomain: true } })
+    const suggestion = availableInstitutionIdentifier(parsed.data, occupied.map(t => t.subdomain))
+    return { available: suggestion === parsed.data, suggestion }
+  } catch { return { error: 'Não foi possível verificar o identificador. Tente novamente.' } }
+}
+
 export async function createTenantAction(data: { name: string; subdomain: string }) {
   try {
     const session = await exigirOperadorDaPlataforma()
-    const tenant = await createTenant(data)
-    await auditarAdmin({ tenantId: tenant.id, autorId: session.userId, action: 'INSTITUICAO_CRIAR', entity: 'Tenant', entityId: tenant.id, details: { name: data.name, subdomain: data.subdomain, autorTenantId: session.tenantId } })
-    // Auto-provision creator as admin in the new tenant using their existing password hash.
-    // Non-fatal: if this fails (e.g. already has access), the tenant was still created.
-    try {
-      await authApi.provisionTenantAdmin(tenant.id, session.role)
-      await auditarAdmin({ tenantId: tenant.id, autorId: session.userId, action: 'INSTITUICAO_PROVISIONAR_ADMIN', entity: 'Tenant', entityId: tenant.id, details: { autorTenantId: session.tenantId } })
-    } catch { /* swallow — creator can join via "Entrar" button */ }
+    // Instituição, administrador vinculado e auditoria são gravados juntos.
+    const tenant = await createTenant(data, session.userId)
     revalidatePath('/admin/tenants')
     return { tenant }
   } catch (err) {
-    if (err instanceof ConflictError) return { error: 'Subdomínio já está em uso' }
+    if (err instanceof ConflictError || (err && typeof err === 'object' && 'code' in err && err.code === 'P2002')) return { error: 'Este identificador já está em uso. Escolha outro e tente novamente.' }
     return { error: err instanceof Error ? err.message : 'Erro ao criar instituição' }
   }
 }
@@ -181,17 +189,19 @@ export async function updateTenantStatusAction(id: string, status: TenantStatus)
   }
 }
 
-export async function updateTenantNameAction(id: string, name: string) {
+export async function updateTenantNameAction(id: string, name: string, subdomain?: string) {
   if (!name?.trim()) return { error: 'Nome não pode ser vazio' }
   try {
     const session = await exigirOperadorDaPlataforma()
-    const antes = await prisma.tenant.findUnique({ where: { id }, select: { name: true } }).catch(() => null)
-    await updateTenant(id, { name: name.trim() })
-    await auditarAdmin({ tenantId: id, autorId: session.userId, action: 'INSTITUICAO_RENOMEAR', entity: 'Tenant', entityId: id, details: { alteracoes: diferencas(antes, { name: name.trim() }), autorTenantId: session.tenantId } })
+    const antes = await prisma.tenant.findUnique({ where: { id }, select: { name: true, subdomain: true } }).catch(() => null)
+    const data = { name: name.trim(), ...(subdomain !== undefined ? { subdomain: subdomain.trim().toLowerCase() } : {}) }
+    await updateTenant(id, data)
+    await auditarAdmin({ tenantId: id, autorId: session.userId, action: 'INSTITUICAO_RENOMEAR', entity: 'Tenant', entityId: id, details: { alteracoes: diferencas(antes, data), autorTenantId: session.tenantId } })
     revalidatePath('/admin/tenants')
     return {}
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Erro ao atualizar nome' }
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') return { error: 'Este identificador já está em uso. Escolha outro.' }
+    return { error: err instanceof Error ? err.message : 'Erro ao atualizar instituição' }
   }
 }
 

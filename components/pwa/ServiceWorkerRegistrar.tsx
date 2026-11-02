@@ -1,8 +1,10 @@
 'use client'
 
+
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useState } from 'react'
-import { RefreshCw, X } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 
 /**
  * Registra o service worker do PWA (/sw.js) em produção e avisa quando há uma
@@ -87,14 +89,7 @@ export default function ServiceWorkerRegistrar() {
         <RefreshCw className="h-4 w-4" aria-hidden="true" />
         Atualizar
       </OperumButton>
-      <OperumButton variant="custom"
-        type="button"
-        onClick={() => setDismissed(true)}
-        aria-label="Atualizar depois"
-        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
-      >
-        <X className="h-4 w-4" aria-hidden="true" />
-      </OperumButton>
+      <GlassCloseButton type="button" onClick={() => setDismissed(true)} aria-label="Atualizar depois" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-white/80  hover:text-white" />
     </div>
   )
 }

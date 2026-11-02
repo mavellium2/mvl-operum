@@ -18,6 +18,8 @@ const HIDDEN_PATHS = ['/login', '/register', '/recuperar-senha', '/alterar-senha
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
+  if (pathname === '/privacidade' || pathname === '/termos') return <>{children}</>
+
   if (HIDDEN_PATHS.some(p => pathname.startsWith(p))) return <>{children}</>
 
   const parts = pathname.split('/').filter(Boolean)

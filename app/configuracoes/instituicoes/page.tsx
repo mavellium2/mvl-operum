@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { verifySession } from '@/lib/dal'
 import UserTenantsList from '@/components/UserTenantsList'
 
-export const metadata: Metadata = { title: 'Instituições' }
+export const metadata: Metadata = { title: 'Minhas instituições' }
 
 export default async function InstituicoesPage() {
   const session = await verifySession()

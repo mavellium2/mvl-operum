@@ -1,0 +1,10 @@
+/* Resposta discreta e consistente entre navegação, opções e seções. */
+body .project-appearance[data-period] .glass-segmented [role='tab'],
+body .project-appearance[data-period] .glass-segmented [role='tab'] > span { animation: none; transform: none; }
+body .project-appearance[data-period] .glass-segmented [role='tab']:hover,
+body .project-appearance[data-period] .glass-segmented [role='tab']:active { transform: none; }
+@media (prefers-reduced-motion: no-preference) {
+ body .project-appearance[data-period] .glass-segmented > .pointer-events-none { transition: transform 260ms cubic-bezier(.22,.68,.28,1), background-color 220ms ease, box-shadow 220ms ease; }
+ body .project-appearance[data-period] .glass-segmented [role='tab'] { transition: background-color 200ms ease, box-shadow 240ms ease; }
+}
+@media (prefers-reduced-motion: reduce) { body .project-appearance[data-period] .glass-segmented > .pointer-events-none { transition: none; } }

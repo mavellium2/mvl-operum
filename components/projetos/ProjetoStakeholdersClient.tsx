@@ -1,5 +1,7 @@
 'use client'
 
+
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import FormActions from '@/components/ui/FormActions'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput, Textarea as OperumTextarea } from '@/components/ui/Field'
@@ -16,7 +18,6 @@ import {
   Pencil,
   UserMinus,
   UserPlus,
-  X,
   Building2,
   Mail,
   Phone,
@@ -313,9 +314,7 @@ function MultiCreatableSelect({
           <span key={val} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200">
             {val}
             {!disabled && (
-              <OperumButton variant="custom" type="button" onClick={e => { e.stopPropagation(); handleRemove(val) }} className="hover:text-red-600">
-                <X className="w-3 h-3" />
-              </OperumButton>
+              <GlassCloseButton type="button" onClick={e => { e.stopPropagation(); handleRemove(val) }} className="" label="Remover" />
             )}
           </span>
         ))}
@@ -1391,12 +1390,7 @@ export default function ProjetoStakeholdersClient({
                   <Plus className="w-4 h-4" />
                 </OperumButton>
               )}
-              <OperumButton variant="custom" type="button"
-                onClick={handleCloseAddMode}
-                className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </OperumButton>
+              <GlassCloseButton type="button" onClick={handleCloseAddMode} className="p-2 rounded-xl    transition-colors" label="Fechar" />
             </div>
           </div>
 
@@ -1550,9 +1544,7 @@ export default function ProjetoStakeholdersClient({
         <div className={`${col3Width} w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in slide-in-from-right-4 duration-300 flex flex-col max-h-[calc(100vh-6rem)]`}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
             <h2 className="text-sm font-semibold text-gray-900">{col3Title}</h2>
-            <OperumButton variant="custom" type="button" onClick={handleClearSelection} className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-              <X className="w-4 h-4" />
-            </OperumButton>
+            <GlassCloseButton type="button" onClick={handleClearSelection} className="p-2 rounded-xl    transition-colors" label="Fechar" />
           </div>
 
           <div className="px-5 py-5 space-y-4 overflow-y-auto flex-1 min-h-0">

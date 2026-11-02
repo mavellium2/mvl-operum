@@ -24,7 +24,7 @@ const ADMIN_ITEMS = [
   { href: '/arquivos', label: 'Arquivos', Icon: Paperclip },
   { href: '/admin/cadastros/departamentos', label: 'Departamentos', Icon: Building2 },
   { href: '/admin/cadastros/funcoes', label: 'Funções', Icon: Briefcase },
-  { href: '/admin/tenants', label: 'Instituições', Icon: Landmark },
+  { href: '/admin/tenants', label: 'Instituições da plataforma', Icon: Landmark },
   { href: '/configuracoes', label: 'Configurações', Icon: Settings },
 ]
 

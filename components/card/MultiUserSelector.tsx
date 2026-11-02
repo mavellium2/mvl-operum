@@ -1,6 +1,7 @@
 'use client'
 
-import OperumButton from '@/components/ui/GlassButton'
+
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import Select from '@/components/ui/Select'
 import { useState, useEffect } from 'react'
 import UserAvatar from '@/components/user/UserAvatar'
@@ -104,13 +105,7 @@ export default function MultiUserSelector({ cardId, users, onResponsiblesChange,
               <UserAvatar name={r.user?.name ?? ''} avatarUrl={r.user?.avatarUrl} size="sm" />
               <span className="text-xs text-blue-800 font-medium">{r.user?.name}</span>
               {r.user?.cargo && <span className="text-xs text-blue-500">({r.user.cargo})</span>}
-              <OperumButton variant="danger" type="button"
-                onClick={() => handleToggle(r.userId)}
-                className="ml-1 text-blue-400 hover:text-red-500 transition-colors"
-                aria-label={`Remover ${r.user?.name ?? r.userId}`}
-              >
-                ×
-              </OperumButton>
+              <GlassCloseButton type="button" onClick={() => handleToggle(r.userId)} className="ml-1   transition-colors" aria-label={`Remover ${r.user?.name ?? r.userId}`} />
             </div>
           ))}
         </div>

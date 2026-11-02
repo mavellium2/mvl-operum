@@ -7,6 +7,27 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.48.0] — 2026-11-02
+
+- **Botões de fechar:** controles de X restantes passam a usar GlassCloseButton, preservando eventos, foco, referências e rótulos.
+- **Inicialização da aparência:** preferência aplicada antes da hidratação, estado compartilhado entre telas e remoção do fundo escuro temporário. Seletor de vidro ganha resposta curta, sem salto ou oscilação.
+- **Editar animado:** AnimatedEditButton compartilha vidro e animação suave de lápis em Departamentos e Funções, com resposta ao teclado e redução de movimento.
+- **Lixeira compartilhada:** Departamentos e Funções reutilizam AnimatedTrashButton do editor, incluindo tampa e brilho; exclusões com falha preservam os cards. Estilos passam a acompanhar o componente.
+- **Navegação de cadastros:** seletor compartilhado permanece montado no layout entre as rotas, preservando a animação da lente de vidro.
+- **Painel compartilhado de alterações:** ChangesPanel extraído do editor e reutilizado em acessos com os mesmos cards, vidro, animação, rolagem e ação de desfazer. Regra explícita de reutilização registrada em AGENTS.md.
+- **Rodapé dos acessos:** indicador clicável mostra alterações e permite descartar escolhas locais. Área de dados com FormBody e rolagem real mantém Salvar acessível também em telas pequenas.
+- **Interruptores de acesso:** componente Switch compartilhado substitui checkboxes de permissões; cada grupo permite ativar/desativar todos sem afetar outros grupos nem salvar automaticamente.
+- **Funções e departamentos:** catálogos em cards de vidro separados, pesquisa compartilhada e navegação segmentada. Cards selecionam diretamente os acessos da função, sem botão intermediário nem textos redundantes. Painel Acessos da equipe agrupa controles e sinaliza escolhas pendentes. No desktop, permissões ficam ao lado do catálogo, com seleção por função e botão de salvar fora da rolagem dos dados.
+- **Retorno após logout:** preferência de última instituição no navegador, validada novamente por conta, senha e situação do ambiente no login, inclusive no host compartilhado de produção.
+- **Ciclo de instituições:** suspensas vão ao fim da lista com aparência desabilitada; exclusão registra deletedAt e retira o ambiente da listagem, mantendo o histórico conforme a política de conservação.
+- **Troca de instituições:** corrige rejeição de UUIDs de instituições anteriores, mantendo validação de formato, vínculo e senha junto ao suporte a CUID.
+- **Administrador da nova instituição:** criação da instituição, vínculo do criador como administrador, identidade compartilhada e auditoria passam a ser uma única transação; falhas não deixam um ambiente sem administrador.
+- **Criação de instituições:** identificador gerado pelo nome, consulta de disponibilidade restrita ao operador, sugestões com sufixos numéricos e edição manual preservada. Validação no servidor cobre formato, tamanho e concorrência de criação.
+- **Instituições da plataforma:** área do operador diferenciada de Minhas instituições, com aparência adaptativa, cards de vidro, pesquisa e filtros de situação, cards compartilhados com Configurações, ações explícitas e confirmação de inativação/exclusão lógica. Cards exibem usuários e projetos, vínculo destacado e acesso direto com o fluxo autenticado de troca de conta. Edição inclui identificador com validação e aviso de impacto no login. Erros de edição visíveis. Permissões e ações administrativas permanecem separadas.
+- **Privacidade e termos:** páginas públicas com navegação entre documentos e links no Sobre; texto sobre conta, colaboração, dados pessoais, integrações e canal institucional do responsável.
+- **Busca no histórico:** versões do Sobre recebem pesquisa por versão/conteúdo, intervalo de datas inclusivo, ordenação crescente/decrescente e limpeza dos filtros com campos compartilhados.
+- **Sobre:** visão geral e histórico em áreas separadas, cards compactos de produto/equipe e aparência adaptativa compartilhada com o editor. Créditos separados por desenvolvimento e orientação acadêmica, com Fábio Rodrigues Gonçalves, e versão copiável.
+
 ## [1.47.0] — 2026-11-01
 
 - **Configurações:** aparência adaptativa e vidro em todas as seções, navegação fixa, cabeçalho compacto e animações suaves no submenu, cards e botões. Perfil reorganizado em colunas com visualização e recorte da foto compartilhados com a logo do projeto.

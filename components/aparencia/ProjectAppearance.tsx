@@ -31,7 +31,7 @@ export default function ProjectAppearance({ enabled, focusProjectName = false, c
     }
   }, [enabled, period, blend, blendStyle])
   return <div ref={root} className={enabled ? 'project-appearance' : undefined} data-period={enabled ? period ?? undefined : undefined} data-blending={enabled && blend ? 'true' : undefined}
-    style={enabled && !period ? { visibility: 'hidden', background: '#151923', minHeight: '100vh' } : enabled ? blendStyle : undefined}>
+    style={enabled ? blendStyle : undefined}>
     {enabled && SKY_PERIODS.map(sky => <div key={sky} aria-hidden="true"
       className="fundo-vidro project-sky" data-sky={sky} data-visible={period === sky}
       style={blend ? { opacity: sky === blend.to ? blend.progress : sky === blend.from ? 1 : 0, zIndex: sky === blend.to ? -1 : sky === blend.from ? -2 : -3 } : undefined} />)}

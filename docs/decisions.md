@@ -1043,3 +1043,16 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** os usuários passam a informar o novo identificador na entrada; a UI avisa disso antes do salvamento. IDs internos, vínculos e permissões não mudam. Sem alias automático para o identificador antigo e sem migration.
 - **Condições de revisão:** necessidade de alias, redirecionamento ou migração de identificadores publicados.
 - **Referências:** `app/actions/instituicoes.ts`, `components/UserTenantsList.tsx`, `__tests__/unit/app/actions/instituicoes.test.ts`.
+
+
+## ADR-083 — Criador administrador na mesma transação da instituição
+
+- **Data:** 2026-11-02.
+- **Status:** implementada.
+- **Contexto:** o provisionamento posterior ao criar uma instituição podia falhar silenciosamente, deixando o criador sem acesso administrativo.
+- **Escolha:** criar instituição, conta administradora vinculada, identidade e auditorias em uma transação no banco compartilhado, com autorização do operador relida dentro dela.
+- **Justificativa:** uma falha de vínculo deve cancelar a criação, em vez de produzir sucesso parcial.
+- **Alternativas:** manter chamada posterior ao auth-service (não garante atomicidade); implementar compensação distribuída (complexidade desnecessária com o banco compartilhado atual).
+- **Consequências:** a criação administrativa assume essa unidade transacional; provisionamento em instituições existentes permanece no auth-service. Não há cópia de privilégios globais de operador.
+- **Referências:** `services/tenantService.ts`, `app/actions/admin.ts`, `__tests__/unit/services/tenantCreatorAdmin.test.ts`.
+- **Condição de revisão:** separação dos bancos de identidade e instituições exige rever a coordenação desse fluxo.

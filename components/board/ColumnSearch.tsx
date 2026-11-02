@@ -1,5 +1,7 @@
 'use client'
 
+
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput } from '@/components/ui/Field'
 import { useEffect, useRef } from 'react'
@@ -63,16 +65,7 @@ export function ColumnSearchInput({ columnTitle, value, onChange, onClose, shown
           aria-label={`Buscar cards na coluna ${columnTitle}`}
           className="w-full rounded-xl border border-black/10 bg-white pl-3 pr-8 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
         />
-        <OperumButton variant="custom"
-          type="button"
-          onClick={onClose}
-          aria-label="Limpar e fechar a busca"
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </OperumButton>
+        <GlassCloseButton type="button" onClick={onClose} aria-label="Limpar e fechar a busca" className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md   " />
       </div>
       {value.trim() && (
         <p className="mt-1 px-1 text-[11px] text-gray-500" aria-live="polite">
