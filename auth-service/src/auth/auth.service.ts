@@ -40,6 +40,18 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto, subdomain?: string) {
+    // Preferência do navegador: só seleciona uma conta; senha e estado continuam obrigatórios.
+    if (dto.preferredTenantId) {
+      const preferred = await prisma.user.findFirst({
+        where: { email: dto.email, tenantId: dto.preferredTenantId, deletedAt: null },
+        include: { tenant: { select: { status: true, deletedAt: true } } },
+      })
+      if (preferred) {
+        if (preferred.tenant.status !== 'ACTIVE' || preferred.tenant.deletedAt) throw new UnauthorizedException('Instituição inativa ou indisponível')
+        return this.completeLogin(preferred, dto.password)
+      }
+      // Outro usuário neste navegador segue a resolução normal das próprias contas.
+    }
     // Subdomínio informado E resolvido para um tenant ACTIVE: escopo estrito a ele.
     const tenant = subdomain
       ? await prisma.tenant.findFirst({ where: { subdomain, status: 'ACTIVE' } })

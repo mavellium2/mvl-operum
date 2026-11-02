@@ -6,8 +6,8 @@ import EmptyState from '@/components/ui/EmptyState'
 import { matchesSearch } from '@/lib/search'
 import { Input } from '@/components/ui/Field'
 import GlassButton from '@/components/ui/GlassButton'
-import GlassCard from '@/components/ui/GlassCard'
-import { Landmark, Pencil, ArrowRight, Loader2, Check } from 'lucide-react'
+import InstitutionCard, { InstitutionIcon } from '@/components/instituicoes/InstitutionCard'
+import { Pencil, ArrowRight, Loader2, Check } from 'lucide-react'
 import { useEffect, useState, useTransition } from 'react'
 import { getMyTenantsAction, switchTenantAction } from '@/app/actions/auth'
 import { updateMyInstitutionAction } from '@/app/actions/instituicoes'
@@ -60,9 +60,9 @@ export default function UserTenantsList({ canEditCurrent = false }: { canEditCur
     {message && <p role="status" className="flex items-center gap-2 text-sm text-green-700"><Check size={16} aria-hidden="true" />{message}</p>}
     <ul className="space-y-3">
       {visible.map(t => <li key={t.tenantId}>
-        <GlassCard interactive as="div" className="institution-item p-4 sm:p-5" data-current={t.isCurrent}>
+        <InstitutionCard current={t.isCurrent}>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <span className="institution-item-icon" aria-hidden="true"><Landmark size={23} strokeWidth={1.5} /></span>
+            <InstitutionIcon />
             <div className="min-w-0 flex-1 basis-36">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="break-words text-base font-semibold text-gray-900">{t.tenantName}</h3>
@@ -110,7 +110,7 @@ export default function UserTenantsList({ canEditCurrent = false }: { canEditCur
             {erro && <p role="alert" className="mt-2 text-sm text-red-600">{erro}</p>}
           </form>}
           {!t.isCurrent && senhaPara !== t.tenantId && switchingId === t.tenantId && erro && <p role="alert" className="mt-3 text-sm text-red-600">{erro}</p>}
-        </GlassCard>
+        </InstitutionCard>
       </li>)}
     </ul>
   </div>

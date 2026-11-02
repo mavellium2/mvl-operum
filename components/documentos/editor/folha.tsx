@@ -1,9 +1,11 @@
 'use client'
 
+
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import OperumButton from '@/components/ui/GlassButton'
 import { Textarea as OperumTextarea } from '@/components/ui/Field'
 import { Children, Fragment, cloneElement, createContext, forwardRef, isValidElement, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react'
-import { ChevronDown, Plus, X } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import DateInput from '@/components/ui/DateInput'
 import MembroEquipeSelect, { type MembroEquipeOption } from '@/components/projetos/documentacao/MembroEquipeSelect'
 import { formatDateBR } from '@/lib/date'
@@ -921,15 +923,7 @@ export function LinhaLista({ children, onRemover, rotuloRemover = 'Remover linha
       {children}
       {editavel && onRemover && (
         <td style={{ border: 0, padding: 0, width: 0, position: 'relative' }}>
-          <OperumButton variant="custom"
-            type="button"
-            onClick={onRemover}
-            aria-label={rotuloRemover}
-            title={rotuloRemover}
-            className="absolute left-1 top-0.5 hidden h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 group-hover/linha:flex group-focus-within/linha:flex"
-          >
-            <X className="h-3.5 w-3.5" />
-          </OperumButton>
+          <GlassCloseButton type="button" onClick={onRemover} aria-label={rotuloRemover} title={rotuloRemover} className="absolute left-1 top-0.5 hidden h-5 w-5 items-center justify-center rounded    group-hover/linha:flex group-focus-within/linha:flex" />
         </td>
       )}
     </tr>

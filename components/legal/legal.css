@@ -1,0 +1,6 @@
+body .project-appearance[data-period] > .legal-document { background: transparent; color: var(--ap-text); }
+.legal-document a { color: var(--ap-accent); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ap-accent) 30%, transparent); text-underline-offset: 4px; }
+.legal-document a:hover { text-decoration-color: currentColor; }
+.legal-document a:focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 4px; border-radius: 3px; }
+.legal-index { border-color: var(--ap-border); }
+@media (prefers-reduced-motion: no-preference) { .legal-document a { transition: text-decoration-color 220ms ease; } }

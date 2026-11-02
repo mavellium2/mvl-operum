@@ -1344,3 +1344,20 @@ Editar Projeto usa `ProjectAppearance`, com paletas CSS limitadas ao formulário
 ### Rodapés de formulário
 
 `FormActions` centraliza o rodapé de ações e `FormBody` separa os dados roláveis, preservando o formulário nativo e seu submit. Formulários sem painel limitado usam o rodapé sticky na área de rolagem; o Perfil usa um painel de altura limitada com FormBody rolável e FormActions fora desse scroll, mantendo a borda inteira e a ação embaixo. Docks existentes do editor permanecem como ações persistentes. A regra de prioridade está em AGENTS.md.
+
+
+### Documentos legais públicos
+
+As rotas exatas `/privacidade` e `/termos` são públicas para permitir consulta sem sessão. O proxy preserva a autenticação de subrotas e caminhos com prefixos semelhantes. `AppShell` não monta sidebar nem controle de inatividade nessas duas páginas; `LegalDocument` compartilha layout, navegação e aparência adaptativa. O canal de contato é o e-mail institucional confirmado do responsável, Vinícius Tavares Mota. Os documentos não introduzem coleta de consentimento nem alteram retenção ou exclusão de dados.
+
+A navegação distingue **Minhas instituições** (`/configuracoes/instituicoes`, vínculos pessoais e edição da instituição ativa por seu administrador) de **Instituições da plataforma** (`/admin/tenants`, criação e gestão de situação exclusivas do operador). A administração reutiliza SearchInput, matchesSearch, GlassCard e os controles compartilhados, mantendo a autorização existente no servidor.
+
+O operador pode editar nome e identificador em `/admin/tenants`; a ação valida formato, trata conflitos de unicidade e audita os campos alterados. A autorização continua restrita ao operador ativo da plataforma.
+
+A criação sugere identificador normalizado a partir do nome e consulta disponibilidade com autorização de operador. A consulta inclui identificadores de instituições removidas; sugestões numéricas não substituem a restrição única do banco. Alterar manualmente o campo interrompe a geração automática, e respostas obsoletas são descartadas.
+
+Na criação administrativa, `createTenant(data, creatorUserId)` grava instituição, conta administradora, identidade vinculada e auditorias em uma transação do banco compartilhado. O privilégio de operador ativo é relido na transação. A criação deixa de depender da chamada posterior de provisionamento ao auth-service; o provisionamento de acesso a instituições existentes permanece nesse serviço. Nenhum privilégio global de operador é copiado para a conta criada.
+
+O cookie HttpOnly `operum_last_tenant` conserva por 30 dias a preferência de instituição, atualizada em login, troca e logout com sessão assinada. O login repassa `preferredTenantId` ao auth-service: o serviço seleciona a conta do e-mail nesse ambiente e valida senha, bloqueio e estado da instituição. A preferência não concede autorização. Outro e-mail sem vínculo nesse ambiente segue a resolução normal. Suspender mantém o ambiente visível ao operador ao fim da lista; excluir grava status REMOVED e deletedAt, retirando-o das consultas administrativas e do acesso autenticado, sem apagar os registros históricos fisicamente.
+
+A aparência usa um store externo compartilhado (`useSyncExternalStore`) para preservar a preferência e o quadro atual na navegação, com uma única assinatura de relógio/eventos entre consumidores. O layout raiz aplica a cor de fundo antes da hidratação usando a mesma função de resolução e paleta do tema. ProjectAppearance não oculta mais a página sobre um fundo escuro provisório. A mistura automática e as preferências de acessibilidade permanecem na implementação compartilhada.

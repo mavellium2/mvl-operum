@@ -369,3 +369,7 @@ textarea:disabled {
 @media (prefers-reduced-motion: reduce) {
   .expandable-textarea { transition: none; }
 }
+
+/* Cor resolvida antes da hidratação: nenhuma tela nasce com um fundo noturno imposto. */
+html[data-appearance-initial] body { background-color: var(--operum-initial-bg); }
+.project-appearance:not([data-period]) { min-height: 100vh; background: var(--operum-initial-bg, #f1f6fc); color: var(--operum-initial-text, #202c40); }

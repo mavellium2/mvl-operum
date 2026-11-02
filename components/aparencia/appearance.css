@@ -938,71 +938,9 @@ body[data-operum-period] [data-operum-sidebar] ::-webkit-scrollbar-thumb:hover {
   .project-appearance[data-period] [data-phase-number] { transition: color 350ms ease, text-shadow 350ms ease; }
 }
 
-/* Lixeira viva: a tampa convida no hover e abre antes da ação existente. */
-.project-appearance[data-period] .animated-trash { background: transparent; cursor: pointer; }
-.project-appearance[data-period] .animated-trash:hover:not(:disabled),
-.project-appearance[data-period] .animated-trash[data-opening='true'] { background: transparent; color: #e49eae; }
-.animated-trash .trash-lid { transform-box: view-box; transform-origin: 18px 6px; }
-@keyframes trash-lid-curious {
-  0%, 100% { transform: rotate(-8deg) translateY(-.5px); }
-  45% { transform: rotate(-20deg) translateY(-1px); }
-  70% { transform: rotate(-12deg) translateY(-.5px); }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .animated-trash { transition: color 350ms ease; }
-  .animated-trash .trash-lid { transition: transform 240ms cubic-bezier(.22, 1, .36, 1); }
-  .animated-trash:hover:not(:disabled) .trash-lid { animation: trash-lid-curious 850ms ease-in-out both; }
-  .animated-trash[data-opening='true'] .trash-lid { animation: none; transform: translateY(-3px) rotate(-65deg); }
-}
-
-/* A tampa é puxada para cima enquanto o vidro do ícone ganha luz. */
-@keyframes trash-lid-lift {
-  0% { transform: translateY(0) rotate(0); }
-  45% { transform: translateY(-4px) rotate(-4deg); }
-  70% { transform: translateY(-2.7px) rotate(2deg); }
-  100% { transform: translateY(-3.5px) rotate(-2deg); }
-}
-.animated-trash svg { overflow: visible; }
-.project-appearance[data-period] .animated-trash:hover:not(:disabled),
-.project-appearance[data-period] .animated-trash[data-opening='true'] {
-  color: #f3bdcf;
-  filter: drop-shadow(0 0 4px #f2a3d56b);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .animated-trash { transition: color 350ms ease, filter 400ms ease; }
-  .animated-trash svg { transition: transform 400ms cubic-bezier(.22, 1, .36, 1); }
-  .animated-trash:hover:not(:disabled) svg { transform: scale(1.15); }
-  .animated-trash:hover:not(:disabled) .trash-lid { animation: trash-lid-lift 650ms cubic-bezier(.22, 1, .36, 1) both; }
-  .animated-trash[data-opening='true'] .trash-lid { animation: none; transform: translateY(-6px) rotate(-12deg); }
-}
-
-/* A tampa continua sendo puxada enquanto o hover permanece ativo. */
-@keyframes trash-lid-float {
-  0%, 100% { transform: translateY(-2.5px) rotate(-2deg); }
-  50% { transform: translateY(-4.5px) rotate(2deg); }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .animated-trash:hover:not(:disabled):not([data-opening='true']) .trash-lid {
-    animation: trash-lid-lift 650ms cubic-bezier(.22, 1, .36, 1) both,
-      trash-lid-float 1200ms ease-in-out 650ms infinite;
-  }
-  .animated-trash[data-opening='true']:hover .trash-lid {
-    animation: none;
-    transform: translateY(-6px) rotate(-12deg);
-  }
-}
-/* A sucção converge na coluna da lixeira, sem mudar a largura da tabela. */
 .project-appearance[data-period] #painel-cronograma tbody tr:has(.animated-trash[data-opening='true']) {
   transform-origin: calc(100% - 22px) center;
   pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .animated-trash[data-opening='true'] .trash-lid,
-  .animated-trash[data-opening='true']:hover .trash-lid {
-    animation: none;
-    transform: translateY(-7px);
-  }
 }
 
 /* A entrada da fase nova não altera a cor da linha. */

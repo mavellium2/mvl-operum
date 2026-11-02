@@ -1,3 +1,5 @@
+import ReleaseHistoryBrowser from './release-history-browser'
+import GlassCard from '@/components/ui/GlassCard'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { compareVersions, parseReleaseNotes, type ReleaseItem, type ReleaseNotes } from '@/lib/release-notes'
@@ -47,35 +49,20 @@ export function ReleaseHistory({ version }: { version: string }) {
   const previous = releases.filter(release => compareVersions(release.version, version) < 0)
     .sort((a, b) => compareVersions(b.version, a.version))
 
-  return (
-    <section aria-labelledby="release-history-title" className="mb-8 space-y-5">
-      <div>
-        <h2 id="release-history-title" className="text-xl font-bold text-gray-900">Novidades e atualizações</h2>
-        <p className="mt-1 text-sm text-gray-500">Confira o que mudou em cada versão do Operum.</p>
-      </div>
-      <article className="rounded-xl border border-blue-200 bg-white p-5">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <h3 className="text-lg font-semibold text-gray-900">Versão {current.version}</h3>
-          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">Versão atual</span>
-          <p className="w-full text-sm text-gray-500"><ReleaseLabel label={current.label} /></p>
-        </div>
-        <ReleaseContent release={current} />
-      </article>
-      <div>
-        <h3 className="mb-3 text-lg font-semibold text-gray-900">Versões anteriores</h3>
-        <div className="space-y-3">
-          {previous.map(release => (
-            <details key={release.version} className="group rounded-xl border border-gray-200 bg-white">
-              <summary className="cursor-pointer rounded-xl p-5 text-sm font-semibold text-gray-900 focus-visible:outline-2 focus-visible:outline-blue-600">
-                Versão {release.version}
-                <span className="ml-2 font-normal text-gray-500"><ReleaseLabel label={release.label} /></span>
-              </summary>
-              <div className="border-t border-gray-100 px-5 pb-5 pt-4"><ReleaseContent release={release} /></div>
-            </details>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-gray-500">O histórico até a versão 1.6.0 foi reconstruído a partir dos registros do projeto.</p>
-      </div>
-    </section>
-  )
+  const entries = [current, ...previous].map(release => {
+    const dates = release.label.match(/\d{4}-\d{2}-\d{2}/g) ?? []
+    const flatten = (items: ReleaseItem[]): string => items.map(item => `${item.text} ${flatten(item.children)}`).join(' ')
+    const search = `${release.version} ${release.label} ${release.sections.map(section => `${section.title ?? ''} ${flatten(section.items)}`).join(' ')}`
+    return {
+      version: release.version, start: dates[0] ?? '', end: dates.at(-1) ?? '', search, current: release.version === version,
+      content: release.version === version ? <GlassCard as="article" interactive className="about-card p-5 sm:p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-2"><h3 className="text-lg font-semibold text-gray-900">Versão {release.version}</h3><span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">Versão atual</span><p className="w-full text-sm text-gray-500"><ReleaseLabel label={release.label} /></p></div>
+        <ReleaseContent release={release} />
+      </GlassCard> : <details className="about-release group rounded-2xl border">
+        <summary className="cursor-pointer rounded-2xl px-4 py-3.5 text-sm font-semibold text-gray-900 focus-visible:outline-2 focus-visible:outline-blue-600">Versão {release.version}<span className="ml-2 font-normal text-gray-500"><ReleaseLabel label={release.label} /></span></summary>
+        <div className="border-t border-gray-100 px-5 pb-5 pt-4"><ReleaseContent release={release} /></div>
+      </details>,
+    }
+  })
+  return <ReleaseHistoryBrowser entries={entries} />
 }

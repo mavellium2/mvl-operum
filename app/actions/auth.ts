@@ -1,6 +1,7 @@
 'use server'
 
-import { SESSION_COOKIE_OPTIONS } from '@/lib/sessionCookie'
+import { decrypt } from '@/lib/session'
+import { LAST_TENANT_COOKIE, LAST_TENANT_COOKIE_OPTIONS, SESSION_COOKIE_OPTIONS } from '@/lib/sessionCookie'
 import { LAST_SEEN_COOKIE, destinoInterno } from '@/lib/sessionIdle'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -93,10 +94,12 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
   const subdomain = await getSubdomain()
 
   try {
-    const result = await authServiceLogin(email, password, subdomain)
+    const rememberedTenant = (await cookies()).get(LAST_TENANT_COOKIE)?.value
+    const result = await authServiceLogin(email, password, subdomain, rememberedTenant && TENANT_ID_RE.test(rememberedTenant) ? rememberedTenant : undefined)
     forcePasswordChange = result.forcePasswordChange
     const cookieStore = await cookies()
     cookieStore.set('session', result.token, SESSION_COOKIE_OPTIONS)
+    if (result.user.tenantId) cookieStore.set(LAST_TENANT_COOKIE, result.user.tenantId, LAST_TENANT_COOKIE_OPTIONS)
     const { role, id: userId } = result.user
     if (role !== 'admin') {
       const projects = await projectsApi.getUserProjects(userId).catch(() => []) as unknown[]
@@ -142,6 +145,8 @@ export async function expireSessionAction(from: string) {
 export async function logoutAction() {
   const cookieStore = await cookies()
   const token = cookieStore.get('session')?.value
+  const session = await decrypt(token).catch(() => null)
+  if (typeof session?.tenantId === 'string' && TENANT_ID_RE.test(session.tenantId)) cookieStore.set(LAST_TENANT_COOKIE, session.tenantId, LAST_TENANT_COOKIE_OPTIONS)
   if (token) await authServiceLogout(token)
   cookieStore.delete('session')
   cookieStore.delete(LAST_SEEN_COOKIE)
@@ -240,8 +245,8 @@ export async function getMyTenantsAction() {
   }
 }
 
-// CUID v1/v2 format — prevents arbitrary string injection downstream
-const CUID_RE = /^c[a-z0-9]{20,}$/i
+// Instituições novas usam CUID; ambientes anteriores também usam UUID.
+const TENANT_ID_RE = /^(?:c[a-z0-9]{20,63}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
 
 export type SwitchTenantResult = { error?: string; needsPassword?: boolean }
 
@@ -250,7 +255,7 @@ export type SwitchTenantResult = { error?: string; needsPassword?: boolean }
  * vinculadas (ADR-061) pedem a senha da conta de destino na primeira vez.
  */
 export async function switchTenantAction(targetTenantId: string, password?: string): Promise<SwitchTenantResult | void> {
-  if (!targetTenantId?.trim() || !CUID_RE.test(targetTenantId)) return { error: 'Instituição inválida' }
+  if (typeof targetTenantId !== 'string' || !TENANT_ID_RE.test(targetTenantId)) return { error: 'Instituição inválida' }
   if (password !== undefined && (typeof password !== 'string' || password.length > 128)) return { error: 'Senha inválida' }
 
   const { token: oldToken } = await verifySession()
@@ -280,6 +285,7 @@ export async function switchTenantAction(targetTenantId: string, password?: stri
 
   const cookieStore = await cookies()
   cookieStore.set('session', result.token, SESSION_COOKIE_OPTIONS)
+  cookieStore.set(LAST_TENANT_COOKIE, targetTenantId, LAST_TENANT_COOKIE_OPTIONS)
 
   revalidatePath('/', 'layout')
   redirect('/projetos')

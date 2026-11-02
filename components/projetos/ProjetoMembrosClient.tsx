@@ -1,5 +1,7 @@
 'use client'
 
+
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import FormActions from '@/components/ui/FormActions'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput, Textarea as OperumTextarea } from '@/components/ui/Field'
@@ -98,9 +100,6 @@ const IconEdit = () => (
 const IconTrash = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
 )
-const IconClose = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-)
 const IconUsers = () => (
   <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
 )
@@ -174,7 +173,7 @@ function MultiCreatableSelect({ values = [], onChange, options, placeholder, dis
           <span key={val} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200">
             {val}
             {!disabled && (
-              <OperumButton variant="custom" type="button" onClick={(e) => { e.stopPropagation(); handleRemove(val); }} className="hover:text-red-600 focus:outline-none transition-colors"><IconClose /></OperumButton>
+              <GlassCloseButton type="button" onClick={(e) => { e.stopPropagation(); handleRemove(val); }} className=" focus:outline-none transition-colors" label="Remover" />
             )}
           </span>
         ))}
@@ -677,7 +676,7 @@ export default function ProjetoMembrosClient({
             </div>
             <div className="flex items-center gap-1">
               <OperumButton variant="custom" type="button" onClick={handleOpenCreate} className="p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"><IconPlus /></OperumButton>
-              <OperumButton variant="custom" type="button" onClick={() => setShowSystemUsers(false)} className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"><IconClose /></OperumButton>
+              <GlassCloseButton type="button" onClick={() => setShowSystemUsers(false)} className="p-2 rounded-xl    transition-colors" label="Fechar" />
             </div>
           </div>
           <div className="px-4 py-3 border-b border-gray-100">
@@ -715,7 +714,7 @@ export default function ProjetoMembrosClient({
         <div className={`${col3Width} w-full bg-white rounded-2xl shadow-sm border border-gray-100 max-h-[calc(100vh-6rem)] flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300`}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
             <h2 className="text-sm font-semibold text-gray-900">{col3Title}</h2>
-            <OperumButton variant="custom" type="button" onClick={handleClearSelection} className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"><IconClose /></OperumButton>
+            <GlassCloseButton type="button" onClick={handleClearSelection} className="p-2 rounded-xl    transition-colors" label="Fechar" />
           </div>
 
           <div className="px-5 py-5 space-y-4 overflow-y-auto flex-1 min-h-0">

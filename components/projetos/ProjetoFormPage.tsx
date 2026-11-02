@@ -3,7 +3,7 @@
 import FormActions from '@/components/ui/FormActions'
 import { Textarea as OperumTextarea, Input as OperumInput } from '@/components/ui/Field'
 import AnimatedCardStack from '@/components/ui/AnimatedCardStack'
-import UndoChangeButton from '@/components/ui/UndoChangeButton'
+import ChangesPanel from '@/components/ui/ChangesPanel'
 import Modal from '@/components/ui/Modal'
 import { listarVersoesProjetoAction } from '@/app/actions/projetoEdicao'
 import GlassCloseButton from '@/components/ui/GlassCloseButton'
@@ -20,7 +20,7 @@ import { LIMITES_TEXTO_PROJETO } from '@/lib/projetoLimites'
 import { validarProjeto } from '@/lib/validacaoProjeto'
 import { parseMoeda } from '@/lib/dinheiro'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
-import { useState, useTransition, useEffect, useLayoutEffect, useMemo, useRef, Suspense, type ReactNode, type CSSProperties, type TextareaHTMLAttributes } from 'react'
+import { useState, useTransition, useEffect, useLayoutEffect, useMemo, useRef, Suspense, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -43,7 +43,6 @@ import HistoricoProjeto from '@/components/projetos/HistoricoProjeto'
 import RestaurarVersaoDialog from '@/components/projetos/RestaurarVersaoDialog'
 import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
 import type { VersaoProjeto } from '@/services/projetoVersoes'
-import { diffTexto } from '@/lib/diffTexto'
 
 function agruparFasesDuplicadas(fases: FaseForm[]) {
   const grupos = new Map<string, { nome: string; numeros: string[] }>()
@@ -138,17 +137,6 @@ function TextoQueCresce({ value, onChange, className, ...resto }: Omit<TextareaH
 }
 
 /** Texto com as palavras removidas (vermelho, riscadas) e incluídas (verde). */
-function DiffTexto({ antes, depois }: { antes: string; depois: string }) {
-  if (!antes && !depois) return <span className="text-sm text-slate-400">vazio</span>
-  return (
-    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-      {diffTexto(antes, depois).map((p, i) => p.tipo === 'igual' ? <span key={i}>{p.texto}</span>
-        : p.tipo === 'removido' ? <del key={i} className="rounded bg-rose-100 px-0.5 text-rose-700 decoration-rose-400">{p.texto}</del>
-        : <ins key={i} className="rounded bg-emerald-100 px-0.5 text-emerald-800 no-underline">{p.texto}</ins>)}
-    </p>
-  )
-}
-
 function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const permissions = useProjectPermissions()
   const canEditCosts = permissions.has('planilha:orcado') && permissions.has('planilha:realizado-todos')
@@ -888,37 +876,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               onFechar={() => setVerHistorico(false)} onRestaurar={restaurar}
             />
           )}
-          {/* Painel flutua acima da barra (não empurra nada) e entra/sai com transição. */}
-          {pendente && (
-            <div
-              role="dialog" aria-label="Alterações não salvas" aria-hidden={!verAlteracoes} inert={!verAlteracoes}
-              data-open={verAlteracoes} data-visited={alteracoesJaAbertas}
-              style={{ '--history-drop-x': origemHistorico !== undefined ? `${origemHistorico}px` : '50%' } as CSSProperties}
-              ref={changesPanel} tabIndex={-1} className="project-changes-panel project-history-panel absolute bottom-full mb-3 vidro-flutuante rounded-[22px] p-3"
-            >
-              <div className="flex items-center justify-between px-3 py-2">
-                <h3 className="text-sm font-bold text-slate-900">O que mudou desde o último salvamento</h3>
-                <GlassCloseButton label="Fechar" onClick={() => setVerAlteracoes(false)} className="project-history-close" />
-              </div>
-              <ul className="space-y-3 px-1 pb-1 pt-2">
-                {alteracoes.map(a => (
-                  <li key={a.chave} className="history-version-card rounded-2xl px-4 py-3" data-testid="alteracao">
-                    <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">{a.rotulo}</span>
-                      <UndoChangeButton label={a.rotulo} onUndo={() => desfazer(a.chave)} />
-                    </div>
-                    {a.texto ? <DiffTexto antes={a.antes} depois={a.depois} /> : (
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        {a.antes ? <del className="rounded-lg bg-rose-50 px-2 py-0.5 text-rose-700">{a.antes}</del> : <span className="text-slate-400">vazio</span>}
-                        <span className="text-slate-400" aria-hidden="true">→</span>
-                        {a.depois ? <ins className="rounded-lg bg-emerald-50 px-2 py-0.5 text-emerald-800 no-underline">{a.depois}</ins> : <span className="text-slate-400">vazio</span>}
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {pendente && <ChangesPanel context={{ type: 'project', id: editId ?? 'novo' }} ref={changesPanel} open={verAlteracoes} visited={alteracoesJaAbertas} originX={origemHistorico} changes={alteracoes} onClose={() => setVerAlteracoes(false)} onUndo={desfazer} />}
           <div className="project-save-dock-surface vidro-flutuante relative flex items-center gap-2 rounded-[22px] py-2 pl-4 pr-2">
             {confirmacaoSalvo > 0 && !pendente && <span key={confirmacaoSalvo} aria-hidden="true" className="project-save-glint pointer-events-none absolute inset-0 rounded-[22px]" />}
             {editId && estadoVersoes.ativa > 0 && <span className="project-active-version shrink-0 rounded-xl px-3 py-2 text-xs font-semibold tabular-nums" aria-label={`Versão ativa: ${estadoVersoes.ativa}`} title={pendente ? `Editando a partir da versão ${estadoVersoes.ativa}` : `Versão ${estadoVersoes.ativa} ativa`} aria-live="polite">v{estadoVersoes.ativa}</span>}

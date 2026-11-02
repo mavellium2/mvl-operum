@@ -1,0 +1,17 @@
+.shared-changes-portal { position: fixed; inset: 0; z-index: 90; pointer-events: none; background: transparent; }
+.shared-changes-portal > .project-history-backdrop { z-index: 0; }
+.shared-changes-portal > .project-history-backdrop[data-open='true'] { pointer-events: auto; }
+body .shared-changes-portal > .shared-changes-floating { position: absolute; left: 50%; bottom: 96px; width: min(680px, calc(100vw - 32px)); margin-left: max(-340px, calc(-50vw + 16px)); z-index: 1; }
+@media (max-width: 639px) { body .shared-changes-portal > .shared-changes-floating { bottom: 130px; } }
+body .shared-changes-portal > .project-history-backdrop { background: rgb(46 53 75 / .045); }
+/* Poucas alterações usam altura natural; listas longas respeitam o limite. */
+body .project-appearance[data-period] .project-history-panel.project-changes-panel {
+  height: auto;
+  min-height: 0;
+  max-height: min(65dvh, calc(100dvh - 140px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: auto;
+}
+/* A posição flutuante já inclui meia largura; não reaplica o translate do dock. */
+body .shared-changes-portal > .shared-changes-floating { translate: none; }

@@ -1,5 +1,7 @@
 'use client'
 
+
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput } from '@/components/ui/Field'
 import { emailValido, formatEmail } from '@/lib/contato'
@@ -341,7 +343,7 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
             <OperumInput type="text" value={a.nome} aria-label={`Nome do anexo ${i + 1}`} placeholder="Nome do documento" onChange={e => setAnexos(prev => prev.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} className="min-w-0 flex-1 border-0 border-b border-slate-300 bg-transparent px-0 py-0.5 text-[9pt] outline-none focus:border-blue-500" />
             <OperumInput type="text" value={a.url} aria-label={`Link do anexo ${i + 1}`} placeholder="URL (opcional)" onChange={e => setAnexos(prev => prev.map((x, j) => j === i ? { ...x, url: e.target.value } : x))} className="min-w-0 flex-1 border-0 border-b border-slate-300 bg-transparent px-0 py-0.5 text-[9pt] outline-none focus:border-blue-500" />
             {a.url && /^https?:\/\//i.test(a.url) && <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Abrir</a>}
-            <OperumButton variant="danger" type="button" aria-label={`Remover anexo ${a.nome || i + 1}`} onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))} className="rounded px-1 text-slate-400 hover:bg-red-50 hover:text-red-600">×</OperumButton>
+            <GlassCloseButton type="button" aria-label={`Remover anexo ${a.nome || i + 1}`} onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))} className="rounded px-1   " />
           </div>
         ))}
         <div className="flex flex-wrap items-center gap-3 pt-1 text-[12px]">

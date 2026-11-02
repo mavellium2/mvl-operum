@@ -191,11 +191,10 @@ describe('auditoria das ações do operador sobre instituições', () => {
   const OPERADOR = { userId: 'op1', tenantId: 't-mvl', role: 'admin' }
   beforeEach(() => vi.mocked(exigirOperadorDaPlataforma).mockResolvedValue(OPERADOR as never))
 
-  it('criar instituição e provisionar o admin ficam na auditoria da nova instituição', async () => {
+  it('delega criação e provisionamento à unidade transacional com o criador autenticado', async () => {
     vi.mocked(createTenant).mockResolvedValue({ id: 't-novo' } as never)
     await createTenantAction({ name: 'Fatec', subdomain: 'fatec' })
-    expect(auditado(0)).toMatchObject({ tenantId: 't-novo', userId: 'op1', action: 'INSTITUICAO_CRIAR', entity: 'Tenant', details: { autorTenantId: 't-mvl' } })
-    expect(auditado(1)).toMatchObject({ tenantId: 't-novo', action: 'INSTITUICAO_PROVISIONAR_ADMIN' })
+    expect(createTenant).toHaveBeenCalledWith({ name: 'Fatec', subdomain: 'fatec' }, 'op1')
   })
 
   it('entrar como admin, entrar com senha, status e nome ficam registrados', async () => {

@@ -4,7 +4,7 @@ import OperumButton from '@/components/ui/GlassButton'
 import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 
-export default function CopyConnectionValue({ value, label }: { value: string; label: string }) {
+export default function CopyConnectionValue({ value, label, compact = false }: { value: string; label: string; compact?: boolean }) {
   const [status, setStatus] = useState<'idle' | 'copied' | 'error'>('idle')
 
   async function copy() {
@@ -15,6 +15,14 @@ export default function CopyConnectionValue({ value, label }: { value: string; l
       setStatus('error')
     }
   }
+
+  if (compact) return <div className="flex flex-col items-end gap-1">
+    <OperumButton variant="default" onClick={copy} aria-label={`Copiar ${label}`} className="about-version inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold">
+      <span>{value}</span>
+      {status === 'copied' ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+    </OperumButton>
+    <span role="status" className="text-xs text-gray-500">{status === 'copied' ? `${label} copiada.` : status === 'error' ? 'Não foi possível copiar. Selecione a versão e copie manualmente.' : ''}</span>
+  </div>
 
   return (
     <div className="space-y-2">

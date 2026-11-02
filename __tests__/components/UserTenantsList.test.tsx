@@ -44,6 +44,7 @@ it('edita somente a instituição ativa quando autorizado e mantém o formulári
   fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível salvar.')
   expect(screen.getByLabelText('Nome da instituição')).toHaveValue('Novo nome')
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeEnabled())
   fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
   expect(await screen.findByText('Instituição atualizada.')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Novo nome' })).toBeInTheDocument()

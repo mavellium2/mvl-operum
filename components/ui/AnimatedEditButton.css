@@ -1,0 +1,19 @@
+.animated-edit.glass-button { color: var(--ap-muted, #68748b); background: color-mix(in srgb, var(--ap-surface, #fff) 30%, transparent); border-color: var(--glass-edge, #ffffff70); box-shadow: inset 0 1px 0 var(--glass-light, #ffffff90), 0 4px 10px -8px var(--glass-shadow, #25395440); }
+.animated-edit svg { overflow: visible; }
+.animated-edit .edit-pencil { transform-origin: 7px 18px; }
+.animated-edit .edit-stroke { stroke-dasharray: 12; stroke-dashoffset: 5; opacity: .35; }
+.animated-edit .edit-spark { opacity: 0; transform-origin: 5px 6px; }
+.animated-edit.glass-button:is(:hover, :focus-visible):not(:disabled) { color: var(--ap-accent, #3374b8); border-color: color-mix(in srgb, var(--ap-accent, #3374b8) 30%, transparent); background: color-mix(in srgb, var(--ap-glow, #dbeafe) 35%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+ .animated-edit .edit-pencil { transition: transform 280ms cubic-bezier(.22,1,.36,1); }
+ .animated-edit .edit-stroke { transition: stroke-dashoffset 360ms ease, opacity 240ms ease; }
+ .animated-edit .edit-spark { transition: opacity 240ms ease, transform 320ms ease; }
+ .animated-edit:is(:hover, :focus-visible):not(:disabled) .edit-pencil { animation: edit-pencil-write 700ms cubic-bezier(.22,1,.36,1) both; }
+ .animated-edit:is(:hover, :focus-visible):not(:disabled) .edit-stroke { stroke-dashoffset: 0; opacity: .8; }
+ .animated-edit:is(:hover, :focus-visible):not(:disabled) .edit-spark { opacity: .65; transform: scale(.85); }
+ .animated-edit:active:not(:disabled) .edit-pencil { animation: none; transform: translate(1px, 1px) rotate(-6deg); }
+ @keyframes edit-pencil-write { 0% { transform: none; } 40% { transform: translateY(-2px) rotate(-9deg); } 65% { transform: translate(1px,-1px) rotate(-5deg); } 100% { transform: translateY(-1px) rotate(-7deg); } }
+}
+@media (prefers-reduced-motion: reduce) { .animated-edit:is(:hover, :focus-visible):not(:disabled) .edit-stroke { opacity: .8; stroke-dashoffset: 0; } }
+@media (prefers-reduced-transparency: reduce) { .animated-edit.glass-button { background: var(--ap-surface, #f1f5fb); } }
+.animated-edit.glass-button { width: 34px; height: 34px; min-width: 34px; min-height: 34px; padding: 8px; margin: 0; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 10px; }

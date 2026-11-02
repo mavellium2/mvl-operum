@@ -1,5 +1,6 @@
 'use client'
 
+import './GlassSegmentedControl.css'
 import GlassButton from '@/components/ui/GlassButton'
 
 import { useId, useRef } from 'react'
@@ -26,10 +27,10 @@ export default function GlassSegmentedControl<T extends string>({ options, value
   const compact = variant === 'compact'
   const selected = options.findIndex(option => option.value === value)
   return <div ref={root} role={compact ? 'radiogroup' : 'tablist'} aria-label={label}
-    className={`${compact ? 'period-glass-tabs' : 'project-section-tabs'} relative isolate mb-3 grid shrink-0 gap-1 rounded-[20px] p-1.5 ${className}`}
+    className={`glass-segmented ${compact ? 'period-glass-tabs' : 'project-section-tabs'} relative isolate mb-3 grid shrink-0 gap-1 rounded-[20px] p-1.5 ${className}`}
     style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
     {selected >= 0 && <span aria-hidden="true" className={`pointer-events-none absolute bottom-1.5 left-1.5 top-1.5 rounded-[15px] ${compact ? 'period-glass-lens' : ''}`}
-      style={{ width: `calc((100% - 0.75rem - ${(options.length - 1) * .25}rem) / ${options.length})`, transform: `translateX(calc(${selected} * (100% + 0.25rem)))` }} />}
+      style={{ top: 'var(--segment-padding, 6px)', bottom: 'var(--segment-padding, 6px)', left: 'var(--segment-padding, 6px)', width: `calc((100% - 2 * var(--segment-padding, 6px) - ${(options.length - 1) * .25}rem) / ${options.length})`, transform: `translateX(calc(${selected} * (100% + 0.25rem)))` }} />}
     {options.map((option, index) => <GlassButton variant="custom" key={option.value} type="button" role={compact ? 'radio' : 'tab'}
       id={option.id ?? `${uid}-${index}`} aria-controls={option.panelId}
       aria-selected={compact ? undefined : option.value === value} aria-checked={compact ? option.value === value : undefined}
