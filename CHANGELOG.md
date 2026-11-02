@@ -9,6 +9,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.49.0] — 2026-11-02
 
+- **Validação da listagem:** rejeita parâmetros de consulta repetidos ou em formato de lista antes de usar filtros e paginação, eliminando confusão de tipos na API de projetos.
+
 - **Login após inatividade:** preserva a instituição da sessão verificada antes de encerrá-la, evitando que uma preferência antiga provoque “Credenciais inválidas” no próximo acesso.
 
 - **Permissões individuais:** grupos recolhíveis em vidro, pesquisa, controles compartilhados de herdar/permitir/negar e indicação discreta de salvamento automático e exceções.

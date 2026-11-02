@@ -23,16 +23,21 @@ export class ProjectController {
   list(
     @Headers('x-tenant-id') tenantId: string,
     @Headers('x-authorized-projects') authorized?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('preferred') preferred?: string,
-    @Query('q') query?: string,
-    @Query('status') status?: string,
+    @Query('page') page?: unknown,
+    @Query('limit') limit?: unknown,
+    @Query('preferred') preferred?: unknown,
+    @Query('q') query?: unknown,
+    @Query('status') status?: unknown,
   ) {
+    if (page !== undefined && typeof page !== 'string') throw new BadRequestException('Página inválida')
+    if (limit !== undefined && typeof limit !== 'string') throw new BadRequestException('Limite inválido')
+    if (preferred !== undefined && typeof preferred !== 'string') throw new BadRequestException('Projeto preferido inválido')
+    if (query !== undefined && typeof query !== 'string') throw new BadRequestException('Pesquisa inválida')
+    if (status !== undefined && typeof status !== 'string') throw new BadRequestException('Situação de projeto inválida')
     if (status && !['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE'].includes(status)) throw new BadRequestException('Situação de projeto inválida')
     const pageNumber = Number(page ?? 1), pageSize = Number(limit ?? 20)
     if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new BadRequestException('Paginação inválida')
-    return this.projectService.list(tenantId, pageNumber, pageSize, authorized?.split(','), preferred?.slice(0, 128), query?.trim().slice(0, 200), status || undefined)
+    return this.projectService.list(tenantId, pageNumber, pageSize, authorized?.split(','), typeof preferred === 'string' ? preferred.slice(0, 128) : undefined, typeof query === 'string' ? query.trim().slice(0, 200) : undefined, typeof status === 'string' ? status || undefined : undefined)
   }
 
   @Get('user/:userId')

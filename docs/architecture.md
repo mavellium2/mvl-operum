@@ -1383,6 +1383,8 @@ O layout autenticado de projeto renderiza `RecentProjectRecorder`, que grava ape
 
 `GET /projects` aceita `q` (nome/slogan, até 200 caracteres) e `status` (ACTIVE, COMPLETED, ARCHIVED, INACTIVE). A listagem mantém os filtros de tenant, projetos autorizados e exclusão lógica. Sem filtro de situação, conta e percorre os grupos ACTIVE → COMPLETED → ARCHIVED → INACTIVE antes de aplicar a página; a preferência `preferred` só prioriza um projeto ativo dentro do resultado pesquisado. Assim concluídos/inativos não reaparecem no topo ao serem abertos. Pesquisa, filtro e paginação são preservados na URL. A UI usa `SearchInput`, `GlassPopover`, `Select`, `FormActions` e `GlassButton` compartilhados.
 
+O controller valida que `page`, `limit`, `preferred`, `q` e `status` sejam valores únicos de texto antes de converter, limitar ou consultar o serviço. Parâmetros repetidos ou representados como listas recebem HTTP 400.
+
 ### Carregamento incremental de projetos
 
 `/projetos` renderiza o primeiro lote de 9 via `loadProjectList`; `ProjectListGrid` solicita os seguintes apenas por clique, através da Server Action autenticada `loadMoreProjects`. Cada lote recalcula as permissões de edição no servidor e retorna somente os campos dos cards. Pesquisa/situação e a preferência inicial acompanham a requisição. O cliente acrescenta cards com IDs únicos, mantém os existentes e controla erros/tentativas; alterações de pesquisa, filtro ou dados iniciais reiniciam a lista. A API continua paginada, com a ordenação por situação aplicada no servidor. Não há pré-carregamento das páginas restantes nem scroll infinito.
