@@ -1,13 +1,11 @@
 'use client'
 
-import OperumButton from '@/components/ui/GlassButton'
-import { useEffect, useState, useId } from 'react'
-import Link from 'next/link'
+import { Fragment } from 'react'
+import { useSidebarSession } from '@/hooks/useSidebarSession'
+import SidebarNavLink from './SidebarNavLink'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FolderKanban, Paperclip, PanelLeftOpen, Users, Building2, Briefcase, Landmark, Info, Settings } from 'lucide-react'
-import Tooltip from '@/components/ui/Tooltip'
+import { LayoutDashboard, FolderKanban, Paperclip, Users, Building2, Briefcase, Landmark, Info, Settings } from 'lucide-react'
 import SidebarLayout from '@/components/layout/SidebarLayout'
-import { fetchWithSession } from '@/lib/clientFetch'
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -41,40 +39,11 @@ const FALLBACK_TITLES: Record<string, string> = {
   configuracoes: 'Configurações',
 }
 
-const STORAGE_KEY = 'wbs-global-sidebar-collapsed'
-
-/** Sidebar global do app (páginas sem sidebar própria). */
+/** Sidebar global, compartilhando conta e comportamento com os projetos. */
 export default function GlobalSidebar() {
-  const panelId = useId()
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
-  const [animated, setAnimated] = useState(false)
-  const [role, setRole] = useState<string | undefined>(undefined)
-  const [operador, setOperador] = useState(false)
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stored === '1') setCollapsed(true)
-    const raf = requestAnimationFrame(() => setAnimated(true))
-    return () => cancelAnimationFrame(raf)
-  }, [])
-
-  useEffect(() => {
-    fetchWithSession('/api/me')
-      .then(r => r.json())
-      .then(d => { if (d?.user?.role) setRole(d.user.role); setOperador(d?.user?.platformOperator === true) })
-      .catch(() => { })
-  }, [])
-
-  const toggleCollapsed = () => {
-    setCollapsed(prev => {
-      const next = !prev
-      window.localStorage.setItem(STORAGE_KEY, next ? '1' : '0')
-      return next
-    })
-  }
-
+  const { user, loading } = useSidebarSession()
+  const role = user?.role, operador = user?.platformOperator === true
   const parts = pathname.split('/').filter(Boolean)
   let search: { placeholder: string; context: 'global_projects' | 'project_items' | 'sprint_items' | 'project_members' | 'default'; contextId?: string } = {
     placeholder: 'Buscar...',
@@ -98,50 +67,12 @@ export default function GlobalSidebar() {
     ?? FALLBACK_TITLES[parts[0]]
     ?? 'Operum'
 
-  return (
-    <>
-      <SidebarLayout
-        panelId={panelId}
-        title={title}
-        searchPlaceholder={search.placeholder}
-        searchContext={search.context}
-        contextId={search.contextId}
-        collapsed={collapsed}
-        animated={animated}
-        onToggleCollapse={toggleCollapsed}
-        logoHref={role === 'admin' ? '/admin/dashboard' : '/'}
-      >
-        {nav.map(({ href, label, Icon }) => (
-          <Link
-            key={label}
-            href={href}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              isActive(href)
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            <Icon className="w-4 h-4 shrink-0" />
-            <span className="truncate">{label}</span>
-          </Link>
-        ))}
-      </SidebarLayout>
-
-      {collapsed && (
-        <Tooltip label="Expandir menu" side="bottom">
-          <OperumButton variant="custom"
-            type="button"
-            onClick={toggleCollapsed}
-            aria-label="Expandir menu lateral"
-            aria-expanded={false}
-            aria-controls={panelId}
-            data-sidebar-expand
-            className="hidden md:inline-flex fixed top-3.5 left-2 z-30 p-1.5 rounded-lg bg-white border border-gray-200 shadow-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
-          >
-            <PanelLeftOpen className="w-4 h-4" />
-          </OperumButton>
-        </Tooltip>
-      )}
-    </>
-  )
+  const groups = [
+    { label: 'Trabalho', items: nav.filter(item => ['/dashboard', '/admin/dashboard', '/projetos', '/arquivos'].includes(item.href)) },
+    { label: 'Administração', items: nav.filter(item => ['/admin/users', '/admin/cadastros/departamentos', '/admin/cadastros/funcoes'].includes(item.href)) },
+    { label: 'Plataforma', items: nav.filter(item => item.href === '/admin/tenants') },
+  ]
+  return <SidebarLayout title={title} searchPlaceholder={search.placeholder} searchContext={search.context} contextId={search.contextId} logoHref={role === 'admin' ? '/admin/dashboard' : '/'}>
+    {loading ? <div role="status" className="px-3 py-4 text-xs opacity-60">Carregando navegação…</div> : groups.filter(group => group.items.length).map(group => <Fragment key={group.label}><p className="sidebar-group-label">{group.label}</p>{group.items.map(({ href, label, Icon }) => <SidebarNavLink key={href} href={href} label={label} active={isActive(href)}><Icon size={17} aria-hidden="true" /></SidebarNavLink>)}</Fragment>)}
+  </SidebarLayout>
 }

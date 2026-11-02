@@ -250,6 +250,8 @@ Toda entidade do sistema está vinculada a um `Tenant`. **O sistema já opera co
 5. Todas as Server Actions e controllers isolam dados por `tenantId`. O file-service, que não conhece cards nem tenants, confere cada card no sprint-service (`POST /cards/in-tenant`) antes de tocar em anexos (SDD 4.1).
 6. `/admin/tenants` (só admin) lista todos os workspaces e permite trocar/entrar.
 
+Ao encerrar a sessão por inatividade, tanto a ação do navegador quanto `proxy.ts` preservam o `tenantId` da sessão verificada no cookie de preferência `operum_last_tenant` antes de apagar o cookie de sessão. O login usa essa preferência para escolher a mesma instituição; ela não concede acesso e o auth-service continua validando a senha e o vínculo do usuário.
+
 ```
 Tenant 1 ─┬─ Users ─┬─ Projetos ─ Sprints ─ Cards
            │         └─ UsuarioProjeto
@@ -1361,3 +1363,34 @@ Na criação administrativa, `createTenant(data, creatorUserId)` grava institui�
 O cookie HttpOnly `operum_last_tenant` conserva por 30 dias a preferência de instituição, atualizada em login, troca e logout com sessão assinada. O login repassa `preferredTenantId` ao auth-service: o serviço seleciona a conta do e-mail nesse ambiente e valida senha, bloqueio e estado da instituição. A preferência não concede autorização. Outro e-mail sem vínculo nesse ambiente segue a resolução normal. Suspender mantém o ambiente visível ao operador ao fim da lista; excluir grava status REMOVED e deletedAt, retirando-o das consultas administrativas e do acesso autenticado, sem apagar os registros históricos fisicamente.
 
 A aparência usa um store externo compartilhado (`useSyncExternalStore`) para preservar a preferência e o quadro atual na navegação, com uma única assinatura de relógio/eventos entre consumidores. O layout raiz aplica a cor de fundo antes da hidratação usando a mesma função de resolução e paleta do tema. ProjectAppearance não oculta mais a página sobre um fundo escuro provisório. A mistura automática e as preferências de acessibilidade permanecem na implementação compartilhada.
+
+
+### Menu lateral compartilhado
+
+`SidebarLayout` concentra a apresentação de navegação global e por projeto. `useSidebarMode` persiste expandido/compacto/oculto em uma única preferência do navegador; `SidebarSessionProvider` no AppShell compartilha o estado de conta entre navegação e rodapé. O layout do projeto fornece seu nome e conserva a filtragem de destinos por permissões existentes.
+
+`TenantSwitcher` consulta apenas vínculos da conta autenticada, permite pesquisa e confirma a senha exigida pelo servidor no próprio seletor. A troca e a saída passam por `navegarComGuarda` quando um editor registrado tem alterações pendentes. Falhas não são tratadas como sucesso. No celular, popovers são renderizados dentro da árvore do overlay para preservar foco e inert; no desktop continuam em portal. Os endpoints e as regras de autorização não mudam.
+
+### Contexto do menu em páginas auxiliares
+
+`AppShell` mantém `ProjectNavigationProvider` em memória durante a navegação. O layout autenticado do projeto registra o nome, identificador e permissões calculadas pelo servidor através de `RegisteredProjectSidebar`. Ao visitar os catálogos de departamentos/funções, configurações, sobre ou notificações, a casca reutiliza `ProjectSidebar` e as permissões visuais registradas. A lista de projetos, outras áreas globais e a troca bem-sucedida de instituição limpam esse contexto. Acesso direto/recarregamento de uma página auxiliar começa com menu global; nenhum contexto de projeto é persistido no armazenamento do navegador. Isso controla apenas a navegação visual; as páginas e ações continuam autorizadas no servidor.
+
+### Último projeto aberto na lista
+
+O layout autenticado de projeto renderiza `RecentProjectRecorder`, que grava apenas o identificador em cookie funcional por usuário/instituição (`recentProjectKey`, validade de um ano, SameSite=Lax, Secure em HTTPS). A página `/projetos` lê essa preferência e envia `preferred` opcional em `GET /projects`. O project-service verifica esse ID dentro do mesmo filtro de tenant, exclusão lógica e projetos autorizados; só então o move ao primeiro lugar, ajustando take/skip para preservar a paginação sem duplicação. Preferências excluídas ou sem acesso são ignoradas. Sem cookie, a ordem continua sendo criação decrescente. A preferência pertence ao navegador e não sincroniza dispositivos.
+
+### Pesquisa e situação em Meus projetos
+
+`GET /projects` aceita `q` (nome/slogan, até 200 caracteres) e `status` (ACTIVE, COMPLETED, ARCHIVED, INACTIVE). A listagem mantém os filtros de tenant, projetos autorizados e exclusão lógica. Sem filtro de situação, conta e percorre os grupos ACTIVE → COMPLETED → ARCHIVED → INACTIVE antes de aplicar a página; a preferência `preferred` só prioriza um projeto ativo dentro do resultado pesquisado. Assim concluídos/inativos não reaparecem no topo ao serem abertos. Pesquisa, filtro e paginação são preservados na URL. A UI usa `SearchInput`, `GlassPopover`, `Select`, `FormActions` e `GlassButton` compartilhados.
+
+### Carregamento incremental de projetos
+
+`/projetos` renderiza o primeiro lote de 9 via `loadProjectList`; `ProjectListGrid` solicita os seguintes apenas por clique, através da Server Action autenticada `loadMoreProjects`. Cada lote recalcula as permissões de edição no servidor e retorna somente os campos dos cards. Pesquisa/situação e a preferência inicial acompanham a requisição. O cliente acrescenta cards com IDs únicos, mantém os existentes e controla erros/tentativas; alterações de pesquisa, filtro ou dados iniciais reiniciam a lista. A API continua paginada, com a ordenação por situação aplicada no servidor. Não há pré-carregamento das páginas restantes nem scroll infinito.
+
+### Dashboard administrativa da instituição
+
+`/admin/dashboard` usa `adminDashboardService`, que exige sessão administrativa e consome `sprintsApi.getGlobalMetrics()` (gateway injeta tenant e escopo autorizado; sprint-service agrega somente esse contexto). A página não utiliza mais os agregadores legados sem escopo de `dashboardService`. Consultas diretas de projetos e rascunhos incluem o tenant da sessão e exclusão lógica; contagem de sprints também exclui removidas. Indicadores por projeto são derivados das métricas já escopadas, sem novas consultas globais por sprint. Não há dashboard multi-instituição nessa rota, inclusive para operadores da plataforma.
+
+A listagem de projetos inclui `_count.macroFases` no mesmo lote de até 9 projetos; os cards recebem somente a contagem, sem carregar o conteúdo das fases nem executar uma consulta por card.
+
+`DetailPanel` é a superfície lateral reutilizada pelo cadastro de stakeholders (modo flutuante) e pela lista administrativa de usuários (coluna de detalhes). Edição e permissões são mutuamente exclusivas nessa coluna; ela não cria overlay nem aplica foco modal. O formulário de usuário separa corpo rolável de `FormActions`, com submit associado pelo ID do formulário. No desktop, cabeçalho/pesquisa ficam fora das áreas roláveis; lista e corpo do painel rolam apenas quando excedem a altura disponível. A altura do painel acompanha o conteúdo até esse limite. Em larguras menores, os detalhes ficam abaixo da lista. Não há mudança de contratos nem de autorização.

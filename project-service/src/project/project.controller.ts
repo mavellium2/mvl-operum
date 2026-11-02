@@ -25,8 +25,14 @@ export class ProjectController {
     @Headers('x-authorized-projects') authorized?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('preferred') preferred?: string,
+    @Query('q') query?: string,
+    @Query('status') status?: string,
   ) {
-    return this.projectService.list(tenantId, Number(page ?? 1), Number(limit ?? 20), authorized?.split(','))
+    if (status && !['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE'].includes(status)) throw new BadRequestException('Situação de projeto inválida')
+    const pageNumber = Number(page ?? 1), pageSize = Number(limit ?? 20)
+    if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new BadRequestException('Paginação inválida')
+    return this.projectService.list(tenantId, pageNumber, pageSize, authorized?.split(','), preferred?.slice(0, 128), query?.trim().slice(0, 200), status || undefined)
   }
 
   @Get('user/:userId')

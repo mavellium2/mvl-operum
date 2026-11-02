@@ -1,221 +1,85 @@
 'use client'
 
-import OperumButton from '@/components/ui/GlassButton'
-import { useEffect, useState, useTransition, useId, useRef } from 'react'
+import GlassButton from '@/components/ui/GlassButton'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
+import { PanelLeftClose, PanelLeftOpen, Menu, Bell, EyeOff, Search, ArrowLeft, FolderKanban } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useOverlay } from '@/hooks/useOverlay'
-import { usePathname } from 'next/navigation'
-import { PanelLeftClose, LogOut } from 'lucide-react'
-import UserAvatar from '@/components/user/UserAvatar'
+import { useSidebarMode } from '@/hooks/useSidebarMode'
+import { useSidebarSession } from '@/hooks/useSidebarSession'
 import GlobalSearch from '@/components/search/GlobalSearch'
-import TenantSwitcher from '@/components/layout/TenantSwitcher'
-import Tooltip from '@/components/ui/Tooltip'
-import { logoutAction } from '@/app/actions/auth'
+import TenantSwitcher from './TenantSwitcher'
+import SidebarAccount from './SidebarAccount'
 import { fetchWithSession } from '@/lib/clientFetch'
+import { useAppearance } from '@/hooks/useAppearance'
+import { palettes, appearanceBlendStyle } from '@/lib/appearancePalette'
+import type { CSSProperties } from 'react'
+import './sidebar.css'
 
-interface SidebarLayoutProps {
-  panelId?: string
-  title: string
-  searchPlaceholder: string
+interface Props {
+  panelId?: string; title: string; searchPlaceholder: string
   searchContext: 'global_projects' | 'project_items' | 'sprint_items' | 'project_members' | 'default'
-  contextId?: string
-  /** Sprint aberta: a busca mostra os cards dela primeiro. */
-  currentSprintId?: string
-  collapsed?: boolean
-  animated?: boolean
-  onToggleCollapse?: () => void
-  logoHref?: string
-  children: React.ReactNode
+  contextId?: string; currentSprintId?: string; projectName?: string
+  collapsed?: boolean; animated?: boolean; onToggleCollapse?: () => void; logoHref?: string; children: ReactNode
 }
-
-/**
- * Estrutura padrão da sidebar:
- *   Logo do software + ícone hambúrguer → espaçamento → título da página →
- *   barra de pesquisa → lista de itens da página (children) → rodapé com
- *   notificações, troca de tenant e usuário.
- *
- * `collapsed` recolhe com animação de largura (o conteúdo desliza para fora).
- * `animated` só liga as transições depois do primeiro paint (para não animar
- * ao restaurar o estado salvo no localStorage).
- * `logoHref` personaliza o destino da logo (ex.: admin → /admin/dashboard).
- */
-export default function SidebarLayout({
-  panelId: providedPanelId,
-  title,
-  searchPlaceholder,
-  searchContext,
-  contextId,
-  currentSprintId,
-  collapsed = false,
-  animated = false,
-  onToggleCollapse,
-  logoHref = '/',
-  children,
-}: SidebarLayoutProps) {
-  const [user, setUser] = useState<{ name: string; avatarUrl?: string | null; role?: string } | null>(null)
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [isPending, startTransition] = useTransition()
-
-  useEffect(() => {
-    fetchWithSession('/api/me')
-      .then(r => r.json())
-      .then(d => { if (d?.user) setUser(d.user) })
-      .catch(() => { })
-  }, [])
-
-  useEffect(() => {
-    if (!user) return
-    function fetchCount() {
-      fetchWithSession('/api/notificacoes/count')
-        .then(r => r.json())
-        .then(d => { if (typeof d?.count === 'number') setUnreadCount(d.count) })
-        .catch(() => { })
-    }
-    fetchCount()
-    const id = setInterval(fetchCount, 60_000)
-    return () => clearInterval(id)
-  }, [user])
-
+export default function SidebarLayout({ panelId: suppliedId, title, searchPlaceholder, searchContext, contextId, currentSprintId, projectName, collapsed = false, onToggleCollapse, logoHref = '/', children }: Props) {
+  const appearance = useAppearance()
+  const palette = palettes[appearance.period ?? 'morning']
+  const blend = appearanceBlendStyle(appearance.blend)
+  const sidebarStyle = { '--sb-fill': blend['--blend-sidebar'] ?? palette.sidebar, '--sb-solid': blend['--ap-bg'] ?? palette.bg, '--sb-text': blend['--ap-text'] ?? palette.text, '--sb-muted': blend['--ap-muted'] ?? palette.muted, '--sb-accent': blend['--ap-accent'] ?? palette.accent, '--sb-edge': blend['--glass-edge'] ?? palette.edge, '--sb-light': blend['--glass-light'] ?? palette.light } as CSSProperties
+  const preference = useSidebarMode()
+  const mode = onToggleCollapse ? collapsed ? 'hidden' : 'expanded' : preference.mode
   const mobile = useMediaQuery('(max-width: 767px)')
   const [mobileOpen, setMobileOpen] = useState(false)
-  const generatedPanelId = useId()
-  const panelId = providedPanelId ?? generatedPanelId
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const panelRef = useRef<HTMLElement>(null)
-  const mobileTrigger = useRef<HTMLButtonElement>(null)
-  const pathname = usePathname()
-  const lastPath = useRef(pathname)
-  const zIndex = useOverlay(overlayRef, () => setMobileOpen(false), mobile && mobileOpen)
+  const [unread, setUnread] = useState(0)
+  const { user } = useSidebarSession()
+  const [searchOpen, setSearchOpen] = useState(false)
+  const overlay = useRef<HTMLDivElement>(null)
+  const expand = useRef<HTMLButtonElement>(null)
+  const collapse = useRef<HTMLButtonElement>(null)
+  const search = useRef<HTMLDivElement>(null)
+  const uid = useId(), panelId = suppliedId ?? uid
+  const compact = !mobile && mode === 'compact'
+  const hidden = mobile ? !mobileOpen : mode === 'hidden'
+  const zIndex = useOverlay(overlay, () => setMobileOpen(false), mobile && mobileOpen)
+  const pathname = usePathname(), previousPath = useRef(pathname)
+  useEffect(() => { if (previousPath.current !== pathname) { previousPath.current = pathname; setMobileOpen(false); setSearchOpen(false) } }, [pathname])
   useEffect(() => {
-    if (lastPath.current !== pathname) {
-      lastPath.current = pathname
-      setMobileOpen(false)
-    }
-  }, [pathname])
-  const wasCollapsed = useRef(collapsed)
+    if (!user) return
+    let active = true
+    const refresh = () => { fetchWithSession('/api/notificacoes/count').then(r => r.json()).then(data => { if (active && typeof data.count === 'number') setUnread(data.count) }).catch(() => {}) }
+    refresh(); const timer = setInterval(refresh, 60000)
+    return () => { active = false; clearInterval(timer) }
+  }, [user])
   useEffect(() => {
-    if (wasCollapsed.current && !collapsed && !mobile) panelRef.current?.querySelector<HTMLButtonElement>('[aria-label="Recolher menu lateral"]')?.focus()
-    wasCollapsed.current = collapsed
-    if (collapsed && !mobile) document.querySelector<HTMLButtonElement>('[data-sidebar-expand]')?.focus()
-  }, [collapsed, mobile])
-  const hidden = mobile ? !mobileOpen : collapsed
-
-  return (
-    <>
-      <OperumButton variant="custom" ref={mobileTrigger} type="button" onClick={() => setMobileOpen(true)} aria-expanded={mobile && mobileOpen} aria-controls={panelId} aria-label="Abrir menu lateral" className="md:hidden fixed top-3 left-3 z-40 rounded-lg border bg-white p-2 shadow focus-visible:ring-2 focus-visible:ring-blue-500">☰</OperumButton>
-      <div ref={overlayRef} tabIndex={-1} role={mobile && mobileOpen ? 'dialog' : undefined} aria-label={mobile && mobileOpen ? 'Menu lateral' : undefined} aria-modal={mobile && mobileOpen ? true : undefined} className={mobile && mobileOpen ? 'fixed inset-0' : 'contents'} style={mobile && mobileOpen ? { zIndex } : undefined}>
-      {mobile && mobileOpen && <div className="fixed inset-0 bg-black/50 md:hidden" style={{ zIndex: zIndex - 1 }} onClick={() => setMobileOpen(false)} aria-hidden="true" />}
-    <aside
-      data-operum-sidebar
-      ref={panelRef} id={panelId} tabIndex={-1}
-      aria-hidden={hidden || undefined} inert={hidden}
-      style={mobile && mobileOpen ? { zIndex } : undefined}
-      onClick={event => { if (mobile && (event.target as HTMLElement).closest('a[href]')) setMobileOpen(false) }}
-      className={`shrink-0 bg-white flex-col overflow-hidden ${mobileOpen ? 'flex' : 'hidden md:flex'} fixed inset-y-0 left-0 md:static max-w-full ${collapsed ? 'md:w-0' : 'md:w-56 md:border-r md:border-gray-200'} w-56 ${animated ? 'transition-[width] duration-300 ease-in-out' : ''}`}
-    >
-      <div hidden={hidden}
-        className={`w-56 max-w-full flex flex-col h-full ${
-          collapsed && !mobile ? '-translate-x-full' : 'translate-x-0'
-        } ${animated ? 'transition-transform duration-300 ease-in-out' : ''}`}
-      >
-      {/* Logo do software + ícone hambúrguer */}
-      <div className="flex items-center gap-2 px-3 pt-3 pb-2">
-        <Link href={logoHref} className="flex items-center gap-2 min-w-0 flex-1" aria-label="Operum">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-violet-600 rounded-lg shadow-sm flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-            </svg>
-          </div>
-          <span className="text-lg font-bold text-gray-900 tracking-tight truncate">Operum</span>
-        </Link>
-        {(onToggleCollapse || mobile) && (
-          <Tooltip label="Recolher menu" side="bottom">
-            <OperumButton variant="custom"
-              type="button"
-              onClick={() => { if (mobile) setMobileOpen(false); else onToggleCollapse?.() }}
-              aria-expanded={mobile ? mobileOpen : !collapsed}
-              aria-controls={panelId}
-              aria-label="Recolher menu lateral"
-              className="shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </OperumButton>
-          </Tooltip>
-        )}
-      </div>
-
-      {/* Espaçamento + título da página atual */}
-      <div className="px-4 pt-4 pb-1">
-        <h2 className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest truncate">{title}</h2>
-      </div>
-
-      {/* Barra de pesquisa */}
-      <div className="px-3 pt-2 pb-1">
-        <GlobalSearch placeholder={searchPlaceholder} searchContext={searchContext} contextId={contextId} currentSprintId={currentSprintId} />
-      </div>
-
-      <div className="mx-3 mt-3 mb-1 border-b border-gray-100" />
-
-      {/* Lista de itens dessa página */}
-      <nav className="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto">
-        {children}
-      </nav>
-
-      {/* Rodapé: notificações, troca de tenant, usuário */}
-      <div className="border-t border-gray-100 px-3 py-3">
-        <div className="flex items-center justify-between gap-1">
-          <Link
-            href="/notificacoes"
-            aria-label="Notificações"
-            className="relative p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            {unreadCount > 0 && (
-              <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm leading-none">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </Link>
-
-          <div className="min-w-0 flex-1 flex justify-center">
-            <TenantSwitcher />
-          </div>
-
-          <Link
-            href="/configuracoes/perfil"
-            aria-label="Meu perfil"
-            className="rounded-full p-0.5 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-100"
-          >
-            <UserAvatar name={user?.name} avatarUrl={user?.avatarUrl} size="sm" />
-          </Link>
-
-          <Tooltip label="Sair" side="bottom">
-            <OperumButton variant="custom"
-              type="button"
-              onClick={() => startTransition(() => logoutAction())}
-              disabled={isPending}
-              aria-label="Sair"
-              className="shrink-0 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <LogOut className="w-4 h-4" />
-            </OperumButton>
-          </Tooltip>
+    const shortcut = (event: KeyboardEvent) => { if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return; event.preventDefault(); if (mobile) setMobileOpen(true); else preference.setMode('expanded'); setSearchOpen(true) }
+    document.addEventListener('keydown', shortcut)
+    return () => document.removeEventListener('keydown', shortcut)
+  }, [mobile, preference])
+  useEffect(() => { if (searchOpen && !hidden) search.current?.querySelector<HTMLInputElement>('input')?.focus() }, [searchOpen, hidden])
+  const previousHidden = useRef(hidden)
+  useEffect(() => {
+    if (previousHidden.current !== hidden && !mobile) { if (hidden) (document.querySelector<HTMLButtonElement>('[data-sidebar-expand]') ?? expand.current)?.focus(); else if (searchOpen) search.current?.querySelector<HTMLInputElement>('input')?.focus(); else collapse.current?.focus() }
+    previousHidden.current = hidden
+  }, [hidden, mobile, searchOpen])
+  const toggle = () => { if (mobile) setMobileOpen(false); else if (onToggleCollapse) onToggleCollapse(); else preference.setMode(compact ? 'expanded' : 'compact') }
+  return <>
+    <GlassButton ref={expand} hidden={!mobile && !hidden} variant="icon" aria-label={mobile ? 'Abrir menu lateral' : 'Expandir menu lateral'} aria-expanded={mobile ? mobileOpen : !hidden} aria-controls={panelId} onClick={() => { if (mobile) setMobileOpen(true); else if (onToggleCollapse) onToggleCollapse(); else preference.setMode('expanded') }} data-sidebar-expand className={`sidebar-open ${!mobile ? 'sidebar-open--desktop' : ''} ${mobile || hidden ? '' : 'sidebar-open--off'}`}><Menu size={20} aria-hidden="true" /></GlassButton>
+    <div ref={overlay} tabIndex={-1} role={mobile && mobileOpen ? 'dialog' : undefined} aria-label={mobile && mobileOpen ? 'Menu lateral' : undefined} aria-modal={mobile && mobileOpen ? true : undefined} className={mobile && mobileOpen ? 'sidebar-mobile-overlay' : 'contents'} style={mobile && mobileOpen ? { zIndex } : undefined}>
+      {mobile && <div data-open={mobileOpen} className="sidebar-mobile-backdrop" onClick={() => setMobileOpen(false)} aria-hidden="true" />}
+      <aside style={sidebarStyle} data-operum-sidebar data-project-sidebar={Boolean(projectName) || undefined} data-mode={mobile ? 'expanded' : mode} id={panelId} tabIndex={-1} aria-hidden={hidden || undefined} inert={hidden} className={`operum-sidebar ${mobileOpen ? 'is-mobile-open' : ''}`} onClick={event => { if (mobile && (event.target as HTMLElement).closest('a[href]')) setMobileOpen(false) }}>
+        <div className="sidebar-inner" hidden={!mobile && hidden}>
+          <div className="sidebar-brand-row"><Link href={logoHref} aria-label="Operum" className="sidebar-brand"><span className="sidebar-brand-symbol"><Image src="/icons/operum.svg" width={32} height={32} alt="" /></span>{!compact && <span>Operum</span>}</Link><GlassButton ref={collapse} variant="icon" title={compact ? 'Expandir menu' : 'Recolher menu'} aria-label={compact ? 'Expandir menu lateral' : 'Recolher menu lateral'} aria-expanded={!compact} aria-controls={panelId} onClick={toggle}>{compact ? <PanelLeftOpen size={16} aria-hidden="true" /> : <PanelLeftClose size={16} aria-hidden="true" />}</GlassButton></div>
+          <div className="sidebar-context"><TenantSwitcher compact={compact} />{projectName && <div className={`sidebar-project-context ${compact ? 'sidebar-project-context--compact' : ''}`}><Link href="/projetos" className="sidebar-project-back" aria-label="Todos os projetos" title="Todos os projetos"><ArrowLeft size={14} aria-hidden="true" />{!compact && <span>Todos os projetos</span>}</Link>{!compact && <div className="sidebar-project-identity"><span className="sidebar-project-symbol"><FolderKanban size={18} aria-hidden="true" /></span><div><span>Projeto atual</span><strong title={projectName}>{projectName}</strong></div></div>}</div>}</div>
+          <div className="sidebar-search" ref={search}>{compact ? <GlassButton variant="icon" aria-label="Pesquisar" title="Pesquisar · Ctrl/Cmd K" onClick={() => { preference.setMode('expanded'); setSearchOpen(true) }}><Search size={18} aria-hidden="true" /></GlassButton> : <GlobalSearch placeholder={searchPlaceholder} searchContext={searchContext} contextId={contextId} currentSprintId={currentSprintId} />}</div>
+          <nav aria-label={contextId ? 'Navegação do projeto' : 'Navegação principal'} className="sidebar-navigation">{children}</nav>
+          <footer className="sidebar-footer"><Link href="/notificacoes" aria-label={unread ? `Notificações: ${unread} não lidas` : 'Notificações'} title="Notificações" className="sidebar-notifications"><Bell size={18} aria-hidden="true" />{!compact && <span>Notificações</span>}{unread > 0 && <span className="sidebar-unread">{unread > 99 ? '99+' : unread}</span>}</Link><SidebarAccount compact={compact} />{!mobile && !onToggleCollapse && <GlassButton variant="custom" className="sidebar-hide" aria-label="Ocultar menu lateral" title="Ocultar menu lateral" onClick={() => preference.setMode('hidden')}><EyeOff size={14} aria-hidden="true" />{!compact && <span>Ocultar menu</span>}</GlassButton>}</footer>
+          <span className="sr-only">Página atual: {title}</span>
         </div>
-        {process.env.NEXT_PUBLIC_APP_VERSION && (
-          <Link
-            href="/sobre"
-            className="block mt-2 text-center text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            Operum v{process.env.NEXT_PUBLIC_APP_VERSION}
-          </Link>
-        )}
-      </div>
-      </div>
-    </aside>
+      </aside>
     </div>
-    </>
-  )
+  </>
 }

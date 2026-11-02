@@ -107,6 +107,13 @@ describe('proxy middleware', () => {
       expect(res.headers.get('set-cookie')).toMatch(/session=;/)
     })
 
+    it('guarda a instituição da sessão verificada ao expirar por inatividade', async () => {
+      const tenantId = '80e4ff4a-6e67-4d98-8013-b54c35c96085'
+      vi.mocked(jwtVerify).mockResolvedValue({ payload: { userId: 'u1', tenantId } } as never)
+      const res = await proxy(reqCom('/projetos/p1', Date.now() - 31 * MIN))
+      expect(res.cookies.get('operum_last_tenant')?.value).toBe(tenantId)
+    })
+
     it('dentro do limite: segue e renova o last_seen', async () => {
       const res = await proxy(reqCom('/projetos/p1', Date.now() - 5 * MIN))
       expect(res.status).toBe(200)

@@ -1,0 +1,56 @@
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+const { more } = vi.hoisted(() => ({ more: vi.fn() }))
+vi.mock('@/app/actions/projectList', () => ({ loadMoreProjects: more }))
+vi.mock('@/components/projetos/ProjectListActions', () => ({ EditProjectButton: () => null }))
+vi.mock('@/components/projetos/DeleteProjectButton', () => ({ default: () => null }))
+import ProjectListGrid from '@/components/projetos/ProjectListGrid'
+const project = (id: string) => ({ id, name: id, slogan: null, logoUrl: null, status: 'ACTIVE', startDate: null, endDate: null, members: 0, macroFases: 4, editable: false })
+const initial = { projects: [project('p1')], total: 3, recent: 'p1' }
+beforeEach(() => more.mockReset())
+describe('carregar projetos sob demanda', () => {
+  it('não busca automaticamente; acrescenta cards, evita duplicados e encerra ao chegar ao total', async () => {
+    more.mockResolvedValue({ batch: { projects: [project('p1'), project('p2'), project('p3')], total: 3, recent: 'p1' } })
+    render(<ProjectListGrid initial={initial} query="Teste" status="ACTIVE" />)
+    expect(more).not.toHaveBeenCalled()
+    const original = screen.getByRole('link', { name: 'Acessar projeto p1' })
+    fireEvent.click(screen.getByRole('button', { name: 'Carregar mais projetos' }))
+    await screen.findByRole('link', { name: 'Acessar projeto p3' })
+    expect(screen.getAllByRole('link')).toHaveLength(3)
+    expect(screen.getByRole('link', { name: 'Acessar projeto p1' })).toBe(original)
+    expect(more).toHaveBeenCalledWith({ page: 2, query: 'Teste', status: 'ACTIVE', preferred: 'p1' })
+    expect(screen.queryByRole('button', { name: 'Carregar mais projetos' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('3 de 3 projetos')
+  })
+  it('preserva os cards e o estado local quando uma action reenvia o mesmo lote', async () => {
+    more.mockResolvedValue({ batch: { projects: [project('p2')], total: 3, recent: 'p1' } })
+    const { rerender } = render(<ProjectListGrid initial={initial} query="" status="" />)
+    const original = screen.getByRole('link', { name: 'Acessar projeto p1' })
+    fireEvent.click(screen.getByRole('button', { name: 'Carregar mais projetos' }))
+    await screen.findByRole('link', { name: 'Acessar projeto p2' })
+    rerender(<ProjectListGrid initial={JSON.parse(JSON.stringify(initial))} query="" status="" />)
+    expect(screen.getByRole('link', { name: 'Acessar projeto p1' })).toBe(original)
+    expect(screen.getByRole('link', { name: 'Acessar projeto p2' })).toBeInTheDocument()
+  })
+  it('mantém a lista em falhas e tenta novamente a mesma página', async () => {
+    more.mockResolvedValueOnce({ error: 'Falha de conexão' }).mockResolvedValueOnce({ batch: { projects: [project('p2')], total: 2, recent: 'p1' } })
+    render(<ProjectListGrid initial={initial} query="" status="" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Carregar mais projetos' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falha de conexão')
+    expect(screen.getByRole('link', { name: 'Acessar projeto p1' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+    await screen.findByRole('link', { name: 'Acessar projeto p2' })
+    expect(more.mock.calls.map(args => args[0].page)).toEqual([2, 2])
+  })
+  it('bloqueia cliques repetidos enquanto aguarda a resposta', async () => {
+    let resolve!: (value: unknown) => void
+    more.mockReturnValue(new Promise(done => { resolve = done }))
+    render(<ProjectListGrid initial={initial} query="" status="" />)
+    const button = screen.getByRole('button', { name: 'Carregar mais projetos' })
+    fireEvent.click(button); fireEvent.click(button)
+    expect(more).toHaveBeenCalledTimes(1)
+    expect(button).toBeDisabled()
+    resolve({ batch: { projects: [], total: 1, recent: 'p1' } })
+    await waitFor(() => expect(button).not.toBeInTheDocument())
+  })
+})

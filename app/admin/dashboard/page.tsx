@@ -1,6 +1,4 @@
-import prisma from '@/lib/prisma'
-import { verifySession } from '@/lib/dal'
-import { getGlobalKPIs, getSprintsWithMetrics, getOverdueCards, getUserMetrics, getSprintMetrics } from '@/services/dashboardService'
+import { getAdminDashboardData } from '@/services/adminDashboardService'
 import KPICard from '@/components/dashboard/KPICard'
 import SprintCostChart from '@/components/dashboard/SprintCostChart'
 import UserHoursChart from '@/components/dashboard/UserHoursChart'
@@ -11,7 +9,7 @@ import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = { title: 'Dashboard Global' }
+export const metadata: Metadata = { title: 'Dashboard da instituição' }
 
 function formatHours(h: number) {
   if (h < 1) return `${Math.round(h * 60)}min`
@@ -20,82 +18,6 @@ function formatHours(h: number) {
 
 function formatCurrency(v: number) {
   return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
-async function getAdminDashboardData() {
-  const { tenantId } = await verifySession()
-
-  const [kpis, sprintMetricsRaw, overdueCards, userMetrics, projetos, pendingDrafts] = await Promise.all([
-    getGlobalKPIs(),
-    getSprintsWithMetrics(),
-    getOverdueCards(),
-    getUserMetrics(),
-    prisma.project.findMany({
-      where: { deletedAt: null },
-      include: {
-        sprints: {
-          where: { deletedAt: null },
-          select: { id: true, status: true },
-        },
-        _count: { select: { sprints: true } },
-      },
-      orderBy: { createdAt: 'asc' },
-    }),
-    prisma.projectDraft.findMany({
-      where: { tenantId },
-      select: { projectId: true, savedAt: true },
-    }),
-  ])
-
-  const sprintMetrics = sprintMetricsRaw.map(({ sprint, metrics }) => ({
-    id: sprint.id,
-    name: sprint.name,
-    ...metrics,
-  }))
-
-  // Calculate per-project metrics
-  const projetoMetrics = await Promise.all(
-    projetos.map(async p => {
-      const sprintIds = p.sprints.map(s => s.id)
-      let totalCards = 0
-      let totalConcluidos = 0
-      let totalHoras = 0
-      let totalCusto = 0
-
-      if (sprintIds.length > 0) {
-        const metricsArr = await Promise.all(sprintIds.map(id => getSprintMetrics(id)))
-        for (const m of metricsArr) {
-          totalCards += m.cardsTotal
-          totalConcluidos += m.cardsConcluidos
-          totalHoras += m.horasTotais
-          totalCusto += m.custoTotal
-        }
-      }
-
-      const pctConcluido = totalCards > 0 ? Math.round((totalConcluidos / totalCards) * 100) : 0
-      const sprintsAtivas = p.sprints.filter(s => s.status === 'ACTIVE').length
-
-      return {
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        status: p.status,
-        createdAt: p.createdAt,
-        totalSprints: p._count.sprints,
-        sprintsAtivas,
-        totalCards,
-        totalConcluidos,
-        pctConcluido,
-        totalHoras,
-        totalCusto,
-      }
-    }),
-  )
-
-  const activeProjetos = projetoMetrics.filter(p => p.status === 'ACTIVE')
-  const concludedProjetos = projetoMetrics.filter(p => p.status === 'COMPLETED')
-
-  return { kpis, sprintMetrics, overdueCards, userMetrics, activeProjetos, concludedProjetos, pendingDrafts }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -118,7 +40,7 @@ export default async function AdminDashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Dashboard Global</h1>
+        <h1 className="text-xl font-bold text-gray-900">Dashboard da instituição</h1>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
@@ -136,7 +58,7 @@ export default async function AdminDashboardPage() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard label="Projetos actives" value={activeProjetos.length} color="blue" />
+          <KPICard label="Projetos ativos" value={activeProjetos.length} color="blue" />
           <KPICard label="Sprints" value={kpis.totalSprints} color="purple" />
           <KPICard label="Horas totais" value={formatHours(kpis.horasTotais)} color="amber" />
           <KPICard label="Custo total" value={formatCurrency(kpis.custoTotal)} color="green" sub="baseado em valor/hora" />
@@ -165,7 +87,7 @@ export default async function AdminDashboardPage() {
             <Link href="/projetos" className="text-sm text-blue-600 hover:underline">Ver todos</Link>
           </div>
           {activeProjetos.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">Nenhum projeto active</p>
+            <p className="text-sm text-gray-400 py-4 text-center">Nenhum projeto ativo</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

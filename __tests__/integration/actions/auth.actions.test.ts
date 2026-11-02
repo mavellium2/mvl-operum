@@ -26,9 +26,9 @@ vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
 }))
 
-import { signupAction, loginAction, logoutAction } from '@/app/actions/auth'
+import { signupAction, loginAction, logoutAction, expireSessionAction } from '@/app/actions/auth'
 import { authServiceRegister, authServiceLogin, authServiceLogout } from '@/lib/authClient'
-import { encrypt } from '@/lib/session'
+import { encrypt, decrypt } from '@/lib/session'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { projectsApi } from '@/lib/api-client'
@@ -191,5 +191,21 @@ describe('logoutAction', () => {
     mockCookies.mockResolvedValue(cookieStore)
     await logoutAction()
     expect(cookieStore.delete).toHaveBeenCalledWith('session')
+  })
+})
+
+describe('expireSessionAction', () => {
+  it('preserva a instituição da sessão ao encerrar por inatividade', async () => {
+    const tenantId = '80e4ff4a-6e67-4d98-8013-b54c35c96085'
+    const cookieStore = { set: vi.fn(), delete: vi.fn(), get: vi.fn().mockReturnValue({ value: 'valid-token' }) }
+    mockCookies.mockResolvedValue(cookieStore)
+    vi.mocked(decrypt).mockResolvedValue({ tenantId } as never)
+    vi.mocked(authServiceLogout).mockResolvedValue(undefined as never)
+
+    await expireSessionAction('/projetos')
+
+    expect(cookieStore.set).toHaveBeenCalledWith('operum_last_tenant', tenantId, expect.any(Object))
+    expect(cookieStore.delete).toHaveBeenCalledWith('session')
+    expect(mockRedirect).toHaveBeenCalledWith('/login?motivo=inatividade&from=%2Fprojetos')
   })
 })

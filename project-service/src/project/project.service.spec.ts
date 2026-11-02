@@ -4,7 +4,7 @@ import { NotFoundException } from '@nestjs/common'
 
 vi.mock('../prisma', () => ({
   prisma: {
-    project: { findFirst: vi.fn() },
+    project: { findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     userProject: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
     department: { findFirst: vi.fn() },
   },
@@ -108,5 +108,42 @@ describe('UpdateProjectSchema', () => {
   it('aceita mudança de status (usado para arquivar projeto)', () => {
     expect(UpdateProjectSchema.parse({ status: 'ARCHIVED' })).toEqual({ status: 'ARCHIVED' })
     expect(UpdateProjectSchema.safeParse({ status: 'APAGADO' }).success).toBe(false)
+  })
+})
+
+
+describe('ProjectService.list — situações e último aberto', () => {
+  beforeEach(() => { vi.clearAllMocks(); db.project.findMany.mockResolvedValue([]); db.project.findFirst.mockResolvedValue(null); db.project.count.mockResolvedValue(0) })
+  it('prioriza o último ativo dentro do tenant e permissões', async () => {
+    db.project.count.mockResolvedValueOnce(2).mockResolvedValueOnce(0).mockResolvedValueOnce(0).mockResolvedValueOnce(0)
+    db.project.findFirst.mockResolvedValue({ id: 'a2', status: 'ACTIVE' })
+    db.project.findMany.mockResolvedValue([{ id: 'a1', status: 'ACTIVE' }])
+    const result = await new ProjectService().list('t1', 1, 9, ['a1', 'a2'], 'a2')
+    expect(result.items.map(p => p.id)).toEqual(['a2', 'a1'])
+    expect(result.total).toBe(2)
+    expect(db.project.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { AND: [{ tenantId: 't1', deletedAt: null, id: { in: ['a1', 'a2'] }, status: 'ACTIVE' }, { id: 'a2' }] } }))
+  })
+  it('pagina cruzando situações, sem repetir o ativo fixado', async () => {
+    db.project.count.mockResolvedValueOnce(2).mockResolvedValueOnce(2).mockResolvedValueOnce(0).mockResolvedValueOnce(1)
+    db.project.findFirst.mockResolvedValue({ id: 'a2' })
+    db.project.findMany.mockResolvedValueOnce([{ id: 'c2' }]).mockResolvedValueOnce([{ id: 'i1' }])
+    const result = await new ProjectService().list('t1', 2, 3, undefined, 'a2')
+    expect(result.items.map(p => p.id)).toEqual(['c2', 'i1'])
+    expect(db.project.findMany.mock.calls[0][0]).toMatchObject({ where: { status: 'COMPLETED' }, skip: 1, take: 1 })
+    expect(db.project.findMany.mock.calls[1][0]).toMatchObject({ where: { status: 'INACTIVE' }, skip: 0, take: 1 })
+  })
+  it('combina pesquisa e situação em todos os resultados', async () => {
+    db.project.count.mockResolvedValueOnce(1)
+    db.project.findMany.mockResolvedValueOnce([{ id: 'c1' }])
+    const result = await new ProjectService().list('t1', 1, 9, undefined, 'a2', 'concl', 'COMPLETED')
+    expect(result.items.map(p => p.id)).toEqual(['c1'])
+    expect(db.project.findFirst).not.toHaveBeenCalled()
+    expect(db.project.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ tenantId: 't1', status: 'COMPLETED', OR: [{ name: { contains: 'concl', mode: 'insensitive' } }, { slogan: { contains: 'concl', mode: 'insensitive' } }] }) }))
+  })
+  it('não coloca concluídos ou inativos antes dos ativos', async () => {
+    db.project.count.mockResolvedValueOnce(1).mockResolvedValueOnce(1).mockResolvedValueOnce(0).mockResolvedValueOnce(1)
+    db.project.findMany.mockResolvedValueOnce([{ id: 'a1' }]).mockResolvedValueOnce([{ id: 'c1' }]).mockResolvedValueOnce([{ id: 'i1' }])
+    const result = await new ProjectService().list('t1', 1, 9, undefined, 'i1')
+    expect(result.items.map(p => p.id)).toEqual(['a1', 'c1', 'i1'])
   })
 })

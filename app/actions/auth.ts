@@ -133,6 +133,8 @@ export async function touchSessionAction() {
 export async function expireSessionAction(from: string) {
   const cookieStore = await cookies()
   const token = cookieStore.get('session')?.value
+  const session = await decrypt(token).catch(() => null)
+  if (typeof session?.tenantId === 'string' && TENANT_ID_RE.test(session.tenantId)) cookieStore.set(LAST_TENANT_COOKIE, session.tenantId, LAST_TENANT_COOKIE_OPTIONS)
   if (token) await authServiceLogout(token).catch(() => {})
   cookieStore.delete('session')
   cookieStore.delete(LAST_SEEN_COOKIE)

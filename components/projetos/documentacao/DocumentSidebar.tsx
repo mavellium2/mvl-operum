@@ -99,7 +99,7 @@ export default function DocumentSidebar({ activeDoc, onSelect, embedded = false,
     .filter((d): d is (typeof DOCUMENTS)[number] => Boolean(d))
 
   return (
-    <nav aria-label="Documentos" className={embedded ? "ml-5 border-l border-slate-200 pl-1.5" : "w-full lg:w-56 max-h-48 lg:max-h-none overflow-y-auto shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col py-4 gap-1 px-2"}>
+    <nav data-sidebar-documents={embedded || undefined} aria-label="Documentos" className={embedded ? "sidebar-document-tree" : "w-full lg:w-56 max-h-48 lg:max-h-none overflow-y-auto shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col py-4 gap-1 px-2"}>
       {!embedded && (
         <p className="px-2 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
           Documentos
@@ -126,10 +126,10 @@ export default function DocumentSidebar({ activeDoc, onSelect, embedded = false,
                       >
                         <GripVertical className="w-3.5 h-3.5" />
                       </span>
-                      <OperumButton variant="default" type="button"
+                      <OperumButton variant={embedded ? "custom" : "default"} type="button"
                         onClick={() => navegarComGuarda(() => onSelect(doc.id))}
                         aria-current={activeDoc === doc.id ? 'page' : undefined}
-                        className={`flex flex-1 items-center gap-2 text-left rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                        className={`${embedded ? 'sidebar-document-link' : ''} flex flex-1 items-center gap-2 text-left rounded-lg px-2 py-1.5 text-sm transition-colors ${
                           activeDoc === doc.id
                             ? 'bg-blue-50 font-medium text-blue-700'
                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'

@@ -1,9 +1,8 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PermissoesFuncoes from '@/components/permissoes/PermissoesFuncoes'
 import PermissoesUsuario from '@/components/permissoes/PermissoesUsuario'
 import { listarPermissoesFuncoesAction, salvarPermissoesFuncaoAction, restaurarPadraoFuncaoAction, listarAjustesUsuarioAction, salvarAjusteUsuarioAction } from '@/app/actions/permissoes'
-import { escolherOpcao } from '../../../helpers/select'
 
 vi.mock('@/app/actions/permissoes', () => ({
   listarPermissoesFuncoesAction: vi.fn(), salvarPermissoesFuncaoAction: vi.fn(), restaurarPadraoFuncaoAction: vi.fn(),
@@ -45,23 +44,22 @@ describe('editores de permissões', () => {
   it('envia o escopo do projeto e só confirma ajuste após sucesso; herdar remove o ajuste', async () => {
     vi.mocked(salvarAjusteUsuarioAction).mockResolvedValue({ success: true })
     render(<PermissoesUsuario userId="u1" projectId="p1" />)
-    const select = await screen.findByRole('combobox', { name: 'Ver o projeto' })
-    escolherOpcao(select, 'Negar')
-    await waitFor(() => expect(select).toHaveTextContent('Negar'))
-    // Enquanto salva, o seletor fica desabilitado; espera liberar antes da próxima escolha.
-    await waitFor(() => expect(select).toBeEnabled())
+    const group = await screen.findByRole('radiogroup', { name: 'Ver o projeto' })
+    fireEvent.click(within(group).getByRole('radio', { name: 'Negar' }))
+    await waitFor(() => expect(within(group).getByRole('radio', { name: 'Negar' })).toHaveAttribute('aria-checked', 'true'))
+    await waitFor(() => expect(within(group).getByRole('radio', { name: 'Herdar' })).toBeEnabled())
     expect(salvarAjusteUsuarioAction).toHaveBeenLastCalledWith({ userId: 'u1', projectId: 'p1', permissao: 'projeto:ver', efeito: 'DENY' })
-    escolherOpcao(select, 'Herdar')
-    await waitFor(() => expect(select).toHaveTextContent('Herdar'))
+    fireEvent.click(within(group).getByRole('radio', { name: 'Herdar' }))
+    await waitFor(() => expect(within(group).getByRole('radio', { name: 'Herdar' })).toHaveAttribute('aria-checked', 'true'))
     expect(salvarAjusteUsuarioAction).toHaveBeenLastCalledWith(expect.objectContaining({ efeito: null }))
   })
   it('ajuste global falho preserva valor confirmado', async () => {
     vi.mocked(salvarAjusteUsuarioAction).mockResolvedValue({ error: 'Sem acesso' })
     render(<PermissoesUsuario userId="u1" projectId={null} />)
-    const select = await screen.findByRole('combobox', { name: 'Ver o projeto' })
-    escolherOpcao(select, 'Conceder')
+    const group = await screen.findByRole('radiogroup', { name: 'Ver o projeto' })
+    fireEvent.click(within(group).getByRole('radio', { name: 'Permitir' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Sem acesso')
-    expect(select).toHaveTextContent('Herdar')
+    expect(within(group).getByRole('radio', { name: 'Herdar' })).toHaveAttribute('aria-checked', 'true')
     expect(salvarAjusteUsuarioAction).toHaveBeenCalledWith(expect.objectContaining({ projectId: null }))
   })
 })

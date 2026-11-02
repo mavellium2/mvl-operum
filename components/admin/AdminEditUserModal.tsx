@@ -1,14 +1,21 @@
 'use client'
 
 import FormActions from '@/components/ui/FormActions'
+import GlassCard from '@/components/ui/GlassCard'
+import AnimatedEditButton from '@/components/ui/AnimatedEditButton'
+import { Save, FolderKanban, Plus, X } from 'lucide-react'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { erroMoeda, formatReais, moedaParaCampo, parseMoeda } from '@/lib/dinheiro'
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useTransition, useId } from 'react'
 import { adminUpdateUserAction, setUserRoleAction } from '@/app/actions/admin'
 import { getUserProjetosAction, addMemberAction, updateUsuarioProjetoAction } from '@/app/actions/projetos'
+import { getDepartmentsAction } from '@/app/actions/departments'
+import { getRolesAction } from '@/app/actions/roles'
+import { parseHoras, formatHoras } from '@/lib/validation/horas'
+import { updateProjetoMemberAction } from '@/app/actions/projetos'
 import { getProjetosAction } from '@/app/actions/projetos'
 import { EmailInput } from '@/components/ui/ContatoInputs'
 import { erroEmail } from '@/lib/contato'
@@ -30,6 +37,8 @@ interface UserProjeto {
   cargo: string | null
   departamento: string | null
   hourlyRate: number | null
+  remuneracao?: number | null
+  horasDiarias?: number | null
   startDate: string
   project: { id: string; name: string; status: string }
 }
@@ -48,6 +57,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) {
+  const formId = useId()
   const [form, setForm] = useState({
     name: user.name,
     email: user.email,
@@ -73,9 +83,13 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
   const [showAddProject, setShowAddProject] = useState(false)
   const [selectedProjetoId, setSelectedProjetoId] = useState('')
   const [editingProjetoId, setEditingProjetoId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ cargo: '', departamento: '', hourlyRate: '' })
+  const [editForm, setEditForm] = useState({ cargo: '', departamento: '', remuneracao: '', horasDiarias: '' })
 
+  const [cargos, setCargos] = useState<string[]>([])
+  const [departamentos, setDepartamentos] = useState<string[]>([])
   useEffect(() => {
+    getRolesAction('TENANT').then(items => setCargos(items.map(item => String(item.name))))
+    getDepartmentsAction().then(items => { if (Array.isArray(items)) setDepartamentos(items.map(item => item.name)) })
     getUserProjetosAction(user.id).then(result => {
       setUserProjetos(result as UserProjeto[])
     })
@@ -142,32 +156,34 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
     setEditForm({
       cargo: up.cargo ?? '',
       departamento: up.departamento ?? '',
-      hourlyRate: moedaParaCampo(up.hourlyRate),
+      remuneracao: moedaParaCampo(up.remuneracao),
+      horasDiarias: up.horasDiarias ? formatHoras(up.horasDiarias) : '',
     })
   }
 
   function handleSaveEdit(up: UserProjeto) {
-    const erroValor = erroMoeda(editForm.hourlyRate, { rotulo: 'Valor/hora' })
-    if (erroValor) {
-      setError(erroValor)
-      return
-    }
-    const hourlyRate = parseMoeda(editForm.hourlyRate)
+    const horas = parseHoras(editForm.horasDiarias)
+    const erroValor = erroMoeda(editForm.remuneracao, { rotulo: 'Salário mensal' })
+    if (erroValor || horas.erro || !editForm.remuneracao.trim() || !horas.valor) { setError(erroValor ?? horas.erro ?? 'Informe o salário mensal e as horas trabalhadas por dia.'); return }
+    const remuneracao = parseMoeda(editForm.remuneracao) ?? 0
+    const horasDiarias = horas.valor
+    const hourlyRate = remuneracao / 30 / horasDiarias
     startTransition(async () => {
-      const result = await updateUsuarioProjetoAction(user.id, up.projectId, {
+      const result = await updateProjetoMemberAction(user.id, up.projectId, {
         cargos: editForm.cargo ? [editForm.cargo] : [],
-        departamentos: editForm.departamento ? [editForm.departamento] : [],
-        hourlyRate,
+        departamento: editForm.departamento ? [editForm.departamento] : [],
+        remuneracao, horasDiarias,
       })
       if (!('error' in result)) {
         setUserProjetos(prev => prev.map(p => p.projectId === up.projectId ? {
           ...p,
           cargo: editForm.cargo || null,
           departamento: editForm.departamento || null,
-          hourlyRate,
+          hourlyRate, remuneracao, horasDiarias,
         } : p))
         setEditingProjetoId(null)
-      }
+        setError('')
+      } else setError(result.error ?? 'Não foi possível salvar o vínculo.')
     })
   }
 
@@ -198,11 +214,9 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-        <h2 className="text-lg font-bold text-gray-900 px-6 pt-6 pb-2 shrink-0">Editar Usuário</h2>
-        <div className="overflow-y-auto flex-1 min-h-0 px-6">
-          <form onSubmit={handleSubmit} className="space-y-3">
+    <div className="admin-user-editor">
+        <div className="admin-user-editor-body px-6">
+          <form id={formId} onSubmit={handleSubmit} className="space-y-3">
             <Field label="Nome *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">E-mail *</label>
@@ -214,11 +228,11 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <Field label="Nova senha (deixe em branco para manter)" type="password" value={form.password} onChange={v => setForm(f => ({ ...f, password: v }))} />
+            <details className="admin-user-disclosure"><summary>Alterar senha</summary><div className="pt-3"><Field label="Nova senha" type="password" value={form.password} onChange={v => setForm(f => ({ ...f, password: v }))} /></div></details>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Role global</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Acesso à instituição</label>
               <Select
-                ariaLabel="Role global"
+                ariaLabel="Acesso à instituição"
                 searchable={false}
                 value={form.role}
                 onChange={v => setForm(f => ({ ...f, role: v }))}
@@ -226,36 +240,27 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
               />
             </div>
 
-            <div className="pt-1 border-t border-gray-100">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide my-2">Endereço</p>
+            <details className="admin-user-disclosure">
+              <summary>Endereço</summary><div className="pt-3">
               <AddressFields
                 values={address}
                 onChange={(field, value) => setAddress(a => ({ ...a, [field]: value }))}
-              />
-            </div>
+              /></div>
+            </details>
 
             {error && <p className="text-sm text-red-500">{error}</p>}
-            <FormActions className="flex gap-2 pt-1">
-              <OperumButton variant="default" type="button" onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm">
-                Cancelar
-              </OperumButton>
-              <OperumButton variant="primary" type="submit" disabled={loading} className="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
-                {loading ? 'Salvando…' : 'Salvar'}
-              </OperumButton>
-            </FormActions>
+
           </form>
 
           {/* Projects section */}
-          <div className="border-t border-gray-100 -mx-6 px-6 pb-6">
-          <div className="flex items-center justify-between py-4">
-            <h3 className="text-sm font-semibold text-gray-900">
-              Projetos ({userProjetos.filter(p => p.active).length} active{userProjetos.filter(p => p.active).length !== 1 ? 's' : ''})
-            </h3>
+          <div className="admin-user-projects">
+          <div className="user-projects-heading">
+            <h3><FolderKanban size={16} aria-hidden="true" />Projetos <span className="user-projects-count" aria-label={`${userProjetos.filter(p => p.active).length} vínculos ativos`}>{userProjetos.filter(p => p.active).length}</span></h3>
             <OperumButton variant="default" type="button"
               onClick={() => setShowAddProject(v => !v)}
-              className="text-xs text-blue-600 hover:underline"
+              className="user-project-link-button" aria-expanded={showAddProject}
             >
-              + Adicionar a projeto
+              {showAddProject ? <X size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}{showAddProject ? 'Fechar' : 'Vincular'}
             </OperumButton>
           </div>
 
@@ -280,26 +285,21 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
           )}
 
           {userProjetos.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-2">Não está em nenhum projeto</p>
+            <p className="user-projects-empty">Nenhum projeto vinculado</p>
           ) : (
             <div className="space-y-2">
               {userProjetos.map(up => (
-                <div key={up.projectId} className={`rounded-xl border p-3 ${up.active ? 'border-gray-100' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
+                <GlassCard as="article" key={up.projectId} data-inactive={!up.active || undefined} className="user-project-membership">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${up.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
-                        {up.active ? 'Ativo' : 'Inactive'}
+                        {up.active ? 'Ativo' : 'Inativo'}
                       </span>
                       <span className="text-sm font-medium text-gray-900 truncate">{up.project.name}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {up.active && editingProjetoId !== up.projectId && (
-                        <OperumButton variant="default" type="button"
-                          onClick={() => handleStartEdit(up)}
-                          className="text-xs text-gray-500 hover:text-gray-700"
-                        >
-                          Editar
-                        </OperumButton>
+                        <AnimatedEditButton label={`Editar vínculo com ${up.project.name}`} onClick={() => handleStartEdit(up)} />
                       )}
                       <OperumButton variant="danger" type="button"
                         onClick={() => handleToggleAtivo(up)}
@@ -317,35 +317,22 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Cargo</label>
-                          <OperumInput
-                            type="text"
-                            value={editForm.cargo}
-                            onChange={e => setEditForm(f => ({ ...f, cargo: e.target.value }))}
-                            placeholder="Ex: Dev Backend"
-                            className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
+                          <Select ariaLabel="Cargo no projeto" value={editForm.cargo} onChange={cargo => setEditForm(form => ({ ...form, cargo }))} options={[...new Set([...cargos, editForm.cargo].filter(Boolean))].map(name => ({ value: name, label: name }))} placeholder="Selecionar cargo" />
                         </div>
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Departamento</label>
-                          <OperumInput
-                            type="text"
-                            value={editForm.departamento}
-                            onChange={e => setEditForm(f => ({ ...f, departamento: e.target.value }))}
-                            placeholder="Ex: Tecnologia"
-                            className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
+                          <Select ariaLabel="Departamento no projeto" value={editForm.departamento} onChange={departamento => setEditForm(form => ({ ...form, departamento }))} options={[...new Set([...departamentos, editForm.departamento].filter(Boolean))].map(name => ({ value: name, label: name }))} placeholder="Selecionar departamento" />
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Valor/hora (R$)</label>
-                        <MoedaInput
-                          comSimbolo
-                          rotulo="Valor/hora"
-                          value={editForm.hourlyRate}
-                          onValueChange={texto => setEditForm(f => ({ ...f, hourlyRate: texto }))}
-                          className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                      <div className="grid grid-cols-2 gap-2"><div><label className="mb-1 block text-xs text-gray-500">Salário mensal</label><MoedaInput comSimbolo rotulo="Salário mensal" value={editForm.remuneracao} onValueChange={remuneracao => setEditForm(form => ({ ...form, remuneracao }))} /></div><div><label className="mb-1 block text-xs text-gray-500" htmlFor={`${formId}-horas`}>Horas por dia</label><OperumInput id={`${formId}-horas`} value={editForm.horasDiarias} placeholder="Ex.: 8 ou 8:30" onChange={event => setEditForm(form => ({ ...form, horasDiarias: event.target.value }))} className="w-full rounded-xl px-3 py-2 text-sm" /></div></div>
+                      {(() => {
+                        const salario = parseMoeda(editForm.remuneracao)
+                        const horas = parseHoras(editForm.horasDiarias)
+                        const valid = salario != null && !erroMoeda(editForm.remuneracao) && horas.valor && !horas.erro
+                        const dia = valid ? salario! / 30 : null
+                        const hora = dia != null ? dia / horas.valor! : null
+                        return <div><div className="user-salary-preview">{[['Por dia', dia], ['Por hora', hora], ['Por minuto', hora != null ? hora / 60 : null]].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{value != null ? formatReais(Number(value)) : '—'}</strong></div>)}</div><p className="mt-2 text-[10px] text-gray-500">Base de cálculo: salário mensal ÷ 30 dias; hora conforme a jornada informada.</p></div>
+                      })()}
                       <FormActions className="flex gap-2 pt-1">
                         <OperumButton variant="default"
                           type="button"
@@ -371,16 +358,23 @@ export default function AdminEditUserModal({ user, onClose, onUpdated }: Props) 
                     <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
                       {up.cargo && <span className="text-xs text-gray-500">{up.cargo}</span>}
                       {up.departamento && <span className="text-xs text-gray-400">{up.departamento}</span>}
-                      {up.hourlyRate && <span className="text-xs text-gray-400">{formatReais(up.hourlyRate)}/h</span>}
+                      {up.remuneracao != null && <span className="text-xs text-gray-400">Salário: {formatReais(up.remuneracao)}/mês</span>}
                     </div>
                   )}
-                </div>
+                </GlassCard>
               ))}
             </div>
           )}
           </div>
         </div>
-      </div>
+            <FormActions className="admin-user-editor-actions flex gap-2">
+              <OperumButton variant="default" type="button" onClick={onClose} className="admin-user-cancel">
+                Cancelar
+              </OperumButton>
+              <OperumButton variant="primary" type="submit" form={formId} disabled={loading} className="admin-user-save">
+                <Save size={16} aria-hidden="true" />{loading ? 'Salvando…' : 'Salvar alterações'}
+              </OperumButton>
+            </FormActions>
     </div>
   )
 }

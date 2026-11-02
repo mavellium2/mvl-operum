@@ -1,0 +1,6 @@
+.detail-panel { min-width:0; display:flex; flex-direction:column; }
+.detail-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid var(--glass-edge,#ffffff50); flex-shrink:0; }
+.detail-panel-heading h2 { font-size:14px; font-weight:600; color:var(--ap-text); overflow-wrap:anywhere; }
+.detail-panel-content { min-height:0; flex:1; display:flex; flex-direction:column; }
+.detail-panel--floating { position:fixed; inset:0 0 0 auto; z-index:50; width:100%; max-width:448px; padding:12px; overflow-y:auto; border-radius:0; }
+@media (prefers-reduced-motion:no-preference) { .detail-panel { animation:detail-panel-enter 280ms cubic-bezier(.22,1,.36,1) both; } @keyframes detail-panel-enter { from { opacity:0; translate:8px 0; } to { opacity:1; translate:0 0; } } }

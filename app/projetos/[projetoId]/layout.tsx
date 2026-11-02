@@ -1,10 +1,11 @@
+import RecentProjectRecorder from '@/components/layout/RecentProjectRecorder'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import { permissoesNoProjeto } from '@/services/authz'
 import { ProjectPermissionsProvider } from '@/components/permissoes/ProjectPermissions'
-import ProjectSidebar from '@/components/layout/ProjectSidebar'
+import { RegisteredProjectSidebar } from '@/components/layout/ProjectNavigationContext'
 
 export async function generateMetadata({
   params,
@@ -40,9 +41,12 @@ export default async function ProjetoLayout({
 
   return (
     <ProjectPermissionsProvider permissions={[...permissions]}>
+    <RecentProjectRecorder userId={userId} tenantId={tenantId} projectId={projetoId} />
     <div className="flex flex-1 overflow-hidden">
-      <ProjectSidebar
+      <RegisteredProjectSidebar
+        permissions={[...permissions]}
         projetoId={projetoId}
+        projectName={projeto.name}
         canManageMembers={canManageMembers}
         canManageGlobalCatalogs={role === 'admin'}
       />

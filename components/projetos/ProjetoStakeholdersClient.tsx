@@ -1,6 +1,7 @@
 'use client'
 
 
+import DetailPanel from '@/components/ui/DetailPanel'
 import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import FormActions from '@/components/ui/FormActions'
 import OperumButton from '@/components/ui/GlassButton'
@@ -1895,13 +1896,9 @@ export default function ProjetoStakeholdersClient({
 
   if (painel) {
     return (
-      <aside
-        role="dialog"
-        aria-label={addMode === 'interno' ? 'Adicionar membro da equipe' : 'Adicionar stakeholder externo'}
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col gap-3 overflow-y-auto border-l border-gray-200 bg-gray-50 p-3 shadow-2xl animate-in slide-in-from-right duration-200 [&>*]:!w-full"
-      >
+      <DetailPanel floating label={painel.modo === 'interno' ? 'Adicionar membro da equipe' : 'Adicionar stakeholder externo'} className="gap-3 [&>*]:!w-full">
         {inativando === null && (showCol3 ? coluna3 : coluna2)}
-      </aside>
+      </DetailPanel>
     )
   }
 
