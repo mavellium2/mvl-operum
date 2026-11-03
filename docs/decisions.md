@@ -1056,3 +1056,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** a criação administrativa assume essa unidade transacional; provisionamento em instituições existentes permanece no auth-service. Não há cópia de privilégios globais de operador.
 - **Referências:** `services/tenantService.ts`, `app/actions/admin.ts`, `__tests__/unit/services/tenantCreatorAdmin.test.ts`.
 - **Condição de revisão:** separação dos bancos de identidade e instituições exige rever a coordenação desse fluxo.
+
+## ADR-084 — Último projeto aberto como preferência local
+
+- **Data:** 2026-11-02.
+- **Status:** implementada.
+- **Contexto:** a lista deve começar pelo último projeto aberto pelo usuário, preservando isolamento e paginação.
+- **Escolha:** guardar um único identificador em cookie funcional separado por conta/instituição e aplicar `preferred` no project-service antes da paginação, dentro do filtro de acesso vigente e do grupo de projetos ativos. Concluídos, arquivados e inativos ficam depois, inclusive quando são os últimos abertos.
+- **Justificativa:** evita gravar no banco a cada navegação e mantém o projeto anterior disponível ao retornar à lista.
+- **Alternativas:** ordenar só os cards da página (não encontra um projeto em outra página); persistir acessos no servidor (sincroniza dispositivos, mas exige novo modelo e escritas a cada abertura).
+- **Consequências:** preferência local ao navegador; ID sem acesso ou excluído é ignorado. Cookie não concede permissões e não contém conteúdo do projeto. Nenhuma migration.
+- **Condição de revisão:** sincronização entre dispositivos ou histórico completo de acessos exige persistência no servidor.
+- **Referências:** `components/layout/RecentProjectRecorder.tsx`, `lib/recentProject.ts`, `app/projetos/page.tsx`, `project-service/src/project/project.service.ts`.

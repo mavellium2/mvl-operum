@@ -7,6 +7,45 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.49.0] — 2026-11-02
+
+- **Validação da listagem:** rejeita parâmetros de consulta repetidos ou em formato de lista antes de usar filtros e paginação, eliminando confusão de tipos na API de projetos.
+
+- **Login após inatividade:** preserva a instituição da sessão verificada antes de encerrá-la, evitando que uma preferência antiga provoque “Credenciais inválidas” no próximo acesso.
+
+- **Permissões individuais:** grupos recolhíveis em vidro, pesquisa, controles compartilhados de herdar/permitir/negar e indicação discreta de salvamento automático e exceções.
+
+- **Vínculo do usuário:** cargo e departamento selecionados nos catálogos; salário mensal e horas diárias substituem a edição direta de valor/hora, com prévia de dia, hora e minuto e persistência pela action compartilhada de membros.
+
+- **Layout de usuários:** topo estável, lista compacta, endereço/senha recolhidos e rolagem independente somente por necessidade, com ações de salvar fora do corpo rolável.
+
+- **Editar usuário:** altura natural conforme os campos e projetos vinculados, sem limite fixo no painel nem rolagem interna do formulário.
+
+- **Detalhes do usuário:** edição e permissões em painel à direita da lista, sem modal, com seleção destacada e ações de salvar fora da rolagem. Painel compartilhado com o cadastro de stakeholders.
+
+- **Usuários do admin:** layout em vidro adaptado às aparências, pesquisa ampliada, filtros em popover, edição compartilhada, ações compactas, inativos ao final e feedback de erros ao ativar/inativar.
+
+- **Exclusão de projetos:** confirmação permanece aberta quando uma Server Action reenvia o mesmo lote; a lista preserva os cards e seus estados locais.
+
+- **Cards de projetos:** hover com elevação discreta e iluminação estável de vidro, pressão breve ao clicar e retorno suave, sem seta, e quantidade de macrofases junto aos membros e período.
+
+- **Isolamento da dashboard administrativa:** indicadores, gráficos, ranking, projetos e rascunhos consideram somente a instituição atual, reutilizando o contrato autenticado de métricas. Removida a faixa clara do cabeçalho de Meus projetos.
+
+- **Carregamento sob demanda:** Meus projetos começa com 9 cards e acrescenta até 9 por clique em “Carregar mais projetos”, preservando pesquisa, filtros e posição. Inclui progresso, proteção contra cliques repetidos e nova tentativa em falhas.
+
+- **Meus projetos:** pesquisa por nome/descrição, filtro por situação em popover de vidro e período completo nos cards. Ativos vêm antes dos concluídos, arquivados e inativos, com estilos próprios e ordenação aplicada antes da paginação.
+
+- **Projetos:** nova tela em vidro adaptada às aparências, cards responsivos, ações compartilhadas e último projeto aberto em primeiro, por conta/instituição neste navegador.
+
+- **Contexto de navegação:** Departamentos, Funções, Configurações, Sobre e Notificações preservam o menu do projeto durante a navegação; sair para a lista de projetos ou trocar de instituição encerra esse contexto.
+
+- **Navegação do projeto:** identidade em vidro, retorno aos projetos no topo, áreas de trabalho antes da edição e subitens de documentos integrados ao tema.
+
+- **Menu lateral:** nova composição de vidro adaptada à aparência, instituição no topo, navegação agrupada e conta no rodapé. Menus global e de projeto compartilham modos expandido, compacto e oculto, com preferência persistida.
+- **Instituições e conta:** busca, papel por instituição, confirmação de senha no próprio seletor e mensagens de falha. Perfil, configurações, Sobre e saída ficam no menu da conta; troca e logout respeitam a guarda de alterações não salvas existente.
+- **Responsividade e teclado:** painel móvel com navegação rolável, foco contido e retorno ao acionador; popovers ficam dentro da área acessível do menu móvel. Identificação dos ícones compactos, estado ativo semântico e atalho Ctrl/Cmd K para pesquisar.
+- **Sessão compartilhada:** navegação e conta reutilizam a consulta de sessão no AppShell; a preferência do menu continua ao entrar ou sair de projetos. Sem migrations ou novas dependências de produção.
+
 ## [1.48.0] — 2026-11-02
 
 - **Botões de fechar:** controles de X restantes passam a usar GlassCloseButton, preservando eventos, foco, referências e rótulos.

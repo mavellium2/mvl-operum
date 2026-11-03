@@ -1,18 +1,25 @@
 'use client'
 
 import OperumButton from '@/components/ui/GlassButton'
-import { Input as OperumInput } from '@/components/ui/Field'
+import SearchInput from '@/components/ui/SearchInput'
+import GlassCard from '@/components/ui/GlassCard'
+import GlassPopover from '@/components/ui/GlassPopover'
+import FormActions from '@/components/ui/FormActions'
+import AnimatedEditButton from '@/components/ui/AnimatedEditButton'
+import { Plus, SlidersHorizontal, ShieldCheck, Power } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
+import { matchesSearch } from '@/lib/search'
 import Select from '@/components/ui/Select'
 import { formatReais } from '@/lib/dinheiro'
-import Modal from '@/components/ui/Modal'
+import DetailPanel from '@/components/ui/DetailPanel'
 import PermissoesUsuario from '@/components/permissoes/PermissoesUsuario'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import UserAvatar from '@/components/user/UserAvatar'
 import AdminCreateUserModal, { type AdminUser } from './AdminCreateUserModal'
 import AdminEditUserModal from './AdminEditUserModal'
 import { toggleUserActiveAction } from '@/app/actions/admin'
-import { useFocusOnMount } from '@/hooks/useFocusOnMount'
+
 
 interface Props {
   initialUsers: AdminUser[]
@@ -30,6 +37,11 @@ export default function AdminUsersClient({ initialUsers }: Props) {
   const [showCreate, setShowCreate] = useState(false)
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
+  const { toast } = useToast()
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filterAnchor = useRef<HTMLButtonElement>(null)
+  const [draftRole, setDraftRole] = useState('')
+  const [draftStatus, setDraftStatus] = useState('')
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -37,14 +49,13 @@ export default function AdminUsersClient({ initialUsers }: Props) {
   const filtered = useMemo(() => {
     return users.filter(u => {
       if (search) {
-        const q = search.toLowerCase()
-        if (!u.name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false
+        if (!matchesSearch(`${u.name} ${u.email} ${u.cargo ?? ''} ${u.departamento ?? ''}`, search)) return false
       }
       if (filterRole && u.role !== filterRole) return false
       if (filterStatus === 'active' && !u.isActive) return false
       if (filterStatus === 'inactive' && u.isActive) return false
       return true
-    })
+    }).sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.name.localeCompare(b.name, 'pt-BR'))
   }, [users, search, filterRole, filterStatus])
 
   function handleCreated(user: AdminUser) {
@@ -58,62 +69,32 @@ export default function AdminUsersClient({ initialUsers }: Props) {
   }
 
   async function handleToggleActive(user: AdminUser) {
+    if (loading) return
     setLoading(user.id + '-active')
-    const result = await toggleUserActiveAction(user.id, !user.isActive)
-    setLoading(null)
-    if ('error' in result) return
-    setUsers(prev => prev.map(u => (u.id === user.id ? { ...u, isActive: !u.isActive } : u)))
+    try {
+      const result = await toggleUserActiveAction(user.id, !user.isActive)
+      if ('error' in result) { toast(result.error || 'Não foi possível alterar o usuário', 'error'); return }
+      setUsers(prev => prev.map(u => (u.id === user.id ? { ...u, isActive: !u.isActive } : u)))
+      toast(user.isActive ? 'Usuário inativado' : 'Usuário ativado', 'success')
+    } catch { toast('Não foi possível alterar o usuário. Tente novamente.', 'error') }
+    finally { setLoading(null) }
   }
 
   const roleInfo = (role: string) => ROLE_LABELS[role] ?? ROLE_LABELS.member
-  const searchRef = useFocusOnMount<HTMLInputElement>()
+
 
   return (
     <>
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <OperumInput
-          ref={searchRef}
-          type="search"
-          placeholder="Buscar por nome ou email…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <Select
-          ariaLabel="Filtrar por papel"
-          className="sm:w-48"
-          searchable={false}
-          value={filterRole}
-          onChange={setFilterRole}
-          placeholder="Todos os papéis"
-          options={[{ value: '', label: 'Todos os papéis' }, { value: 'admin', label: 'Admin' }, { value: 'member', label: 'Membro' }]}
-        />
-        <Select
-          ariaLabel="Filtrar por status"
-          className="sm:w-48"
-          searchable={false}
-          value={filterStatus}
-          onChange={setFilterStatus}
-          placeholder="Todos os status"
-          options={[{ value: '', label: 'Todos os status' }, { value: 'active', label: 'Ativo' }, { value: 'inactive', label: 'Inativo' }]}
-        />
-        <OperumButton variant="primary" type="button"
-          onClick={() => setShowCreate(true)}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 whitespace-nowrap"
-        >
-          + Novo usuário
-        </OperumButton>
+      <div className="admin-users-top">
+      <div className="admin-users-heading"><div><h1>Usuários <span>{filtered.length}</span></h1></div><OperumButton variant="primary" onClick={() => setShowCreate(true)}><Plus size={16} aria-hidden="true" />Novo usuário</OperumButton></div>
+      <div className="admin-users-toolbar"><div className="min-w-0 flex-1"><SearchInput label="Pesquisar usuários" placeholder="Pesquisar por nome, e-mail ou departamento…" value={search} onChange={event => setSearch(event.target.value)} /></div><OperumButton ref={filterAnchor} variant="default" aria-label="Filtros dos usuários" aria-haspopup="dialog" aria-expanded={filtersOpen} onClick={() => { setDraftRole(filterRole); setDraftStatus(filterStatus); setFiltersOpen(value => !value) }}><SlidersHorizontal size={17} aria-hidden="true" />{(filterRole || filterStatus) && <span className="admin-users-filter-dot" />}</OperumButton></div>
       </div>
+      <GlassPopover open={filtersOpen} onClose={() => setFiltersOpen(false)} anchor={filterAnchor} label="Filtrar usuários"><form onSubmit={event => { event.preventDefault(); setFilterRole(draftRole); setFilterStatus(draftStatus); setFiltersOpen(false) }}><h2 className="mb-4 text-sm font-semibold">Filtrar usuários</h2><div className="space-y-4"><Select ariaLabel="Filtrar por papel" searchable={false} value={draftRole} onChange={setDraftRole} placeholder="Todos os papéis" options={[{ value: '', label: 'Todos os papéis' }, { value: 'admin', label: 'Administrador' }, { value: 'gerente', label: 'Gerente' }, { value: 'member', label: 'Membro' }]} /><Select ariaLabel="Filtrar por status" searchable={false} value={draftStatus} onChange={setDraftStatus} placeholder="Todas as situações" options={[{ value: '', label: 'Todas as situações' }, { value: 'active', label: 'Ativos' }, { value: 'inactive', label: 'Inativos' }]} /></div><FormActions surface="none" className="mt-5 flex justify-end gap-2"><OperumButton onClick={() => { setFilterRole(''); setFilterStatus(''); setDraftRole(''); setDraftStatus(''); setFiltersOpen(false) }}>Limpar</OperumButton><OperumButton variant="primary" type="submit">Aplicar</OperumButton></FormActions></form></GlassPopover>
 
-      <p className="text-sm text-gray-500 mb-3">
-        {filtered.length} usuário{filtered.length !== 1 ? 's' : ''}
-        {search || filterRole || filterStatus ? ' (filtrado)' : ''}
-      </p>
-
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-100">
+      <div className="admin-users-workspace" data-panel={Boolean(editUser || permissoesUser) || undefined}>
+      <GlassCard className="admin-users-table-surface">
+        <table className="admin-users-table w-full text-sm">
+          <thead>
             <tr>
               <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Usuário</th>
               <th className="text-left text-xs font-medium text-gray-500 px-4 py-3 hidden md:table-cell">Cargo / Depto</th>
@@ -127,14 +108,14 @@ export default function AdminUsersClient({ initialUsers }: Props) {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">
-                  Nenhum usuário encontrado
+                  Nenhum usuário encontrado. Tente outro nome ou ajuste os filtros.
                 </td>
               </tr>
             )}
             {filtered.map(user => {
               const ri = roleInfo(user.role)
               return (
-                <tr key={user.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                <tr key={user.id} data-selected={editUser?.id === user.id || permissoesUser?.id === user.id || undefined} data-inactive={!user.isActive || undefined} className="admin-user-row">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size="sm" />
@@ -153,7 +134,7 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {user.isActive ? 'Ativo' : 'Inactive'}
+                      {user.isActive ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -163,20 +144,9 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
-                      <OperumButton variant="default" type="button" onClick={() => setPermissoesUser(user)} className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 text-blue-700">Permissões</OperumButton>
-                      <OperumButton variant="default" type="button"
-                        onClick={() => setEditUser(user)}
-                        className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
-                      >
-                        Editar
-                      </OperumButton>
-                      <OperumButton variant="default" type="button"
-                        onClick={() => handleToggleActive(user)}
-                        disabled={loading === user.id + '-active'}
-                        className={`px-2.5 py-1 text-xs rounded-lg border text-gray-600 hover:bg-gray-50 disabled:opacity-50 ${user.isActive ? 'border-gray-200' : 'border-green-200 text-green-700 hover:bg-green-50'}`}
-                      >
-                        {user.isActive ? 'Inativar' : 'Ativar'}
-                      </OperumButton>
+                      <OperumButton variant="icon" title="Permissões" aria-label={`Permissões de ${user.name}`} onClick={() => { setEditUser(null); setPermissoesUser(user) }}><ShieldCheck size={16} aria-hidden="true" /></OperumButton>
+                      <AnimatedEditButton label={`Editar ${user.name}`} onClick={() => { setPermissoesUser(null); setEditUser(user) }} />
+                      <OperumButton variant={user.isActive ? 'ghost' : 'primary'} aria-label={`${user.isActive ? 'Inativar' : 'Ativar'} ${user.name}`} title={user.isActive ? 'Inativar usuário' : 'Ativar usuário'} onClick={() => handleToggleActive(user)} disabled={loading !== null} className="admin-user-toggle"><Power size={15} aria-hidden="true" /><span>{loading === user.id + '-active' ? 'Aguarde…' : user.isActive ? 'Inativar' : 'Ativar'}</span></OperumButton>
                     </div>
                   </td>
                 </tr>
@@ -184,15 +154,13 @@ export default function AdminUsersClient({ initialUsers }: Props) {
             })}
           </tbody>
         </table>
-      </div>
+      </GlassCard>
 
-      {permissoesUser && <Modal isOpen onClose={() => setPermissoesUser(null)} title={`Permissões — ${permissoesUser.name}`} maxWidth="max-w-3xl"><PermissoesUsuario key={permissoesUser.id} userId={permissoesUser.id} projectId={null} /></Modal>}
-      {showCreate && (
-        <AdminCreateUserModal onClose={() => setShowCreate(false)} onCreated={handleCreated} />
-      )}
-      {editUser && (
-        <AdminEditUserModal user={editUser} onClose={() => setEditUser(null)} onUpdated={handleUpdated} />
-      )}
+      {(permissoesUser || editUser) && <DetailPanel key={`${editUser ? 'edit' : 'permissions'}:${(editUser ?? permissoesUser)!.id}`} title={`${editUser ? 'Editar' : 'Permissões de'} ${(editUser ?? permissoesUser)!.name}`} onClose={() => { setEditUser(null); setPermissoesUser(null) }} className={`admin-user-detail ${editUser ? 'admin-user-detail--editing' : ''}`}>
+        {editUser ? <AdminEditUserModal user={editUser} onClose={() => setEditUser(null)} onUpdated={handleUpdated} /> : <div className="admin-user-permissions"><PermissoesUsuario userId={permissoesUser!.id} projectId={null} /></div>}
+      </DetailPanel>}
+      </div>
+      {showCreate && <AdminCreateUserModal onClose={() => setShowCreate(false)} onCreated={handleCreated} />}
     </>
   )
 }

@@ -1,0 +1,23 @@
+.user-permissions { color:var(--ap-text,#29354a); font-size:13px; }
+.user-permissions-top { position:sticky; top:-16px; z-index:5; padding:0 0 8px; background:transparent; border-radius:12px; }
+.user-permissions-scope { display:flex; flex-wrap:wrap; align-items:center; gap:7px; padding-bottom:12px; font-size:11px; color:var(--ap-muted,#64748b); }
+.user-permissions-count { margin-left:auto; font-size:10px; }
+.user-permissions-status { display:flex; align-items:center; gap:5px; padding:7px 2px 0; min-height:24px; font-size:10px; color:var(--ap-muted,#64748b); }
+.user-permissions-help { font-size:11px; line-height:1.6; color:var(--ap-muted,#64748b); margin:8px 2px 12px; }
+.user-permissions-groups { display:flex; flex-direction:column; gap:9px; min-width:0; }
+.project-appearance[data-period] .user-permission-group, .user-permission-group { border-radius:15px; padding:0; overflow:hidden; }
+.user-permission-group summary { display:flex; align-items:center; gap:8px; padding:13px 12px; list-style:none; cursor:pointer; font-size:12px; font-weight:600; }
+.user-permission-group summary::-webkit-details-marker { display:none; }
+.user-permission-group summary:hover { background:#ffffff16; }
+.user-permission-group-count { margin-left:auto; font-size:10px; font-weight:400; color:var(--ap-muted,#64748b); }
+.user-permission-group details[open] > summary > svg { rotate:180deg; }
+.user-permission-item { padding:12px; border-top:1px solid var(--glass-edge,#cbd5e140); }
+.user-permission-item h3 { font-size:12px; font-weight:500; line-height:1.5; }
+.user-permission-item > div:first-child > span { display:block; margin-top:2px; font-size:10px; color:var(--ap-muted,#64748b); }
+.user-permission-item .glass-segmented { --segment-padding:4px; margin:9px 0 0; padding:4px; border-radius:11px; }
+.user-permission-item .glass-segmented > button { padding:6px 8px; min-height:29px; font-size:10px; }
+.user-permission-item[data-effect='DENY'] h3 { color:color-mix(in srgb,#bd654e 70%,var(--ap-text,#29354a)); }
+.user-permission-item[data-effect='GRANT'] h3 { color:var(--ap-accent,#376a9e); }
+.user-permissions-error { font-size:12px; padding:10px; margin:8px 0; border-radius:10px; color:#ae503e; background:#db846013; }
+.user-permissions-loading { padding:18px 8px; text-align:center; font-size:12px; color:var(--ap-muted,#64748b); }
+@media (prefers-reduced-motion:no-preference) { .user-permission-group summary > svg { transition:rotate 220ms ease; } .user-permission-item { transition:background-color 220ms ease; } }

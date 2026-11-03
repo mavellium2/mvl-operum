@@ -1,7 +1,12 @@
 'use client'
 
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import GlobalSidebar from '@/components/layout/GlobalSidebar'
+import { SidebarSessionProvider } from '@/hooks/useSidebarSession'
+import { ProjectNavigationProvider, useProjectNavigation, keepsProjectNavigation } from './ProjectNavigationContext'
+import ProjectSidebar from './ProjectSidebar'
+import { ProjectPermissionsProvider } from '@/components/permissoes/ProjectPermissions'
 import IdleLogout from '@/components/auth/IdleLogout'
 
 const HIDDEN_PATHS = ['/login', '/register', '/recuperar-senha', '/alterar-senha', '/no-project', '/oauth', '/offline']
@@ -16,23 +21,30 @@ const HIDDEN_PATHS = ['/login', '/register', '/recuperar-senha', '/alterar-senha
  * - Demais páginas: sidebar global + conteúdo.
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  return <ProjectNavigationProvider><ShellContent>{children}</ShellContent></ProjectNavigationProvider>
+}
+function ShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const navigation = useProjectNavigation()!
+  const parts = pathname.split('/').filter(Boolean)
+  const isProjectPage = parts[0] === 'projetos' && Boolean(parts[1]) && parts[1] !== 'novo'
+  const keepProject = keepsProjectNavigation(pathname)
+  const remember = navigation.remember
+  useEffect(() => { if (!isProjectPage && !keepProject) remember(null) }, [isProjectPage, keepProject, remember])
 
   if (pathname === '/privacidade' || pathname === '/termos') return <>{children}</>
 
   if (HIDDEN_PATHS.some(p => pathname.startsWith(p))) return <>{children}</>
 
-  const parts = pathname.split('/').filter(Boolean)
-  const isProjectPage = parts[0] === 'projetos' && Boolean(parts[1]) && parts[1] !== 'novo'
-  if (isProjectPage) return <><IdleLogout />{children}</>
+  if (isProjectPage) return <SidebarSessionProvider><IdleLogout />{children}</SidebarSessionProvider>
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <SidebarSessionProvider><div className="flex flex-1 overflow-hidden">
       <IdleLogout />
-      <GlobalSidebar />
+      {keepProject && navigation.project ? <ProjectPermissionsProvider permissions={navigation.project.permissions}><ProjectSidebar {...navigation.project} /></ProjectPermissionsProvider> : <GlobalSidebar />}
       <main className="flex-1 min-w-0 h-full overflow-y-auto pt-14 md:pt-0">
         {children}
       </main>
-    </div>
+    </div></SidebarSessionProvider>
   )
 }

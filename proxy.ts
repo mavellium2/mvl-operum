@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { jwtVerify, importSPKI } from 'jose'
+import { jwtVerify, importSPKI, type JWTPayload } from 'jose'
 import { LAST_SEEN_COOKIE, idleMs, isIdleExpired, isPassiveRequest } from '@/lib/sessionIdle'
+import { LAST_TENANT_COOKIE, LAST_TENANT_COOKIE_OPTIONS } from '@/lib/sessionCookie'
+
+const TENANT_ID_RE = /^(?:c[a-z0-9]{20,63}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
 
 function normalizePem(raw: string): string {
   return raw.replace(/\\n/g, '\n')
 }
 
-async function verifyToken(token: string): Promise<boolean> {
+async function verifyToken(token: string): Promise<JWTPayload | null> {
   const publicKeyPem = process.env.JWT_PUBLIC_KEY
     ? normalizePem(process.env.JWT_PUBLIC_KEY)
     : null
@@ -15,8 +18,8 @@ async function verifyToken(token: string): Promise<boolean> {
   if (publicKeyPem) {
     try {
       const publicKey = await importSPKI(publicKeyPem, 'RS256')
-      await jwtVerify(token, publicKey, { algorithms: ['RS256'] })
-      return true
+      const { payload } = await jwtVerify(token, publicKey, { algorithms: ['RS256'] })
+      return payload
     } catch {
       // not a valid RS256 token — try HS256
     }
@@ -26,14 +29,14 @@ async function verifyToken(token: string): Promise<boolean> {
   if (secret) {
     try {
       const hs256Secret = new TextEncoder().encode(secret)
-      await jwtVerify(token, hs256Secret, { algorithms: ['HS256'] })
-      return true
+      const { payload } = await jwtVerify(token, hs256Secret, { algorithms: ['HS256'] })
+      return payload
     } catch {
-      return false
+      return null
     }
   }
 
-  return false
+  return null
 }
 
 /**
@@ -55,8 +58,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  const valid = await verifyToken(token)
-  if (!valid) {
+  const session = await verifyToken(token)
+  if (!session) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('from', returnTo(request))
     const response = NextResponse.redirect(loginUrl)
@@ -72,6 +75,9 @@ export async function proxy(request: NextRequest) {
     loginUrl.searchParams.set('from', returnTo(request))
     loginUrl.searchParams.set('motivo', 'inatividade')
     const response = NextResponse.redirect(loginUrl)
+    if (typeof session.tenantId === 'string' && TENANT_ID_RE.test(session.tenantId)) {
+      response.cookies.set(LAST_TENANT_COOKIE, session.tenantId, LAST_TENANT_COOKIE_OPTIONS)
+    }
     response.cookies.delete('session')
     response.cookies.delete(LAST_SEEN_COOKIE)
     return response

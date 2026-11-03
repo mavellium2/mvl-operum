@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { prisma } from '../prisma'
 import { assertUserInTenant } from '../common/tenant-scope'
 import { z } from 'zod'
-import type { Prisma } from '../../lib/generated/prisma'
+import type { Prisma, ProjectStatus } from '../../lib/generated/prisma'
 import { isTransactionConflict } from '../common/transaction-conflict'
 
 export const MacroFasesSchema = z.array(z.object({
@@ -75,23 +75,35 @@ export class ProjectService {
     return result
   }
 
-  async list(tenantId: string, page = 1, limit = 20, authorized?: string[]) {
-    const skip = (page - 1) * limit
-    const [items, total] = await Promise.all([
-      prisma.project.findMany({
-        where: { tenantId, deletedAt: null, ...(authorized ? { id: { in: authorized } } : {}) },
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          _count: {
-            select: { members: { where: { active: true } } },
-          },
-        },
-      }),
-      prisma.project.count({ where: { tenantId, deletedAt: null, ...(authorized ? { id: { in: authorized } } : {}) } }),
-    ])
-    return { items: items.map(p => this.withoutDocuments(p)), total, page, limit }
+  async list(tenantId: string, page = 1, limit = 20, authorized?: string[], preferred?: string, query = '', status?: string) {
+    const base = { tenantId, deletedAt: null, ...(authorized ? { id: { in: authorized } } : {}),
+      ...(query ? { OR: [{ name: { contains: query, mode: 'insensitive' as const } }, { slogan: { contains: query, mode: 'insensitive' as const } }] } : {}) }
+    const include = { _count: { select: { members: { where: { active: true } }, macroFases: true } } }
+    // Ordenação por grupos antes da paginação. O último aberto só tem prioridade entre os ativos.
+    const groups: ProjectStatus[] = status ? [status as ProjectStatus] : ['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE']
+    const scopes = groups.map(value => ({ ...base, status: value }))
+    const counts = await Promise.all(scopes.map(where => prisma.project.count({ where })))
+    const recent = preferred && groups.includes('ACTIVE') ? await prisma.project.findFirst({ where: { AND: [{ ...base, status: 'ACTIVE' }, { id: preferred }] }, include }) : null
+    let offset = (page - 1) * limit
+    let remaining = limit
+    const items: Awaited<ReturnType<typeof prisma.project.findMany>> = []
+    for (let index = 0; index < groups.length && remaining > 0; index++) {
+      const count = counts[index]
+      if (offset >= count) { offset -= count; continue }
+      const pinned = groups[index] === 'ACTIVE' ? recent : null
+      if (pinned && offset === 0) { items.push(pinned); remaining-- }
+      const take = Math.min(remaining, count - Math.max(offset, pinned ? 1 : 0))
+      if (take > 0) {
+        const found = await prisma.project.findMany({
+          where: pinned ? { AND: [scopes[index], { id: { not: pinned.id } }] } : scopes[index],
+          skip: pinned ? Math.max(0, offset - 1) : offset, take,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], include,
+        })
+        items.push(...found); remaining -= found.length
+      }
+      offset = 0
+    }
+    return { items: items.map(p => this.withoutDocuments(p)), total: counts.reduce((sum, count) => sum + count, 0), page, limit }
   }
 
   async findOne(id: string, tenantId: string) {
