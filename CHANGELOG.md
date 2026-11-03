@@ -7,6 +7,10 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.49.1] — 2026-11-03
+
+- **Arquivos:** nova tentativa breve quando a conferência de cards está temporariamente indisponível; falha persistente continua visível no aviso da página sem abrir erro de console no ambiente local.
+
 ## [1.49.0] — 2026-11-02
 
 - **Validação da listagem:** rejeita parâmetros de consulta repetidos ou em formato de lista antes de usar filtros e paginação, eliminando confusão de tipos na API de projetos.

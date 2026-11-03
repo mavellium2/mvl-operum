@@ -23,7 +23,7 @@ const findCards = (prisma as unknown as { card: { findMany: ReturnType<typeof vi
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
   vi.mocked(verifySession).mockResolvedValue({ userId: 'u1', role: 'admin', tenantId: 't1' } as never)
   findCards.mockResolvedValue([
     { id: 'c1', title: 'Card sprint', projectId: null, sprint: { id: 's1', name: 'Sprint 1', projectId: 'p1' }, responsibles: [] },
@@ -54,5 +54,15 @@ describe('/arquivos', () => {
     render(await ArquivosPage())
     expect(screen.getByRole('alert')).toHaveTextContent(/Não foi possível carregar todos os anexos/)
     expect(screen.getByTestId('lista')).toHaveTextContent('0')
+  })
+
+  it('repete uma vez a consulta quando a conferência do card está temporariamente indisponível', async () => {
+    const unavailable = Object.assign(new Error('indisponível'), { status: 503 })
+    vi.mocked(filesApi.listByCards).mockRejectedValueOnce(unavailable).mockResolvedValueOnce([])
+
+    render(await ArquivosPage())
+
+    expect(filesApi.listByCards).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
