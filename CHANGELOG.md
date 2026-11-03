@@ -9,6 +9,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.49.0] — 2026-11-02
 
+- **Arquivos:** nova tentativa breve quando a conferência de cards está temporariamente indisponível; falha persistente continua visível no aviso da página sem abrir erro de console no ambiente local.
+
 - **Validação da listagem:** rejeita parâmetros de consulta repetidos ou em formato de lista antes de usar filtros e paginação, eliminando confusão de tipos na API de projetos.
 
 - **Login após inatividade:** preserva a instituição da sessão verificada antes de encerrá-la, evitando que uma preferência antiga provoque “Credenciais inválidas” no próximo acesso.
