@@ -27,6 +27,18 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+async function listarAnexos(ids: string[]) {
+  try {
+    return await filesApi.listByCards(ids)
+  } catch (error) {
+    // O file-service pode responder 503 enquanto a conferência do card no
+    // sprint-service ainda está iniciando. Repetir uma vez mantém a página útil.
+    if (!(error instanceof Error && 'status' in error && error.status === 503)) throw error
+    await new Promise(resolve => setTimeout(resolve, 250))
+    return filesApi.listByCards(ids)
+  }
+}
+
 export default async function ArquivosPage() {
   const { role, userId, tenantId } = await verifySession()
   if (role !== 'admin') {
@@ -56,10 +68,10 @@ export default async function ArquivosPage() {
 
   const lotes = await Promise.all(
     chunk(cards.map(c => c.id), CARDS_POR_LOTE).map(ids =>
-      filesApi.listByCards(ids)
+      listarAnexos(ids)
         .then(items => ({ ok: true, items }))
         .catch(err => {
-          console.error('[arquivos] falha ao listar anexos no file-service', err)
+          console.warn('[arquivos] anexos indisponíveis', err instanceof Error && 'status' in err ? { status: err.status } : { type: 'network' })
           return { ok: false, items: [] as Awaited<ReturnType<typeof filesApi.listByCards>> }
         }),
     ),
