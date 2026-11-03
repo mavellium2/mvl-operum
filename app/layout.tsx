@@ -2,6 +2,7 @@ import { APPEARANCE_KEY, appearancePeriod } from '@/lib/appearance';
 import { palettes } from '@/lib/appearancePalette';
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import AppShell from "@/components/layout/AppShell";
 import { ToastProvider } from "@/components/ui/Toast";
 import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
@@ -50,8 +51,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head><script dangerouslySetInnerHTML={{ __html: `(()=>{let mode='automatic';try{mode=localStorage.getItem(${JSON.stringify(APPEARANCE_KEY)})||mode}catch{}const pick=${appearancePeriod.toString()};const period=pick(mode,new Date().getHours(),matchMedia('(prefers-color-scheme: dark)').matches);const colors=${JSON.stringify(Object.fromEntries(Object.entries(palettes).map(([key, value]) => [key, { bg: value.bg, text: value.text }])))};const root=document.documentElement;root.style.setProperty('--operum-initial-bg',colors[period].bg);root.style.setProperty('--operum-initial-text',colors[period].text);root.dataset.appearanceInitial=period})()` }} /></head>
       <body className="h-full flex flex-col" suppressHydrationWarning>
+        <Script id="operum-appearance-initial" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: `(()=>{let mode='automatic';try{mode=localStorage.getItem(${JSON.stringify(APPEARANCE_KEY)})||mode}catch{}const pick=${appearancePeriod.toString()};const period=pick(mode,new Date().getHours(),matchMedia('(prefers-color-scheme: dark)').matches);const colors=${JSON.stringify(Object.fromEntries(Object.entries(palettes).map(([key, value]) => [key, { bg: value.bg, text: value.text }])))};const root=document.documentElement;root.style.setProperty('--operum-initial-bg',colors[period].bg);root.style.setProperty('--operum-initial-text',colors[period].text);root.dataset.appearanceInitial=period})()` }} />
         <ToastProvider>
           <AppShell>{children}</AppShell>
           <ServiceWorkerRegistrar />

@@ -1068,3 +1068,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** preferência local ao navegador; ID sem acesso ou excluído é ignorado. Cookie não concede permissões e não contém conteúdo do projeto. Nenhuma migration.
 - **Condição de revisão:** sincronização entre dispositivos ou histórico completo de acessos exige persistência no servidor.
 - **Referências:** `components/layout/RecentProjectRecorder.tsx`, `lib/recentProject.ts`, `app/projetos/page.tsx`, `project-service/src/project/project.service.ts`.
+
+## ADR-085 — Movimentação da EAP pela planilha de custos
+
+- **Data:** 2026-11-03.
+- **Status:** implementada.
+- **Contexto:** a planilha precisa permitir reorganizar macrofases e atividades sem criar uma estrutura divergente da EAP e das sprints.
+- **Escolha:** reutilizar `moveNodeAction` e a árvore da EAP para arrastar linhas. Na reconciliação, um nó movido depois da última atualização do card leva o card para a sprint da nova macrofase; um card alterado mais recentemente continua prevalecendo. Campos, nomes e operações estruturais ficam em rascunho local até o comando de salvar.
+- **Justificativa:** a EAP continua sendo a origem da estrutura e a regra temporal já usada na sincronização resolve alterações concorrentes sem nova cópia persistida da planilha.
+- **Alternativas consideradas:** manter uma ordem própria persistida da planilha (geraria divergência); persistir cada movimentação ao soltar (não atenderia ao salvamento explícito exigido para a planilha).
+- **Consequências:** movimentações, criação, exclusão, campos e renomeações aguardam salvamento. Ações estruturais são aplicadas em sequência, sem transação única; após falha parcial, as já concluídas não são repetidas na nova tentativa. A próxima reconciliação autorizada reflete a nova fase no card e recalcula códigos.
+- **Condição de revisão:** revisar a precedência temporal se houver edição simultânea frequente entre planilha e quadro.
+- **Referências:** `components/custos/PlanilhaCustosView.tsx`, `services/wbsService.ts`, `__tests__/unit/wbsSprintSync.test.ts`.

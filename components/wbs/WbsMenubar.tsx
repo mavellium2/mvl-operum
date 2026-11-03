@@ -56,16 +56,13 @@ function IconButton({
 }: { label: string; onClick: () => void; disabled?: boolean; active?: boolean; children: React.ReactNode }) {
   return (
     <Tooltip label={label}>
-      <OperumButton variant="default"
+      <OperumButton variant="custom"
         type="button"
         onClick={onClick}
         disabled={disabled}
         aria-label={label}
-        className={`h-7 w-7 flex items-center justify-center rounded-md border transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:pointer-events-none ${
-          active
-            ? 'bg-blue-50 border-blue-300 text-blue-700'
-            : 'border-gray-200 bg-white text-gray-600 shadow-sm hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900'
-        }`}
+        className="wbs-icon-button"
+        data-active={active || undefined}
       >
         {children}
       </OperumButton>
@@ -248,7 +245,7 @@ interface ToolbarItem {
 
 function ToolbarCard({ title, items }: { title: string; items: ToolbarItem[] }) {
   return (
-    <div className="flex flex-col gap-0.5 border border-gray-200 rounded-md bg-white p-1 shadow-sm shrink-0">
+    <div className="wbs-toolbar-card flex flex-col gap-0.5 shrink-0">
       <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400 px-0.5">{title}</span>
       <div className="flex items-center gap-0.5">
         {items.map(it => (
@@ -415,7 +412,7 @@ export default function WbsMenubar({
       items: [
         { label: 'Estilo e propriedades', icon: <Palette className="w-4 h-4" />, onClick: onToggleStylePanel, disabled: !firstSelected, active: showStylePanel },
         { label: 'Ajustar à tela', icon: <Maximize2 className="w-4 h-4" />, onClick: onFitScreen },
-        { label: 'Diminuir zoom', icon: <ZoomOut className="w-4 h-4" />, onClick: () => dispatch({ type: 'SET_VIEWPORT', payload: { zoom: Math.max(0.1, zoom / 1.2), panX, panY } }) },
+        { label: 'Diminuir zoom', icon: <ZoomOut className="w-4 h-4" />, onClick: () => dispatch({ type: 'SET_VIEWPORT', payload: { zoom: Math.max(0.001, zoom / 1.2), panX, panY } }) },
         { label: `Zoom: ${zoomPercent}% (clique = 100%)`, icon: <Search className="w-4 h-4" />, onClick: () => dispatch({ type: 'SET_VIEWPORT', payload: { zoom: 1, panX, panY } }) },
         { label: 'Aumentar zoom', icon: <ZoomIn className="w-4 h-4" />, onClick: () => dispatch({ type: 'SET_VIEWPORT', payload: { zoom: Math.min(3, zoom * 1.2), panX, panY } }) },
         { label: 'Ajuda Rápida', icon: <HelpCircle className="w-4 h-4" />, onClick: () => setShowHelp(true) },
@@ -426,7 +423,7 @@ export default function WbsMenubar({
 
   return (
     <>
-      <div className="flex items-center gap-1.5 px-1.5 py-1 border-b border-gray-200 bg-white select-none overflow-x-auto">
+      <div className="wbs-toolbar wbs-toolbar-single select-none">
         {onChangeView && (
           <ToolbarSelect<WbsViewMode>
             title="Visualização"

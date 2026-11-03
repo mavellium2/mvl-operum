@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import { permissoesNoProjeto } from '@/services/authz'
-import { getTree } from '@/services/wbsService'
+import { getTree, resetTree } from '@/services/wbsService'
 import { podeSincronizar, sincronizarEapSprintSePermitido } from '@/services/eapSprintSyncService'
 import { statusDaSincronizacao } from '@/services/sincronizacaoStatus'
 import StatusSincronizacao from '@/components/sincronizacao/StatusSincronizacao'
@@ -29,6 +29,7 @@ export default async function PlanilhaCustosPage({
   const permissoes = await permissoesNoProjeto(userId, tenantId, role, projetoId)
   if (!permissoes.has('projeto:ver') || !permissoes.has('planilha:ver')) notFound()
   const canEdit = permissoes.has('planilha:orcado')
+  const canEditLinhas = ['projeto:editar', 'planilha:orcado', 'planilha:realizado-todos'].every(p => permissoes.has(p as never))
 
   const valorReferencia = project.valorReferencia ?? 4000
   const horasPorDia = project.horasPorDia ?? 8
@@ -54,17 +55,13 @@ export default async function PlanilhaCustosPage({
 
   const elaboradoresPorId = new Map(elaboradores.map(e => [e.userId, e]))
 
-  // Usuários do tenant (para adicionar elaborador inline — membros do projeto).
-  const allUsers = await prisma.user.findMany({
-    where: { tenantId, deletedAt: null, isActive: true },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: 'asc' },
-  })
-  const usuariosDisponiveis = allUsers.map(u => ({ id: u.id, name: u.name, email: u.email }))
-
   await sincronizarEapSprintSePermitido({ userId, tenantId, role }, projetoId)
   const [statusSync, sincroniza] = await Promise.all([statusDaSincronizacao(projetoId, tenantId), podeSincronizar({ userId, tenantId, role }, projetoId)])
-  const tree = await getTree(projetoId, tenantId)
+  let tree = await getTree(projetoId, tenantId)
+  if (!tree.rootId && canEditLinhas) {
+    await resetTree({ projectId: projetoId, tenantId, rootTitle: project.name }, userId)
+    tree = await getTree(projetoId, tenantId)
+  }
   const calculada = computarPlanilhaCustos(tree.nodes, tree.rootId, { valorReferencia, horasPorDia }, elaboradoresPorId)
   // Descrição mostrada ao passar o mouse na tarefa: a atual do card ligado, quando houver.
   const cardIds = cardsDasAtividades(calculada, tree.nodes)
@@ -75,9 +72,7 @@ export default async function PlanilhaCustosPage({
 
   return (
     <>
-    <div className="px-4 pt-4">
-      <StatusSincronizacao projectId={projetoId} inicial={statusSync} podeSincronizar={sincroniza} />
-    </div>
+    <StatusSincronizacao projectId={projetoId} inicial={statusSync} podeSincronizar={sincroniza} flutuante />
     <PlanilhaCustosView
       projetoId={projetoId}
       nomeProjeto={project.name}
@@ -87,12 +82,11 @@ export default async function PlanilhaCustosPage({
       currentUserId={userId}
       canEditOwnActual={permissoes.has('planilha:realizado-proprio')}
       canEditAllActual={permissoes.has('planilha:realizado-todos')}
-      canManageMembers={permissoes.has('projeto:equipe')}
       // Inserir/excluir linha muda a EAP; excluir exige as mesmas permissões do autosave dela.
-      canEditLinhas={['projeto:editar', 'planilha:orcado', 'planilha:realizado-todos'].every(p => permissoes.has(p as never))}
+      canEditLinhas={canEditLinhas}
+      rootId={tree.rootId}
       planilha={planilha}
       elaboradores={elaboradores}
-      usuariosDisponiveis={usuariosDisponiveis}
       exportUrl={`/api/projetos/${projetoId}/planilha-custos/export`}
     />
     </>

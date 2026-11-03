@@ -1,10 +1,10 @@
 import { canProjectPermission } from '@/services/projectAccess'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import prisma from '@/lib/prisma'
 import AtaFormClient from '@/components/atas/AtaFormClient'
+import AtaWorkspace from '@/components/atas/AtaWorkspace'
 import { cabecalhoDaAta, emailsParaCopia, proximoNumero } from '@/services/ataService'
 import type { MemberOption } from '@/components/atas/MemberSelect'
 import type { Metadata } from 'next'
@@ -45,16 +45,8 @@ export default async function NovaAtaPage({ params }: { params: Promise<{ projet
     })
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
-        <Link href={`/projetos/${projetoId}/documentacao?doc=atas`} className="text-sm text-blue-600 hover:underline">
-          ← Voltar às atas
-        </Link>
-        <h1 className="text-sm font-semibold text-gray-900">Nova Ata de Reunião</h1>
-      </div>
-      <main className="min-h-0 flex-1">
+    <AtaWorkspace projetoId={projetoId} titulo="Nova ata de reunião">
         <AtaFormClient gerenteProjeto={gerente.nome} assinaturaGerenteUrl={gerente.signatureUrl} projetoId={projetoId} mode="create" numero={numero} nomeProjeto={project.name} members={members} emailsSugeridos={emailsSugeridos} instituicaoProjeto={cabecalho.instituicao} logoUrl={cabecalho.logoUrl} />
-      </main>
-    </div>
+    </AtaWorkspace>
   )
 }

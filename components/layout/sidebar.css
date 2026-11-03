@@ -5,6 +5,7 @@ body [data-operum-sidebar].operum-sidebar[data-mode='hidden'] { width: 0; border
 .sidebar-inner { display: flex; flex-direction: column; height: 100%; width: 100%; min-height: 0; }
 .sidebar-inner[hidden] { display: none; }
 .sidebar-brand-row { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 14px 12px; }
+.sidebar-brand-controls { display: flex; align-items: center; gap: 3px; }
 .sidebar-brand { display: flex; gap: 9px; align-items: center; font-size: 17px; font-weight: 650; letter-spacing: -.4px; }
 .sidebar-brand-symbol { display: grid; place-items: center; height: 32px; width: 32px; border-radius: 11px; background: linear-gradient(145deg, #6899ff, #8563dd); color: white; font-size: 19px; box-shadow: inset 0 1px 0 #ffffff80, 0 4px 10px -6px #374e9c80; }
 .sidebar-context { flex-shrink: 0; padding: 0 12px 12px; }
@@ -27,7 +28,7 @@ body [data-operum-sidebar].operum-sidebar[data-mode='hidden'] { width: 0; border
 .sidebar-unread { margin-left: auto; min-width: 19px; text-align: center; background: #d5655e; color: white; padding: 1px 5px; border-radius: 100px; font-size: 10px; }
 .sidebar-account { width: 100%; display: flex; align-items: center; gap: 9px; padding: 9px 6px; border-radius: 13px; color: inherit; }
 .sidebar-account:hover, .sidebar-notifications:hover { background: #ffffff28; }
-.sidebar-hide { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 6px; color: var(--sb-muted, #617087); font-size: 10px; opacity: .8; border-radius: 9px; }
+.sidebar-hide { color: var(--sb-muted, #617087); opacity: .8; }
 .sidebar-hide:hover { opacity: 1; background: #ffffff20; }
 .sidebar-popover-link { display: flex; align-items: center; gap: 9px; padding: 10px; border-radius: 10px; font-size: 13px; }
 .sidebar-popover-link:hover { background: var(--select-hover, #ffffff30); }
@@ -37,6 +38,8 @@ body [data-operum-sidebar].operum-sidebar[data-mode='hidden'] { width: 0; border
 .sidebar-institution-option:disabled { opacity: .75; }
 .sidebar-institution--compact { justify-content: center; padding: 6px; }
 [data-mode='compact'] .sidebar-brand-row { flex-direction: column; padding: 14px 10px 10px; gap: 9px; }
+[data-mode='compact'] .sidebar-brand-controls { gap: 2px; }
+[data-mode='compact'] .sidebar-brand-controls > button { width: 27px; min-height: 27px; padding: 5px; }
 [data-mode='compact'] .sidebar-context { padding: 0 10px 10px; }
 [data-mode='compact'] .sidebar-search { display: flex; justify-content: center; padding: 0 8px 8px; }
 [data-mode='compact'] .sidebar-navigation { padding-inline: 10px; }

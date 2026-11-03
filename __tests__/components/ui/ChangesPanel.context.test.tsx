@@ -1,4 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
+import { renderToString } from 'react-dom/server'
+import { hydrateRoot } from 'react-dom/client'
 import { expect, it, vi } from 'vitest'
 import ChangesPanel from '@/components/ui/ChangesPanel'
 vi.mock('@/hooks/useAppearance', () => ({ useAppearance: () => ({ period: 'day', blend: null }) }))
@@ -15,4 +17,20 @@ it('isola dados de projeto e permissões e identifica o contexto da função', (
   expect(within(permissions).queryByText('Nome do projeto')).not.toBeInTheDocument()
   expect(within(project).queryByText('Ver o projeto')).not.toBeInTheDocument()
   expect(permissions.id).not.toBe(project.id)
+})
+
+it('mantém o HTML inicial igual ao hidratar o painel flutuante', async () => {
+  const props = { context: { type: 'spreadsheet' as const, id: 'projeto-1' }, open: false, changes: [], onClose: vi.fn(), onUndo: vi.fn(), floating: true }
+  const container = document.createElement('div')
+  container.innerHTML = renderToString(<><span>Antes</span><ChangesPanel {...props} /><span>Depois</span></>)
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  let root: ReturnType<typeof hydrateRoot> | undefined
+  try {
+    await act(async () => { root = hydrateRoot(container, <><span>Antes</span><ChangesPanel {...props} /><span>Depois</span></>) })
+    expect(error).not.toHaveBeenCalled()
+    expect(container.textContent).toBe('AntesDepois')
+  } finally {
+    await act(async () => root?.unmount())
+    error.mockRestore()
+  }
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import WbsGantt from '@/components/wbs/WbsGantt'
 import { plannedSchedule, DAY_MS } from '@/lib/wbsGantt'
 import type { WbsNodeClient } from '@/types/wbs'
@@ -15,12 +16,15 @@ describe('Gantt', () => {
     expect(plannedSchedule({ ...a, properties: { dataPrevista: '2026-02-30' } })).toBeNull()
     expect(plannedSchedule(b)).toBeNull()
   })
-  it('collapses hierarchy without changing nodes, keeps undated rows and supports zoom', () => {
+  it('recolhe a hierarquia e muda a escala visualmente pelo seletor', async () => {
     render(<WbsGantt nodes={{ r: base, a, b }} rootId="r" today="2026-10-04" />)
-    expect(screen.getByRole('img', { name: /Com prazo: 03\/10\/2026 a 05\/10\/2026/ })).toBeInTheDocument()
+    const barra = screen.getByRole('img', { name: /Com prazo: 03\/10\/2026 a 05\/10\/2026/ })
+    const larguraSemana = Number.parseFloat(barra.style.width)
     expect(screen.getByText(/Sem prazo/)).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Zoom do Gantt'), { target: { value: 'month' } })
-    expect(screen.getByLabelText('Zoom do Gantt')).toHaveValue('month')
+    await userEvent.click(screen.getByRole('combobox', { name: 'Escala do Gantt' }))
+    await userEvent.click(within(screen.getByRole('listbox', { name: 'Escala do Gantt' })).getByRole('option', { name: 'Mês' }))
+    expect(Number.parseFloat(barra.style.width)).toBeLessThan(larguraSemana)
+    expect(screen.getByRole('combobox', { name: 'Escala do Gantt' })).toHaveTextContent('Mês')
     fireEvent.click(screen.getByRole('button', { name: 'Recolher Projeto' }))
     expect(screen.queryByText(/Sem prazo/)).not.toBeInTheDocument()
     expect(base.collapsed).toBe(false)

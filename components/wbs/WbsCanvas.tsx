@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 // useLayoutEffect no cliente (mede antes do paint), useEffect no servidor (no-op em SSR)
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 import { computeLayout, resolveDropPosition, NODE_W, NODE_H } from '@/lib/wbsLayout'
+import { fitWbsViewport } from '@/lib/wbsViewport'
 import { measureNodeWidths } from '@/lib/wbsMedidas'
 import type { ArvoreEap, ResultadoMescla } from '@/lib/wbsMerge'
 import { apagarRascunho, lerRascunho, salvarRascunho, type RascunhoEap } from '@/lib/wbsRascunho'
@@ -22,6 +23,8 @@ import WbsMenubar from './WbsMenubar'
 import WbsNodeCard from './WbsNode'
 import WbsContextMenu, { type WbsContextMenuState } from './WbsContextMenu'
 import WbsPropertiesPanel from './WbsPropertiesPanel'
+import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
+import './wbs.css'
 import { getWbsTreeAction, saveTreeAction } from '@/app/actions/wbs'
 import { getSprintExclusaoInfoAction } from '@/app/actions/sprints'
 import type { GetTreeResult } from '@/services/wbsService'
@@ -111,6 +114,7 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
   // Track pending pointer-down to distinguish click vs. drag (no capture until 4 px moved)
   const pendingDragRef = useRef<PendingDrag | null>(null)
   const hasInitiallyCenteredRef = useRef(false)
+  const canvasWidthRef = useRef<number | null>(null)
 
   const spaceDownRef = useRef(false)
   const [spaceDown, setSpaceDown] = useState(false)
@@ -315,7 +319,7 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
     const vp = stateRef.current.viewport
     const mx = rect ? rect.width / 2 : 0
     const my = rect ? rect.height / 2 : 0
-    const newZoom = Math.min(3, Math.max(0.1, vp.zoom * factor))
+    const newZoom = Math.min(3, Math.max(0.001, vp.zoom * factor))
     dispatch({ type: 'SET_VIEWPORT', payload: { zoom: newZoom, panX: mx - (mx - vp.panX) * (newZoom / vp.zoom), panY: my - (my - vp.panY) * (newZoom / vp.zoom) } })
   }, [dispatch])
 
@@ -451,7 +455,7 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
         const mx = e.clientX - rect.left
         const my = e.clientY - rect.top
         const f = e.deltaY < 0 ? 1.15 : 1 / 1.15
-        const newZoom = Math.min(3, Math.max(0.1, vp.zoom * f))
+        const newZoom = Math.min(3, Math.max(0.001, vp.zoom * f))
         dispatch({ type: 'SET_VIEWPORT', payload: { zoom: newZoom, panX: mx - (mx - vp.panX) * (newZoom / vp.zoom), panY: my - (my - vp.panY) * (newZoom / vp.zoom) } })
       } else if (e.shiftKey) {
         // Shift+scroll de mouse → horizontal (deltaX é 0, usa deltaY como eixo H)
@@ -465,32 +469,49 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
     return () => el.removeEventListener('wheel', handler)
   }, [dispatch, viewMode])
 
-  // ── Fit to screen (zoom p/ caber tudo, card principal sempre centralizado) ─
+  // O botão enquadra todos os cards visíveis, inclusive os que ficam à esquerda da raiz.
   const fitToScreen = useCallback(() => {
     const rect = canvasRef.current?.getBoundingClientRect()
     if (!rect || !layout.bounds.width || !layout.bounds.height) return
-    const PAD = 40
-    const zoom = Math.min(1, Math.min(
-      (rect.width - PAD * 2) / layout.bounds.width,
-      (rect.height - PAD * 2) / layout.bounds.height,
-    ))
-    // Centraliza o card principal (raiz) na horizontal; na vertical fica
-    // um pouco abaixo do topo (não centralizado verticalmente).
-    const TOP_OFFSET = 28
-    const rootGeom = state.rootId ? layout.geometry[state.rootId] : undefined
-    const cx = rootGeom ? rootGeom.x + rootGeom.width / 2 : layout.bounds.width / 2
-    const cy = rootGeom ? rootGeom.y : 0
-    const panX = rect.width / 2 - cx * zoom
-    const panY = TOP_OFFSET - cy * zoom
-    dispatch({ type: 'SET_VIEWPORT', payload: { zoom, panX, panY } })
-  }, [layout.bounds, layout.geometry, state.rootId, dispatch])
+    canvasWidthRef.current = rect.width
+    const viewport = fitWbsViewport(rect, layout.geometry)
+    if (viewport) dispatch({ type: 'SET_VIEWPORT', payload: viewport })
+  }, [layout.bounds, layout.geometry, dispatch])
+
+  // Keep the tree anchored to the viewport center when the sidebar changes width.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width
+      if (width === undefined) return
+      const previous = canvasWidthRef.current
+      canvasWidthRef.current = width
+      if (previous === null || !hasInitiallyCenteredRef.current || Math.abs(width - previous) < 1) return
+      const viewport = stateRef.current.viewport
+      dispatch({ type: 'SET_VIEWPORT', payload: { ...viewport, panX: viewport.panX + (width - previous) / 2 } })
+    })
+    observer.observe(canvas)
+    return () => observer.disconnect()
+  }, [dispatch, viewMode])
 
   // ── Center tree on first render (once bounds are known) ───────────────────
   useEffect(() => {
     if (hasInitiallyCenteredRef.current || !layout.bounds.width || !layout.bounds.height) return
     hasInitiallyCenteredRef.current = true
-    requestAnimationFrame(() => fitToScreen())
-  }, [layout.bounds, fitToScreen])
+    requestAnimationFrame(() => {
+      const rect = canvasRef.current?.getBoundingClientRect()
+      const rootGeom = state.rootId ? layout.geometry[state.rootId] : undefined
+      if (!rect || !rootGeom) return
+      canvasWidthRef.current = rect.width
+      const zoom = 0.7
+      dispatch({ type: 'SET_VIEWPORT', payload: {
+        zoom,
+        panX: rect.width / 2 - (rootGeom.x + rootGeom.width / 2) * zoom,
+        panY: 28 - rootGeom.y * zoom,
+      } })
+    })
+  }, [layout.bounds, layout.geometry, state.rootId, dispatch])
 
   // ── Ao abrir a EAP, o foco já começa no card raiz — pronto para Tab/Enter ──
   useEffect(() => {
@@ -703,7 +724,7 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
   const draggingNode = drag ? state.nodes[drag.nodeId] : null
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <ProjectAppearance enabled><div className="wbs-workspace flex flex-col h-full overflow-hidden">
       {rascunho && canEdit && (
         <RecuperarRascunhoEap
           rascunho={rascunho}
@@ -750,7 +771,7 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
         <div
           ref={canvasRef}
           data-wbs-canvas=""
-          className="relative flex-1 overflow-hidden bg-[#f8fafc] select-none"
+          className="wbs-canvas relative flex-1 overflow-hidden select-none"
           style={{ cursor: drag || isPanning ? 'grabbing' : spaceDown ? 'grab' : 'default' }}
           onClick={e => { if (!e.shiftKey) dispatch({ type: 'SET_SELECTION', payload: { nodeIds: [] } }) }}
           onPointerDown={handlePointerDown}
@@ -760,8 +781,7 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
         >
           {/* Dot grid */}
           <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ backgroundImage: 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)', backgroundSize: '24px 24px' }}
+            className="wbs-grid absolute inset-0 pointer-events-none"
           />
 
           {/* Transformed layer */}
@@ -773,7 +793,7 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
               height={layout.bounds.height || 1}
             >
               {layout.connectors.map(c => (
-                <path key={`${c.fromId}-${c.toId}`} d={c.path} stroke="#cbd5e1" strokeWidth="1.5" fill="none" />
+                <path key={`${c.fromId}-${c.toId}`} d={c.path} className="wbs-connector" strokeWidth="1.5" fill="none" />
               ))}
               {/* Drop target indicator */}
               {drag?.targetId && drag.targetPos && layout.geometry[drag.targetId] && (() => {
@@ -833,14 +853,14 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
           </div>
 
           {/* Coordinate indicator */}
-          <div className="absolute bottom-2 left-2 text-xs text-gray-400 select-none pointer-events-none font-mono">
-            x: {Math.round(-viewport.panX / viewport.zoom)}  y: {Math.round(-viewport.panY / viewport.zoom)}
+          <div className="wbs-canvas-hint absolute bottom-3 left-3 select-none pointer-events-none">
+            Arraste para navegar · {Math.round(viewport.zoom * 100)}%
           </div>
 
           {/* Empty state hint */}
           {state.rootId && Object.keys(state.nodes).length === 1 && (
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-none">
-              <p className="text-xs text-gray-400 bg-white/80 px-3 py-1.5 rounded-full border border-gray-200">
+              <p className="wbs-shortcut-hint text-xs px-3 py-1.5 rounded-full">
                 Tab = filho • Shift+Tab = volta • Enter = irmão • F2 = renomear • Shift+arrastar = selecionar
               </p>
             </div>
@@ -966,7 +986,7 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
         onZoomOut={() => zoomBy(1 / 1.15)}
         onZoomReset={zoomReset}
       />
-    </div>
+    </div></ProjectAppearance>
   )
 }
 

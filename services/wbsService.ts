@@ -1076,6 +1076,17 @@ export async function sincronizarEapComSprint(projectId: string, tenantId: strin
       if (!destino || !pai || pai === destino) continue
       const sprintAtual = sprintIdDe(nivel2De(n.id))
       if (pai !== root.id && (!sprintAtual || sprintAtual === card.sprintId)) continue
+      // Quando o usuário moveu o nó mais recentemente que o card, a nova fase da EAP
+      // é a intenção atual: leva o card para a sprint correspondente, em A Fazer.
+      if (pai !== root.id && sprintAtual && sprintViva.has(sprintAtual) && n.updatedAt > card.updatedAt) {
+        const coluna = await colunaDa(sprintAtual)
+        if (coluna) {
+          await tx.card.update({ where: { id: card.id }, data: { sprintId: sprintAtual, sprintColumnId: coluna.id, sprintPosition: coluna.posicao++ } })
+          card.sprintId = sprintAtual
+          result.cardsMovidos++
+          continue
+        }
+      }
       await tx.wbsNode.update({ where: { id: n.id }, data: { parentId: destino, order: await ordemEm(destino) } })
       paiDe.set(n.id, destino)
       paisAntigos.add(pai)

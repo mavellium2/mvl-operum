@@ -55,12 +55,12 @@ export interface EditorDocumentoProps {
 function Botao({ rotulo, onClick, disabled, children, contador, ativo }: { rotulo: string; onClick?: () => void; disabled?: boolean; children: ReactNode; contador?: number; ativo?: boolean }) {
   return (
     <Tooltip label={rotulo}>
-      <OperumButton variant="default"
+      <OperumButton variant="custom"
         type="button"
         aria-label={rotulo}
         onClick={onClick}
         disabled={disabled || !onClick}
-        className={`relative flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-slate-700 transition-colors hover:border-slate-200 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-transparent disabled:hover:bg-transparent ${ativo ? 'bg-slate-100' : ''}`}
+        className={`documento-tool-button relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors disabled:cursor-not-allowed ${ativo ? 'documento-tool-active' : ''}`}
       >
         {children}
         {!!contador && contador > 0 && (
@@ -75,7 +75,7 @@ function Botao({ rotulo, onClick, disabled, children, contador, ativo }: { rotul
 
 function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <div role="group" aria-label={titulo} className="shrink-0 rounded-lg border border-slate-200 bg-white px-1 pb-1 pt-0.5">
+    <div role="group" aria-label={titulo} className="documento-tool-group shrink-0 rounded-lg border px-1 pb-1 pt-0.5">
       <p className="px-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-400">{titulo}</p>
       <div className="flex items-center gap-0.5">{children}</div>
     </div>
@@ -227,9 +227,9 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
 
   return (
     <EditorFolhaProvider value={ctx}>
-      <div ref={raiz} data-testid="editor-documento" className="flex h-full min-h-0 flex-col bg-[#eef0f3]">
+      <div ref={raiz} data-testid="editor-documento" className="documento-editor flex h-full min-h-0 flex-col bg-[#eef0f3]">
         {/* ── Barra de ferramentas ─────────────────────────────────────────── */}
-        <div role="toolbar" aria-label={`Ferramentas do documento ${documento}`} className="sticky top-0 z-20 flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-slate-200 bg-[#f7f8fa] px-1.5 py-1">
+        <div role="toolbar" aria-label={`Ferramentas do documento ${documento}`} className="documento-toolbar sticky top-0 z-20 flex shrink-0 items-center gap-1.5 overflow-x-auto border-b px-1.5 py-1">
           {versao && (
             <Grupo titulo="Versão">
               <div className="relative">

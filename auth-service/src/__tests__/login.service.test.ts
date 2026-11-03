@@ -271,9 +271,22 @@ describe('instituição lembrada após logout', () => {
     expect(prisma.tenant.findFirst).not.toHaveBeenCalled()
   })
   it('não permite que a preferência contorne a senha', async () => {
-    vi.mocked(prisma.user.findFirst).mockResolvedValue(makeUser({ tenant: makeTenant() }) as never)
+    const user = makeUser({ tenant: makeTenant() })
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(user as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([user] as never)
     vi.mocked(bcrypt.compare).mockResolvedValue(false as never)
     await expect(makeService().login({ email: 'ana@x.com', password: 'errada', preferredTenantId: 'fabio' })).rejects.toThrow('Credenciais inválidas')
+    expect(prisma.user.update).toHaveBeenCalledTimes(1)
+  })
+  it('encontra a conta correta quando o navegador lembra outra instituição com senha diferente', async () => {
+    const antiga = makeUser({ id: 'user-antigo', tenantId: 'fabio', passwordHash: 'hash-fabio', tenant: makeTenant({ id: 'fabio' }) })
+    const atual = makeUser({ id: 'user-atual', tenantId: 'mavellium', passwordHash: 'hash-mavellium' })
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(antiga as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([antiga, atual] as never)
+    vi.mocked(bcrypt.compare).mockImplementation(async (password, hash) => (password === 'senha-atual' && hash === 'hash-mavellium') as never)
+    const result = await makeService().login({ email: 'ana@x.com', password: 'senha-atual', preferredTenantId: 'fabio' })
+    expect(result.user.tenantId).toBe('mavellium')
+    expect(prisma.user.updateMany).not.toHaveBeenCalled()
   })
   it('não troca silenciosamente para outro ambiente quando o lembrado está suspenso', async () => {
     vi.mocked(prisma.user.findFirst).mockResolvedValue(makeUser({ tenant: makeTenant({ status: 'SUSPENDED' }) }) as never)

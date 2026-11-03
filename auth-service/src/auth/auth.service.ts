@@ -48,7 +48,10 @@ export class AuthService {
       })
       if (preferred) {
         if (preferred.tenant.status !== 'ACTIVE' || preferred.tenant.deletedAt) throw new UnauthorizedException('Instituição inativa ou indisponível')
-        return this.completeLogin(preferred, dto.password)
+        // A preferência pertence ao navegador, não ao par e-mail/senha. Se a
+        // mesma pessoa tiver senhas distintas em instituições diferentes,
+        // uma preferência antiga não deve impedir a resolução da conta correta.
+        if (await bcrypt.compare(dto.password, preferred.passwordHash)) return this.completeLogin(preferred, dto.password)
       }
       // Outro usuário neste navegador segue a resolução normal das próprias contas.
     }

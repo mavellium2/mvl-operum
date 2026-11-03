@@ -45,13 +45,14 @@ const WbsNodeCard = React.memo(function WbsNodeCard({
   }, [isEditing, editingInitialText])
 
   const ring = isSelected
-    ? '0 0 0 2px #3b82f6, 0 0 0 4px rgba(59,130,246,0.2)'
+    ? '0 0 0 2px var(--ap-accent, #3b82f6), 0 0 0 5px color-mix(in srgb, var(--ap-accent, #3b82f6) 22%, transparent), 0 12px 30px -18px #23375b88'
     : isDragTarget
       ? '0 0 0 2px #10b981'
-      : 'none'
+      : '0 10px 24px -18px #24345499, inset 0 1px 0 #ffffff70'
 
   return (
     <div
+      className="wbs-node"
       data-node-id={node.id}
       style={{
         position: 'absolute',
@@ -99,6 +100,8 @@ const WbsNodeCard = React.memo(function WbsNodeCard({
       {isParent && (
         <OperumButton variant="custom"
           type="button"
+          className="wbs-node-toggle"
+          data-collapsed={node.collapsed}
           aria-expanded={!node.collapsed}
           onPointerDown={e => e.stopPropagation()}
           style={{
@@ -106,11 +109,7 @@ const WbsNodeCard = React.memo(function WbsNodeCard({
             width: 26, height: 20,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 16, lineHeight: 1, fontWeight: 700, zIndex: 3,
-            color: node.collapsed ? '#ffffff' : '#475569',
-            background: node.collapsed ? '#3b82f6' : '#ffffff',
-            border: `1px solid ${node.collapsed ? '#3b82f6' : '#cbd5e1'}`,
             borderRadius: 10, cursor: 'pointer', padding: 0,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
           }}
           onClick={e => { e.stopPropagation(); dispatch({ type: 'SET_COLLAPSED', payload: { nodeId: node.id, collapsed: !node.collapsed } }) }}
           title={node.collapsed ? 'Expandir' : 'Recolher'}

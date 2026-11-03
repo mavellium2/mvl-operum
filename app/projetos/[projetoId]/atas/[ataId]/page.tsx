@@ -1,10 +1,10 @@
 import { canProjectPermission } from '@/services/projectAccess'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/dal'
 import { buscarAta, cabecalhoDaAta, emailsParaCopia } from '@/services/ataService'
 import prisma from '@/lib/prisma'
 import AtaFormClient from '@/components/atas/AtaFormClient'
+import AtaWorkspace from '@/components/atas/AtaWorkspace'
 import type { MemberOption } from '@/components/atas/MemberSelect'
 import type { Metadata } from 'next'
 import { gerenteDoProjeto } from '@/services/gerenteProjeto'
@@ -47,16 +47,7 @@ export default async function EditarAtaPage({
     })
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
-        <Link href={`/projetos/${projetoId}/documentacao?doc=atas`} className="text-sm text-blue-600 hover:underline">
-          ← Voltar às atas
-        </Link>
-        <h1 className="text-sm font-semibold text-gray-900">
-          Ata {String(ata.numero).padStart(2, '0')} — {ata.nomeProjeto}
-        </h1>
-      </div>
-      <main className="min-h-0 flex-1">
+    <AtaWorkspace projetoId={projetoId} titulo={`Ata ${String(ata.numero).padStart(2, '0')} — ${ata.nomeProjeto}`}>
         <AtaFormClient key={ata.updatedAt?.toISOString()}
           projetoId={projetoId}
           ataId={ata.id}
@@ -95,7 +86,6 @@ export default async function EditarAtaPage({
             anexos: (ata.anexos ?? []).map(a => ({ nome: a.nome, url: a.url ?? '' })),
           }}
         />
-      </main>
-    </div>
+    </AtaWorkspace>
   )
 }

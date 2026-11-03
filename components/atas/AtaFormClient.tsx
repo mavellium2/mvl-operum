@@ -415,7 +415,6 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
           descartar: () => (ataId ? rascunho.descartar() : undefined),
         }}
         avisos={<>
-          <p className="text-xs text-slate-500">Salvar envia uma nova versão para aprovação. A ata vigente permanece disponível até a aprovação.</p>
           {rascunhoRestaurado && !versaoAberta && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve para enviá-lo à aprovação.</p>}
           {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
           {versaoAberta && (

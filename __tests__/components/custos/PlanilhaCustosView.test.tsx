@@ -1,15 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, act, within } from '@testing-library/react'
-import { updateNodePropertiesAction } from '@/app/actions/wbs'
+import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react'
+import { updateNodePropertiesAction, renameNodeAction, moveNodeAction, insertChildAction, insertSiblingAction, deleteNodeAction } from '@/app/actions/wbs'
 import PlanilhaCustosView, { parseMoeda } from '@/components/custos/PlanilhaCustosView'
 import { ToastProvider } from '@/components/ui/Toast'
 import type { PlanilhaDeCustos, Elaborador } from '@/lib/planilhaCustos'
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }))
 vi.mock('@/app/actions/wbs', () => ({
   updateNodePropertiesAction: vi.fn().mockResolvedValue({ ok: true }),
   insertChildAction: vi.fn(),
   insertSiblingAction: vi.fn(),
   renameNodeAction: vi.fn(),
+  moveNodeAction: vi.fn(),
   deleteNodeAction: vi.fn(),
 }))
 vi.mock('@/app/actions/projetos', () => ({
@@ -19,6 +21,11 @@ vi.mock('@/app/actions/projetos', () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(updateNodePropertiesAction).mockResolvedValue({ ok: true, serverVersion: 2 })
+  vi.mocked(renameNodeAction).mockResolvedValue({ ok: true, serverVersion: 2 })
+  vi.mocked(moveNodeAction).mockResolvedValue({ ok: true, serverVersion: 2 })
+  vi.mocked(insertChildAction).mockResolvedValue({ ok: true, nodeId: 'novo-real', serverVersion: 2 })
+  vi.mocked(insertSiblingAction).mockResolvedValue({ ok: true, nodeId: 'atividade-real', serverVersion: 2 })
+  vi.mocked(deleteNodeAction).mockResolvedValue({ ok: true, serverVersion: 2 })
 })
 
 const elaboradores: Elaborador[] = [
@@ -46,6 +53,7 @@ const planilha: PlanilhaDeCustos = {
       ],
       minOrcado: 90, materiaisOrcado: 0, totalOrcado: 90,
       minReal: 0, materiaisReal: 0, totalReal: 0,
+      dataFim: null,
     },
   ],
   qtdeAtividades: 1,
@@ -53,6 +61,7 @@ const planilha: PlanilhaDeCustos = {
   totalReal: 0,
   tempoOrcadoTotal: 90,
   tempoRealTotal: 0,
+  dataFimProjeto: null,
   quadros: {
     valor: [{ fase: 'M1', orcado: 90, realizado: 0 }],
     tempo: [{ fase: 'M1', minOrcado: 90, minReal: 0 }],
@@ -136,7 +145,7 @@ describe('PlanilhaCustosView — edição Min/Horas/Dias', () => {
     expect(screen.getByDisplayValue('720')).toBeInTheDocument()
   })
 
-  it('auto-save não corta a digitação em andamento', async () => {
+  it('digitação permanece em rascunho até clicar em Salvar', async () => {
     vi.useFakeTimers()
     try {
       renderizar()
@@ -146,12 +155,13 @@ describe('PlanilhaCustosView — edição Min/Horas/Dias', () => {
       fireEvent.change(horas, { target: { value: '2.' } })
       expect(horas).toHaveValue('2.')
 
-      // dispara o debounce do auto-save (1s) — re-render de setSalvando/setSalvo
+      // A passagem do tempo não grava os campos automaticamente.
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1100)
       })
 
-      expect(horas).toHaveValue('2.') // o draft sobrevive ao re-render do auto-save
+      expect(updateNodePropertiesAction).not.toHaveBeenCalled()
+      expect(horas).toHaveValue('2.')
       expect(screen.getByDisplayValue('120')).toBeInTheDocument()
     } finally {
       vi.useRealTimers()
@@ -251,12 +261,134 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
 
   it('ações de inserir/excluir linha só com permissão de mudar a EAP', () => {
     const { unmount } = renderizar()
-    expect(screen.queryByLabelText(/Inserir linha abaixo/)).toBeNull()
+    expect(screen.queryByLabelText('Ações de A1 Atividade 1')).toBeNull()
     unmount()
     render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
-    fireEvent.click(screen.getByLabelText('Inserir linha abaixo de A1 Atividade 1'))
+    fireEvent.click(screen.getByLabelText('Ações de A1 Atividade 1'))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Ações de A1 Atividade 1' })).getByText('Nova atividade abaixo'))
     expect(screen.getByLabelText('Nome da nova atividade')).toBeInTheDocument()
-    expect(screen.getByLabelText('Excluir linha A1 Atividade 1')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('Ações de A1 Atividade 1'))
+    expect(within(screen.getByRole('dialog', { name: 'Ações de A1 Atividade 1' })).getByText('Excluir atividade')).toBeInTheDocument()
+  })
+
+  it('clicar no nome edita, sair guarda rascunho e Salvar sincroniza pela ação da EAP', async () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Renomear A1 Atividade 1' }))
+    const campo = screen.getByRole('textbox', { name: 'Renomear A1' })
+    fireEvent.change(campo, { target: { value: 'Nova atividade' } })
+    fireEvent.blur(campo)
+    expect(screen.getByText('A1 Nova atividade')).toBeInTheDocument()
+    expect(renameNodeAction).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /1 alterações não salvas/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(renameNodeAction).toHaveBeenCalledWith('p1', 'a1', 'Nova atividade'))
+  })
+
+  it('arrastar atividade mostra rascunho e só move na EAP ao salvar', async () => {
+    const outraFase = { ...planilha.macrofases[0], nodeId: 'mf2', codigo: 'M2', titulo: 'Fase 2', atividades: [] }
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas planilha={{ ...planilha, macrofases: [...planilha.macrofases, outraFase] }} /></ToastProvider>)
+    const dataTransfer = { effectAllowed: 'move', setData: vi.fn() }
+    fireEvent.dragStart(screen.getByTitle('Arrastar A1 Atividade 1'), { dataTransfer })
+    const destino = screen.getByRole('button', { name: 'Renomear M2 Fase 2' }).closest('tr')!
+    fireEvent.dragOver(destino)
+    fireEvent.drop(destino)
+    expect(moveNodeAction).not.toHaveBeenCalled()
+    expect(within(destino).getByText('M2 Fase 2')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(moveNodeAction).toHaveBeenCalledWith('p1', { nodeId: 'a1', targetId: 'mf2', position: 'INSIDE' }))
+  })
+
+  it('criar macrofase só persiste ao clicar em Salvar', async () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas rootId="raiz" /></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar macrofase' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome da nova macrofase' }), { target: { value: 'Nova fase' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inserir' }))
+    expect(screen.getByRole('button', { name: 'Ações da macrofase Nova fase' })).toBeInTheDocument()
+    expect(insertChildAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(insertChildAction).toHaveBeenCalledWith('p1', 'raiz'))
+    await waitFor(() => expect(renameNodeAction).toHaveBeenCalledWith('p1', 'novo-real', 'Nova fase'))
+  })
+
+  it('movimento que falha mantém o rascunho para tentar salvar outra vez', async () => {
+    const outraFase = { ...planilha.macrofases[0], nodeId: 'mf2', codigo: 'M2', titulo: 'Fase 2', atividades: [] }
+    vi.mocked(moveNodeAction).mockResolvedValueOnce({ ok: false, error: 'Conflito de edição' }).mockResolvedValue({ ok: true, serverVersion: 3 })
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas planilha={{ ...planilha, macrofases: [...planilha.macrofases, outraFase] }} /></ToastProvider>)
+    const dataTransfer = { effectAllowed: 'move', setData: vi.fn() }
+    fireEvent.dragStart(screen.getByTitle('Arrastar A1 Atividade 1'), { dataTransfer })
+    const destino = screen.getByRole('button', { name: 'Renomear M2 Fase 2' }).closest('tr')!
+    fireEvent.dragOver(destino)
+    fireEvent.drop(destino)
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(moveNodeAction).toHaveBeenCalledTimes(1))
+    expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(moveNodeAction).toHaveBeenCalledTimes(2))
+  })
+
+  it('salvamento parcial não repete um movimento já aplicado ao tentar novamente', async () => {
+    const outraFase = { ...planilha.macrofases[0], nodeId: 'mf2', codigo: 'M2', titulo: 'Fase 2', atividades: [] }
+    vi.mocked(moveNodeAction).mockResolvedValueOnce({ ok: true, serverVersion: 2 }).mockResolvedValueOnce({ ok: false, error: 'Conflito' }).mockResolvedValue({ ok: true, serverVersion: 3 })
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas planilha={{ ...planilha, macrofases: [...planilha.macrofases, outraFase] }} /></ToastProvider>)
+    const dataTransfer = { effectAllowed: 'move', setData: vi.fn() }
+    fireEvent.dragStart(screen.getByTitle('Arrastar A1 Atividade 1'), { dataTransfer })
+    const fase2 = screen.getByRole('button', { name: 'Renomear M2 Fase 2' }).closest('tr')!
+    fireEvent.dragOver(fase2)
+    fireEvent.drop(fase2)
+    fireEvent.dragStart(screen.getByTitle('Arrastar A1 Atividade 1'), { dataTransfer })
+    const fase1 = screen.getByRole('button', { name: 'Renomear M1 Fase 1' }).closest('tr')!
+    fireEvent.dragOver(fase1)
+    fireEvent.drop(fase1)
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(moveNodeAction).toHaveBeenCalledTimes(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(moveNodeAction).toHaveBeenCalledTimes(3))
+    expect(vi.mocked(moveNodeAction).mock.calls.filter(([, payload]) => payload.targetId === 'mf2')).toHaveLength(1)
+  })
+
+  it('exclusão confirmada só chega à EAP depois de Salvar', async () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Ações de A1 Atividade 1' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Ações de A1 Atividade 1' })).getByText('Excluir atividade'))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Excluir linha' })).getByRole('button', { name: 'Excluir' }))
+    expect(deleteNodeAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(deleteNodeAction).toHaveBeenCalledWith('p1', 'a1'))
+  })
+
+  it('excluir uma linha com campo pendente não tenta gravar o nó excluído', async () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
+    fireEvent.change(screen.getByDisplayValue('90'), { target: { value: '120' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Ações de A1 Atividade 1' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Ações de A1 Atividade 1' })).getByText('Excluir atividade'))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Excluir linha' })).getByRole('button', { name: 'Excluir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(deleteNodeAction).toHaveBeenCalledWith('p1', 'a1'))
+    expect(updateNodePropertiesAction).not.toHaveBeenCalled()
+  })
+
+  it('atividade nova salva os campos usando o ID definitivo retornado pela EAP', async () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Ações de A1 Atividade 1' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Ações de A1 Atividade 1' })).getByText('Nova atividade abaixo'))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome da nova atividade' }), { target: { value: 'Atividade nova' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inserir' }))
+    const linha = screen.getByText('Nova Atividade nova').closest('tr')!
+    fireEvent.change(within(linha).getAllByDisplayValue('0')[0], { target: { value: '45' } })
+    expect(insertSiblingAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(insertSiblingAction).toHaveBeenCalledWith('p1', 'a1'))
+    await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'atividade-real', { tempoMinutos: 45 }))
+  })
+
+  it('resumo de valor acompanha o rascunho e só persiste ao salvar', async () => {
+    renderizar()
+    fireEvent.change(screen.getByDisplayValue('90'), { target: { value: '120' } })
+    const resumo = screen.getByText('Resumo — Valor por Fase do Projeto').closest('div')!
+    expect(within(resumo).getAllByText('R$ 120,00').length).toBeGreaterThan(0)
+    expect(updateNodePropertiesAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'a1', { tempoMinutos: 120 }))
   })
 })
 
@@ -370,17 +502,15 @@ describe('PlanilhaCustosView — permissões do realizado', () => {
     expect(linha.queryByDisplayValue('0:00')).not.toBeInTheDocument()
   })
   it('falha ao salvar mantém o valor digitado e exibe o erro', async () => {
-    vi.useFakeTimers()
-    try {
       vi.mocked(updateNodePropertiesAction).mockResolvedValue({ ok: false, error: 'Sem permissão para editar' })
       renderizarPermissoes({ canEditOwnActual: true })
       const horas = within(screen.getByText('A1 Atividade 1').closest('tr')!).getByDisplayValue('0:00')
       fireEvent.change(horas, { target: { value: '2:30' } })
-      await act(async () => { await vi.advanceTimersByTimeAsync(1100) })
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+      await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalled())
       expect(horas).toHaveValue('2:30')
-      expect(screen.getByText('Sem permissão para editar')).toBeInTheDocument()
+      expect(screen.getAllByRole('alert').some(alert => alert.textContent?.includes('Sem permissão para editar'))).toBe(true)
       expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'a1', { tempoRealMinutos: 150 })
-    } finally { vi.useRealTimers() }
   })
 })
 
@@ -405,15 +535,13 @@ describe('descrição da tarefa ao passar o mouse', () => {
     }
     render(<ToastProvider><PlanilhaCustosView {...props} planilha={semDescricao} /></ToastProvider>)
     const tarefa = screen.getByText('A1 Atividade 1')
-    expect(tarefa.tagName).toBe('TD')
+    expect(tarefa).not.toHaveAttribute('tabindex')
     expect(screen.queryByRole('tooltip')).toBeNull()
   })
 })
 
 describe('Elaborado por com várias pessoas (= responsáveis do card)', () => {
   it('marca mais de um elaborador e salva a lista; a jornada usada é a menor', async () => {
-    vi.useFakeTimers()
-    try {
       const dois: Elaborador[] = [...elaboradores, { userId: 'u2', name: 'João', remuneracao: 4000, horasDiarias: 6 }]
       render(<ToastProvider><PlanilhaCustosView {...props} elaboradores={dois} /></ToastProvider>)
       const botao = screen.getByRole('button', { name: /Elaborado por — Atividade 1: Maria/ })
@@ -425,23 +553,17 @@ describe('Elaborado por com várias pessoas (= responsáveis do card)', () => {
       // 90 min com a menor jornada (6h) = 0,25 dia
       expect(screen.getAllByDisplayValue('0,25').length).toBeGreaterThan(0)
 
-      await act(async () => { await vi.advanceTimersByTimeAsync(1100) })
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+      await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalled())
       expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'a1', { elaboradoPorUserIds: ['u1', 'u2'] })
-    } finally {
-      vi.useRealTimers()
-    }
   })
 
   it('desmarcar todos salva lista vazia', async () => {
-    vi.useFakeTimers()
-    try {
       renderizar()
       fireEvent.click(screen.getByRole('button', { name: /Elaborado por — Atividade 1/ }))
       fireEvent.click(screen.getByRole('checkbox', { name: 'Maria' }))
-      await act(async () => { await vi.advanceTimersByTimeAsync(1100) })
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+      await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalled())
       expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'a1', { elaboradoPorUserIds: [] })
-    } finally {
-      vi.useRealTimers()
-    }
   })
 })
