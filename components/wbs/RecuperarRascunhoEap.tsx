@@ -45,7 +45,7 @@ export default function RecuperarRascunhoEap({ rascunho, atual, onAplicar, onDes
       role="dialog"
       aria-modal="false"
       aria-labelledby="rascunho-eap-titulo"
-      className="fixed left-1/2 top-20 z-50 w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-amber-300 bg-white p-4 text-sm shadow-2xl"
+      className="wbs-recovery fixed left-1/2 top-20 z-50 w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border p-4 text-sm"
     >
       <h2 id="rascunho-eap-titulo" className="mb-1 text-base font-bold text-slate-900">Alterações não salvas preservadas</h2>
       <p className="mb-3 text-slate-600">

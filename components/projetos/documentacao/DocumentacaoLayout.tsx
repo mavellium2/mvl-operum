@@ -9,6 +9,8 @@ import DocumentoAtas, { type AtaListItem } from './DocumentoAtas'
 import EapDocument from './EapDocument'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import Drawer from '@/components/ui/Drawer'
+import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
+import './documentacao.css'
 
 const DOCUMENT_MAP = {
   stakeholder: DocumentoStakeholders,
@@ -59,8 +61,9 @@ export default function DocumentacaoLayout({ projetoId, atas, gerente, membros =
   const tipo = ({ atas: 'ATA', charter: 'CHARTER', eap: 'EAP', stakeholder: 'STAKEHOLDER' } as const)[activeDoc]
 
   return (
-    <div data-testid="doc-layout" className="flex flex-col lg:flex-row flex-1 h-full overflow-hidden">
-      <div data-testid="doc-content" className="flex-1 min-w-0 overflow-y-auto">
+    <ProjectAppearance enabled isolated>
+    <div data-testid="doc-layout" className="documentacao-theme flex flex-col lg:flex-row flex-1 h-full overflow-hidden">
+      <div data-testid="doc-content" className="documentacao-content flex-1 min-w-0 overflow-y-auto">
         {activeDoc === 'atas' ? (
           <DocumentoAtas projetoId={projetoId} atas={atas} gerente={gerente} />
         ) : activeDoc === 'charter' ? (
@@ -75,5 +78,6 @@ export default function DocumentacaoLayout({ projetoId, atas, gerente, membros =
         {revisando && <HistoricoDocumento key={`${activeDoc}-${revisando.resourceId}`} projetoId={projetoId} type={tipo} resourceId={revisando.resourceId} embutido />}
       </Drawer>
     </div>
+    </ProjectAppearance>
   )
 }

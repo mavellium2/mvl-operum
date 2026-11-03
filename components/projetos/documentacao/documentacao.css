@@ -1,0 +1,32 @@
+.project-appearance-isolated:has(> .documentacao-theme) { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
+.documentacao-theme { min-height: 0; color: var(--ap-text); background: radial-gradient(ellipse at 72% 0, color-mix(in srgb, var(--ap-glow) 45%, transparent), transparent 64%), var(--ap-bg); transition: background-color 700ms ease, color 700ms ease; }
+.documentacao-content { scrollbar-color: color-mix(in srgb, var(--ap-accent) 35%, transparent) transparent; scrollbar-width: thin; }
+
+/* A área de trabalho acompanha o tema; as folhas impressas mantêm suas cores. */
+.documentacao-theme .documento-editor { background: transparent; color: var(--ap-text); }
+.documentacao-theme .documento-toolbar { border-color: var(--ap-border); background: color-mix(in srgb, var(--ap-surface) 94%, var(--ap-bg)); scrollbar-color: color-mix(in srgb, var(--ap-accent) 35%, transparent) transparent; scrollbar-width: thin; }
+.documentacao-theme .documento-tool-group { border-color: var(--ap-border); background: color-mix(in srgb, var(--ap-surface) 75%, transparent); box-shadow: inset 0 1px 0 var(--glass-light); }
+.documentacao-theme .documento-tool-group > p { color: var(--ap-muted); }
+.documentacao-theme .documento-tool-button { width: 32px; height: 32px; min-height: 32px; padding: 0; color: var(--ap-text); background: color-mix(in srgb, var(--ap-input) 72%, var(--ap-surface)); border-color: color-mix(in srgb, var(--ap-border) 70%, transparent); box-shadow: inset 0 1px 0 var(--glass-light); }
+.documentacao-theme .documento-tool-button svg { width: 17px; height: 17px; stroke-width: 2.1; opacity: 1; }
+.documentacao-theme .documento-tool-button:disabled { opacity: .45; }
+.documentacao-theme .documento-tool-button:is(:hover, .documento-tool-active) { color: var(--ap-accent); border-color: color-mix(in srgb, var(--ap-accent) 23%, var(--ap-border)); background: color-mix(in srgb, var(--ap-accent) 9%, var(--ap-surface)); }
+.documentacao-theme .documento-tool-button:active:not(:disabled) { transform: scale(.94); }
+.documentacao-theme .documento-toolbar :is(a, button):focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 2px; }
+.documentacao-theme .documento-toolbar :is([class*='text-slate-'], [class*='text-gray-']) { color: var(--ap-text); }
+.documentacao-theme .documento-toolbar :is(a, button):hover:not(:disabled) { background: color-mix(in srgb, var(--ap-accent) 9%, var(--ap-surface)); }
+.documentacao-theme .documento-editor aside[aria-label^='Ajuda do campo'] { background: var(--ap-surface); color: var(--ap-text); border-color: var(--ap-border); box-shadow: 0 12px 24px -16px var(--glass-shadow); }
+.documentacao-theme .documento-editor aside[aria-label^='Ajuda do campo'] :is([class*='text-slate-']) { color: var(--ap-muted); }
+.documentacao-theme .documento-editor [data-folha] { background: #fff; color: #172235; }
+
+.documentacao-theme .documento-atas-page { color: var(--ap-text); }
+.documentacao-theme .documento-atas-page h2, .documentacao-theme .documento-atas-page [class*='text-slate-900'] { color: var(--ap-text); }
+.documentacao-theme .documento-atas-page :is([class*='text-slate-700'], [class*='text-slate-600'], [class*='text-slate-500'], [class*='text-slate-400']) { color: var(--ap-muted); }
+.documentacao-theme .documento-atas-page :is(input, [class*='bg-white']) { background-color: var(--ap-surface); border-color: var(--ap-border); color: var(--ap-text); }
+.documentacao-theme .documento-ata-card { border-color: var(--ap-border); background: color-mix(in srgb, var(--ap-surface) 91%, transparent); box-shadow: inset 0 1px 0 var(--glass-light), 0 8px 18px -17px var(--glass-shadow); transition: border-color 260ms ease, background-color 260ms ease, box-shadow 260ms ease, transform 260ms ease; }
+.documentacao-theme .documento-ata-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--ap-accent) 35%, var(--ap-border)); background: var(--ap-surface); box-shadow: inset 0 1px 0 var(--glass-light), 0 13px 24px -17px var(--glass-shadow); }
+.documentacao-theme .documento-atas-page [role='group'][aria-label='Filtrar atas'] button[aria-pressed='true'] { color: var(--ap-accent); border-color: color-mix(in srgb, var(--ap-accent) 35%, var(--ap-border)); background: color-mix(in srgb, var(--ap-accent) 12%, var(--ap-surface)); }
+.documentacao-theme .documento-atas-page [role='group'][aria-label='Filtrar atas'] button:not([aria-pressed='true']) { color: var(--ap-muted); background: transparent; }
+
+@media print { .documentacao-theme, .documentacao-theme .documento-editor { background: #fff !important; color: #172235 !important; } }
+@media (prefers-reduced-motion: reduce) { .documentacao-theme, .documentacao-theme .documento-ata-card { transition: none; } }

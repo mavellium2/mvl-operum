@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useRef, useId, type CSSProperties } from 'react'
+import { forwardRef, useRef, useId, useSyncExternalStore, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import GlassCloseButton from './GlassCloseButton'
 import UndoChangeButton from './UndoChangeButton'
@@ -11,16 +11,17 @@ import { appearanceBlendStyle } from '@/lib/appearancePalette'
 import './ChangesPanel.css'
 
 export interface ReviewChange { chave: string; rotulo: string; antes: string; depois: string; texto?: boolean }
-interface Props { context: { type: 'project' | 'permissions'; id: string; label?: string }; open: boolean; visited?: boolean; originX?: number; changes: ReviewChange[]; onClose: () => void; onUndo: (key: string) => void; floating?: boolean; anchor?: { left: number; bottom: number; width: number } }
+interface Props { context: { type: 'project' | 'permissions' | 'spreadsheet'; id: string; label?: string }; open: boolean; visited?: boolean; originX?: number; changes: ReviewChange[]; onClose: () => void; onUndo: (key: string) => void; floating?: boolean; anchor?: { left: number; bottom?: number; top?: number; width: number } }
 
 const ChangesPanel = forwardRef<HTMLDivElement, Props>(function ChangesPanel({ context, open, visited = false, originX, changes, onClose, onUndo, floating = false, anchor }, ref) {
   const instanceId = useId()
-  const title = context.type === 'permissions' ? `Alterações nos acessos${context.label ? ` de ${context.label}` : ''}` : 'O que mudou desde o último salvamento'
+  const title = context.type === 'permissions' ? `Alterações nos acessos${context.label ? ` de ${context.label}` : ''}` : context.type === 'spreadsheet' ? 'Alterações na planilha' : 'O que mudou desde o último salvamento'
   const local = useRef<HTMLDivElement>(null)
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
   const { period, blend } = useAppearance()
   useFloatingPanelFocus(local, floating && open, onClose)
   const panel = <div id={instanceId} data-context={context.type} data-context-id={context.id} role="dialog" aria-label="Alterações não salvas" aria-hidden={!open} inert={!open} data-open={open} data-visited={visited}
-    style={{ '--history-drop-x': originX !== undefined ? `${originX}px` : '50%', ...(floating ? { translate: 'none' } : {}), ...(floating && anchor ? { left: anchor.left, bottom: anchor.bottom, width: anchor.width, marginLeft: 0 } : {}) } as CSSProperties}
+    style={{ '--history-drop-x': originX !== undefined ? `${originX}px` : '50%', ...(floating ? { translate: 'none' } : {}), ...(floating && anchor ? { left: anchor.left, bottom: anchor.bottom ?? 'auto', top: anchor.top ?? 'auto', width: anchor.width, marginLeft: 0 } : {}) } as CSSProperties}
     ref={node => { local.current = node; if (typeof ref === 'function') ref(node); else if (ref) ref.current = node }} tabIndex={-1}
     className={`project-changes-panel project-history-panel ${floating ? 'shared-changes-floating' : 'absolute bottom-full mb-3'} vidro-flutuante rounded-[22px] p-3`}>
     <div className="flex items-center justify-between px-3 py-2"><h3 className="text-sm font-bold text-slate-900">{title}</h3><GlassCloseButton label="Fechar" onClick={onClose} className="project-history-close" /></div>
@@ -30,7 +31,7 @@ const ChangesPanel = forwardRef<HTMLDivElement, Props>(function ChangesPanel({ c
     </li>)}</ul>
   </div>
   if (!floating) return panel
-  if (typeof document === 'undefined') return null
+  if (!mounted) return null
   return createPortal(<div className="project-appearance shared-changes-portal" data-period={period ?? undefined} style={appearanceBlendStyle(blend)}>
     <div aria-hidden="true" className="project-history-backdrop fixed inset-0" data-open={open} onClick={onClose} />{panel}
   </div>, document.body)

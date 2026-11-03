@@ -170,7 +170,7 @@ export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, di
   const selectedNodes = selectedNodeIds.map(id => nodes[id]).filter((n): n is WbsNodeClient => Boolean(n))
   const count = selectedNodes.length
   if (count === 0) return (
-    <aside className="absolute right-4 top-4 z-30 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-sm" aria-label="Estilo">
+    <aside className="wbs-properties-panel vidro-flutuante absolute right-4 top-4 z-30 w-72 rounded-lg p-4" aria-label="Estilo">
       <div className="flex items-center justify-between"><strong>Estilo</strong><OperumCloseButton type="button" label="Fechar estilo" onClick={onClose} /></div>
       <p className="mt-4 text-sm text-gray-600">Selecione um ou mais elementos para ajustar o estilo.</p>
     </aside>
@@ -205,7 +205,7 @@ export default function WbsPropertiesPanel({ selectedNodeIds, nodes, canEdit, di
   return (
     <div
       ref={panelRef}
-      className="absolute right-4 top-4 z-30 w-64 max-h-[calc(100%-2rem)] rounded-xl border border-gray-200 bg-white shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      className="wbs-properties-panel absolute right-4 top-4 z-30 w-72 max-h-[calc(100%-2rem)] rounded-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
     >
       {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-2 px-3 py-2.5 border-b border-gray-100 bg-gray-50 shrink-0">

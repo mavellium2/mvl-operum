@@ -7,43 +7,38 @@ vi.mock('@/app/actions/sincronizacao', () => ({ repetirSincronizacaoAction: vi.f
 
 const ok = { situacao: 'OK' as const, ultimaTentativaEm: '2026-10-21T12:00:00Z', ultimaConclusaoEm: '2026-10-21T12:00:00Z', erro: null, pendencias: [] }
 const falha = { ...ok, situacao: 'FALHA' as const, erro: 'Banco ocupado. Tente novamente.' }
-const pend = { ...ok, situacao: 'PENDENCIAS' as const, pendencias: [{ tipo: 'sem-responsavel', quantidade: 1, mensagem: '1 atividade concluída na planilha sem responsável ativo' }] }
+const pend = { ...ok, situacao: 'PENDENCIAS' as const, pendencias: [{ tipo: 'sem-responsavel', quantidade: 1, mensagem: '1 atividade sem responsável ativo' }] }
 
 beforeEach(() => vi.clearAllMocks())
 
 describe('StatusSincronizacao', () => {
-  it('só diz sincronizado sem pendência e sem erro', () => {
+  it('não ocupa espaço quando a atualização automática está normal ou tem pendências de dados', () => {
     const { rerender } = render(<StatusSincronizacao projectId="p" inicial={ok} podeSincronizar />)
-    expect(screen.getByRole('status')).toHaveTextContent('EAP, planilha e sprints sincronizadas')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     rerender(<StatusSincronizacao key="2" projectId="p" inicial={pend} podeSincronizar />)
-    expect(screen.getByRole('status')).toHaveTextContent('Sincronizado com 1 pendência')
-    fireEvent.click(screen.getByRole('button', { name: 'Ver detalhes' }))
-    expect(screen.getByText(/sem responsável ativo/)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('falha mostra o motivo e "Tentar novamente"; repetir atualiza o estado', async () => {
+  it('mostra uma falha real e desaparece após nova tentativa bem-sucedida', async () => {
     vi.mocked(repetirSincronizacaoAction).mockResolvedValue({ status: ok })
     render(<StatusSincronizacao projectId="p" inicial={falha} podeSincronizar />)
-    expect(screen.getByRole('status')).toHaveTextContent('Falha na última sincronização')
-    fireEvent.click(screen.getByRole('button', { name: 'Ver detalhes' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível atualizar')
     expect(screen.getByText(/Banco ocupado/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('sincronizadas'))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
     expect(repetirSincronizacaoAction).toHaveBeenCalledWith('p')
   })
 
-  it('erro ao repetir mantém a falha visível com a mensagem', async () => {
-    vi.mocked(repetirSincronizacaoAction).mockResolvedValue({ error: 'A sincronização falhou.', status: falha })
-    render(<StatusSincronizacao projectId="p" inicial={ok} podeSincronizar />)
-    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar agora' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('A sincronização falhou.')
-    // O status atualiza logo depois do alerta; espera em vez de checar no mesmo instante.
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Falha na última sincronização'))
+  it('mantém visível o erro quando a nova tentativa falha', async () => {
+    vi.mocked(repetirSincronizacaoAction).mockResolvedValue({ error: 'A atualização falhou.', status: falha })
+    render(<StatusSincronizacao projectId="p" inicial={falha} podeSincronizar />)
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+    expect(await screen.findByText('A atualização falhou.')).toBeInTheDocument()
   })
 
-  it('sem permissão não oferece o botão', () => {
-    render(<StatusSincronizacao projectId="p" inicial={null} podeSincronizar={false} />)
-    expect(screen.getByRole('status')).toHaveTextContent('ainda não registrada')
-    expect(screen.queryByRole('button', { name: /Sincronizar/ })).not.toBeInTheDocument()
+  it('sem permissão mostra a falha, mas não oferece ação', () => {
+    render(<StatusSincronizacao projectId="p" inicial={falha} podeSincronizar={false} />)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tentar novamente' })).not.toBeInTheDocument()
   })
 })

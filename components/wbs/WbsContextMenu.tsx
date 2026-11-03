@@ -39,17 +39,13 @@ interface WbsContextMenuProps {
 
 function ItemButton({ item, onClose }: { item: Item; onClose: () => void }) {
   return (
-    <OperumButton variant="danger" type="button"
+    <OperumButton variant={item.danger ? 'danger' : 'custom'} type="button"
       disabled={item.disabled}
       onClick={() => { if (item.disabled) return; item.action(); onClose() }}
-      className={`w-full flex items-center justify-between px-4 py-1.5 text-sm text-left transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none ${
-        item.danger
-          ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
-          : 'text-gray-800 hover:bg-blue-50 hover:text-blue-700'
-      }`}
+      className={`wbs-context-item w-full flex items-center justify-between px-4 py-1.5 text-sm text-left cursor-pointer disabled:opacity-40 disabled:pointer-events-none ${item.danger ? 'wbs-context-danger' : ''}`}
     >
       <span>{item.label}</span>
-      {item.shortcut && <span className="ml-8 text-xs text-gray-500 shrink-0">{item.shortcut}</span>}
+      {item.shortcut && <span className="wbs-context-shortcut ml-8 text-xs shrink-0">{item.shortcut}</span>}
     </OperumButton>
   )
 }
@@ -136,9 +132,9 @@ export default function WbsContextMenu({
       style={{ position: 'fixed', left: state.x, top: state.y, zIndex: 10000 }}
       onContextMenu={e => e.preventDefault()}
     >
-      <div className="bg-white shadow-xl rounded-md border border-gray-200 py-1 min-w-[230px]">
+      <div className="wbs-context-menu rounded-xl border py-1 min-w-[230px]">
         {items.map((item, idx) => {
-          if (!item) return <hr key={idx} className="my-1 border-gray-200" />
+          if (!item) return <hr key={idx} className="wbs-context-divider my-1" />
           return <ItemButton key={item.label} item={item} onClose={onClose} />
         })}
       </div>

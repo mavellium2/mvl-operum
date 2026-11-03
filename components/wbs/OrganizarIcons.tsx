@@ -8,7 +8,7 @@ const BASE = {
   viewBox: '0 0 32 32', fill: 'none', stroke: 'currentColor', strokeWidth: 1.2,
   strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
 }
-const CAIXA = '#F3F4F6'
+const CAIXA = 'var(--ap-input, #F3F4F6)'
 
 function Icone({ size, children }: { size: number; children: React.ReactNode }) {
   return <svg {...BASE} width={size} height={size} aria-hidden="true" focusable="false">{children}</svg>

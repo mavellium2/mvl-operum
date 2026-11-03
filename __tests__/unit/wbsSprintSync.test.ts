@@ -197,6 +197,21 @@ describe('sincronizarEapComSprint', () => {
     expect(tx.wbsNode.update).toHaveBeenCalledWith({ where: { id: 'n1' }, data: { parentId: 'b', order: 2 } })
   })
 
+  it('atividade movida na EAP leva o card para a sprint da nova macrofase', async () => {
+    tx.wbsNode.findMany.mockResolvedValueOnce([
+      node('r', null, 'Projeto'), node('a', 'r', 'Sprint 1', { sprintId: 's1' }), node('b', 'r', 'Sprint 2', { sprintId: 's2' }),
+      node('n1', 'b', 'Tarefa', { cardId: 'c1' }, new Date('2026-10-03')),
+    ]).mockResolvedValue([])
+    tx.sprint.findMany.mockResolvedValue([sprint('s1', 'Sprint 1'), sprint('s2', 'Sprint 2')])
+    tx.card.findMany
+      .mockResolvedValueOnce([{ id: 'c1', title: 'Tarefa', deletedAt: null, updatedAt: new Date('2026-10-01'), sprintId: 's1' }])
+      .mockResolvedValueOnce([{ id: 'c1', title: 'Tarefa', description: '', updatedAt: new Date('2026-10-01'), sprintId: 's1' }])
+    const r = await sincronizarEapComSprint('p1', 't1')
+    expect(r.cardsMovidos).toBe(1)
+    expect(r.nosMovidos).toBe(0)
+    expect(tx.card.update).toHaveBeenCalledWith({ where: { id: 'c1' }, data: { sprintId: 's2', sprintColumnId: 'cAFazer', sprintPosition: 5 } })
+  })
+
   it('já sincronizado não escreve nada (idempotente) e card excluído não é recriado', async () => {
     tx.wbsNode.findMany.mockResolvedValueOnce([
       node('r', null, 'Projeto'), node('ns', 'r', 'Sprint 1', { sprintId: 's1' }),

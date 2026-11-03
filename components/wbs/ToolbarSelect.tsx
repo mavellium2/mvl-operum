@@ -2,6 +2,7 @@
 
 import OperumButton from '@/components/ui/GlassButton'
 import { useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
 
 export interface ToolbarSelectOption<T extends string> {
@@ -42,7 +43,10 @@ export default function ToolbarSelect<T extends string>({ title, value, options,
 
   useEffect(() => {
     if (!open) return
-    const fora = (e: MouseEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpen(false) }
+    const fora = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (!rootRef.current?.contains(target) && !listRef.current?.contains(target)) setOpen(false)
+    }
     document.addEventListener('mousedown', fora)
     return () => document.removeEventListener('mousedown', fora)
   }, [open])
@@ -93,8 +97,8 @@ export default function ToolbarSelect<T extends string>({ title, value, options,
   }
 
   return (
-    <div ref={rootRef} className="relative flex flex-col gap-0.5 border border-gray-200 rounded-md bg-white p-1 shadow-sm shrink-0">
-      <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400 px-0.5">{title}</span>
+    <div ref={rootRef} className="wbs-toolbar-select relative flex flex-col gap-0.5 shrink-0">
+      <span className="wbs-control-label">{title}</span>
       <OperumButton variant="custom"
         ref={buttonRef}
         type="button"
@@ -106,14 +110,14 @@ export default function ToolbarSelect<T extends string>({ title, value, options,
         aria-controls={open ? listId : undefined}
         aria-label={`${title}: ${atual?.label ?? placeholder ?? 'escolher'}`}
         title={atual?.label ?? placeholder}
-        className="flex items-center gap-1 rounded px-1 py-0.5 text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+        className="wbs-select-trigger flex items-center gap-1 disabled:opacity-40"
       >
         <span className="flex items-center justify-center w-7 h-7">{atual?.icon ?? options[0]?.icon}</span>
         <span className="text-[11px] font-medium max-w-[7.5rem] truncate">{atual?.label ?? placeholder}</span>
         <ChevronDown className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
       </OperumButton>
 
-      {open && (
+      {open && createPortal(
         <ul
           ref={listRef}
           id={listId}
@@ -123,7 +127,7 @@ export default function ToolbarSelect<T extends string>({ title, value, options,
           aria-activedescendant={`${listId}-${active}`}
           onKeyDown={onKeyDown}
           style={pos ? { position: 'fixed', top: pos.top, left: pos.left } : undefined}
-          className="fixed z-50 min-w-[12rem] rounded-md border border-gray-200 bg-white py-1 shadow-lg focus:outline-none"
+          className="wbs-select-list fixed z-[10000] min-w-[12rem] py-1 focus:outline-none"
         >
           {options.map((o, i) => (
             <li
@@ -136,17 +140,17 @@ export default function ToolbarSelect<T extends string>({ title, value, options,
               onMouseEnter={() => setActive(i)}
               onMouseDown={e => e.preventDefault()}
               onClick={() => escolher(i)}
-              className={`flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer select-none
+              data-active={i === active && !o.disabled || undefined}
+              className={`wbs-select-option flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer select-none
                 ${o.disabled ? 'opacity-40 cursor-not-allowed' : ''}
-                ${i === active && !o.disabled ? 'bg-blue-50' : ''}
-                ${o.value === value ? 'text-blue-700 font-medium' : 'text-gray-700'}`}
+                ${o.value === value ? 'font-medium' : ''}`}
             >
               <span className="flex items-center justify-center w-8 h-8 shrink-0">{o.icon}</span>
               <span>{o.label}</span>
               {o.value === value && <span className="ml-auto text-xs" aria-hidden="true">✓</span>}
             </li>
           ))}
-        </ul>
+        </ul>, document.body
       )}
     </div>
   )

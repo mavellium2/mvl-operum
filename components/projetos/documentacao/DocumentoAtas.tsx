@@ -86,7 +86,7 @@ function CartaoAta({ ata, projetoId, status, podeExcluir, onExcluir }: { ata: At
   const s = STATUS[status]
   const href = `/projetos/${projetoId}/atas/${ata.id}`
   return (
-    <li data-testid="ata-item" className="group relative flex items-stretch gap-4 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:shadow-sm">
+    <li data-testid="ata-item" className="documento-ata-card group relative flex items-stretch gap-4 rounded-xl border p-4 transition">
       <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-blue-50 text-blue-700" aria-hidden="true">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-500">Nº</span>
         <span className="text-xl font-bold leading-none">{numeroAta(ata.numero)}</span>
@@ -177,7 +177,7 @@ export default function DocumentoAtas({ projetoId, atas }: Props) {
   ]
 
   return (
-    <div className="px-4 py-6 sm:px-8">
+    <div className="documento-atas-page px-4 py-6 sm:px-8">
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>

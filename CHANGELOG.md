@@ -7,6 +7,19 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.50.0] — 2026-11-03
+
+- **Planilha de custos:** campos, elaboradores, nomes e operações de criar, arrastar e excluir ficam em rascunho até “Salvar alterações”. Totais, quadros e gráficos refletem a prévia imediatamente; erros indicam a linha e permitem corrigir e tentar de novo. A estrutura salva aparece na EAP e nas sprints. A barra superior organiza identificação, período e ações em uma linha no desktop, com grupos compactos e salvar destacado quando há pendências. Gráficos de valores e tempo usam barras horizontais com rolagem quando há muitas fases; a distribuição por elaborador ganha gráfico de anel e lista legível nas aparências do sistema.
+- **Navegação:** ocultar o menu lateral fica junto do controle de recolher.
+- **Atas:** edição e criação usam área de trabalho integrada às aparências, cabeçalho compacto e folha preservada para impressão.
+- **Login multi-instituição:** uma preferência antiga no navegador deixa de bloquear a senha correta de outra conta do mesmo e-mail; senha, estado e bloqueio continuam validados pelo serviço de autenticação.
+- **Carregamento da interface:** a inicialização da aparência usa o componente de script do Next.js e o painel flutuante de alterações só abre após a montagem no navegador, evitando avisos de script e divergência de hidratação.
+- **EAP/WBS:** ferramentas reunidas numa única barra compacta no desktop, aparência do sistema aplicada com vidro discreto aos controles, menus e painel de propriedades, Gantt sem fundo branco fixo, enquadramento preservado quando o menu lateral muda de largura e “Ajustar tela” passa a mostrar todos os cards visíveis. O menu de visualizações abre sobre a barra sem ser cortado; Dia, Semana e Mês alteram a escala do Gantt mesmo em períodos curtos.
+- **Sincronização automática:** EAP e planilha deixam de exibir avisos de sucesso ou pendências de rotina; uma falha real continua visível com nova tentativa disponível.
+- **Documentos:** área de trabalho, ferramentas e lista de atas acompanham a aparência selecionada com superfícies discretas; ícones da barra recebem contraste e tamanho próprios, e as folhas preservam o branco e as cores para leitura e impressão.
+- **Planilha de custos:** cabeçalho compacto em uma linha no desktop, sem espaço vazio acima; tabela com rolagem própria, títulos fixos e cores próprias para cabeçalho, dados e totais, preservando a ordem das colunas, resumos e gráficos.
+- Versão escolhida acima de 1.49.1, a mais recente em origin/main.
+
 ## [1.49.1] — 2026-11-03
 
 - **Arquivos:** nova tentativa breve quando a conferência de cards está temporariamente indisponível; falha persistente continua visível no aviso da página sem abrir erro de console no ambiente local.
