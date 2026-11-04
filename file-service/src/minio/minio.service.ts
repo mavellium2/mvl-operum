@@ -74,7 +74,13 @@ export class MinioService {
 
   extractKey(fileUrl: string): string | null {
     const prefix = `${this.publicUrl}/${this.bucket}/`
-    return fileUrl.startsWith(prefix) ? fileUrl.slice(prefix.length) : null
+    if (fileUrl.startsWith(prefix)) return fileUrl.slice(prefix.length)
+    // O exemplo local antigo apontava para a porta do console. Reassina as chaves
+    // já gravadas nesse ambiente usando o endpoint atual da API do MinIO.
+    const legacyLocalPrefix = `http://localhost:9001/${this.bucket}/`
+    return this.publicUrl === 'http://localhost:9000' && fileUrl.startsWith(legacyLocalPrefix)
+      ? fileUrl.slice(legacyLocalPrefix.length)
+      : null
   }
 
   buildKey(type: 'uploads' | 'avatars' | 'logos', id: string, fileName: string): string {

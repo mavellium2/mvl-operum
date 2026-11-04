@@ -1,6 +1,6 @@
 import { dataRealizacaoEfetiva } from '@/lib/dataRealizacao'
 import { elaboradoresDe, menorJornada, somaValoresPorMinuto } from './elaboradores'
-import { minutosRealizados } from './tempoRealizado'
+import { minutosRealizados, minutosDigitados, minutosApontados } from './tempoRealizado'
 import type { WbsNodeClient } from '@/types/wbs'
 import { custoFolhaPrevisto, custoFolhaRealizado, round2 } from '@/lib/custosCalc'
 
@@ -23,12 +23,31 @@ export interface PlanilhaConfig {
 
 export type SituacaoAtividade = 'Antecipada' | 'No prazo' | 'Atrasada' | 'Pendente'
 
+/** O que a planilha mostra do card ligado à atividade. */
+export interface CardDaAtividade {
+  id: string
+  sprintId: string | null
+  /** Nome da coluna em que o card está ("A Fazer", "Em andamento"...). */
+  etapa: string | null
+  priority?: string | null
+}
+
+/** Dados do card lidos pelo servidor para montar a planilha. */
+export interface DadosDoCard {
+  description: string
+  sprintId: string | null
+  etapa: string | null
+  priority?: string | null
+}
+
 export interface LinhaAtividade {
   nodeId: string
   codigo: string
   titulo: string
   /** Descrição da tarefa (do card ligado, quando houver; senão a do nó da EAP). Vazia sem descrição. */
   descricao: string
+  /** Card da sprint ligado à atividade (timer, descrição e etapa vêm dele). Ausente sem card. */
+  card?: CardDaAtividade
   /** Nomes dos elaboradores, separados por vírgula. */
   elaboradoPor: string
   /** Primeiro elaborador (formato antigo). */
@@ -46,8 +65,13 @@ export interface LinhaAtividade {
   rOrcado: number | null
   totalOrcado: number | null
   // Realizado
+  /** Realizado total = digitado + apontamentos do card (ADR-089). */
   minReal: number
-  /** Tempo derivado do card: corrigir nos apontamentos, sem sobrescrever pela planilha. */
+  /** Parte digitada na planilha: é o que o campo Min do realizado edita. */
+  minRealDigitado: number
+  /** Parte que veio dos apontamentos encerrados do card (timer e lançamentos). */
+  minRealApontado: number
+  /** O card tem apontamentos: Horas e Dias do realizado passam a ser só leitura. */
   tempoRealDosCards?: boolean
   materiaisReal: number
   dataRealizacao: string | null
@@ -209,6 +233,8 @@ export function computarPlanilhaCustos(
         const minOrcado = p.tempoMinutos ?? 0
         const materiaisOrcado = p.materiais ?? 0
         const minReal = minutosRealizados(p)
+        const minRealDigitado = minutosDigitados(p)
+        const minRealApontado = minutosApontados(p)
         const materiaisReal = p.materiaisReal ?? 0
         // Jornada/valor derivam SOMENTE de quem elaborou a linha; sem elaborador
         // (ou sem salário/jornada) o valor é nenhum — não existe valor padrão.
@@ -233,6 +259,8 @@ export function computarPlanilhaCustos(
           rOrcado: vpm !== null ? round2(minOrcado * vpm) : null,
           totalOrcado: fatura(minOrcado, materiaisOrcado, vpm),
           minReal,
+          minRealDigitado,
+          minRealApontado,
           tempoRealDosCards: p.tempoRealApontadoSegundos !== undefined,
           materiaisReal,
           dataRealizacao: dataRealizacaoEfetiva(p),
@@ -293,13 +321,15 @@ export function computarPlanilhaCustos(
   }
 }
 /**
- * A descrição só converge na criação (EAP ↔ sprint, ADR-033): depois, quem a edita
- * é o card. Para linhas ligadas a um card, vale a descrição atual dele.
+ * Liga cada atividade ao card da sprint. A descrição só converge na criação
+ * (EAP ↔ sprint, ADR-033): depois, quem a edita é o card, então vale a dele. A
+ * planilha também recebe o id, a sprint e a etapa do card, para o timer e o painel
+ * de detalhes. Card excluído (fora do mapa) mantém a descrição do nó e fica sem card.
  */
-export function aplicarDescricoesDosCards(
+export function aplicarCardsDasAtividades(
   planilha: PlanilhaDeCustos,
   nodes: Record<string, WbsNodeClient>,
-  descricaoPorCard: ReadonlyMap<string, string>,
+  cards: ReadonlyMap<string, DadosDoCard>,
 ): PlanilhaDeCustos {
   return {
     ...planilha,
@@ -307,7 +337,9 @@ export function aplicarDescricoesDosCards(
       ...f,
       atividades: f.atividades.map(a => {
         const cardId = nodes[a.nodeId]?.properties.cardId
-        return cardId && descricaoPorCard.has(cardId) ? { ...a, descricao: descricaoPorCard.get(cardId)!.trim() } : a
+        const card = cardId ? cards.get(cardId) : undefined
+        if (!cardId || !card) return a
+        return { ...a, descricao: card.description.trim(), card: { id: cardId, sprintId: card.sprintId, etapa: card.etapa, ...(card.priority && { priority: card.priority }) } }
       }),
     })),
   }

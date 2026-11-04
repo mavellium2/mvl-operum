@@ -554,12 +554,8 @@ export async function updateNodeProperties(input: UpdateNodePropertiesInput, ace
     // vira os responsáveis do card ligado, na mesma transação.
     let responsaveisAdicionados: string[] = []
     const cardId = texto((node.properties as Record<string, unknown> | null)?.cardId) ?? null
-    if (cardId && 'tempoRealMinutos' in properties) {
-      const history = await tx.timeEntry.findFirst({ where: {
-        cardId, isRunning: false, endedAt: { not: null }, user: { tenantId },
-      }, select: { id: true } })
-      if (history) throw new WbsValidationError('O tempo realizado vem dos apontamentos do card. Edite os registros de tempo no card.')
-    }
+    // O tempo digitado soma com os apontamentos do card (ADR-089), então continua
+    // editável mesmo depois do primeiro apontamento.
     if (Array.isArray(properties.elaboradoPorUserIds)) {
       const escolhidos = [...new Set(properties.elaboradoPorUserIds as string[])]
       const membros = escolhidos.length

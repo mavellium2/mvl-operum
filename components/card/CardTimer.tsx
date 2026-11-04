@@ -3,7 +3,7 @@
 import FormActions from '@/components/ui/FormActions'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput } from '@/components/ui/Field'
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { addManualTimeAction } from '@/app/actions/time'
 import { useCardTimer } from '@/hooks/useCardTimer'
 import { avisoTimerLongo } from '@/lib/avisoTimer'
@@ -20,18 +20,20 @@ interface CardTimerProps {
   cardId: string
   onEntryChanged?: () => void
   timerKey?: number
+  manualAoLado?: boolean
   /** Disparado quando o timer é iniciado (Correção 6). */
   onTimerStarted?: (cardId: string) => void
 }
 
-export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerStarted }: CardTimerProps) {
+export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerStarted, manualAoLado = false }: CardTimerProps) {
   const timer = useCardTimer(cardId, timerKey)
   const isRunning = timer.isRunning, elapsed = timer.elapsed, loading = timer.loading, error = timer.error
   const manualPending = useRef(false)
   const [manualSaving, setManualSaving] = useState(false)
   const [showManualForm, setShowManualForm] = useState(false)
-  const [manualHours, setManualHours] = useState(0)
-  const [manualMinutes, setManualMinutes] = useState(0)
+  const [manualDays, setManualDays] = useState('')
+  const [manualHours, setManualHours] = useState('')
+  const [manualMinutes, setManualMinutes] = useState('')
   const [manualError, setManualError] = useState('')
 
   async function handleStart() { if (await timer.toggle()) onTimerStarted?.(cardId) }
@@ -40,24 +42,49 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
   async function handleSaveManual() {
     if (manualPending.current) return
     setManualError('')
-    if (manualHours === 0 && manualMinutes === 0) {
+    const days = Number(manualDays || 0)
+    const hours = Number(manualHours || 0)
+    const minutes = Number(manualMinutes || 0)
+    if (![days, hours, minutes].every(Number.isInteger)) {
+      setManualError('Informe dias, horas e minutos inteiros')
+      return
+    }
+    if (days === 0 && hours === 0 && minutes === 0) {
       setManualError('Informe um tempo válido')
       return
     }
     manualPending.current = true; setManualSaving(true)
     try {
-      const result = await addManualTimeAction(cardId, manualHours, manualMinutes)
+      const result = await addManualTimeAction(cardId, hours, minutes, 0, undefined, days)
       if ('error' in result && result.error) throw new Error(result.error)
-      setShowManualForm(false); setManualHours(0); setManualMinutes(0)
+      setShowManualForm(false); setManualDays(''); setManualHours(''); setManualMinutes('')
       await timer.refresh()
       onEntryChanged?.()
     } catch (error) { setManualError(error instanceof Error ? error.message : 'Erro de rede. Tente novamente.') }
     finally { manualPending.current = false; setManualSaving(false) }
   }
 
+  const manualFormId = useId()
+  const adicionarManual = (
+    <OperumButton variant="default"
+      type="button"
+      aria-expanded={showManualForm}
+      aria-controls={showManualForm ? manualFormId : undefined}
+      disabled={manualSaving}
+      onClick={event => {
+        event.stopPropagation()
+        setShowManualForm(open => !open)
+        setManualError('')
+      }}
+      className={manualAoLado ? "whitespace-nowrap" : "text-xs text-slate-500 hover:text-slate-700 underline transition-colors cursor-pointer self-start"}
+    >
+      Adicionar manualmente
+    </OperumButton>
+  )
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
+      <div className={manualAoLado ? "flex flex-wrap items-center gap-2" : "flex items-center gap-3"}>
         <span
           className="text-2xl font-mono font-semibold text-slate-800 tabular-nums min-w-[80px]"
           aria-label="Tempo acumulado"
@@ -92,6 +119,7 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
             Iniciar
           </OperumButton>
         )}
+        {manualAoLado && adicionarManual}
       </div>
 
       {isRunning && (() => {
@@ -101,17 +129,23 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
 
       {error && <p role="alert" className="text-xs text-red-500">{error} <OperumButton variant="default" type="button" disabled={loading} onClick={() => void timer.refresh()}>Atualizar timer</OperumButton></p>}
 
-      {!showManualForm ? (
-        <OperumButton variant="default"
-          type="button"
-          onClick={e => { e.stopPropagation(); setShowManualForm(true); setManualError('') }}
-          className="text-xs text-slate-500 hover:text-slate-700 underline transition-colors cursor-pointer self-start"
-        >
-          Adicionar manualmente
-        </OperumButton>
-      ) : (
-        <div className="flex flex-col gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
-          <div className="flex gap-3">
+      {!manualAoLado && !showManualForm && adicionarManual}
+      {showManualForm && (
+        <div id={manualFormId} className="card-timer-manual flex flex-col gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`manual-days-${cardId}`} className="text-xs text-slate-500">Dias</label>
+              <OperumInput
+                id={`manual-days-${cardId}`}
+                type="number"
+                min={0}
+                max={31}
+                placeholder="0"
+                value={manualDays}
+                onChange={e => { setManualDays(e.target.value); setManualError('') }}
+                className="w-16 px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
             <div className="flex flex-col gap-1">
               <label htmlFor={`manual-hours-${cardId}`} className="text-xs text-slate-500">Horas</label>
               <OperumInput
@@ -119,8 +153,9 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
                 type="number"
                 min={0}
                 max={168}
+                placeholder="0"
                 value={manualHours}
-                onChange={e => setManualHours(Number(e.target.value))}
+                onChange={e => { setManualHours(e.target.value); setManualError('') }}
                 className="w-16 px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
             </div>
@@ -131,8 +166,9 @@ export default function CardTimer({ cardId, onEntryChanged, timerKey, onTimerSta
                 type="number"
                 min={0}
                 max={59}
+                placeholder="0"
                 value={manualMinutes}
-                onChange={e => setManualMinutes(Number(e.target.value))}
+                onChange={e => { setManualMinutes(e.target.value); setManualError('') }}
                 className="w-16 px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
             </div>

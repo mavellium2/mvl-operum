@@ -77,8 +77,17 @@ model Project {
   limitesAutoridade String? @db.Text
 
   semestre      String?
+  /// Ano da turma no AMS ("1" ou "2"), só para período anual; distinto de termo e ano calendário.
+  anoAms        String?
+  termo         String?
+  turno         String?
   ano           Int?
   departamentos String[]
+
+  /// Durable desired macrofase batch and last EAP revision applied by the app.
+  macroFasesRevision       Int     @default(0)
+  macroFasesSyncedRevision Int     @default(0)
+  macroFasesSyncError      String?
 
   status    ProjectStatus @default(ACTIVE)
   deletedAt DateTime?
@@ -97,6 +106,7 @@ model ProjectMacroFase {
   id         String   @id @default(cuid())
   projectId  String
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  position   Int      @default(0)
   fase       String
   dataLimite String?
   custo      String?
@@ -135,21 +145,23 @@ model UserDepartment {
 }
 
 model UserProject {
-  id           String      @id @default(cuid())
-  userId       String
-  projectId    String
-  active       Boolean     @default(true)
-  role         String?
-  departmentId String?
-  hourlyRate   Float?
-  remuneracao  Float?
-  horasDiarias Float?
-  startDate    DateTime    @default(now())
-  endDate      DateTime?
-  order        Int         @default(0)
-  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  id             String      @id @default(cuid())
+  userId         String
+  projectId      String
+  active         Boolean     @default(true)
+  inactiveReason String?     @db.Text // Motivo da inativação do membro no projeto (com active = false)
+  inactivatedAt  DateTime? // Quando foi inativado
+  role           String?
+  departmentId   String?
+  hourlyRate     Float?
+  remuneracao    Float?
+  horasDiarias   Float?
+  startDate      DateTime    @default(now())
+  endDate        DateTime?
+  order          Int         @default(0)
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project        Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  department     Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
   @@unique([userId, projectId])
 }
@@ -222,25 +234,27 @@ model UserProjectRole {
 // ── Stakeholders ──────────────────────────────────────────
 
 model Stakeholder {
-  id          String   @id @default(cuid())
-  tenantId    String
-  name        String
-  logoUrl     String?
-  company     String?
-  competence  String?
-  email       String?
-  phone       String?
-  cep         String?
-  logradouro  String?
-  numero      String?
-  complemento String?
-  bairro      String?
-  cidade      String?
-  estado      String?
-  notes       String?  @db.Text
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String    @id @default(cuid())
+  tenantId       String
+  name           String
+  logoUrl        String?
+  company        String?
+  competence     String?
+  email          String?
+  phone          String?
+  cep            String?
+  logradouro     String?
+  numero         String?
+  complemento    String?
+  bairro         String?
+  cidade         String?
+  estado         String?
+  notes          String?   @db.Text
+  isActive       Boolean   @default(true)
+  inactiveReason String?   @db.Text // Motivo da inativação (obrigatório ao desativar)
+  inactivatedAt  DateTime? // Quando foi inativado
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   projects ProjectStakeholder[]
   tenant   Tenant               @relation(fields: [tenantId], references: [id])

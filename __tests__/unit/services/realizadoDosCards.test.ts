@@ -20,7 +20,7 @@ const n = (id: string, parentId: string | null, childrenIds: string[], propertie
 })
 const fixture = () => ({
   root: n('root', null, ['fase']), fase: n('fase', 'root', ['a', 'b']),
-  a: n('a', 'fase', [], { cardId: 'c1', tempoMinutos: 120, tempoRealMinutos: 999, materiaisReal: 5, elaboradoPorUserId: 'u1' }),
+  a: n('a', 'fase', [], { cardId: 'c1', tempoMinutos: 120, tempoRealMinutos: 100, materiaisReal: 5, elaboradoPorUserId: 'u1' }),
   b: n('b', 'fase', [], { cardId: 'c2', tempoRealMinutos: 15 }),
 })
 const aggregate = vi.mocked(prisma.timeEntry.groupBy)
@@ -31,16 +31,17 @@ function responses(seconds: number | null) {
 beforeEach(() => { vi.clearAllMocks(); aggregate.mockReset(); vi.mocked(prisma.card.findMany).mockResolvedValue([]) })
 
 describe('apontamentos → realizado da planilha/EAP', () => {
-  it('1h30 registrada substitui o manual, calcula custo e preserva orçamento/materiais', async () => {
+  it('1h30 registrada soma com os 100 minutos digitados, calcula custo e preserva orçamento/materiais (ADR-089)', async () => {
     const original = fixture(); responses(5400)
     const nodes = await aplicarRealizadoDosCards(original, 'p1', 't1')
     const sheet = computarPlanilhaCustos(nodes, 'root', { valorReferencia: 4000, horasPorDia: 8 },
       new Map([['u1', { userId: 'u1', name: 'Ana', remuneracao: 14400, horasDiarias: 8 }]]))
-    expect(sheet.macrofases[0].atividades[0]).toMatchObject({ minReal: 90, totalReal: 95, minOrcado: 120, materiaisReal: 5, tempoRealDosCards: true })
-    expect(sheet.macrofases[0].atividades[1]).toMatchObject({ minReal: 15, tempoRealDosCards: false })
-    expect(computeFinancialRollups(nodes, 'root', { u1: 1 }).a).toMatchObject({ actualHours: 1.5, actualCost: 95 })
-    expect(computePlanilha(nodes, 'root', { valorPorMinuto: 1, horasPorDia: 8 }).rows.find(row => row.id === 'a')?.custoReal).toBe(95)
-    expect(original.a.properties).toMatchObject({ tempoRealMinutos: 999, tempoMinutos: 120, materiaisReal: 5 })
+    expect(sheet.macrofases[0].atividades[0]).toMatchObject({ minReal: 190, minRealDigitado: 100, minRealApontado: 90, totalReal: 195, minOrcado: 120, materiaisReal: 5, tempoRealDosCards: true })
+    expect(sheet.macrofases[0].atividades[1]).toMatchObject({ minReal: 15, minRealDigitado: 15, minRealApontado: 0, tempoRealDosCards: false })
+    expect(computeFinancialRollups(nodes, 'root', { u1: 1 }).a.actualHours).toBeCloseTo(190 / 60)
+    expect(computeFinancialRollups(nodes, 'root', { u1: 1 }).a.actualCost).toBe(195)
+    expect(computePlanilha(nodes, 'root', { valorPorMinuto: 1, horasPorDia: 8 }).rows.find(row => row.id === 'a')?.custoReal).toBe(195)
+    expect(original.a.properties).toMatchObject({ tempoRealMinutos: 100, tempoMinutos: 120, materiaisReal: 5 })
     expect(original.a.properties.tempoRealApontadoSegundos).toBeUndefined()
   })
   it('editar o apontamento recalcula a leitura, sem acumular o resultado anterior', async () => {
@@ -48,25 +49,25 @@ describe('apontamentos → realizado da planilha/EAP', () => {
     const first = await aplicarRealizadoDosCards(fixture(), 'p1', 't1')
     responses(1800)
     const second = await aplicarRealizadoDosCards(first, 'p1', 't1')
-    expect(minutosRealizados(first.a.properties)).toBe(60)
-    expect(minutosRealizados(second.a.properties)).toBe(30)
+    expect(minutosRealizados(first.a.properties)).toBe(160)
+    expect(minutosRealizados(second.a.properties)).toBe(130)
   })
-  it('excluir o último registro zera o tempo, sem ressuscitar os 999 minutos manuais', async () => {
+  it('excluir o último registro deixa só os minutos digitados', async () => {
     responses(null)
     const nodes = await aplicarRealizadoDosCards(fixture(), 'p1', 't1')
-    expect(minutosRealizados(nodes.a.properties)).toBe(0)
-    expect(nodes.a.properties.tempoRealMinutos).toBe(999)
+    expect(minutosRealizados(nodes.a.properties)).toBe(100)
+    expect(nodes.a.properties.tempoRealMinutos).toBe(100)
   })
   it('sem registros encerrados mantém o realizado manual (inclusive timer só em curso)', async () => {
     aggregate.mockResolvedValueOnce([]).mockResolvedValueOnce([])
     const nodes = await aplicarRealizadoDosCards(fixture(), 'p1', 't1')
-    expect(minutosRealizados(nodes.a.properties)).toBe(999)
+    expect(minutosRealizados(nodes.a.properties)).toBe(100)
     expect(nodes.a.properties.tempoRealApontadoSegundos).toBeUndefined()
   })
   it('preserva segundos somados sem arredondar individualmente os apontamentos', async () => {
     responses(58)
     const nodes = await aplicarRealizadoDosCards(fixture(), 'p1', 't1')
-    expect(minutosRealizados(nodes.a.properties)).toBeCloseTo(58 / 60)
+    expect(minutosRealizados(nodes.a.properties)).toBeCloseTo(100 + 58 / 60)
   })
   it('filtra card/projeto/instituição e autores; ignora ativos e removidos na soma', async () => {
     responses(60)
@@ -84,7 +85,7 @@ describe('apontamentos → realizado da planilha/EAP', () => {
     vi.mocked(prisma.wbsNode.findMany).mockResolvedValue(Object.values(fixture()).map(node => ({ ...node, version: 1 })) as never)
     responses(7200)
     const tree = await getTree('p1', 't1')
-    expect(minutosRealizados(tree.nodes.a.properties)).toBe(120)
+    expect(minutosRealizados(tree.nodes.a.properties)).toBe(220)
     expect(WbsNodePropertiesSchema.parse(tree.nodes.a.properties)).not.toHaveProperty('tempoRealApontadoSegundos')
   })
   it('não consulta apontamentos quando a EAP não tem folhas vinculadas', async () => {
@@ -105,7 +106,7 @@ describe('conclusão na sprint → data realizada, sem inventar esforço ou gast
     const original = fixture()
     const nodes = await aplicarRealizadoDosCards(original, 'p1', 't1')
     const sheet = computarPlanilhaCustos(nodes, 'root', { valorReferencia: 4000, horasPorDia: 8 })
-    expect(sheet.macrofases[0].atividades[0]).toMatchObject({ dataRealizacao: '2026-10-26', materiaisReal: 5, minReal: 0 })
+    expect(sheet.macrofases[0].atividades[0]).toMatchObject({ dataRealizacao: '2026-10-26', materiaisReal: 5, minReal: 100 })
     expect(original.a.properties.dataRealizacaoCard).toBeUndefined()
     expect(computeFinancialRollups(nodes, 'root', {}).a.dataRealizacao).toBe('2026-10-26')
     expect(vi.mocked(prisma.card.findMany).mock.calls.at(-1)![0]).toMatchObject({ where: { sprint: { projectId: 'p1', project: { tenantId: 't1' } } } })

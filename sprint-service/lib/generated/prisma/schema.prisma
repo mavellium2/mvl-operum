@@ -21,10 +21,15 @@ model Tenant {
 }
 
 model User {
-  id       String @id @default(cuid())
-  tenantId String
-  name     String
-  email    String
+  id          String        @id @default(cuid())
+  tenantId    String
+  name        String
+  email       String
+  cargo       String?
+  avatarUrl   String?
+  hourlyRate  Float         @default(0)
+  deletedAt   DateTime?
+  memberships UserProject[]
 
   sprints          Sprint[]
   timeEntries      TimeEntry[]
@@ -32,52 +37,18 @@ model User {
   comments         Comment[]
   dashboardMetrics DashboardMetric[]
   sprintFeedbacks  SprintFeedback[]
-  userProjects     UserProject[]
-  notifications    Notification[]
 
   tags Tag[]
 
   @@unique([email, tenantId])
 }
 
-model UserProject {
-  id           String  @id @default(cuid())
-  userId       String
-  projectId    String
-  active       Boolean @default(true)
-  horasDiarias Float?
-  remuneracao  Float?
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, projectId])
-}
-
-enum NotificationStatus {
-  UNREAD
-  READ
-  ARCHIVED
-}
-
-model Notification {
-  id            String             @id @default(cuid())
-  userId        String
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          String
-  title         String
-  message       String
-  reference     String?
-  referenceType String?
-  status        NotificationStatus @default(UNREAD)
-  deletedAt     DateTime?
-  createdAt     DateTime           @default(now())
-  readAt        DateTime?
-  updatedAt     DateTime           @updatedAt
-}
-
 model Project {
-  id       String @id @default(cuid())
-  tenantId String
-  name     String
+  id        String        @id @default(cuid())
+  tenantId  String
+  name      String
+  deletedAt DateTime?
+  members   UserProject[]
 
   sprints Sprint[]
   cards   Card[]
@@ -118,6 +89,7 @@ model SprintColumn {
   id        String    @id @default(cuid())
   title     String
   position  Int
+  color     String?
   sprintId  String
   sprint    Sprint    @relation(fields: [sprintId], references: [id], onDelete: Cascade)
   cards     Card[]    @relation("SprintColumnCards")
@@ -139,9 +111,8 @@ model Card {
   sprintColumnId String?
   sprintColumn   SprintColumn? @relation("SprintColumnCards", fields: [sprintColumnId], references: [id], onDelete: SetNull)
   sprintPosition Int?
-  status         String        @default("Backlog")
   projectId      String?
-  project        Project?      @relation(fields: [projectId], references: [id])
+  project        Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
   priority       String        @default("media")
   tagsImport     String        @default("")
   startDate      DateTime?
@@ -150,26 +121,24 @@ model Card {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  // Orçado
-  orcado_min    Int?
-  orcado_horas  Float?
-  orcado_dias   Float?
-  orcado_total  Float?
-  data_prevista DateTime?
-
-  // Realizado
-  realizado_min   Int?
-  realizado_horas Float?
-  realizado_dias  Float?
-  realizado_total Float?
-  data_realizacao DateTime?
-  situacao_status String?
-
   tags         CardTag[]
-  attachments  Attachment[]
   timeEntries  TimeEntry[]
   responsibles CardResponsible[]
   comments     Comment[]
+  movements    CardMovement[]
+}
+
+model CardMovement {
+  id              String   @id @default(cuid())
+  cardId          String
+  card            Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  userId          String?
+  fromColumnId    String?
+  fromColumnTitle String?
+  toColumnId      String?
+  toColumnTitle   String?
+  reason          String?
+  movedAt         DateTime @default(now())
 }
 
 model Tag {
@@ -223,23 +192,12 @@ model Comment {
   updatedAt DateTime    @updatedAt
 }
 
-// ── Attachment ────────────────────────────────────────────
-
-model Attachment {
-  id         String    @id @default(cuid())
-  cardId     String
-  card       Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  fileName   String
-  fileType   String
-  filePath   String
-  fileSize   Int
-  isCover    Boolean   @default(false)
-  deletedAt  DateTime?
-  uploadedAt DateTime  @default(now())
-}
+// Anexos: tabela files."Attachment", do file-service (não mapeada aqui).
 
 // ── Time Entries ──────────────────────────────────────────
 
+// Partial uniqueness for active timers lives in migration 20261004010000_unique_running_timer.
+// userId is unique only when isRunning=true and deletedAt IS NULL (manual/stopped entries remain unrestricted).
 model TimeEntry {
   id          String    @id @default(cuid())
   userId      String
@@ -303,4 +261,17 @@ model AuditLog {
   entityId  String?
   details   Json?
   timestamp DateTime @default(now())
+}
+
+model UserProject {
+  id             String    @id @default(cuid())
+  userId         String
+  projectId      String
+  active         Boolean   @default(true)
+  inactiveReason String?   @db.Text // Motivo da inativação do membro no projeto (com active = false)
+  inactivatedAt  DateTime? // Quando foi inativado
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
 }

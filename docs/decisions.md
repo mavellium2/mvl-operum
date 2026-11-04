@@ -853,7 +853,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-065 — Realizado por projeção dos apontamentos encerrados dos cards
 
 - **Data do registro:** 2026-10-24.
-- **Status:** implementada em código na 1.40.2; publicação pendente da entrega.
+- **Status:** implementada na 1.40.2; **substituída em parte pela [ADR-089](#adr-089--realizado-soma-os-minutos-digitados-com-os-apontamentos-do-card)** (1.52.0): o realizado passou a somar o tempo digitado com os apontamentos, em vez de substituí-lo. A projeção dos apontamentos em `getTree` continua valendo.
 - **Contexto:** o usuário relatou que horas/minutos lançados nos cards não preenchiam o realizado da Planilha de Custos. O cálculo lia apenas `WbsNode.properties.tempoRealMinutos`; os lançamentos eram persistidos em `TimeEntry`, sem ligação no cálculo da planilha/EAP.
 - **Escolha:** projetar em `getTree` a soma dos segundos encerrados de cada card vinculado, em uma propriedade derivada que não entra no schema salvo da EAP. Havendo histórico encerrado, ele é a fonte do tempo, substituindo o manual; sem histórico, permanece o preenchimento manual existente. Remover o último registro zera o realizado, sem ressuscitar valor manual. Timer ainda rodando não participa da soma. O resolvedor é compartilhado pela planilha, custos, rollups e exportações.
 - **Justificativa:** alterações/exclusões e registros anteriores à correção passam a funcionar na leitura, sem backfill e sem depender de todos os caminhos de escrita (painel e MCP) manterem uma cópia sincronizada. Agregação em lote e snapshot dos totais evitam N+1 e divergência entre histórico e soma.
@@ -1080,3 +1080,63 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** movimentações, criação, exclusão, campos e renomeações aguardam salvamento. Ações estruturais são aplicadas em sequência, sem transação única; após falha parcial, as já concluídas não são repetidas na nova tentativa. A próxima reconciliação autorizada reflete a nova fase no card e recalcula códigos.
 - **Condição de revisão:** revisar a precedência temporal se houver edição simultânea frequente entre planilha e quadro.
 - **Referências:** `components/custos/PlanilhaCustosView.tsx`, `services/wbsService.ts`, `__tests__/unit/wbsSprintSync.test.ts`.
+
+## ADR-087 — Exclusão de macrofase pela planilha é imediata e reutiliza o diálogo do cadastro
+
+- **Data:** 2026-11-04.
+- **Status:** implementada.
+- **Contexto:** o card "Planilha de Custos: excluir Macro Fase e suas atividades, com confirmação" pede excluir a macrofase pela planilha, com aviso de que as atividades também saem. Na planilha, as demais mudanças de estrutura ficam em rascunho até "Salvar alterações" (ADR-085). Já existia `ExcluirFaseDialog`, usado no cadastro do projeto, com o impacto da exclusão e o motivo obrigatório quando a sprint tem dados.
+- **Escolha:** "Excluir macrofase" no menu da macrofase abre `ExcluirFaseDialog`, e a exclusão acontece ao confirmar, por `excluirFaseAction`. Com alterações pendentes na planilha, a ação pede para salvar ou descartar antes. Macrofase ainda não salva não mostra a opção.
+- **Justificativa:** `excluirFaseAction` também retira a fase do cadastro de macrofases, que é a fonte da sincronização. Excluir só o nó da EAP pelo rascunho (`deleteNodeAction`) deixaria a fase no cadastro, e a sincronização poderia recriá-la; além disso, o salvamento em rascunho não coleta o motivo exigido quando a sprint tem dados. Reutilizar o diálogo mantém uma única confirmação com o impacto completo.
+- **Alternativas consideradas:** marcar a exclusão no rascunho e aplicar ao salvar (exigiria levar o motivo e a limpeza do cadastro para o salvamento em lote, sem transação única); `ConfirmDialog` simples (sem impacto nem motivo).
+- **Consequências:** a exclusão de macrofase é a única mudança de estrutura da planilha que não espera "Salvar alterações"; o diálogo avisa que ela é imediata. A planilha recarrega depois da exclusão.
+- **Condição de revisão:** se o salvamento da planilha passar a aplicar a estrutura numa transação única, avaliar levar a exclusão de macrofase para o rascunho.
+- **Referências:** `components/custos/PlanilhaCustosView.tsx`, `components/projetos/ExcluirFaseDialog.tsx`, `app/actions/projetoEdicao.ts` (`excluirFaseAction`), `__tests__/components/custos/PlanilhaCustosView.test.tsx`.
+
+## ADR-088 — Descrição e timer da atividade na planilha vêm do card da sprint, num painel lateral
+
+- **Data:** 2026-11-04.
+- **Status:** implementada.
+- **Contexto:** a Planilha de Custos funciona como a sprint para a gestão. O Vinícius pediu editar a descrição da atividade e usar o play/stop da sprint direto na planilha, sem lotar a tabela, que já tem 18 colunas. A descrição já vinha do card, mas só aparecia como dica ao passar o mouse.
+- **Escolha:** o card da sprint continua sendo a fonte da descrição e do tempo. Na linha, um play/stop compacto (`CardTimerButton`, extraído do minicard do quadro) e um botão que abre um painel lateral (`AtividadeDetalhesPainel`, sobre `DetailPanel`) com etapa, elaboradores, timer, descrição editável e link para o card. O layout foi escolhido pelo Vinícius entre painel lateral, linha expansível e o modal completo do card.
+- **Justificativa:** uma fonte única evita duas descrições divergentes; o card já tem as regras de tempo e de responsável (ADR-046). O painel não acrescenta colunas nem empurra as linhas, e reutiliza componentes existentes.
+- **Alternativas consideradas:** linha expansível dentro da tabela (empurra as linhas de baixo); abrir o `CardModal` da sprint (janela grande e acoplada ao quadro); colunas novas de descrição e timer (lotaria a tabela); guardar a descrição no nó da EAP (divergiria do card).
+- **Consequências:** a descrição salva no painel não espera "Salvar alterações" da planilha, porque grava no card. Iniciar o timer e editar a descrição exigem `quadro:cards`. Atividade ainda sem card (criada e não sincronizada) não tem timer. O tempo entra no realizado depois de pausar, como já acontecia pelo quadro (1.40.2).
+- **Condição de revisão:** se a gestão precisar ver quem está com timer rodando em cada atividade, avaliar mostrar os timers de outros usuários.
+- **Referências:** `components/custos/AtividadeDetalhesPainel.tsx`, `components/card/CardTimerButton.tsx`, `components/card/Card.tsx`, `components/custos/PlanilhaCustosView.tsx`, `lib/planilhaCustos.ts` (`aplicarCardsDasAtividades`), `app/projetos/[projetoId]/planilha-custos/page.tsx`.
+
+## ADR-089 — Realizado soma os minutos digitados com os apontamentos do card
+
+- **Data:** 2026-11-04.
+- **Status:** implementada e substituída no fluxo da planilha pela [ADR-090](#adr-090--lançamentos-de-tempo-como-fonte-do-realizado-na-planilha). Substitui em parte a [ADR-065](#adr-065--realizado-por-projeção-dos-apontamentos-encerrados-dos-cards).
+- **Contexto:** pela ADR-065, o primeiro apontamento encerrado do card substituía o tempo digitado na planilha. O Vinícius digitou 100 minutos no realizado e iniciou o timer: ao pausar, a planilha passou a mostrar só o tempo do timer, e não havia como voltar o valor pela tela. O valor digitado continuava guardado em `tempoRealMinutos`, apenas ignorado. Em 04/11/2026, nenhuma atividade em produção tinha ao mesmo tempo minutos digitados e apontamentos, então a mudança não altera valores existentes.
+- **Escolha:** realizado = `tempoRealMinutos` (digitado) + soma dos apontamentos encerrados do card (`minutosRealizados`, `lib/tempoRealizado.ts`). As células de minutos, horas e dias mostram o total e abrem o painel da atividade. O painel separa a parte digitada dos registros do card. Minutos são exibidos sem casas quando inteiros e com duas casas quando quebrados (`formatarMinutos`).
+- **Justificativa:** nada do que foi digitado se perde, e o valor pode ser corrigido a qualquer momento. A projeção continua cobrindo todos os caminhos de escrita de tempo (quadro, planilha e MCP), sem conversão nem cópia.
+- **Alternativas consideradas:** converter os minutos digitados em um lançamento manual no card no primeiro apontamento (exigiria interceptar todos os caminhos de criação, inclusive o MCP direto no sprint-service, e escolher autor e horário para o lançamento); manter a substituição (perde o valor digitado).
+- **Consequências:** o risco de dupla contagem, motivo da rejeição na ADR-065, passa a depender de quem lança: se alguém digitar o tempo e também usar o timer para o mesmo trabalho, o realizado soma os dois. O painel da atividade explica a composição do realizado. O tempo do card no quadro continua mostrando só os apontamentos.
+- **Condição de revisão:** se a dupla contagem aparecer na homologação, avaliar converter o digitado em lançamento do card.
+- **Referências:** `lib/tempoRealizado.ts`, `lib/planilhaCustos.ts`, `services/wbsService.ts` (`updateNodeProperties`), `components/custos/PlanilhaCustosView.tsx`, `__tests__/unit/services/realizadoDosCards.test.ts`, `__tests__/unit/tempoRealizado.test.ts`.
+
+
+## ADR-090 — Lançamentos de tempo como fonte do realizado na planilha
+
+- **Data:** 2026-11-04.
+- **Status:** implementada. Substitui o fluxo da planilha da [ADR-089](#adr-089--realizado-soma-os-minutos-digitados-com-os-apontamentos-do-card).
+- **Contexto:** a planilha oferecia um valor manual agregado e uma lista de lançamentos do card. O usuário pediu um único fluxo para registrar e corrigir tempo.
+- **Escolha:** a aba Tempo registra novos valores no card. A migração cria um lançamento encerrado por atividade com tempo legado e remove o valor de origem na mesma instrução. Usa a atualização do nó como referência de data e o elaborador ou responsável identificado como autor.
+- **Justificativa:** os registros individuais podem ser consultados e editados no mesmo fluxo, com o total preservado na conversão.
+- **Alternativas consideradas:** manter a edição do agregado junto dos lançamentos ou retirar o campo sem converter seus valores. A primeira mantém duas entradas para o mesmo trabalho. A segunda deixa o tempo histórico fora da lista.
+- **Consequências:** se faltar vínculo válido ou autor identificável, o valor legado permanece no total e a interface sinaliza a pendência. A data e o autor do registro migrado são referências do nó e do vínculo, pois o agregado antigo não guardava os metadados do lançamento.
+- **Referências:** `prisma/migrations/20261104090000_tempo_manual_em_lancamentos/migration.sql`, `components/custos/AtividadeDetalhesPainel.tsx`, `lib/tempoRealizado.ts`.
+
+## ADR-091 — Lançamento manual acima de 12 h é dividido automaticamente
+
+- **Data:** 2026-11-04.
+- **Status:** implementada. Complementa a [ADR-046](#adr-046--lançamentos-de-tempo-editáveis-validados-e-com-limite-de-12-h-no-timer).
+- **Contexto:** a ADR-046 limita cada lançamento manual a 12 h para impedir que um esquecimento vire dias. Com o campo Dias no formulário do timer, o usuário passou a lançar períodos maiores e recebia o erro "Um lançamento pode ter no máximo 12 h. Divida em mais de um.", tendo de dividir manualmente.
+- **Escolha:** a Server Action `addManualTimeAction` divide o total em lançamentos contíguos de até 12 h, do mais antigo para o mais recente, mantendo a descrição e o mesmo intervalo total. Se um lançamento falhar, os já criados são removidos e o erro é devolvido. O formulário aceita até 31 dias.
+- **Justificativa:** o limite por lançamento continua no sprint-service e vale para todos os clientes; a divisão automática evita que o usuário calcule os cortes. O teto de 31 dias limita a quantidade de chamadas e de lançamentos criados de uma vez.
+- **Alternativas consideradas:** dividir no sprint-service (mudaria o contrato de resposta de um lançamento para vários e afetaria o MCP); manter o erro e pedir divisão manual (foi o comportamento que o usuário pediu para corrigir); aumentar o limite do serviço (contrariaria a ADR-046).
+- **Consequências:** um lançamento de 2 dias vira quatro lançamentos de 12 h, todos com a mesma descrição; a soma do realizado não muda. A operação não é atômica no banco: a Server Action compensa removendo os lançamentos criados se um passo falhar. O MCP continua recusando acima de 12 h e não divide automaticamente.
+- **Condições de revisão:** pedido de divisão também no MCP ou na edição de um lançamento, ou de um teto diferente de 31 dias.
+- **Referências:** `app/actions/time.ts`, `components/card/CardTimer.tsx`, `sprint-service/src/time-entry/regras-tempo.ts`, [ADR-046](#adr-046--lançamentos-de-tempo-editáveis-validados-e-com-limite-de-12-h-no-timer).

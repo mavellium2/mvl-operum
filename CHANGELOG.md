@@ -7,6 +7,23 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.52.0] — 2026-11-04
+
+- **Card na planilha de custos:** bandeiras indicam a prioridade das atividades. O painel lateral abre na aba Atividade pelo ícone da linha ou pelos valores realizados. A aba Atividade usa o componente do card da sprint encaixado no painel lateral, com edição da descrição e da prioridade, comentários e anexos. Arquivos enviados pela conversa aparecem como mensagens e também em Anexos. Menções a pessoas do projeto geram notificações e um aviso no canto da tela.
+
+- **Comentários:** a conversa do card ganha uma busca que filtra as mensagens por texto ou autor, destaca o termo encontrado e informa quantos comentários correspondem. Funciona no modal do quadro e no painel de atividade da planilha de custos.
+
+- **Lançamento manual de tempo:** o formulário do timer ganha o campo Dias, além de horas e minutos. Os campos começam vazios, sem o 0 preso na frente, e o lançamento só é gravado com um tempo válido. Períodos acima de 12 h são divididos automaticamente em lançamentos contíguos de até 12 h, com desfazimento dos já gravados se algum falhar. Quando o período se sobrepõe a um lançamento existente, a mensagem mostra a duração, o intervalo e a descrição desse lançamento e orienta a editá-lo/excluí-lo ou ajustar a duração.
+
+- **Planilha de custos:** a macrofase ganha “Excluir macrofase” no menu de ações. A confirmação mostra o impacto (atividades, tarefas, sprints e custos) e pede o motivo quando a sprint tem dados. Ao confirmar, a macrofase e todas as atividades saem da EAP e das sprints. Com alterações pendentes na planilha, a exclusão pede para salvar ou descartar antes (ADR-087).
+- **Realizado não perde o tempo digitado:** antes, o primeiro apontamento do card (por exemplo, ao usar o play/stop) substituía os minutos digitados na planilha. Agora os dois somam: o campo Min continua editável com a parte digitada, e um selo na mesma linha mostra quanto veio do timer. Nenhuma atividade em produção estava nessa situação (ADR-089).
+- **Minutos com duas casas:** Sub-total, Total do projeto, quadro de tempo, gráficos e detalhes do card mostram minutos quebrados com duas casas (1.640,18) e inteiros sem casas.
+- **Planilha de custos como a sprint da gestão:** cada atividade ligada a um card ganha o play/stop do quadro (só o ícone; o tempo aparece enquanto roda) e um botão de detalhes. O painel lateral mostra macrofase, etapa na sprint, responsáveis, timer e descrição, que pode ser editada ali e é a mesma do card. Ao pausar, o tempo entra no realizado (ADR-088).
+- **Planilha de custos:** a macrofase vira uma faixa de seção, com fundo e borda próprios, nome em destaque e a contagem de atividades. O título começa na margem esquerda da planilha, seguido pelos controles de arrastar e de ações. A coluna de atividades fica fixa na rolagem horizontal e os campos calculados aparecem sem fundo de edição.
+- **Planilha de custos:** a coluna Atividades tem largura limitada. Nomes longos quebram em até 3 linhas, e o nome completo aparece ao passar o mouse ou ao editar.
+- **Exportação da planilha:** o valor por minuto aparece com duas casas decimais no Excel, como na tela (R$ 0,2251 → R$ 0,23). A célula guarda o valor completo, e os totais não mudam.
+- Versão escolhida acima de 1.51.0, reservada para a entrega de Markdown nos cards (branch `feat/markdown-cards-mcp`).
+
 ## [1.50.0] — 2026-11-03
 
 - **Planilha de custos:** campos, elaboradores, nomes e operações de criar, arrastar e excluir ficam em rascunho até “Salvar alterações”. Totais, quadros e gráficos refletem a prévia imediatamente; erros indicam a linha e permitem corrigir e tentar de novo. A estrutura salva aparece na EAP e nas sprints. A barra superior organiza identificação, período e ações em uma linha no desktop, com grupos compactos e salvar destacado quando há pendências. Gráficos de valores e tempo usam barras horizontais com rolagem quando há muitas fases; a distribuição por elaborador ganha gráfico de anel e lista legível nas aparências do sistema.

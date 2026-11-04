@@ -1,18 +1,24 @@
 'use client'
 
 import FormActions from '@/components/ui/FormActions'
+import './comentarios.css'
 import OperumButton from '@/components/ui/GlassButton'
 import OperumCloseButton from '@/components/ui/GlassCloseButton'
 import { Input as OperumInput, Textarea as OperumTextarea } from '@/components/ui/Field'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
-import { useState, useEffect, useRef, useCallback, useId } from 'react'
+import { createPortal } from 'react-dom'
+import { ChevronDown, Paperclip, Pencil, Search, Send, Trash2, X } from 'lucide-react'
+import { Fragment, useState, useEffect, useRef, useCallback, useId, type ReactNode } from 'react'
+import { matchesSearch } from '@/lib/search'
 import type { LinhaAtividade } from '@/lib/planilhaCustos'
 import { fmtDataBR } from '@/lib/planilhaCustos'
 import { Card, CardColor, Attachment } from '@/types/kanban'
 import { assignTagToCardAction, removeTagFromCardAction } from '@/app/actions/tags'
 import { addManualTimeAction, getTimeEntriesAction, updateTimeEntryAction, deleteTimeEntryAction } from '@/app/actions/time'
 import { getCardPlanilhaAction, getCardMovementsAction } from '@/app/actions/sprintBoard'
+import CardPriority from './CardPriority'
+import CardDescription from './CardDescription'
 import CardTimer from './CardTimer'
 import UserAvatar from '@/components/user/UserAvatar'
 import ColorPicker from './ColorPicker'
@@ -21,14 +27,15 @@ import MultiUserSelector from './MultiUserSelector'
 import { useOverlay } from '@/hooks/useOverlay'
 import { useAutosave } from '@/hooks/useAutosave'
 import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/cardUtils'
+import { formatarMinutos } from '@/lib/tempoRealizado'
 import {
-  ATTACHMENT_ACCEPT, ATTACHMENT_TYPES_LABEL, MAX_ATTACHMENT_MB, erroDoAnexo,
+  ATTACHMENT_ACCEPT, ATTACHMENT_TYPES_LABEL, MAX_ATTACHMENT_MB, erroDoAnexo, tipoDoAnexo,
   isLinkAttachment, linkHref, linkHost, linkThumbnail,
 } from '@/lib/attachmentTypes'
 
 interface User { id: string; name: string; email: string; avatarUrl?: string | null }
 interface Tag { id: string; name: string; color: string }
-interface Comment { id: string; user: User; content: string; createdAt: Date }
+interface Comment { id: string; user: Pick<User, 'id' | 'name' | 'avatarUrl'>; content: string; createdAt: Date }
 interface TimeEntry { id: string; duration: number; description?: string | null; isManual: boolean; isRunning: boolean; startedAt: string | Date; endedAt?: string | Date | null }
 interface CardMovement { id: string; fromColumnTitle: string | null; toColumnTitle: string | null; reason: string | null; movedAt: string }
 interface Responsible { userId: string; user: { id: string; name: string; avatarUrl: string | null } }
@@ -37,6 +44,8 @@ export type CardSubmitResult = { success: true } | { error: string }
 
 interface CardModalProps {
   isOpen: boolean
+  embedded?: boolean
+  onPriorityChange?: (priority: string) => Promise<{ error?: string } | void>
   onClose: () => void
   onSubmit: (data: { title: string; description: string; color: CardColor; priority: string; responsibles?: string[]; files?: File[]; startDate?: string | null; endDate?: string | null }) => Promise<CardSubmitResult>
   initialCard?: Card
@@ -46,15 +55,21 @@ interface CardModalProps {
   boardTags?: Tag[]
   attachments?: Attachment[]
   /** Pode devolver a Promise do envio: o modal mostra "Enviando…" até ela terminar. */
-  onAttachmentUpload?: (file: File) => void | Promise<void>
+  onAttachmentUpload?: (file: File) => void | Promise<void | Attachment>
   onAttachmentRename?: (attachmentId: string, newName: string) => void
   onAttachmentDelete?: (attachmentId: string) => void
   onAttachmentSetCover?: (attachmentId: string) => void
   comments?: Comment[]
-  onAddComment?: (content: string) => void
+  commentsTarget?: HTMLElement | null
+  commentsVisible?: boolean
+  mentionUsers?: { id: string; name: string }[]
+  commentsLoadError?: string
+  attachmentUploadError?: string
+  onAttachmentShared?: () => void
+  onAddComment?: (content: string, mentionedUserIds?: string[]) => void | Promise<void>
   onEditComment?: (commentId: string, content: string) => Promise<void>
   onDeleteComment?: (commentId: string) => Promise<void>
-  currentUser?: User
+  currentUser?: Pick<User, 'id'>
   onResponsiblesChange?: (responsibles: Responsible[]) => void
   /** Disparado quando o timer é iniciado dentro do modal (Correção 6). */
   onTimerStarted?: (cardId: string) => void
@@ -72,12 +87,6 @@ export interface CardPatch {
 }
 
 const DEFAULT_COLOR: CardColor = '#94a3b8'
-
-const PRIORITY_LABELS: Record<string, { label: string; cls: string }> = {
-  baixa:  { label: 'Baixa',  cls: 'bg-slate-100 text-slate-600' },
-  media:  { label: 'Média',  cls: 'bg-yellow-100 text-yellow-700' },
-  alta:   { label: 'Alta',   cls: 'bg-red-100 text-red-600' },
-}
 
 function formatDuration(secs: number) {
   const h = Math.floor(secs / 3600)
@@ -98,6 +107,90 @@ function formatDate(dateStr: string) {
 const PREVIEW_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'])
 
 /** Link para abrir o arquivo: a rota confere a sessão e redireciona para a URL assinada (SDD 4.2). */
+function CommentText({ text, busca = '' }: { text: string; busca?: string }) {
+  return text.split(/((?:https?:\/\/|www\.)[^\s<>"']+)/gi).map((part, index) => {
+    if (index % 2 === 0) return <Fragment key={index}>{realcarBusca(part, busca)}</Fragment>
+    const url = part.replace(/[.,!?;:)\]]+$/, '')
+    const href = /^www\./i.test(url) ? `https://${url}` : url
+    try {
+      const parsed = new URL(href)
+      if (!['http:', 'https:'].includes(parsed.protocol)) return part
+      return (
+        <span key={index}>
+          <a className="atividade-comentario-link" href={parsed.href} target="_blank" rel="noopener noreferrer">{url}</a>
+          {part.slice(url.length)}
+        </span>
+      )
+    } catch {
+      return part
+    }
+  })
+}
+
+/**
+ * Marca os termos da busca no texto, sem diferenciar acentos ou maiúsculas.
+ * A normalização mantém um caractere por posição para os índices do recorte
+ * continuarem válidos no texto original.
+ */
+function realcarBusca(texto: string, busca: string): ReactNode {
+  const termos = busca.trim().split(/\s+/).filter(Boolean)
+  if (!termos.length) return texto
+  const dobrar = (valor: string) => valor.split('').map(c => c.normalize('NFD')[0].toLowerCase()).join('')
+  const alvo = dobrar(texto)
+  const intervalos: Array<[number, number]> = []
+  for (const termo of termos) {
+    const procurado = dobrar(termo)
+    for (let i = alvo.indexOf(procurado); procurado && i !== -1; i = alvo.indexOf(procurado, i + procurado.length)) {
+      intervalos.push([i, i + procurado.length])
+    }
+  }
+  if (!intervalos.length) return texto
+  intervalos.sort((a, b) => a[0] - b[0])
+  const partes: ReactNode[] = []
+  let cursor = 0
+  for (const [inicio, fim] of intervalos) {
+    if (fim <= cursor) continue
+    const comeco = Math.max(inicio, cursor)
+    if (comeco > cursor) partes.push(texto.slice(cursor, comeco))
+    partes.push(<mark key={`${comeco}-${fim}`} className="atividade-comentario-destaque">{texto.slice(comeco, fim)}</mark>)
+    cursor = fim
+  }
+  if (cursor < texto.length) partes.push(texto.slice(cursor))
+  return partes
+}
+
+function CommentDraftImage({ file }: { file: File }) {
+  const imageRef = useRef<HTMLImageElement>(null)
+
+  useEffect(() => {
+    const image = imageRef.current
+    if (!image) return
+    const url = URL.createObjectURL(file)
+    image.src = url
+    return () => {
+      image.removeAttribute('src')
+      URL.revokeObjectURL(url)
+    }
+  }, [file])
+
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img ref={imageRef} alt={`Prévia de ${file.name}`} />
+}
+
+const COMMENT_ATTACHMENT = /^\[anexo:(c[a-z0-9]{20,30})\](?:\n|$)/
+const commentWithAttachments = (ids: string[], text: string) =>
+  [...ids.map(id => `[anexo:${id}]`), text].join('\n').trimEnd()
+
+function parseCommentAttachments(content: string) {
+  const ids: string[] = []
+  let caption = content
+  for (let match = COMMENT_ATTACHMENT.exec(caption); match; match = COMMENT_ATTACHMENT.exec(caption)) {
+    ids.push(match[1])
+    caption = caption.slice(match[0].length)
+  }
+  return { ids, caption }
+}
+
 function downloadHref(attachmentId: string, cardId: string): string {
   return `/api/files/${attachmentId}/download?cardId=${encodeURIComponent(cardId)}`
 }
@@ -152,9 +245,9 @@ function AttachmentIcon({ fileType }: { fileType: string }) {
 }
 
 export default function CardModal({
-  isOpen, onClose, onSubmit, initialCard, readOnly: requestedReadOnly = false, users, boardTags,
+  isOpen, embedded = false, onPriorityChange, onClose, onSubmit, initialCard, readOnly: requestedReadOnly = false, users, boardTags,
   attachments = [], onAttachmentUpload, onAttachmentRename, onAttachmentDelete, onAttachmentSetCover,
-  comments = [], onAddComment, onEditComment, onDeleteComment, currentUser, onResponsiblesChange, onTimerStarted, onPatch,
+  comments = [], commentsTarget, commentsVisible = true, mentionUsers = [], commentsLoadError, attachmentUploadError, onAttachmentShared, onAddComment, onEditComment, onDeleteComment, currentUser, onResponsiblesChange, onTimerStarted, onPatch,
 }: CardModalProps) {
 
   const permissions = useProjectPermissions()
@@ -167,11 +260,26 @@ export default function CardModal({
   const [title, setTitle]                   = useState(() => initialCard?.title ?? '')
   const [color, setColor]                   = useState<CardColor>(() => initialCard?.color ?? DEFAULT_COLOR)
   const [priority, setPriority]             = useState(() => initialCard?.priority ?? 'media')
+  const priorityPending = useRef(false)
+  async function savePriority(value: string) {
+    if (!onPriorityChange || priorityPending.current || value === priority) return
+    priorityPending.current = true
+    setError('')
+    try {
+      const result = await onPriorityChange(value)
+      if (result?.error) throw new Error(result.error)
+      setPriority(value)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Não foi possível alterar a prioridade.')
+    } finally {
+      priorityPending.current = false
+    }
+  }
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(() => initialCard?.tags?.map(t => t.tagId) ?? [])
   const [selectedResponsibleIds, setSelectedResponsibleIds] = useState<string[]>([])
   const [linhaPlanilha, setLinhaPlanilha] = useState<LinhaAtividade | null>(null)
   const [erroPlanilha, setErroPlanilha] = useState('')
-  const canViewSheet = permissions.has('planilha:ver')
+  const canViewSheet = !embedded && permissions.has('planilha:ver')
   useEffect(() => {
     if (!isOpen || !initialCard?.id || !canViewSheet) return
     let active = true
@@ -192,7 +300,41 @@ export default function CardModal({
   const [startLocal, setStartLocal] = useState(() => toDatetimeLocal(initialCard?.startDate))
   const [endLocal, setEndLocal]     = useState(() => toDatetimeLocal(initialCard?.endDate))
 
+  const commentListRef = useRef<HTMLDivElement>(null)
+  const [mostrarIrAoFim, setMostrarIrAoFim] = useState(false)
+  const lastCommentId = comments.at(-1)?.id
+  useEffect(() => {
+    const list = commentListRef.current
+    if (isOpen && embedded && commentsVisible && list) list.scrollTop = list.scrollHeight
+  }, [isOpen, embedded, commentsVisible, commentsTarget, lastCommentId])
+
+  const [commentError, setCommentError] = useState('')
   const [commentText, setCommentText]   = useState('')
+  const [buscaComentariosAberta, setBuscaComentariosAberta] = useState(false)
+  const [buscaComentarios, setBuscaComentarios] = useState('')
+  const commentInput = useRef<HTMLTextAreaElement>(null)
+  const mentionListId = useId()
+  const [mentionCursor, setMentionCursor] = useState<number | null>(null)
+  const [mentionIndex, setMentionIndex] = useState(0)
+  const [selectedMentions, setSelectedMentions] = useState<string[]>([])
+  const mentionMatch = mentionCursor === null ? null : /(?:^|\s)@([^@\n]{0,60})$/.exec(commentText.slice(0, mentionCursor))
+  const normalizarNome = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+  const mentionOptions = mentionMatch
+    ? mentionUsers.filter(person => normalizarNome(person.name).includes(normalizarNome(mentionMatch[1]))).slice(0, 8)
+    : []
+  function inserirMencao(person: { id: string; name: string }) {
+    if (!mentionMatch || mentionCursor === null) return
+    const inicio = mentionCursor - mentionMatch[1].length - 1
+    const texto = `@${person.name} `
+    setSelectedMentions(ids => ids.includes(person.id) ? ids : [...ids, person.id])
+    setCommentText(commentText.slice(0, inicio) + texto + commentText.slice(mentionCursor))
+    setMentionCursor(null)
+    requestAnimationFrame(() => {
+      commentInput.current?.focus()
+      commentInput.current?.setSelectionRange(inicio + texto.length, inicio + texto.length)
+      setMentionCursor(null)
+    })
+  }
   const [isCommenting, setIsCommenting] = useState(false)
 
   const [showManualForm, setShowManualForm] = useState(false)
@@ -220,6 +362,10 @@ export default function CardModal({
 
   const [coverIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const commentFileInput = useRef<HTMLInputElement>(null)
+  const [commentFiles, setCommentFiles] = useState<File[]>([])
+  const [uploadedCommentFiles, setUploadedCommentFiles] = useState<Attachment[]>([])
+  const [sendingComment, setSendingComment] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
 
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -246,7 +392,7 @@ export default function CardModal({
       if (res && res.error) throw new Error(res.error)
       if (initialCardRef.current?.id === savingCardId) setSavedDescription(description)
     },
-    { enabled: autosaveEnabled },
+    { enabled: autosaveEnabled && !embedded },
   )
   const resetDescAutosave = descAutosave.reset
 
@@ -283,7 +429,7 @@ export default function CardModal({
     const fim = toDatetimeLocal(initialCard?.endDate)
     resetDatasAutosave(`${inicio}|${fim}`)
 
-    if (initialCard?.id) {
+    if (!embedded && initialCard?.id) {
       getTimeEntriesAction(initialCard.id).then(res => {
         if ('entries' in res && res.entries) setTimeEntries(res.entries as TimeEntry[])
       })
@@ -291,7 +437,7 @@ export default function CardModal({
         if ('movements' in res && res.movements) setMovements(res.movements as CardMovement[])
       })
     }
-  }, [isOpen, initialCardId, resetDescAutosave, resetDatasAutosave])
+  }, [embedded, isOpen, initialCardId, resetDescAutosave, resetDatasAutosave])
 
   const handleTagToggle = async (tagId: string) => {
     if (!initialCard) return
@@ -332,7 +478,7 @@ export default function CardModal({
       else setError('Não foi possível salvar as alterações. Tente novamente antes de fechar.')
     } finally { savingRef.current = false; setSaving(false) }
   }
-  const zIndex = useOverlay(dialogRef, () => void handleCancel(), isOpen)
+  const zIndex = useOverlay(dialogRef, () => void handleCancel(), isOpen && !embedded)
   const previewZIndex = useOverlay(previewRef, () => setPreview(null), isOpen && !!preview)
 
   const handleSaveDescription = () => {
@@ -340,16 +486,72 @@ export default function CardModal({
     setIsEditingDesc(false)
   }
 
-  const handleCloseDescEditor = () => {
-    void descAutosave.flush()
-    setIsEditingDesc(false)
+  const handleCloseDescEditor = async () => {
+    if (!embedded) {
+      void descAutosave.flush()
+      setIsEditingDesc(false)
+      return
+    }
+    if (savingRef.current) return
+    if (draftDescription === savedDescription) {
+      setIsEditingDesc(false)
+      return
+    }
+    savingRef.current = true
+    setSaving(true)
+    setError('')
+    try {
+      const result = await onPatch?.({ description: draftDescription })
+      if (result?.error) throw new Error(result.error)
+      setSavedDescription(draftDescription)
+      setIsEditingDesc(false)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Não foi possível salvar a descrição.')
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
   }
 
-  const handleCommentSubmit = () => {
-    if (!commentText.trim() || !onAddComment) return
-    onAddComment(commentText)
-    setCommentText('')
-    setIsCommenting(false)
+  const commentPending = useRef(false)
+  const hasCommentFiles = commentFiles.length > 0 || uploadedCommentFiles.length > 0
+  const handleCommentSubmit = async (existingAttachment?: Attachment) => {
+    if ((!existingAttachment && !commentText.trim() && !hasCommentFiles) || !onAddComment || commentPending.current) return
+    commentPending.current = true
+    setSendingComment(true)
+    setCommentError('')
+    if (existingAttachment) setAnexoErro('')
+    try {
+      const uploaded = existingAttachment ? [existingAttachment] : [...uploadedCommentFiles]
+      if (!existingAttachment) {
+        for (const file of commentFiles) {
+          const attachment = await onAttachmentUpload?.(file)
+          if (!attachment) throw new Error('Não foi possível anexar o arquivo.')
+          uploaded.push(attachment)
+          setUploadedCommentFiles(current => [...current, attachment])
+          setCommentFiles(current => current.filter(pending => pending !== file))
+        }
+      }
+      const content = uploaded.length
+        ? commentWithAttachments(uploaded.map(attachment => attachment.id), existingAttachment ? '' : commentText.trim())
+        : commentText
+      if (embedded && !existingAttachment && selectedMentions.length) await onAddComment(content, selectedMentions)
+      else await onAddComment(content)
+      if (existingAttachment) onAttachmentShared?.()
+      else {
+        setCommentText('')
+        setSelectedMentions([])
+        setUploadedCommentFiles([])
+        setIsCommenting(false)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível comentar.'
+      if (existingAttachment) setAnexoErro(message)
+      else setCommentError(message)
+    } finally {
+      commentPending.current = false
+      setSendingComment(false)
+    }
   }
 
   const handleRegisterTime = async () => {
@@ -411,23 +613,371 @@ export default function CardModal({
 
   if (!isOpen) return null
 
+  const commentComposer = !readOnly && (embedded ? (
+    <div className="atividade-comentario-rodape">
+      {(anexoErro || attachmentUploadError) && <p role="alert" className="text-xs text-red-600">{anexoErro || attachmentUploadError}</p>}
+      {sendingComment && <p role="status" className="text-xs">Enviando…</p>}
+      {hasCommentFiles && (
+        <div className="atividade-comentario-arquivos-pendentes" aria-label="Arquivos selecionados">
+          {uploadedCommentFiles.map(attachment => (
+            <div key={attachment.id} className="atividade-comentario-arquivo-pendente">
+              {PREVIEW_TYPES.has(attachment.fileType) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`/api/files/${attachment.id}/image`} alt={`Prévia de ${attachment.fileName}`} />
+              ) : <Paperclip size={13} aria-hidden="true" />}
+              <span>{attachment.fileName}</span>
+            </div>
+          ))}
+          {commentFiles.map((file, index) => (
+            <div key={`${file.name}:${file.lastModified}:${index}`} className="atividade-comentario-arquivo-pendente">
+              {PREVIEW_TYPES.has(tipoDoAnexo(file) ?? '') ? <CommentDraftImage file={file} /> : <Paperclip size={13} aria-hidden="true" />}
+              <span>{file.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <input ref={commentFileInput} type="file" accept={ATTACHMENT_ACCEPT} multiple hidden onChange={event => {
+        const files = Array.from(event.currentTarget.files ?? [])
+        event.currentTarget.value = ''
+        const validos: File[] = []
+        let erro = ''
+        for (const file of files) {
+          const problema = erroDoAnexo(file)
+          if (problema) erro ||= `${file.name}: ${problema}`
+          else validos.push(file)
+        }
+        setCommentError(erro)
+        setCommentFiles(current => [...current, ...validos])
+      }} />
+      {mentionOptions.length > 0 && (
+        <ul id={mentionListId} role="listbox" aria-label="Pessoas do projeto" className="atividade-comentario-mencoes">
+          {mentionOptions.map((person, index) => (
+            <li key={person.id} id={`${mentionListId}-${index}`} role="option" aria-label={person.name} aria-selected={index === mentionIndex}
+              onMouseDown={event => event.preventDefault()} onClick={() => inserirMencao(person)}>
+              <UserAvatar name={person.name} size="xs" />{person.name}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="atividade-comentario-compositor">
+        <OperumTextarea
+          ref={commentInput}
+          rows={1}
+          aria-autocomplete="list"
+          aria-controls={mentionOptions.length ? mentionListId : undefined}
+          aria-activedescendant={mentionOptions[mentionIndex] ? `${mentionListId}-${mentionIndex}` : undefined}
+          disabled={sendingComment}
+          aria-label="Escreva um comentário"
+          placeholder="Escreva um comentário…"
+          value={commentText}
+          onChange={event => {
+            setCommentText(event.target.value)
+            setMentionCursor(event.target.selectionStart)
+            setMentionIndex(0)
+          }}
+          onSelect={event => setMentionCursor(event.currentTarget.selectionStart)}
+          onBlur={() => setMentionCursor(null)}
+          onKeyDown={event => {
+            if (event.nativeEvent.isComposing) return
+            if (mentionOptions.length > 0) {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                event.stopPropagation()
+                setMentionCursor(null)
+                return
+              }
+              if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault()
+                const direction = event.key === 'ArrowDown' ? 1 : -1
+                setMentionIndex(index => (index + direction + mentionOptions.length) % mentionOptions.length)
+                return
+              }
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault()
+                inserirMencao(mentionOptions[mentionIndex] ?? mentionOptions[0])
+                return
+              }
+            }
+            if (event.key !== 'Enter' || event.shiftKey) return
+            event.preventDefault()
+            void handleCommentSubmit()
+          }}
+        />
+        {onAttachmentUpload && (
+          <OperumButton variant="custom" type="button" aria-label="Anexar arquivo" title="Anexar arquivo"
+            onClick={() => commentFileInput.current?.click()} disabled={sendingComment || enviandoAnexo}>
+            <Paperclip size={16} aria-hidden="true" />
+          </OperumButton>
+        )}
+        <OperumButton variant="custom" type="button" aria-label="Descartar comentário" title="Descartar comentário"
+          onClick={() => { setCommentText(''); setSelectedMentions([]); setCommentFiles([]); setUploadedCommentFiles([]); setCommentError('') }} disabled={sendingComment || (!commentText && !hasCommentFiles)}>
+          <X size={16} aria-hidden="true" />
+        </OperumButton>
+        <OperumButton variant="custom" type="button" aria-label="Enviar comentário" title="Enviar comentário"
+          className="atividade-comentario-enviar" onClick={() => void handleCommentSubmit()} disabled={sendingComment || (!commentText.trim() && !hasCommentFiles)}>
+          <Send size={15} aria-hidden="true" />
+        </OperumButton>
+      </div>
+    </div>
+  ) : (
+    <div className={`border rounded-lg overflow-hidden bg-white mb-4 transition-all ${isCommenting ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200'}`}>
+      <OperumTextarea
+        aria-label="Escreva um comentário"
+        value={commentText}
+        onChange={e => setCommentText(e.target.value)}
+        onFocus={() => setIsCommenting(true)}
+        placeholder="Escreva um comentário..."
+        className={`w-full bg-transparent text-slate-800 p-3 outline-none resize-none text-sm ${isCommenting ? 'min-h-[72px]' : 'h-10 overflow-hidden'}`}
+      />
+      {isCommenting && (
+        <div className="p-2 bg-slate-50 border-t border-slate-200 flex gap-2">
+          <OperumButton variant="primary" type="button" onClick={() => void handleCommentSubmit()} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Comentar</OperumButton>
+          <OperumButton variant="default" type="button" onClick={() => { setIsCommenting(false); setCommentText('') }} className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer">Cancelar</OperumButton>
+        </div>
+      )}
+    </div>
+  ))
+
+  const buscaComentariosAtiva = buscaComentarios.trim().length > 0
+  const comentariosFiltrados = buscaComentariosAtiva
+    ? comments.filter(comment => matchesSearch(
+        `${comment.user.name} ${parseCommentAttachments(comment.content).caption}`,
+        buscaComentarios,
+      ))
+    : comments
+
+  function fecharBuscaComentarios() {
+    setBuscaComentariosAberta(false)
+    setBuscaComentarios('')
+  }
+
+  const commentSearch = (
+    <div role="search" className={`atividade-comentarios-busca${buscaComentariosAberta ? '' : ' atividade-comentarios-busca-fechada'}`}>
+      <OperumButton variant="custom" type="button"
+        onClick={() => buscaComentariosAberta ? fecharBuscaComentarios() : setBuscaComentariosAberta(true)}
+        aria-label={buscaComentariosAberta ? 'Fechar busca nos comentários' : 'Pesquisar comentários'}
+        aria-expanded={buscaComentariosAberta}
+        title={buscaComentariosAberta ? 'Fechar busca' : 'Pesquisar comentários'}
+        className="atividade-comentarios-busca-botao">
+        <Search size={14} aria-hidden="true" />
+        {!buscaComentariosAberta && <span>Pesquisar</span>}
+      </OperumButton>
+      {buscaComentariosAberta && (
+        <>
+          <OperumInput
+            type="search"
+            autoFocus
+            value={buscaComentarios}
+            onChange={event => setBuscaComentarios(event.target.value)}
+            onKeyDown={event => {
+              if (event.key === 'Escape') { event.stopPropagation(); fecharBuscaComentarios() }
+            }}
+            placeholder="Pesquisar comentários..."
+            aria-label="Pesquisar comentários"
+            className="atividade-comentarios-busca-campo"
+          />
+          <OperumCloseButton type="button" onClick={fecharBuscaComentarios} label="Limpar e fechar a busca" className="atividade-comentarios-busca-fechar" />
+        </>
+      )}
+      {buscaComentariosAtiva && (
+        <p role="status" aria-live="polite" className="atividade-comentarios-busca-resultado">
+          {comentariosFiltrados.length === 0
+            ? 'Nenhum comentário encontrado'
+            : `${comentariosFiltrados.length} de ${comments.length} ${comments.length === 1 ? 'comentário' : 'comentários'}`}
+        </p>
+      )}
+    </div>
+  )
+
+  const commentSection = (
+    <section className={embedded ? "atividade-comentarios" : undefined}>
+      <div className={embedded ? "atividade-comentarios-topo" : "mb-3 flex items-center justify-between gap-2"}>
+        {commentsTarget === undefined && <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Atividade</h3>}
+        {commentSearch}
+      </div>
+
+      {(commentError || commentsLoadError) && <p role="alert" className="text-xs text-red-600">{commentError || commentsLoadError}</p>}
+      {!embedded && commentComposer}
+
+      <div className={embedded ? "atividade-comentarios-rolagem" : "contents"}>
+        <div ref={commentListRef} className={embedded ? "atividade-comentarios-lista" : "space-y-4"}
+          onScroll={embedded ? event => {
+            const { scrollHeight, scrollTop, clientHeight } = event.currentTarget
+            setMostrarIrAoFim(scrollHeight - scrollTop - clientHeight > 80)
+          } : undefined}
+        >
+          {comentariosFiltrados.map(comment => {
+            const { ids: attachmentIds, caption } = parseCommentAttachments(comment.content)
+            const isOwner = currentUser?.id === comment.user.id
+            const isEditingThis = editingCommentId === comment.id
+            return (
+              <div key={comment.id} data-proprio={embedded && isOwner ? "true" : undefined} className={embedded ? "atividade-comentario" : "flex gap-3"}>
+                {(!embedded || !isOwner) && <UserAvatar name={comment.user.name} avatarUrl={comment.user.avatarUrl} size={embedded ? "xs" : "sm"} />}
+                <div className={embedded ? "atividade-comentario-corpo" : "min-w-0 flex-1"}>
+                  <div className={embedded ? "atividade-comentario-meta" : "flex items-baseline gap-2 mb-1"}>
+                    <span className="font-semibold text-slate-900 text-sm">{embedded && isOwner ? "Você" : comment.user.name}</span>
+                    <span className="text-[11px] text-slate-400">{embedded ? formatDate(String(comment.createdAt)) : "há pouco"}</span>
+                    {isOwner && !isEditingThis && !readOnly && (
+                      <div className="ml-auto flex gap-1">
+                        <OperumButton variant={embedded ? "custom" : "default"} type="button"
+                          aria-label={embedded ? "Editar comentário" : undefined} title={embedded ? "Editar comentário" : undefined}
+                          onClick={() => { setEditingCommentId(comment.id); setEditCommentContent(caption) }}
+                          className={embedded ? "grid size-6 place-items-center rounded text-slate-500 hover:bg-blue-50 hover:text-blue-600" : "text-[11px] text-slate-400 hover:text-blue-600 px-1.5 py-0.5 rounded transition-colors cursor-pointer"}
+                        >
+                          {embedded ? <Pencil size={14} aria-hidden="true" /> : "Editar"}
+                        </OperumButton>
+                        <OperumButton variant={embedded ? "custom" : "danger"} type="button"
+                          aria-label={embedded ? "Excluir comentário" : undefined} title={embedded ? "Excluir comentário" : undefined}
+                          onClick={async () => {
+                            try {
+                              await onDeleteComment?.(comment.id)
+                            } catch (error) {
+                              setCommentError(error instanceof Error ? error.message : 'Não foi possível excluir o comentário.')
+                            }
+                          }}
+                          className={embedded ? "grid size-6 place-items-center rounded text-slate-500 hover:bg-red-50 hover:text-red-600" : "text-[11px] text-slate-400 hover:text-red-600 px-1.5 py-0.5 rounded transition-colors cursor-pointer"}
+                        >
+                          {embedded ? <Trash2 size={14} aria-hidden="true" /> : "Excluir"}
+                        </OperumButton>
+                      </div>
+                    )}
+                  </div>
+                  {isEditingThis ? (
+                    <div className="border border-blue-400 ring-1 ring-blue-400 rounded-lg overflow-hidden bg-white">
+                      <OperumTextarea
+                        autoFocus
+                        value={editCommentContent}
+                        onChange={e => setEditCommentContent(e.target.value)}
+                        className="w-full bg-transparent text-slate-800 p-3 outline-none resize-none text-sm min-h-[64px]"
+                      />
+                      <FormActions className="p-2 bg-slate-50 border-t border-slate-200 flex gap-2">
+                        <OperumButton variant="primary" type="button"
+                          onClick={async () => {
+                            if (!editCommentContent.trim() && !attachmentIds.length) return
+                            try {
+                              await onEditComment?.(comment.id, attachmentIds.length ? commentWithAttachments(attachmentIds, editCommentContent.trim()) : editCommentContent.trim())
+                              setEditingCommentId(null)
+                              setEditCommentContent('')
+                            } catch (error) {
+                              setCommentError(error instanceof Error ? error.message : 'Não foi possível editar o comentário.')
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer"
+                        >
+                          Salvar
+                        </OperumButton>
+                        <OperumButton variant="default" type="button"
+                          onClick={() => { setEditingCommentId(null); setEditCommentContent('') }}
+                          className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer"
+                        >
+                          Cancelar
+                        </OperumButton>
+                      </FormActions>
+                    </div>
+                  ) : (
+                    <div className={embedded ? "atividade-comentario-texto" : "bg-slate-50 p-3 rounded-lg text-sm text-slate-700 border border-slate-200"}>
+                      {attachmentIds.length > 0 && <div className="atividade-comentario-galeria">
+                        {attachmentIds.map((id, index) => {
+                          const attachment = attachments.find(item => item.id === id)
+                          return (
+                            <div key={`${id}:${index}`}>
+                                {attachment && initialCard ? (
+                                  PREVIEW_TYPES.has(attachment.fileType) ? (
+                                    <OperumButton variant="custom" type="button" className="atividade-comentario-anexo" title={attachment.fileName} aria-label={`Ampliar ${attachment.fileName}`} onClick={() => setPreview(attachment)}>
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={`/api/files/${attachment.id}/image`} alt={attachment.fileName} loading="lazy" onLoad={() => {
+                                      const list = commentListRef.current
+                                      if (embedded && commentsVisible && comment.id === lastCommentId && list) list.scrollTop = list.scrollHeight
+                                    }} />
+                                    </OperumButton>
+                                  ) : (
+                                    <a className="atividade-comentario-anexo" href={downloadHref(attachment.id, initialCard.id)} target="_blank" rel="noopener noreferrer">
+                                      <Paperclip size={14} aria-hidden="true" /><span>{attachment.fileName}</span>
+                                    </a>
+                                  )
+                                ) : <span className="block text-xs">Anexo indisponível</span>}
+                            </div>
+                          )
+                        })}
+                      </div>}
+                      <CommentText text={caption} busca={buscaComentariosAtiva ? buscaComentarios : ''} />
+                    </div>
+                  )}
+                </div>
+                {embedded && isOwner && <UserAvatar name={comment.user.name} avatarUrl={comment.user.avatarUrl} size="xs" />}
+              </div>
+            )
+          })}
+          {comments.length === 0 && <p className="text-sm text-slate-400 italic">Sem comentários ainda.</p>}
+          {comments.length > 0 && comentariosFiltrados.length === 0 && (
+            <p className="text-sm text-slate-400 italic">Nenhum comentário encontrado para “{buscaComentarios.trim()}”.</p>
+          )}
+        </div>
+        {embedded && mostrarIrAoFim && (
+          <OperumButton variant="custom" type="button" className="atividade-comentarios-ir-ao-fim"
+            aria-label="Ir para a última mensagem" title="Ir para a última mensagem" onClick={() => {
+              const list = commentListRef.current
+              if (list) list.scrollTop = list.scrollHeight
+            }}>
+            <ChevronDown size={17} aria-hidden="true" />
+          </OperumButton>
+        )}
+      </div>
+      {embedded && commentComposer}
+    </section>
+  )
+
+  const attachmentPreview = preview && initialCard ? (
+    <div ref={previewRef} tabIndex={-1} style={{ zIndex: previewZIndex }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Visualizar ${preview.fileName}`}
+      className="fixed inset-0 z-[110] flex flex-col items-center justify-center gap-3 bg-slate-950/85 p-4"
+      onClick={() => setPreview(null)}
+    >
+      <div className={`flex w-full items-center gap-3 text-sm text-white ${embedded ? 'shrink-0' : 'max-w-5xl'}`} onClick={e => e.stopPropagation()}>
+        <span className="flex-1 min-w-0 truncate font-medium">{preview.fileName}</span>
+        <a
+          href={downloadHref(preview.id, initialCard.id)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 rounded-md border border-white/30 px-2.5 py-1 hover:bg-white/10"
+        >
+          Abrir em nova aba
+        </a>
+        <OperumCloseButton type="button"
+          autoFocus={!embedded}
+          label="Fechar visualização"
+          onClick={() => setPreview(null)}
+          className="shrink-0 rounded-md p-1.5 hover:bg-white/10 cursor-pointer" />
+      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/api/files/${preview.id}/image`}
+        alt={preview.fileName}
+        onClick={e => e.stopPropagation()}
+        className={embedded ? "min-h-0 max-h-full max-w-full rounded-lg object-contain" : "max-h-[85vh] max-w-full rounded-lg bg-white object-contain shadow-2xl"}
+      />
+    </div>
+  ) : null
+
   return (
     <div
       ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
+      role={embedded ? undefined : "dialog"}
+      aria-modal={embedded ? undefined : true}
+      aria-labelledby={embedded ? undefined : titleId}
       tabIndex={-1}
-      style={{ zIndex }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-sm"
+      style={embedded ? undefined : { zIndex }}
+      className={embedded ? "atividade-card-encaixado min-w-0" : "fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-sm"}
     >
       <span id={titleId} className="sr-only">{isEditing ? `Tarefa: ${title}` : 'Nova tarefa'}</span>
-      <div className="absolute inset-0" onClick={handleCancel} aria-hidden="true" />
+      {!embedded && <div className="absolute inset-0" onClick={handleCancel} aria-hidden="true" />}
 
-      <div aria-busy={saving} className="relative w-full max-w-5xl h-[90vh] bg-white rounded-xl shadow-2xl font-sans flex flex-col overflow-hidden border border-slate-200">
+      <div aria-busy={saving} className={embedded ? "flex min-w-0 flex-col" : "relative w-full max-w-5xl h-[90vh] bg-white rounded-xl shadow-2xl font-sans flex flex-col overflow-hidden border border-slate-200"}>
 
         {/* ── Header ── */}
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-200 bg-white shrink-0">
+        {!embedded && <div className="flex items-center gap-3 px-6 py-3 border-b border-slate-200 bg-white shrink-0">
           <div
             className="w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-slate-200"
             style={{ backgroundColor: color }}
@@ -451,11 +1001,11 @@ export default function CardModal({
             disabled={saving}
             label="Fechar"
             className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0" />
-        </div>
+        </div>}
 
         {error && <p role="alert" className="shrink-0 border-b bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
 
-        {hasCover && (
+        {!embedded && hasCover && (
           <div className="relative w-full h-40 bg-slate-100 shrink-0 border-b border-slate-200">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`/api/files/${imageAttachments[coverIndex].id}/image`} alt="Capa" className="w-full h-full object-cover" />
@@ -463,98 +1013,40 @@ export default function CardModal({
         )}
 
         {/* ── Body ── */}
-        <div inert={saving} className="flex-1 flex min-h-0 overflow-hidden">
+        <div inert={saving} className={embedded ? "flex flex-col-reverse gap-2" : "flex-1 flex min-h-0 overflow-hidden"}>
 
           {/* Coluna esquerda */}
-          <div className="flex-1 p-6 overflow-y-auto space-y-6 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className={embedded ? "min-w-0 space-y-2" : "flex-1 p-6 overflow-y-auto space-y-6 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full"}>
 
-            {/* Descrição */}
-            <section>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Descrição</h3>
-                <div className="flex items-center gap-2">
-                  {autosaveInfo && (
-                    <OperumButton variant="default"
-                      type="button"
-                      aria-live="polite"
-                      disabled={descAutosave.status !== 'error'}
-                      onClick={() => { void descAutosave.flush() }}
-                      className={`text-[11px] font-medium ${autosaveInfo.cls}`}
-                    >
-                      {autosaveInfo.text}
-                    </OperumButton>
-                  )}
-                  {!autosaveEnabled && hasUnsavedDescription && !isEditingDesc && (
-                    <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">não salvo</span>
-                  )}
-                  {!isEditingDesc && !readOnly && (
-                    <OperumButton variant="default" type="button"
-                      onClick={() => setIsEditingDesc(true)}
-                      className="text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                    >
-                      Editar
-                    </OperumButton>
-                  )}
-                </div>
-              </div>
-
-              {readOnly ? (
-                <div className="min-h-[72px] p-3 rounded-lg bg-slate-50 text-sm text-slate-700 border border-slate-200">
-                  {draftDescription
-                    ? <div className="whitespace-pre-wrap">{draftDescription}</div>
-                    : <span className="text-slate-400 text-sm">Sem descrição.</span>
-                  }
-                </div>
-              ) : isEditingDesc ? (
-                <div className="border border-blue-400 rounded-lg overflow-hidden bg-white ring-1 ring-blue-400">
-                  <div className="flex items-center gap-1 p-1.5 bg-slate-50 border-b border-slate-200">
-                    <OperumButton variant="default" type="button" onClick={() => insertMarkdown('**', '**')} className="px-2 py-1 text-xs hover:bg-slate-200 rounded font-bold text-slate-600 cursor-pointer">B</OperumButton>
-                    <OperumButton variant="default" type="button" onClick={() => insertMarkdown('*', '*')} className="px-2 py-1 text-xs hover:bg-slate-200 rounded italic text-slate-600 cursor-pointer">I</OperumButton>
-                    <OperumButton variant="default" type="button" onClick={() => insertMarkdown('- ')} className="px-2 py-1 text-xs hover:bg-slate-200 rounded text-slate-600 cursor-pointer">• Lista</OperumButton>
-                  </div>
-                  <OperumTextarea
-                    autoFocus
-                    value={draftDescription}
-                    onChange={e => setDraftDescription(e.target.value)}
-                    onBlur={() => { void descAutosave.flush() }}
-                    placeholder="Adicione detalhes, critérios de aceite..."
-                    className="w-full p-3 text-sm text-slate-700 outline-none min-h-[120px] resize-y"
-                  />
-                  <FormActions className="flex gap-2 p-2 bg-slate-50 border-t border-slate-200">
-                    {autosaveEnabled ? (
-                      <OperumButton variant="primary" type="button" onClick={handleCloseDescEditor} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Concluir</OperumButton>
-                    ) : (
-                      <>
-                        <OperumButton variant="primary" type="button" onClick={handleSaveDescription} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Salvar</OperumButton>
-                        <OperumButton variant="default" type="button" onClick={() => { setDraftDescription(savedDescription); setIsEditingDesc(false) }} className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer">Cancelar</OperumButton>
-                      </>
-                    )}
-                  </FormActions>
-                </div>
-              ) : (
-                <div
-                  onClick={() => setIsEditingDesc(true)}
-                  className="min-h-[72px] p-3 rounded-lg cursor-text bg-slate-50 hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200"
-                >
-                  {draftDescription
-                    ? <div className="whitespace-pre-wrap">{draftDescription}</div>
-                    : <span className="text-slate-400 text-sm">Clique para adicionar uma descrição...</span>
-                  }
-                </div>
-              )}
-            </section>
+            <CardDescription
+              compactEdit={embedded}
+              draftDescription={draftDescription}
+              readOnly={readOnly}
+              isEditingDesc={isEditingDesc}
+              hasUnsavedDescription={hasUnsavedDescription}
+              autosaveEnabled={autosaveEnabled}
+              autosaveInfo={embedded ? null : autosaveInfo}
+              saving={saving}
+              canRetry={descAutosave.status === 'error'}
+              onEdit={() => setIsEditingDesc(true)}
+              onChange={setDraftDescription}
+              onSave={autosaveEnabled ? handleCloseDescEditor : handleSaveDescription}
+              onCancel={() => { setDraftDescription(savedDescription); setIsEditingDesc(false); if (embedded) setError('') }}
+              onFlush={embedded ? undefined : () => { void descAutosave.flush() }}
+              onInsertMarkdown={insertMarkdown}
+            />
 
             {/* Anexos */}
             {(attachments.length > 0 || onAttachmentUpload || !isEditing) && (
-              <section>
+              <section className={embedded ? "atividade-card-anexos" : undefined}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Anexos</h3>
                   {!readOnly && (
-                    <OperumButton variant="default" type="button"
+                    <OperumButton variant={embedded ? "custom" : "default"} type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={enviandoAnexo}
                       title={`${ATTACHMENT_TYPES_LABEL}, até ${MAX_ATTACHMENT_MB} MB`}
-                      className="text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer disabled:cursor-wait disabled:opacity-60"
+                      className={embedded ? "atividade-card-acao-compacta disabled:cursor-wait disabled:opacity-60" : "text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer disabled:cursor-wait disabled:opacity-60"}
                     >
                       {enviandoAnexo ? 'Enviando…' : '+ Adicionar'}
                     </OperumButton>
@@ -580,6 +1072,8 @@ export default function CardModal({
                       setEnviandoAnexo(true)
                       try {
                         await onAttachmentUpload?.(f)
+                      } catch (error) {
+                        setAnexoErro(error instanceof Error ? error.message : 'Falha ao enviar o anexo.')
                       } finally {
                         setEnviandoAnexo(false)
                       }
@@ -604,7 +1098,7 @@ export default function CardModal({
                 {attachments.length === 0
                   ? (pendingFiles.length === 0 && <p className="text-sm text-slate-400 italic">Nenhum anexo ainda.</p>)
                   : (
-                    <ul className="space-y-0.5">
+                    <ul className={embedded ? "atividade-anexos-lista" : "space-y-0.5"}>
                       {attachments.map(a => {
                         // Link (vídeo do YouTube etc.): abre a URL direto, sem URL assinada do MinIO.
                         // Link com esquema que não é http(s) fica sem href (nunca cai na rota de download).
@@ -615,7 +1109,7 @@ export default function CardModal({
                         const podeVer = !isLink && PREVIEW_TYPES.has(a.fileType)
                         const abrir = isLink ? href : initialCard ? downloadHref(a.id, initialCard.id) : null
                         return (
-                        <li key={a.id} className="flex items-center gap-2 group rounded-md px-2 py-1.5 hover:bg-slate-50">
+                        <li key={a.id} className={embedded ? "atividade-anexo group" : "flex items-center gap-2 group rounded-md px-2 py-1.5 hover:bg-slate-50"}>
                           {thumb
                             // eslint-disable-next-line @next/next/no-img-element
                             ? <img src={thumb} alt="" data-testid="anexo-link-miniatura" className="w-12 h-7 shrink-0 rounded object-cover bg-slate-100" />
@@ -643,10 +1137,11 @@ export default function CardModal({
                           ) : (
                             <>
                               {podeVer ? (
-                                <OperumButton variant="default"
+                                <OperumButton variant={embedded ? "custom" : "default"}
                                   type="button"
+                                  title={embedded ? a.fileName : undefined}
                                   onClick={() => setPreview(a)}
-                                  className="flex-1 min-w-0 truncate text-left text-sm text-blue-600 hover:underline cursor-pointer"
+                                  className="atividade-anexo-nome flex-1 min-w-0 truncate text-left text-sm text-blue-600 hover:underline cursor-pointer"
                                 >
                                   {a.fileName}
                                 </OperumButton>
@@ -655,15 +1150,16 @@ export default function CardModal({
                                   href={abrir}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex-1 min-w-0 truncate text-sm text-blue-600 hover:underline"
+                                  title={embedded ? a.fileName : undefined}
+                                  className="atividade-anexo-nome flex-1 min-w-0 truncate text-sm text-blue-600 hover:underline"
                                 >
                                   {a.fileName}
                                 </a>
                               ) : (
                                 <span className="flex-1 min-w-0 truncate text-sm text-slate-700">{a.fileName}</span>
                               )}
-                              <span className="text-xs text-slate-400 shrink-0">{href ? linkHost(href) : formatBytes(a.fileSize)}</span>
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <span className="atividade-anexo-meta text-xs text-slate-400 shrink-0">{href ? linkHost(href) : formatBytes(a.fileSize)}</span>
+                              <div className={embedded ? "atividade-anexo-acoes" : "flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shrink-0"}>
                                 {podeVer ? (
                                   <OperumButton variant="custom"
                                     type="button"
@@ -690,6 +1186,12 @@ export default function CardModal({
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                                     </svg>
                                   </a>
+                                )}
+                                {embedded && !readOnly && onAddComment && !isLink && (
+                                  <OperumButton variant="custom" type="button" title="Enviar na conversa" aria-label={`Enviar ${a.fileName} na conversa`}
+                                    disabled={sendingComment} onClick={() => void handleCommentSubmit(a)} className="rounded text-slate-500 hover:bg-slate-200">
+                                    <Send size={14} aria-hidden="true" />
+                                  </OperumButton>
                                 )}
                                 {!readOnly && onAttachmentRename && (
                                   <OperumButton variant="custom" type="button"
@@ -736,106 +1238,17 @@ export default function CardModal({
               </section>
             )}
 
-            {/* Comentários */}
-            <section>
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Atividade</h3>
-
-              {!readOnly && (
-                <div className={`border rounded-lg overflow-hidden bg-white mb-4 transition-all ${isCommenting ? 'border-blue-400 ring-1 ring-blue-400' : 'border-slate-200'}`}>
-                  <OperumTextarea
-                    value={commentText}
-                    onChange={e => setCommentText(e.target.value)}
-                    onFocus={() => setIsCommenting(true)}
-                    placeholder="Escreva um comentário..."
-                    className={`w-full bg-transparent text-slate-800 p-3 outline-none resize-none text-sm ${isCommenting ? 'min-h-[72px]' : 'h-10 overflow-hidden'}`}
-                  />
-                  {isCommenting && (
-                    <div className="p-2 bg-slate-50 border-t border-slate-200 flex gap-2">
-                      <OperumButton variant="primary" type="button" onClick={handleCommentSubmit} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer">Comentar</OperumButton>
-                      <OperumButton variant="default" type="button" onClick={() => { setIsCommenting(false); setCommentText('') }} className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer">Cancelar</OperumButton>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-4">
-                {comments.map(comment => {
-                  const isOwner = currentUser?.id === comment.user.id
-                  const isEditingThis = editingCommentId === comment.id
-                  return (
-                    <div key={comment.id} className="flex gap-3">
-                      <UserAvatar name={comment.user.name} avatarUrl={comment.user.avatarUrl} size="sm" />
-                      <div className="flex-1">
-                        <div className="flex items-baseline gap-2 mb-1">
-                          <span className="font-semibold text-slate-900 text-sm">{comment.user.name}</span>
-                          <span className="text-[11px] text-slate-400">há pouco</span>
-                          {isOwner && !isEditingThis && !readOnly && (
-                            <div className="ml-auto flex gap-1">
-                              <OperumButton variant="default" type="button"
-                                onClick={() => { setEditingCommentId(comment.id); setEditCommentContent(comment.content) }}
-                                className="text-[11px] text-slate-400 hover:text-blue-600 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
-                              >
-                                Editar
-                              </OperumButton>
-                              <OperumButton variant="danger" type="button"
-                                onClick={() => onDeleteComment?.(comment.id)}
-                                className="text-[11px] text-slate-400 hover:text-red-600 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
-                              >
-                                Excluir
-                              </OperumButton>
-                            </div>
-                          )}
-                        </div>
-                        {isEditingThis ? (
-                          <div className="border border-blue-400 ring-1 ring-blue-400 rounded-lg overflow-hidden bg-white">
-                            <OperumTextarea
-                              autoFocus
-                              value={editCommentContent}
-                              onChange={e => setEditCommentContent(e.target.value)}
-                              className="w-full bg-transparent text-slate-800 p-3 outline-none resize-none text-sm min-h-[64px]"
-                            />
-                            <FormActions className="p-2 bg-slate-50 border-t border-slate-200 flex gap-2">
-                              <OperumButton variant="primary" type="button"
-                                onClick={async () => {
-                                  if (!editCommentContent.trim()) return
-                                  await onEditComment?.(comment.id, editCommentContent.trim())
-                                  setEditingCommentId(null)
-                                  setEditCommentContent('')
-                                }}
-                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors cursor-pointer"
-                              >
-                                Salvar
-                              </OperumButton>
-                              <OperumButton variant="default" type="button"
-                                onClick={() => { setEditingCommentId(null); setEditCommentContent('') }}
-                                className="px-3 py-1.5 text-slate-500 hover:text-slate-700 text-xs rounded-md transition-colors cursor-pointer"
-                              >
-                                Cancelar
-                              </OperumButton>
-                            </FormActions>
-                          </div>
-                        ) : (
-                          <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-700 border border-slate-200">
-                            {comment.content}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-                {comments.length === 0 && <p className="text-sm text-slate-400 italic">Sem comentários ainda.</p>}
-              </div>
-            </section>
+            {commentsTarget === undefined ? commentSection : commentsTarget && createPortal(commentSection, commentsTarget)}
           </div>
 
           {/* ── Coluna direita ── */}
-          <div className="w-72 shrink-0 border-l border-slate-200 bg-slate-50 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
-            <div className="p-4 space-y-5">
+          <div className={embedded ? "min-w-0" : "w-72 shrink-0 border-l border-slate-200 bg-slate-50 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full"}>
+            <div className={embedded ? "space-y-3" : "p-4 space-y-5"}>
 
               {/* Propriedades */}
               <section className="space-y-3">
                 {/* Responsáveis */}
-                {readOnly ? (
+                {!embedded && (readOnly ? (
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Responsáveis</p>
                     {initialCard?.responsibles && initialCard.responsibles.length > 0 ? (
@@ -867,43 +1280,20 @@ export default function CardModal({
                       )}
                     </div>
                   </div>
-                )}
+                ))}
 
-                {/* Prioridade */}
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Prioridade</p>
-                  {readOnly ? (
-                    <span className={`inline-block px-3 py-1.5 text-xs font-medium rounded-md ${PRIORITY_LABELS[priority]?.cls ?? 'bg-slate-100 text-slate-600'}`}>
-                      {PRIORITY_LABELS[priority]?.label ?? '—'}
-                    </span>
-                  ) : (
-                    <div className="flex gap-1.5">
-                      {(['baixa', 'media', 'alta'] as const).map(p => (
-                        <OperumButton variant="default" type="button"
-                          key={p}
-                          onClick={() => setPriority(p)}
-                          className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer border ${
-                            priority === p
-                              ? `${PRIORITY_LABELS[p].cls} border-transparent ring-2 ring-offset-1 ring-blue-400`
-                              : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                          }`}
-                        >
-                          {PRIORITY_LABELS[p].label}
-                        </OperumButton>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <CardPriority compact={embedded} priority={priority} onChange={onPriorityChange && permissions.has('quadro:cards') ? savePriority : readOnly ? undefined : setPriority} />
 
                 {erroPlanilha && <p role="status" className="text-xs text-slate-500">{erroPlanilha}</p>}
                 {linhaPlanilha && <section className="rounded-lg border border-slate-200 p-3 text-xs text-slate-600" aria-label="Planilha de Custos">
                   <h3 className="mb-2 font-semibold text-slate-800">Planilha de Custos · {linhaPlanilha.codigo}</h3>
                   <p>Elaborado por: {linhaPlanilha.elaboradoPor || 'Não definido'}</p>
                   <p>Orçado: {linhaPlanilha.minOrcado} min · {linhaPlanilha.totalOrcado?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'}</p>
-                  <p>Realizado: {linhaPlanilha.minReal} min · {linhaPlanilha.totalReal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'}</p>
+                  <p>Realizado: {formatarMinutos(linhaPlanilha.minReal)} min · {linhaPlanilha.totalReal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'}</p>
                   <p>Prevista: {fmtDataBR(linhaPlanilha.dataPrevista) || '—'}</p>
                   <p>Realização: {fmtDataBR(linhaPlanilha.dataRealizacao) || '—'}</p>
                 </section>}
+                {!embedded && <>
                 {/* Datas */}
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Datas</p>
@@ -982,12 +1372,13 @@ export default function CardModal({
                     <TagSelector tags={boardTags} selectedTagIds={selectedTagIds} onToggle={handleTagToggle} />
                   </div>
                 )}
+                </>}
               </section>
 
-              <hr className="border-slate-200" />
+              {!embedded && <hr className="border-slate-200" />}
 
               {/* Registro de Tempo */}
-              {isEditing && !readOnly && initialCard?.id && (
+              {!embedded && isEditing && !readOnly && initialCard?.id && (
                 <section>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Registro de Tempo</p>
 
@@ -1052,7 +1443,7 @@ export default function CardModal({
               )}
 
               {/* Histórico */}
-              {isEditing && !readOnly && (timeEntries.length > 0 || movements.length > 0) && (
+              {!embedded && isEditing && !readOnly && (timeEntries.length > 0 || movements.length > 0) && (
                 <>
                   <hr className="border-slate-200" />
                   <section>
@@ -1147,7 +1538,7 @@ export default function CardModal({
         </div>
 
         {/* ── Footer ── */}
-        <FormActions className="shrink-0 border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between">
+        {(!embedded || (!readOnly && !autosaveEnabled)) && <FormActions className={embedded ? "mt-3 flex justify-end gap-2" : "shrink-0 border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between"}>
           {readOnly ? (
             <OperumButton variant="primary" type="button"
               onClick={handleCancel}
@@ -1174,42 +1565,10 @@ export default function CardModal({
               </OperumButton>
             </>
           )}
-        </FormActions>
+        </FormActions>}
       </div>
 
-      {preview && initialCard && (
-        <div ref={previewRef} tabIndex={-1} style={{ zIndex: previewZIndex }}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Visualizar ${preview.fileName}`}
-          className="fixed inset-0 z-[110] flex flex-col items-center justify-center gap-3 bg-slate-950/85 p-4"
-          onClick={() => setPreview(null)}
-        >
-          <div className="flex w-full max-w-5xl items-center gap-3 text-sm text-white" onClick={e => e.stopPropagation()}>
-            <span className="flex-1 min-w-0 truncate font-medium">{preview.fileName}</span>
-            <a
-              href={downloadHref(preview.id, initialCard.id)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 rounded-md border border-white/30 px-2.5 py-1 hover:bg-white/10"
-            >
-              Abrir em nova aba
-            </a>
-            <OperumCloseButton type="button"
-              autoFocus
-              label="Fechar visualização"
-              onClick={() => setPreview(null)}
-              className="shrink-0 rounded-md p-1.5 hover:bg-white/10 cursor-pointer" />
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`/api/files/${preview.id}/image`}
-            alt={preview.fileName}
-            onClick={e => e.stopPropagation()}
-            className="max-h-[85vh] max-w-full rounded-lg bg-white object-contain shadow-2xl"
-          />
-        </div>
-      )}
+      {embedded && attachmentPreview ? createPortal(attachmentPreview, document.body) : attachmentPreview}
     </div>
   )
 }

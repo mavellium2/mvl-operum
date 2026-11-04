@@ -353,6 +353,7 @@ export async function updateCardInSprintAction(
 const PatchCardSchema = z
   .object({
     description: z.string().max(20000, 'Descrição muito longa').optional(),
+    priority: z.enum(['baixa', 'media', 'alta']).optional(),
     startDate: z.string().datetime().nullable().optional(),
     endDate: z.string().datetime().nullable().optional(),
   })

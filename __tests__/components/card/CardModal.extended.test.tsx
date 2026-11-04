@@ -398,3 +398,68 @@ it('mostra os dados vinculados da planilha e respeita a permissão financeira', 
   expect(getCardPlanilhaAction).not.toHaveBeenCalled()
   expect(screen.queryByRole('region', { name: 'Planilha de Custos' })).not.toBeInTheDocument()
 })
+
+it('envia vários anexos do painel em um único comentário', async () => {
+  const user = userEvent.setup()
+  const ids = ['c000000000000000000000001', 'c000000000000000000000002']
+  const files = ['primeiro.pdf', 'segundo.pdf'].map(name => new File(['pdf'], name, { type: 'application/pdf' }))
+  const upload = vi.fn(async (file: File) => ({
+    id: ids[files.indexOf(file)], fileName: file.name, fileType: file.type,
+    filePath: file.name, fileSize: file.size, uploadedAt: 0,
+  }))
+  const comment = vi.fn()
+  const { container } = render(<CardModal {...defaultProps} embedded onAttachmentUpload={upload} onAddComment={comment} />)
+  await user.upload(container.querySelector<HTMLInputElement>('input[type="file"][multiple]')!, files)
+  expect(screen.getByLabelText('Arquivos selecionados')).toHaveTextContent('primeiro.pdf')
+  expect(screen.getByLabelText('Arquivos selecionados')).toHaveTextContent('segundo.pdf')
+  expect(upload).not.toHaveBeenCalled()
+
+  await user.click(screen.getByRole('button', { name: 'Enviar comentário' }))
+  expect(upload).toHaveBeenCalledTimes(2)
+  expect(comment).toHaveBeenCalledExactlyOnceWith(ids.map(id => `[anexo:${id}]`).join('\n'))
+})
+
+it('sugere pessoas do projeto e insere a menção pelo teclado', async () => {
+  const user = userEvent.setup()
+  const onAddComment = vi.fn()
+  render(<CardModal {...defaultProps} embedded onAddComment={onAddComment} mentionUsers={[{ id: 'u1', name: 'João Silva' }]} />)
+  const input = screen.getByRole('textbox', { name: 'Escreva um comentário' })
+  await user.type(input, '@joao')
+  expect(screen.getByRole('option', { name: 'João Silva' })).toBeInTheDocument()
+  await user.keyboard('{Enter}')
+  expect(input).toHaveValue('@João Silva ')
+  await user.click(screen.getByRole('button', { name: 'Enviar comentário' }))
+  expect(onAddComment).toHaveBeenCalledExactlyOnceWith('@João Silva ', ['u1'])
+})
+
+it('abre links HTTP dos comentários em outra aba', () => {
+  render(<CardModal {...defaultProps} embedded comments={[{
+    id: 'comment-1',
+    user: users[0],
+    content: 'Veja https://example.com/arquivo. javascript:alert(1)',
+    createdAt: new Date(),
+  }]} />)
+  const link = screen.getByRole('link', { name: 'https://example.com/arquivo' })
+  expect(link).toHaveAttribute('href', 'https://example.com/arquivo')
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(screen.queryByRole('link', { name: /javascript/ })).toBeNull()
+})
+
+it('filtra e destaca os comentários pela busca', async () => {
+  const user = userEvent.setup()
+  render(<CardModal {...defaultProps} embedded comments={[
+    { id: 'comment-1', user: users[0], content: 'Orçamento aprovado pela diretoria', createdAt: new Date() },
+    { id: 'comment-2', user: users[1], content: 'Revisar cronograma', createdAt: new Date() },
+  ]} />)
+
+  await user.click(screen.getByRole('button', { name: 'Pesquisar comentários' }))
+  await user.type(screen.getByRole('searchbox', { name: 'Pesquisar comentários' }), 'cronograma')
+
+  expect(screen.queryByText(/Orçamento aprovado/)).not.toBeInTheDocument()
+  expect(screen.getByText(/Revisar/)).toBeInTheDocument()
+  expect(screen.getByText('1 de 2 comentários')).toBeInTheDocument()
+  expect(screen.getByText('cronograma').tagName).toBe('MARK')
+
+  await user.keyboard('{Escape}')
+  expect(screen.getByText(/Orçamento aprovado/)).toBeInTheDocument()
+})

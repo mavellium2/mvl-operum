@@ -24,6 +24,20 @@ function sanitizeFileName(name: string): string {
   return trimmed
 }
 
+export async function listCardAttachmentsAction(cardId: string) {
+  try {
+    assertCuid(cardId, 'cardId')
+    await verifySession()
+    await cardsApi.get(cardId)
+    const attachments = await filesApi.listByCards([cardId])
+    return { attachments: attachments.map(({ createdAt, ...attachment }) => ({
+      ...attachment, uploadedAt: new Date(createdAt).getTime(),
+    })) }
+  } catch {
+    return { error: 'Não foi possível carregar os anexos do card.' }
+  }
+}
+
 export async function setCoverAction(cardId: string, attachmentId: string) {
   try {
     assertCuid(cardId, 'cardId')
