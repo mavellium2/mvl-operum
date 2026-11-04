@@ -11,6 +11,7 @@ import { parseMoeda as parseMoedaLib } from '@/lib/dinheiro'
 import Dica from '@/components/ui/Tooltip'
 import ElaboradoresSelect from './ElaboradoresSelect'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
 import { menorJornada, somaValoresPorMinuto } from '@/lib/elaboradores'
 
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
@@ -317,7 +318,18 @@ export default function PlanilhaCustosView({
   // remove o item e o card dele na sprint, como na aba EAP/WBS.
   const [novaLinha, setNovaLinha] = useState<{ tipo: 'irmao' | 'filho'; refId: string } | null>(null)
   const [excluindo, setExcluindo] = useState<{ nodeId: string; nome: string } | null>(null)
-  const acoes = useMemoAcoes(canEditLinhas, setNovaLinha, setExcluindo, (nodeId, targetId, position) => {
+  const [faseAExcluir, setFaseAExcluir] = useState<FaseExcluir | null>(null)
+  // A exclusão de macrofase é imediata (mesmo diálogo do cadastro do projeto); com
+  // alterações pendentes, o rascunho poderia apontar para itens que deixaram de existir.
+  const pendenciasRef = useRef(0)
+  const pedirExclusaoFase = useCallback((fase: FaseExcluir) => {
+    if (pendenciasRef.current > 0) {
+      toast('Salve ou descarte as alterações pendentes antes de excluir uma macrofase.', 'warning')
+      return
+    }
+    setFaseAExcluir(fase)
+  }, [toast])
+  const acoes = useMemoAcoes(canEditLinhas, setNovaLinha, setExcluindo, pedirExclusaoFase, (nodeId, targetId, position) => {
     setStructureOps(previous => [...previous, { id: crypto.randomUUID(), kind: 'move', nodeId, targetId, position }])
     return Promise.resolve(true)
   })
@@ -386,6 +398,7 @@ export default function PlanilhaCustosView({
     }),
     ...structureOps.map(op => ({ chave: `structure:${op.id}`, rotulo: 'Estrutura da EAP', antes: '', depois: op.kind === 'create-phase' ? `Criar macrofase: ${op.title}` : op.kind === 'create-activity' ? `Criar atividade: ${op.title}` : op.kind === 'delete' ? 'Excluir item' : 'Mover item' })),
   ]
+  useEffect(() => { pendenciasRef.current = reviewChanges.length })
   const dataFimProjeto = fmtDataBR(maiorData(fasesAtuais.flatMap(f => f.atividades.map(a => rascunho[a.nodeId]?.dataPrevista ?? a.dataPrevista))))
 
   async function salvarEstrutura(): Promise<boolean> {
@@ -618,6 +631,17 @@ export default function PlanilhaCustosView({
         title="Excluir linha"
         message={`Marcar "${excluindo?.nome ?? ''}" para exclusão? A linha sai da prévia agora. Ao clicar em Salvar, ela será removida da EAP e o card vinculado na sprint também será excluído.`}
       />
+      <ExcluirFaseDialog
+        projetoId={projetoId}
+        fase={faseAExcluir}
+        versao={() => undefined}
+        onFechar={() => setFaseAExcluir(null)}
+        onExcluida={() => {
+          setFaseAExcluir(null)
+          toast('Macrofase excluída com as atividades dela.')
+          router.refresh()
+        }}
+      />
       {dialogoSaida}
     </div></ProjectAppearance>
   )
@@ -629,20 +653,27 @@ function useMemoAcoes(
   pode: boolean,
   setNovaLinha: (v: { tipo: 'irmao' | 'filho'; refId: string } | null) => void,
   setExcluindo: (v: { nodeId: string; nome: string } | null) => void,
+  onExcluirFase: AcoesLinha['onExcluirFase'],
   onMover: AcoesLinha['onMover'],
 ): AcoesLinha | undefined {
   return useMemo(() => pode ? {
     onInserir: (tipo: 'irmao' | 'filho', refId: string) => setNovaLinha({ tipo, refId }),
     onExcluir: (nodeId: string, nome: string) => setExcluindo({ nodeId, nome }),
+    onExcluirFase,
     onMover,
-  } : undefined, [pode, setNovaLinha, setExcluindo, onMover])
+  } : undefined, [pode, setNovaLinha, setExcluindo, onExcluirFase, onMover])
 }
+
+/** Macrofase já salva a excluir pelo diálogo do cadastro do projeto. */
+interface FaseExcluir { nodeId: string; nome: string; numero: string }
 
 /** Ações de linha (inserir/excluir), como no Excel. */
 interface AcoesLinha {
   /** Abre a linha de digitação abaixo de `refId` (irmão) ou no fim da fase (filho). */
   onInserir: (tipo: 'irmao' | 'filho', refId: string) => void
   onExcluir: (nodeId: string, nome: string) => void
+  /** Abre a confirmação de exclusão da macrofase e de todas as atividades dela. */
+  onExcluirFase: (fase: FaseExcluir) => void
   onMover: (nodeId: string, targetId: string, position: 'INSIDE' | 'BEFORE' | 'AFTER') => Promise<boolean>
 }
 
@@ -888,6 +919,8 @@ const FaseFragment = memo(function FaseFragment({
               <DragHandle label={`Arrastar macrofase ${fase.titulo}`} nodeId={fase.nodeId} kind="phase" onStart={onDragStartNode} onEnd={onDragEndNode} />
               <NodeActionsMenu label={`Ações da macrofase ${fase.titulo}`} actions={[
                 { label: 'Nova atividade', onClick: () => acoes.onInserir('filho', fase.nodeId) },
+                // Fase ainda não salva sai pelo descarte das alterações, não por aqui.
+                ...(fase.nodeId.startsWith('novo-') ? [] : [{ label: 'Excluir macrofase', tone: 'danger' as const, onClick: () => acoes.onExcluirFase({ nodeId: fase.nodeId, nome: fase.titulo, numero: fase.codigo }) }]),
               ]} />
             </div>}
           </div>

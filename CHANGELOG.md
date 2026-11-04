@@ -7,6 +7,12 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.52.0] — 2026-11-04
+
+- **Planilha de custos:** a macrofase ganha “Excluir macrofase” no menu de ações. A confirmação mostra o impacto (atividades, tarefas, sprints e custos) e pede o motivo quando a sprint tem dados. Ao confirmar, a macrofase e todas as atividades saem da EAP e das sprints. Com alterações pendentes na planilha, a exclusão pede para salvar ou descartar antes (ADR-087).
+- **Exportação da planilha:** o valor por minuto aparece com duas casas decimais no Excel, como na tela (R$ 0,2251 → R$ 0,23). A célula guarda o valor completo, e os totais não mudam.
+- Versão escolhida acima de 1.51.0, reservada para a entrega de Markdown nos cards (branch `feat/markdown-cards-mcp`).
+
 ## [1.50.0] — 2026-11-03
 
 - **Planilha de custos:** campos, elaboradores, nomes e operações de criar, arrastar e excluir ficam em rascunho até “Salvar alterações”. Totais, quadros e gráficos refletem a prévia imediatamente; erros indicam a linha e permitem corrigir e tentar de novo. A estrutura salva aparece na EAP e nas sprints. A barra superior organiza identificação, período e ações em uma linha no desktop, com grupos compactos e salvar destacado quando há pendências. Gráficos de valores e tempo usam barras horizontais com rolagem quando há muitas fases; a distribuição por elaborador ganha gráfico de anel e lista legível nas aparências do sistema.

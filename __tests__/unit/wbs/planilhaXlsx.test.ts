@@ -116,7 +116,8 @@ describe('gerarPlanilhaXlsx — modelo IDÊNTICO', () => {
     expect(dias.formula).toBe('D7/60/8') // jornada do elaborador (Maria, 8h/dia)
     const valorMinuto = ws.getCell('G7').value
     expect(valorMinuto).toBeCloseTo(0.2777777777777778) // valor/min da Maria = 4000/30/8/60
-    expect(ws.getCell('G7').numFmt).toContain('R$')
+    // exibe duas casas (R$ 0,28), mas a célula guarda o valor completo para as fórmulas
+    expect(ws.getCell('G7').numFmt).toBe('"R$" #,##0.00')
     const total = ws.getCell('I7').value as { formula: string }
     expect(total.formula).toBe('ROUND(D7*G7,2)+H7')
     // realizado

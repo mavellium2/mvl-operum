@@ -20,8 +20,11 @@ export interface PlanilhaXlsxMeta {
 }
 
 const RESPALDO = '"R$" #,##0.00'
-/** Valor do minuto: centavos não bastam (ex.: R$ 0,3472). */
-const VALOR_MINUTO = '"R$" #,##0.00##'
+/**
+ * Valor do minuto: exibido com duas casas, como na tela (R$ 0,2251 → R$ 0,23).
+ * Só a exibição é arredondada; a célula guarda o valor completo para os cálculos.
+ */
+const VALOR_MINUTO = '"R$" #,##0.00'
 const DURACAO = 'h:mm'
 const DIAS = '0.00" d"'
 const DATA_BR = 'dd/mm/aaaa'

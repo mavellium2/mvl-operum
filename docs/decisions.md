@@ -1080,3 +1080,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** movimentações, criação, exclusão, campos e renomeações aguardam salvamento. Ações estruturais são aplicadas em sequência, sem transação única; após falha parcial, as já concluídas não são repetidas na nova tentativa. A próxima reconciliação autorizada reflete a nova fase no card e recalcula códigos.
 - **Condição de revisão:** revisar a precedência temporal se houver edição simultânea frequente entre planilha e quadro.
 - **Referências:** `components/custos/PlanilhaCustosView.tsx`, `services/wbsService.ts`, `__tests__/unit/wbsSprintSync.test.ts`.
+
+## ADR-087 — Exclusão de macrofase pela planilha é imediata e reutiliza o diálogo do cadastro
+
+- **Data:** 2026-11-04.
+- **Status:** implementada.
+- **Contexto:** o card "Planilha de Custos: excluir Macro Fase e suas atividades, com confirmação" pede excluir a macrofase pela planilha, com aviso de que as atividades também saem. Na planilha, as demais mudanças de estrutura ficam em rascunho até "Salvar alterações" (ADR-085). Já existia `ExcluirFaseDialog`, usado no cadastro do projeto, com o impacto da exclusão e o motivo obrigatório quando a sprint tem dados.
+- **Escolha:** "Excluir macrofase" no menu da macrofase abre `ExcluirFaseDialog`, e a exclusão acontece ao confirmar, por `excluirFaseAction`. Com alterações pendentes na planilha, a ação pede para salvar ou descartar antes. Macrofase ainda não salva não mostra a opção.
+- **Justificativa:** `excluirFaseAction` também retira a fase do cadastro de macrofases, que é a fonte da sincronização. Excluir só o nó da EAP pelo rascunho (`deleteNodeAction`) deixaria a fase no cadastro, e a sincronização poderia recriá-la; além disso, o salvamento em rascunho não coleta o motivo exigido quando a sprint tem dados. Reutilizar o diálogo mantém uma única confirmação com o impacto completo.
+- **Alternativas consideradas:** marcar a exclusão no rascunho e aplicar ao salvar (exigiria levar o motivo e a limpeza do cadastro para o salvamento em lote, sem transação única); `ConfirmDialog` simples (sem impacto nem motivo).
+- **Consequências:** a exclusão de macrofase é a única mudança de estrutura da planilha que não espera "Salvar alterações"; o diálogo avisa que ela é imediata. A planilha recarrega depois da exclusão.
+- **Condição de revisão:** se o salvamento da planilha passar a aplicar a estrutura numa transação única, avaliar levar a exclusão de macrofase para o rascunho.
+- **Referências:** `components/custos/PlanilhaCustosView.tsx`, `components/projetos/ExcluirFaseDialog.tsx`, `app/actions/projetoEdicao.ts` (`excluirFaseAction`), `__tests__/components/custos/PlanilhaCustosView.test.tsx`.

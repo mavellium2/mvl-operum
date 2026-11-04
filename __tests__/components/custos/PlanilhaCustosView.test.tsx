@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react'
 import { updateNodePropertiesAction, renameNodeAction, moveNodeAction, insertChildAction, insertSiblingAction, deleteNodeAction } from '@/app/actions/wbs'
+import { excluirFaseAction } from '@/app/actions/projetoEdicao'
 import PlanilhaCustosView, { parseMoeda } from '@/components/custos/PlanilhaCustosView'
 import { ToastProvider } from '@/components/ui/Toast'
 import type { PlanilhaDeCustos, Elaborador } from '@/lib/planilhaCustos'
@@ -16,6 +17,12 @@ vi.mock('@/app/actions/wbs', () => ({
 }))
 vi.mock('@/app/actions/projetos', () => ({
   addMemberAction: vi.fn(),
+}))
+vi.mock('@/app/actions/projetoEdicao', () => ({
+  impactoExclusaoFaseAction: vi.fn().mockResolvedValue({
+    impacto: { itensEap: 1, tarefas: 1, sprints: [], orcado: 90, realizado: 0, orcamentoCronograma: 0, exigeMotivo: false },
+  }),
+  excluirFaseAction: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
 beforeEach(() => {
@@ -296,6 +303,38 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     expect(within(destino).getByText('M2 Fase 2')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     await waitFor(() => expect(moveNodeAction).toHaveBeenCalledWith('p1', { nodeId: 'a1', targetId: 'mf2', position: 'INSIDE' }))
+  })
+
+  it('excluir macrofase abre o diálogo de impacto e exclui a fase com as atividades', async () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Ações da macrofase Fase 1' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Ações da macrofase Fase 1' })).getByText('Excluir macrofase'))
+    expect(await screen.findByText('Tarefas excluídas')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar exclusão' }))
+    await waitFor(() => expect(excluirFaseAction).toHaveBeenCalledWith('p1', 'mf1', '', undefined))
+    expect(deleteNodeAction).not.toHaveBeenCalled()
+  })
+
+  it('com alterações pendentes, pede para salvar antes de excluir a macrofase', async () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Renomear A1 Atividade 1' }))
+    const campo = screen.getByRole('textbox', { name: 'Renomear A1' })
+    fireEvent.change(campo, { target: { value: 'Outro nome' } })
+    fireEvent.blur(campo)
+    fireEvent.click(screen.getByRole('button', { name: 'Ações da macrofase Fase 1' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Ações da macrofase Fase 1' })).getByText('Excluir macrofase'))
+    expect(await screen.findByText('Salve ou descarte as alterações pendentes antes de excluir uma macrofase.')).toBeInTheDocument()
+    expect(screen.queryByText('Tarefas excluídas')).toBeNull()
+    expect(excluirFaseAction).not.toHaveBeenCalled()
+  })
+
+  it('macrofase ainda não salva não oferece Excluir macrofase', () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas rootId="raiz" /></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar macrofase' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome da nova macrofase' }), { target: { value: 'Nova fase' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inserir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ações da macrofase Nova fase' }))
+    expect(within(screen.getByRole('dialog', { name: 'Ações da macrofase Nova fase' })).queryByText('Excluir macrofase')).toBeNull()
   })
 
   it('criar macrofase só persiste ao clicar em Salvar', async () => {
