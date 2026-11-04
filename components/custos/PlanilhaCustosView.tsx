@@ -566,7 +566,7 @@ export default function PlanilhaCustosView({
             <thead>
               <tr className="bg-blue-600 text-white">
                 <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Macrofases</th>
-                <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Atividades</th>
+                <th rowSpan={2} className="planilha-activity-name border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Atividades</th>
                 <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Elaborada por</th>
                 <th colSpan={7} className="border border-blue-800 px-2 py-2 text-center text-xs font-bold">VALOR ORÇADO</th>
                 <th colSpan={8} className="border border-blue-800 px-2 py-2 text-center text-xs font-bold">VALOR REALIZADO</th>
@@ -731,7 +731,7 @@ function InlineNodeName({ codigo, titulo, descricao, onDraft }: { codigo: string
     <span className="shrink-0">{codigo}</span>
     <OperumInput autoFocus aria-label={`Renomear ${codigo}`} maxLength={500} value={draft} onFocus={e => e.target.select()} onChange={e => setDraft(e.target.value)} onBlur={confirmar} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { cancelled.current = true; setEditing(false) } }} className="planilha-name-input min-w-[150px] rounded border px-2 py-1 text-xs" />
   </span>
-  const nome = <span tabIndex={descricao ? 0 : undefined} className={descricao ? 'rounded-sm underline decoration-dotted underline-offset-2 focus-visible:outline focus-visible:outline-2' : ''}>{codigo} {titulo}</span>
+  const nome = <span tabIndex={descricao ? 0 : undefined} title={descricao ? undefined : `${codigo} ${titulo}`} className={`planilha-node-label${descricao ? ' rounded-sm underline decoration-dotted underline-offset-2 focus-visible:outline focus-visible:outline-2' : ''}`}>{codigo} {titulo}</span>
   return <span className="planilha-node-name inline-flex min-w-0 items-center gap-1">
     {onDraft ? <OperumButton variant="custom" type="button" onClick={() => { cancelled.current = false; setDraft(titulo); setEditing(true) }} aria-label={`Renomear ${codigo} ${titulo}`} title="Clique para editar o nome" className="planilha-name-trigger rounded px-1 py-0.5 text-left">{descricao ? <Dica label={descricao} multiline>{nome}</Dica> : nome}</OperumButton> : descricao ? <Dica label={descricao} multiline>{nome}</Dica> : nome}
   </span>
@@ -956,7 +956,8 @@ const FaseFragment = memo(function FaseFragment({
                 </div>
               )}
             </td>
-            <td className="border border-gray-100 px-2 py-1 text-xs whitespace-nowrap font-medium text-gray-800">
+            {/* Largura limitada: nomes longos quebram em até 3 linhas; o nome completo aparece ao passar o mouse. */}
+            <td className="planilha-activity-name border border-gray-100 px-2 py-1 text-xs font-medium text-gray-800">
               <InlineNodeName codigo={a.codigo} titulo={nameDrafts[a.nodeId] ?? a.titulo} descricao={a.descricao} onDraft={acoes && !a.nodeId.startsWith('novo-') ? title => onNameDraft(a.nodeId, title) : undefined} />
             </td>
             <td className="border border-gray-100 px-1 py-1">

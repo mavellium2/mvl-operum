@@ -305,6 +305,18 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     await waitFor(() => expect(moveNodeAction).toHaveBeenCalledWith('p1', { nodeId: 'a1', targetId: 'mf2', position: 'INSIDE' }))
   })
 
+  it('coluna Atividades tem largura limitada e mostra o nome completo ao passar o mouse', () => {
+    const longo = 'Levantar todos os requisitos '.repeat(20).trim()
+    const fase = planilha.macrofases[0]
+    render(<ToastProvider><PlanilhaCustosView {...props} planilha={{ ...planilha, macrofases: [{ ...fase, atividades: [{ ...fase.atividades[0], titulo: longo, descricao: '' }] }] }} /></ToastProvider>)
+    const nome = screen.getByText(`A1 ${longo}`)
+    expect(nome).toHaveClass('planilha-node-label')
+    expect(nome).toHaveAttribute('title', `A1 ${longo}`)
+    expect(nome.closest('td')).toHaveClass('planilha-activity-name')
+    expect(nome.closest('td')).not.toHaveClass('whitespace-nowrap')
+    expect(screen.getByRole('columnheader', { name: 'Atividades' })).toHaveClass('planilha-activity-name')
+  })
+
   it('excluir macrofase abre o diálogo de impacto e exclui a fase com as atividades', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Ações da macrofase Fase 1' }))

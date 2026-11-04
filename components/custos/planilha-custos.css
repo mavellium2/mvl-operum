@@ -155,6 +155,13 @@
 }
 .planilha-icon-action:disabled { opacity: .24; cursor: default; }
 .planilha-name-editor { max-width: 100%; }
+/* Coluna Atividades: largura limitada, nomes longos quebram em até 3 linhas. */
+.planilha-activity-name { width: 260px; min-width: 180px; max-width: 260px; white-space: normal; }
+.planilha-activity-name .planilha-node-name { display: flex; max-width: 100%; }
+.planilha-activity-name .planilha-name-trigger { min-width: 0; max-width: 100%; }
+.planilha-activity-name .planilha-node-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; line-height: 1.35; }
+.planilha-activity-name .planilha-name-editor { display: flex; width: 100%; }
+.planilha-activity-name .planilha-name-input { flex: 1; min-width: 0; }
 .planilha-name-input {
   color: var(--sheet-ink, var(--ap-text));
   background: var(--sheet-paper, var(--ap-input));
