@@ -11,6 +11,7 @@ import { mapLimit } from '../concurrency.js'
 import { withIdempotency } from '../idempotency.js'
 import { fetchAttachments } from './attachments.js'
 import { LINK_ATTACHMENT_TYPE } from '../attachmentTypes.js'
+import { WRITING_FIELD_HINT } from '../writing.js'
 
 export const PRIORITIES = ['baixa', 'media', 'alta'] as const
 const READ_CONCURRENCY = 4
@@ -75,7 +76,7 @@ export async function nextSprintPosition(ctx: TenantContext, sprintId: string, c
 
 const taskFieldsShape = {
   title: z.string().min(1).optional(),
-  description: z.string().optional().describe('Markdown.'),
+  description: z.string().optional().describe(WRITING_FIELD_HINT),
   priority: z.enum(PRIORITIES).optional(),
   color: z.string().optional().describe('Cor do card, ex.: #3b82f6.'),
   start_date: dateInput.optional(),
@@ -502,7 +503,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
       description: 'Adiciona um comentário na tarefa. O autor é o dono do token.',
       inputSchema: {
         task_id: idSchema,
-        content: z.string().min(1).max(20000),
+        content: z.string().min(1).max(20000).describe(WRITING_FIELD_HINT),
         type: z.enum(['COMMENT', 'FEEDBACK']).optional(),
       },
       entity: 'Tarefa',
@@ -522,7 +523,7 @@ export function registerTaskTools(server: McpServer, registry: TenantRegistry) {
     {
       title: 'Editar comentário',
       description: 'Edita um comentário. Só o autor pode editar.',
-      inputSchema: { task_id: idSchema, comment_id: idSchema, content: z.string().min(1).max(20000) },
+      inputSchema: { task_id: idSchema, comment_id: idSchema, content: z.string().min(1).max(20000).describe(WRITING_FIELD_HINT) },
       entity: 'Comentário',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },

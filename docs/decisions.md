@@ -1081,6 +1081,18 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Condição de revisão:** revisar a precedência temporal se houver edição simultânea frequente entre planilha e quadro.
 - **Referências:** `components/custos/PlanilhaCustosView.tsx`, `services/wbsService.ts`, `__tests__/unit/wbsSprintSync.test.ts`.
 
+## ADR-086 — Markdown nas descrições e comentários de cards e regra de escrita no MCP
+
+- **Data:** 2026-11-04.
+- **Status:** implementada.
+- **Contexto:** descrições e comentários escritos por pessoas e por agentes via MCP já usavam Markdown (o editor do card insere `**`, `*` e `- `), mas a tela mostrava o texto cru. Nos comentários, até as quebras de linha sumiam, e textos longos, como a matriz de acessos de 04/11/2026, ficavam ilegíveis. As instruções do MCP não orientavam como escrever.
+- **Escolha:** um componente compartilhado, `components/ui/MarkdownText.tsx`, com `react-markdown` 10.1.0 e `remark-gfm` 4.0.1, usado na descrição e nos comentários do `CardModal`. O minicard converte a descrição em texto simples (`lib/utils/markdownTexto.ts`). No MCP, `mcp-server/src/writing.ts` define a regra de escrita, que vai nas instruções do servidor e na descrição dos campos de texto das tools de tarefa e comentário.
+- **Justificativa:** `react-markdown` monta elementos React sem `dangerouslySetInnerHTML`, ignora HTML digitado e descarta URLs perigosas por padrão, então não exige sanitização própria. As instruções do servidor chegam a todo cliente MCP (Claude, ChatGPT, Codex), e a regra fica num lugar só.
+- **Alternativas consideradas:** renderizador próprio com expressões regulares (mais código para manter e risco de XSS); `marked` com sanitização via DOMPurify (HTML como string e duas dependências para manter seguras); apenas `whitespace-pre-wrap` (mantém linhas, mas não resolve tabelas, títulos e listas).
+- **Consequências:** duas dependências novas de produção no app. Textos antigos continuam válidos, porque texto simples é Markdown válido. Agentes que ignorem as instruções ainda podem escrever mal, mas o resultado aparece formatado. Descrições de sprint e de projeto continuam como texto simples.
+- **Condição de revisão:** se outras áreas (sprints, projetos, atas) precisarem de Markdown, reutilizar `MarkdownText` em vez de criar outra renderização.
+- **Referências:** `components/ui/MarkdownText.tsx`, `components/card/CardModal.tsx`, `components/card/Card.tsx`, `lib/utils/markdownTexto.ts`, `mcp-server/src/writing.ts`, `mcp-server/src/server.ts`, `__tests__/components/ui/MarkdownText.test.tsx`.
+
 ## ADR-087 — Exclusão de macrofase pela planilha é imediata e reutiliza o diálogo do cadastro
 
 - **Data:** 2026-11-04.

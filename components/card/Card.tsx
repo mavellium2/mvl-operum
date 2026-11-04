@@ -14,6 +14,7 @@ import { useCardTimer } from '@/hooks/useCardTimer'
 import CardTimerButton from '@/components/card/CardTimerButton'
 import { prazoStatus, formatPrazoCurto, type PrazoStatus } from '@/lib/cardUtils'
 import { useClientNow } from '@/hooks/useClientNow'
+import { markdownParaTexto } from '@/lib/utils/markdownTexto'
 
 interface User {
   id: string
@@ -183,10 +184,10 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
               {hasDescription && (
                 <p
                   data-testid="card-description"
-                  title={card.description}
+                  title={markdownParaTexto(card.description ?? '')}
                   className="text-xs text-gray-500 line-clamp-2 mb-2 leading-relaxed"
                 >
-                  {card.description}
+                  {markdownParaTexto(card.description ?? '')}
                 </p>
               )}
 

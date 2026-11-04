@@ -9,6 +9,14 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.53.0] — 2026-11-05
 
+- **Cards legíveis:** descrições e comentários passam a mostrar Markdown, com títulos, listas, negrito, tabelas, checklists e links. HTML digitado não é executado, links externos abrem em outra aba e tabelas largas rolam dentro do próprio bloco. Comentários longos deixam de virar uma linha só; durante a busca de comentários, o texto aparece simples com os termos realçados. Incorpora a 1.51.0, que não chegou a ser publicada.
+
+- **Minicard do quadro:** o resumo da descrição aparece como texto simples, sem os símbolos de Markdown.
+
+- **MCP:** as instruções do servidor trazem uma regra de escrita para agentes (resultado primeiro, parágrafos curtos, listas e linha em branco entre blocos), e os campos de descrição e comentário apontam para ela.
+
+- **Dependências:** `react-markdown` 10.1.0 e `remark-gfm` 4.0.1 (ADR-086).
+
 - **Partes interessadas:** diretório e formulário dos painéis de adicionar interno/externo ocupam toda a largura disponível, sem herdar a largura de um terço da tela de cadastros.
 
 - **EAP documental:** árvore textual usa a mesma família de fonte do cabeçalho (Arial), mantendo negrito e recuos da hierarquia.

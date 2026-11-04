@@ -26,6 +26,7 @@ import { TagSelector } from '../tag/TagSelector'
 import MultiUserSelector from './MultiUserSelector'
 import { useOverlay } from '@/hooks/useOverlay'
 import { useAutosave } from '@/hooks/useAutosave'
+import MarkdownText from '@/components/ui/MarkdownText'
 import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/cardUtils'
 import { formatarMinutos } from '@/lib/tempoRealizado'
 import {
@@ -901,7 +902,9 @@ export default function CardModal({
                           )
                         })}
                       </div>}
-                      <CommentText text={caption} busca={buscaComentariosAtiva ? buscaComentarios : ''} />
+                      {buscaComentariosAtiva
+                        ? <CommentText text={caption} busca={buscaComentarios} />
+                        : <MarkdownText>{caption}</MarkdownText>}
                     </div>
                   )}
                 </div>
