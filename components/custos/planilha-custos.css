@@ -156,12 +156,22 @@
 .planilha-icon-action:disabled { opacity: .24; cursor: default; }
 .planilha-name-editor { max-width: 100%; }
 /* Coluna Atividades: largura limitada, nomes longos quebram em até 3 linhas. */
-.planilha-activity-name { width: 260px; min-width: 180px; max-width: 260px; white-space: normal; }
+.planilha-activity-name { width: 300px; min-width: 200px; max-width: 300px; white-space: normal; }
 .planilha-activity-name .planilha-node-name { display: flex; max-width: 100%; }
 .planilha-activity-name .planilha-name-trigger { min-width: 0; max-width: 100%; }
 .planilha-activity-name .planilha-node-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; line-height: 1.35; }
 .planilha-activity-name .planilha-name-editor { display: flex; width: 100%; }
 .planilha-activity-name .planilha-name-input { flex: 1; min-width: 0; }
+/* Timer à esquerda do nome e botão de detalhes discreto, mais visível na linha em foco. */
+.planilha-activity-cell { display: flex; align-items: flex-start; gap: 4px; }
+.planilha-activity-cell .planilha-node-name { flex: 1; min-width: 0; }
+.planilha-activity-cell .planilha-timer { margin-left: -4px; padding: 1px 4px; flex-shrink: 0; gap: 4px; }
+.planilha-detalhes-trigger { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 6px; color: var(--sheet-accent, var(--ap-accent)); opacity: .45; }
+.planilha-activity-row:hover .planilha-detalhes-trigger, .planilha-detalhes-trigger:focus-visible { opacity: 1; }
+.planilha-detalhes-trigger:hover { background: var(--sheet-muted); }
+.planilha-detalhes-trigger:focus-visible { outline: 2px solid var(--sheet-accent, var(--ap-accent)); outline-offset: 1px; }
+@media (hover: none) { .planilha-detalhes-trigger { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) { .planilha-detalhes-trigger { transition: opacity 160ms ease, background-color 160ms ease; } }
 .planilha-name-input {
   color: var(--sheet-ink, var(--ap-text));
   background: var(--sheet-paper, var(--ap-input));

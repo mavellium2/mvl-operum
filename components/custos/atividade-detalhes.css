@@ -1,0 +1,17 @@
+.atividade-detalhes-corpo { display: flex; flex-direction: column; gap: 18px; padding: 16px 18px 20px; outline: none; color: var(--ap-text, #1e293b); }
+.atividade-detalhes-dados { display: grid; gap: 10px; margin: 0; }
+.atividade-detalhes-dados > div { display: grid; grid-template-columns: 120px 1fr; gap: 8px; font-size: 13px; }
+.atividade-detalhes-dados dt { color: var(--ap-muted, #64748b); }
+.atividade-detalhes-dados dd { margin: 0; overflow-wrap: anywhere; }
+.atividade-detalhes-secao { display: flex; flex-direction: column; gap: 8px; }
+.atividade-detalhes-secao h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--ap-muted, #64748b); }
+.atividade-detalhes-titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.atividade-detalhes-editar { font-size: 12px; }
+.atividade-detalhes-texto { font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.atividade-detalhes-vazio { font-size: 13px; color: var(--ap-muted, #94a3b8); }
+.atividade-detalhes-ajuda { font-size: 12px; line-height: 1.5; color: var(--ap-muted, #64748b); }
+.atividade-detalhes-erro { font-size: 12px; color: #b91c1c; }
+.atividade-detalhes-timer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.atividade-detalhes-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.atividade-detalhes-link { display: inline-flex; align-items: center; gap: 6px; width: fit-content; font-size: 13px; font-weight: 500; color: var(--ap-accent, #3478be); text-decoration: underline; text-underline-offset: 2px; }
+.atividade-detalhes-link:focus-visible { outline: 2px solid var(--ap-accent, #3478be); outline-offset: 2px; border-radius: 2px; }

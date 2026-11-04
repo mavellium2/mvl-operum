@@ -12,11 +12,14 @@ import Dica from '@/components/ui/Tooltip'
 import ElaboradoresSelect from './ElaboradoresSelect'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
+import AtividadeDetalhesPainel, { type AtividadeDetalhe } from '@/components/custos/AtividadeDetalhesPainel'
+import CardTimerButton from '@/components/card/CardTimerButton'
+import { useCardTimer } from '@/hooks/useCardTimer'
 import { menorJornada, somaValoresPorMinuto } from '@/lib/elaboradores'
 
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Download, Undo2, Plus, CircleHelp, Ellipsis, Save, ListChecks, GripVertical } from 'lucide-react'
+import { Download, Undo2, Plus, CircleHelp, Ellipsis, Save, ListChecks, GripVertical, PanelRightOpen } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
 import { useGuardaSaida } from '@/components/documentos/editor/GuardaSaida'
@@ -38,6 +41,8 @@ interface Props {
   canEditAllActual?: boolean
   /** Pode inserir e excluir linhas (muda a estrutura da EAP). */
   canEditLinhas?: boolean
+  /** Pode iniciar o timer e editar a descrição dos cards ligados (`quadro:cards`). */
+  canUsarCards?: boolean
   rootId?: string | null
   planilha: PlanilhaDeCustos
   elaboradores: Elaborador[]
@@ -189,7 +194,7 @@ function somaDaFase(
 }
 
 export default function PlanilhaCustosView({
-  projetoId, nomeProjeto, inicioProjeto, fimProjeto, canEdit, currentUserId, canEditOwnActual = false, canEditAllActual = false, canEditLinhas = false, rootId, planilha, elaboradores, exportUrl,
+  projetoId, nomeProjeto, inicioProjeto, fimProjeto, canEdit, currentUserId, canEditOwnActual = false, canEditAllActual = false, canEditLinhas = false, canUsarCards = false, rootId, planilha, elaboradores, exportUrl,
 }: Props) {
   const router = useRouter()
   const { toast } = useToast()
@@ -319,6 +324,9 @@ export default function PlanilhaCustosView({
   const [novaLinha, setNovaLinha] = useState<{ tipo: 'irmao' | 'filho'; refId: string } | null>(null)
   const [excluindo, setExcluindo] = useState<{ nodeId: string; nome: string } | null>(null)
   const [faseAExcluir, setFaseAExcluir] = useState<FaseExcluir | null>(null)
+  const [detalheId, setDetalheId] = useState<string | null>(null)
+  const recarregar = useCallback(() => router.refresh(), [router])
+  const fecharDetalhe = useCallback(() => setDetalheId(null), [])
   // A exclusão de macrofase é imediata (mesmo diálogo do cadastro do projeto); com
   // alterações pendentes, o rascunho poderia apontar para itens que deixaram de existir.
   const pendenciasRef = useRef(0)
@@ -399,6 +407,14 @@ export default function PlanilhaCustosView({
     ...structureOps.map(op => ({ chave: `structure:${op.id}`, rotulo: 'Estrutura da EAP', antes: '', depois: op.kind === 'create-phase' ? `Criar macrofase: ${op.title}` : op.kind === 'create-activity' ? `Criar atividade: ${op.title}` : op.kind === 'delete' ? 'Excluir item' : 'Mover item' })),
   ]
   useEffect(() => { pendenciasRef.current = reviewChanges.length })
+  const detalhe: AtividadeDetalhe | null = (() => {
+    if (!detalheId) return null
+    for (const f of fasesAtuais) {
+      const a = f.atividades.find(x => x.nodeId === detalheId)
+      if (a) return { nodeId: a.nodeId, codigo: a.codigo, titulo: nameDrafts[a.nodeId] ?? a.titulo, macrofase: `${f.codigo} ${nameDrafts[f.nodeId] ?? f.titulo}`, descricao: a.descricao, elaboradores: a.elaboradoPor, card: a.card }
+    }
+    return null
+  })()
   const dataFimProjeto = fmtDataBR(maiorData(fasesAtuais.flatMap(f => f.atividades.map(a => rascunho[a.nodeId]?.dataPrevista ?? a.dataPrevista))))
 
   async function salvarEstrutura(): Promise<boolean> {
@@ -601,6 +617,9 @@ export default function PlanilhaCustosView({
                   onCampoChange={setCampo}
                   horasPorDiaPadrao={planilha.config.horasPorDia}
                   acoes={acoes}
+                  canUsarCards={canUsarCards}
+                  onAbrirDetalhes={setDetalheId}
+                  onTimerParado={recarregar}
                   novaLinha={novaLinha && (novaLinha.refId === fase.nodeId || fase.atividades.some(a => a.nodeId === novaLinha.refId)) ? novaLinha : null}
                   onConfirmarNovaLinha={confirmarNovaLinha}
                   onCancelarNovaLinha={cancelarNovaLinha}
@@ -642,6 +661,7 @@ export default function PlanilhaCustosView({
           router.refresh()
         }}
       />
+      {detalhe && <AtividadeDetalhesPainel projetoId={projetoId} atividade={detalhe} canUsarCards={canUsarCards} onFechar={fecharDetalhe} onAlterado={recarregar} />}
       {dialogoSaida}
     </div></ProjectAppearance>
   )
@@ -717,6 +737,12 @@ function NovaLinha({ onConfirmar, onCancelar }: { onConfirmar: (titulo: string) 
   )
 }
 
+/** Play/stop do card ligado à atividade: o mesmo timer do quadro da sprint. */
+function TimerDaAtividade({ cardId, canStart, onStopped }: { cardId: string; canStart: boolean; onStopped: () => void }) {
+  const timer = useCardTimer(cardId)
+  return <CardTimerButton timer={timer} canStart={canStart} onStopped={onStopped} compacto className="planilha-timer" />
+}
+
 function InlineNodeName({ codigo, titulo, descricao, onDraft }: { codigo: string; titulo: string; descricao?: string; onDraft?: (title: string) => void }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(titulo)
@@ -765,7 +791,7 @@ function MoveActivityRow({ fases, onMover, onCancelar }: { fases: PlanilhaDeCust
 
 const FaseFragment = memo(function FaseFragment({
   fase, fases, nameDrafts, saveErrors, onNameDraft, dragged, dragOverId, onDragStartNode, onDragEndNode, onDragOverNode, onDropNode, rascunho, canEdit, currentUserId, canEditOwnActual, canEditAllActual, elaboradores, onCampoChange, horasPorDiaPadrao,
-  acoes, novaLinha, onConfirmarNovaLinha, onCancelarNovaLinha,
+  acoes, canUsarCards, onAbrirDetalhes, onTimerParado, novaLinha, onConfirmarNovaLinha, onCancelarNovaLinha,
 }: {
   fase: PlanilhaDeCustos['macrofases'][number]
   fases: PlanilhaDeCustos['macrofases']
@@ -789,6 +815,11 @@ const FaseFragment = memo(function FaseFragment({
   horasPorDiaPadrao: number
   /** Sem permissão para mudar a estrutura da EAP, não há ações de linha. */
   acoes?: AcoesLinha
+  canUsarCards: boolean
+  /** Abre o painel lateral com etapa, timer e descrição da atividade. */
+  onAbrirDetalhes: (nodeId: string) => void
+  /** Ao pausar o timer de uma atividade, a planilha recarrega o realizado. */
+  onTimerParado: () => void
   novaLinha: { tipo: 'irmao' | 'filho'; refId: string } | null
   onConfirmarNovaLinha: (titulo: string) => Promise<void>
   onCancelarNovaLinha: () => void
@@ -914,8 +945,8 @@ const FaseFragment = memo(function FaseFragment({
       <tr className="planilha-phase-row bg-gray-100 font-semibold text-gray-800" data-planilha-node={fase.nodeId} data-save-error={!!saveErrors[fase.nodeId] || undefined} data-drop-target={dragOverId === fase.nodeId || undefined} onDragOver={event => { if (dragged && dragged.nodeId !== fase.nodeId) { event.preventDefault(); onDragOverNode(fase.nodeId) } }} onDragLeave={() => { if (dragOverId === fase.nodeId) onDragOverNode(null) }} onDrop={event => onDropNode(event, fase.nodeId, 'phase')}>
         <td colSpan={18} className="border border-gray-200 px-3 py-1 text-sm">
           <div className="planilha-phase-content flex items-center gap-2">
-            <InlineNodeName codigo={fase.codigo} titulo={nameDrafts[fase.nodeId] ?? fase.titulo} onDraft={acoes && !fase.nodeId.startsWith('novo-') ? title => onNameDraft(fase.nodeId, title) : undefined} />
-            {acoes && <div className="planilha-node-controls ml-auto flex items-center gap-0.5">
+            {/* Arrastar e ações no início da linha, alinhados aos das atividades. */}
+            {acoes && <div className="planilha-node-controls flex items-center gap-0.5">
               <DragHandle label={`Arrastar macrofase ${fase.titulo}`} nodeId={fase.nodeId} kind="phase" onStart={onDragStartNode} onEnd={onDragEndNode} />
               <NodeActionsMenu label={`Ações da macrofase ${fase.titulo}`} actions={[
                 { label: 'Nova atividade', onClick: () => acoes.onInserir('filho', fase.nodeId) },
@@ -923,6 +954,7 @@ const FaseFragment = memo(function FaseFragment({
                 ...(fase.nodeId.startsWith('novo-') ? [] : [{ label: 'Excluir macrofase', tone: 'danger' as const, onClick: () => acoes.onExcluirFase({ nodeId: fase.nodeId, nome: fase.titulo, numero: fase.codigo }) }]),
               ]} />
             </div>}
+            <InlineNodeName codigo={fase.codigo} titulo={nameDrafts[fase.nodeId] ?? fase.titulo} onDraft={acoes && !fase.nodeId.startsWith('novo-') ? title => onNameDraft(fase.nodeId, title) : undefined} />
           </div>
         </td>
       </tr>
@@ -958,7 +990,15 @@ const FaseFragment = memo(function FaseFragment({
             </td>
             {/* Largura limitada: nomes longos quebram em até 3 linhas; o nome completo aparece ao passar o mouse. */}
             <td className="planilha-activity-name border border-gray-100 px-2 py-1 text-xs font-medium text-gray-800">
-              <InlineNodeName codigo={a.codigo} titulo={nameDrafts[a.nodeId] ?? a.titulo} descricao={a.descricao} onDraft={acoes && !a.nodeId.startsWith('novo-') ? title => onNameDraft(a.nodeId, title) : undefined} />
+              <div className="planilha-activity-cell">
+                {a.card && <TimerDaAtividade cardId={a.card.id} canStart={canUsarCards} onStopped={onTimerParado} />}
+                <InlineNodeName codigo={a.codigo} titulo={nameDrafts[a.nodeId] ?? a.titulo} descricao={a.descricao} onDraft={acoes && !a.nodeId.startsWith('novo-') ? title => onNameDraft(a.nodeId, title) : undefined} />
+                {!a.nodeId.startsWith('novo-') && (
+                  <OperumButton variant="custom" type="button" onClick={() => onAbrirDetalhes(a.nodeId)} aria-label={`Detalhes de ${nome}`} title="Descrição, tempo e etapa na sprint" className="planilha-detalhes-trigger">
+                    <PanelRightOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                  </OperumButton>
+                )}
+              </div>
             </td>
             <td className="border border-gray-100 px-1 py-1">
               {canEdit ? (

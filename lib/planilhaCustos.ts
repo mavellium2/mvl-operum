@@ -23,12 +23,29 @@ export interface PlanilhaConfig {
 
 export type SituacaoAtividade = 'Antecipada' | 'No prazo' | 'Atrasada' | 'Pendente'
 
+/** O que a planilha mostra do card ligado à atividade. */
+export interface CardDaAtividade {
+  id: string
+  sprintId: string | null
+  /** Nome da coluna em que o card está ("A Fazer", "Em andamento"...). */
+  etapa: string | null
+}
+
+/** Dados do card lidos pelo servidor para montar a planilha. */
+export interface DadosDoCard {
+  description: string
+  sprintId: string | null
+  etapa: string | null
+}
+
 export interface LinhaAtividade {
   nodeId: string
   codigo: string
   titulo: string
   /** Descrição da tarefa (do card ligado, quando houver; senão a do nó da EAP). Vazia sem descrição. */
   descricao: string
+  /** Card da sprint ligado à atividade (timer, descrição e etapa vêm dele). Ausente sem card. */
+  card?: CardDaAtividade
   /** Nomes dos elaboradores, separados por vírgula. */
   elaboradoPor: string
   /** Primeiro elaborador (formato antigo). */
@@ -293,13 +310,15 @@ export function computarPlanilhaCustos(
   }
 }
 /**
- * A descrição só converge na criação (EAP ↔ sprint, ADR-033): depois, quem a edita
- * é o card. Para linhas ligadas a um card, vale a descrição atual dele.
+ * Liga cada atividade ao card da sprint. A descrição só converge na criação
+ * (EAP ↔ sprint, ADR-033): depois, quem a edita é o card, então vale a dele. A
+ * planilha também recebe o id, a sprint e a etapa do card, para o timer e o painel
+ * de detalhes. Card excluído (fora do mapa) mantém a descrição do nó e fica sem card.
  */
-export function aplicarDescricoesDosCards(
+export function aplicarCardsDasAtividades(
   planilha: PlanilhaDeCustos,
   nodes: Record<string, WbsNodeClient>,
-  descricaoPorCard: ReadonlyMap<string, string>,
+  cards: ReadonlyMap<string, DadosDoCard>,
 ): PlanilhaDeCustos {
   return {
     ...planilha,
@@ -307,7 +326,9 @@ export function aplicarDescricoesDosCards(
       ...f,
       atividades: f.atividades.map(a => {
         const cardId = nodes[a.nodeId]?.properties.cardId
-        return cardId && descricaoPorCard.has(cardId) ? { ...a, descricao: descricaoPorCard.get(cardId)!.trim() } : a
+        const card = cardId ? cards.get(cardId) : undefined
+        if (!cardId || !card) return a
+        return { ...a, descricao: card.description.trim(), card: { id: cardId, sprintId: card.sprintId, etapa: card.etapa } }
       }),
     })),
   }

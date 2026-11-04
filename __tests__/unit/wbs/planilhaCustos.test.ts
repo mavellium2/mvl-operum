@@ -6,7 +6,7 @@ import {
   valorPorMinutoDoElaborador,
   situacaoDe,
   fmtDataBR,
-  aplicarDescricoesDosCards,
+  aplicarCardsDasAtividades,
   cardsDasAtividades,
   type Elaborador,
 } from '@/lib/planilhaCustos'
@@ -280,14 +280,24 @@ describe('descrição das atividades', () => {
     const n = nodes()
     const p = computarPlanilhaCustos(n, 'r', { valorReferencia: 4000, horasPorDia: 8 })
     expect(cardsDasAtividades(p, n)).toEqual(['c1', 'c3'])
-    const r = aplicarDescricoesDosCards(p, n, new Map([['c1', 'editada no card'], ['c3', '']]))
+    const r = aplicarCardsDasAtividades(p, n, new Map([
+      ['c1', { description: 'editada no card', sprintId: 's1', etapa: 'Em andamento' }],
+      ['c3', { description: '', sprintId: 's1', etapa: 'A Fazer' }],
+    ]))
     expect(r.macrofases[0].atividades.map(a => a.descricao)).toEqual(['editada no card', 'só no nó', ''])
+    expect(r.macrofases[0].atividades.map(a => a.card)).toEqual([
+      { id: 'c1', sprintId: 's1', etapa: 'Em andamento' },
+      undefined,
+      { id: 'c3', sprintId: 's1', etapa: 'A Fazer' },
+    ])
   })
 
   it('card excluído (fora do mapa) mantém a descrição do nó', () => {
     const n = nodes()
     const p = computarPlanilhaCustos(n, 'r', { valorReferencia: 4000, horasPorDia: 8 })
-    expect(aplicarDescricoesDosCards(p, n, new Map()).macrofases[0].atividades[0].descricao).toBe('do nó')
+    const r = aplicarCardsDasAtividades(p, n, new Map())
+    expect(r.macrofases[0].atividades[0].descricao).toBe('do nó')
+    expect(r.macrofases[0].atividades[0].card).toBeUndefined()
   })
 })
 

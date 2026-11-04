@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react'
 import { updateNodePropertiesAction, renameNodeAction, moveNodeAction, insertChildAction, insertSiblingAction, deleteNodeAction } from '@/app/actions/wbs'
 import { excluirFaseAction } from '@/app/actions/projetoEdicao'
+import { patchCardAction } from '@/app/actions/sprintBoard'
 import PlanilhaCustosView, { parseMoeda } from '@/components/custos/PlanilhaCustosView'
 import { ToastProvider } from '@/components/ui/Toast'
 import type { PlanilhaDeCustos, Elaborador } from '@/lib/planilhaCustos'
@@ -17,6 +18,13 @@ vi.mock('@/app/actions/wbs', () => ({
 }))
 vi.mock('@/app/actions/projetos', () => ({
   addMemberAction: vi.fn(),
+}))
+vi.mock('@/app/actions/sprintBoard', () => ({ patchCardAction: vi.fn().mockResolvedValue({ card: { id: 'c1' } }) }))
+vi.mock('@/app/actions/time', () => ({
+  getCardTimeAction: vi.fn(),
+  getCardsTimerAction: vi.fn(async (ids: string[]) => Object.fromEntries(ids.map(id => [id, { seconds: 0, entry: null }]))),
+  pauseTimerAction: vi.fn(),
+  startTimerAction: vi.fn(),
 }))
 vi.mock('@/app/actions/projetoEdicao', () => ({
   impactoExclusaoFaseAction: vi.fn().mockResolvedValue({
@@ -315,6 +323,56 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     expect(nome.closest('td')).toHaveClass('planilha-activity-name')
     expect(nome.closest('td')).not.toHaveClass('whitespace-nowrap')
     expect(screen.getByRole('columnheader', { name: 'Atividades' })).toHaveClass('planilha-activity-name')
+  })
+
+  it('arrastar e ações da macrofase ficam no início da linha, antes do nome', () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
+    const linha = screen.getByRole('button', { name: 'Renomear M1 Fase 1' }).closest('tr')!
+    const botoes = within(linha).getAllByRole('button').map(b => b.getAttribute('aria-label') ?? b.getAttribute('title'))
+    expect(botoes.indexOf('Ações da macrofase Fase 1')).toBeLessThan(botoes.indexOf('Renomear M1 Fase 1'))
+  })
+
+  const comCard = (descricao = 'Usar tinta acrílica') => {
+    const fase = planilha.macrofases[0]
+    return { ...planilha, macrofases: [{ ...fase, atividades: [{ ...fase.atividades[0], descricao, card: { id: 'c1', sprintId: 's1', etapa: 'Em andamento' } }] }] }
+  }
+
+  it('atividade ligada a um card mostra o play/stop do card', async () => {
+    const { unmount } = render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} canUsarCards /></ToastProvider>)
+    const play = screen.getByRole('button', { name: 'Iniciar timer' })
+    await waitFor(() => expect(play).toBeEnabled())
+    unmount()
+    render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} canUsarCards={false} /></ToastProvider>)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Iniciar timer' })).toBeDisabled())
+  })
+
+  it('atividade sem card não mostra o play/stop', () => {
+    renderizar()
+    expect(screen.queryByRole('button', { name: 'Iniciar timer' })).toBeNull()
+  })
+
+  it('painel de detalhes mostra etapa e descrição e salva a descrição no card da sprint', async () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} canUsarCards /></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Detalhes de A1 Atividade 1' }))
+    const painel = screen.getByRole('dialog', { name: 'Detalhes de A1 Atividade 1' })
+    expect(within(painel).getByText('Em andamento')).toBeInTheDocument()
+    expect(within(painel).getByText('Usar tinta acrílica')).toBeInTheDocument()
+    expect(within(painel).getByRole('link', { name: /Abrir o card na sprint/ })).toHaveAttribute('href', '/projetos/p1/sprints/s1?card=c1')
+    fireEvent.click(within(painel).getByRole('button', { name: 'Editar' }))
+    fireEvent.change(within(painel).getByRole('textbox', { name: 'Descrição da atividade' }), { target: { value: 'Duas demãos de tinta acrílica' } })
+    fireEvent.click(within(painel).getByRole('button', { name: 'Salvar descrição' }))
+    await waitFor(() => expect(patchCardAction).toHaveBeenCalledWith('s1', 'c1', { description: 'Duas demãos de tinta acrílica' }))
+    expect(await within(painel).findByText('Duas demãos de tinta acrílica')).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Detalhes de A1 Atividade 1' })).toBeNull()
+  })
+
+  it('sem permissão nos cards, o painel mostra a descrição sem editar', () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} /></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Detalhes de A1 Atividade 1' }))
+    const painel = screen.getByRole('dialog', { name: 'Detalhes de A1 Atividade 1' })
+    expect(within(painel).getByText('Usar tinta acrílica')).toBeInTheDocument()
+    expect(within(painel).queryByRole('button', { name: 'Editar' })).toBeNull()
   })
 
   it('excluir macrofase abre o diálogo de impacto e exclui a fase com as atividades', async () => {

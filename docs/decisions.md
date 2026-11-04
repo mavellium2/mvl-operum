@@ -1092,3 +1092,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** a exclusão de macrofase é a única mudança de estrutura da planilha que não espera "Salvar alterações"; o diálogo avisa que ela é imediata. A planilha recarrega depois da exclusão.
 - **Condição de revisão:** se o salvamento da planilha passar a aplicar a estrutura numa transação única, avaliar levar a exclusão de macrofase para o rascunho.
 - **Referências:** `components/custos/PlanilhaCustosView.tsx`, `components/projetos/ExcluirFaseDialog.tsx`, `app/actions/projetoEdicao.ts` (`excluirFaseAction`), `__tests__/components/custos/PlanilhaCustosView.test.tsx`.
+
+## ADR-088 — Descrição e timer da atividade na planilha vêm do card da sprint, num painel lateral
+
+- **Data:** 2026-11-04.
+- **Status:** implementada.
+- **Contexto:** a Planilha de Custos funciona como a sprint para a gestão. O Vinícius pediu editar a descrição da atividade e usar o play/stop da sprint direto na planilha, sem lotar a tabela, que já tem 18 colunas. A descrição já vinha do card, mas só aparecia como dica ao passar o mouse.
+- **Escolha:** o card da sprint continua sendo a fonte da descrição e do tempo. Na linha, um play/stop compacto (`CardTimerButton`, extraído do minicard do quadro) e um botão que abre um painel lateral (`AtividadeDetalhesPainel`, sobre `DetailPanel`) com etapa, elaboradores, timer, descrição editável e link para o card. O layout foi escolhido pelo Vinícius entre painel lateral, linha expansível e o modal completo do card.
+- **Justificativa:** uma fonte única evita duas descrições divergentes; o card já tem as regras de tempo e de responsável (ADR-046). O painel não acrescenta colunas nem empurra as linhas, e reutiliza componentes existentes.
+- **Alternativas consideradas:** linha expansível dentro da tabela (empurra as linhas de baixo); abrir o `CardModal` da sprint (janela grande e acoplada ao quadro); colunas novas de descrição e timer (lotaria a tabela); guardar a descrição no nó da EAP (divergiria do card).
+- **Consequências:** a descrição salva no painel não espera "Salvar alterações" da planilha, porque grava no card. Iniciar o timer e editar a descrição exigem `quadro:cards`. Atividade ainda sem card (criada e não sincronizada) não tem timer. O tempo entra no realizado depois de pausar, como já acontecia pelo quadro (1.40.2).
+- **Condição de revisão:** se a gestão precisar ver quem está com timer rodando em cada atividade, avaliar mostrar os timers de outros usuários.
+- **Referências:** `components/custos/AtividadeDetalhesPainel.tsx`, `components/card/CardTimerButton.tsx`, `components/card/Card.tsx`, `components/custos/PlanilhaCustosView.tsx`, `lib/planilhaCustos.ts` (`aplicarCardsDasAtividades`), `app/projetos/[projetoId]/planilha-custos/page.tsx`.

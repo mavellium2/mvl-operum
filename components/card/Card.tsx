@@ -11,6 +11,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { TagBadge } from '@/components/tag/TagBadge'
 import UserAvatar from '@/components/user/UserAvatar'
 import { useCardTimer } from '@/hooks/useCardTimer'
+import CardTimerButton from '@/components/card/CardTimerButton'
 import { prazoStatus, formatPrazoCurto, type PrazoStatus } from '@/lib/cardUtils'
 import { useClientNow } from '@/hooks/useClientNow'
 
@@ -76,18 +77,11 @@ function formatDataCurta(d: Date | string | null | undefined): string {
   return y === String(new Date().getFullYear()) ? `${dia}/${m}` : `${dia}/${m}/${y}`
 }
 
-function formatCardTimer(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-}
 
 export default function Card({ card, index, columnId, onDelete, onClick, onTimerStarted, concluido = false, dragDisabled = false }: CardProps) {
   const permissions = useProjectPermissions()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const timer = useCardTimer(card.id)
-  const isTimerRunning = timer.isRunning
-  const elapsedSeconds = timer.elapsed
 
   const hasDescription = !!card.description?.trim()
   const tituloExibido = card.eapCode ? `${card.eapCode} - ${card.title}` : card.title
@@ -109,13 +103,6 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
   const now = useClientNow()
   const prazo = now ? prazoStatus(card.endDate, now, concluido) : null
   const prioridade = card.priority ? PRIORIDADE_STYLE[card.priority] : undefined
-
-  const handleTimerClick = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if ((!isTimerRunning && !permissions.has('quadro:cards')) || timer.loading) return
-    const wasRunning = isTimerRunning
-    if (await timer.toggle() && !wasRunning) onTimerStarted?.(card.id)
-  }
 
   return (
     <>
@@ -269,25 +256,7 @@ export default function Card({ card, index, columnId, onDelete, onClick, onTimer
                   )}
 
                   {/* Timer */}
-                  <OperumButton variant="default" type="button"
-                    disabled={timer.loading || !timer.known || (!isTimerRunning && !permissions.has('quadro:cards'))}
-                    aria-label={isTimerRunning ? 'Pausar timer' : 'Iniciar timer'}
-                    className={`flex items-center gap-1.5 px-2 py-1 -ml-2 rounded-md transition-colors ${isTimerRunning ? 'bg-green-50' : 'hover:bg-gray-100'}`}
-                    aria-disabled={!isTimerRunning && !permissions.has('quadro:cards')}
-                    onClick={handleTimerClick}
-                    title={isTimerRunning ? 'Pausar tempo' : 'Iniciar tempo'}
-                  >
-                    {isTimerRunning ? (
-                      <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center text-red-600 shadow-sm hover:bg-red-200 transition-colors">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z" /></svg>
-                      </div>
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-green-100 hover:text-green-600 transition-colors shadow-sm">
-                        <svg className="w-3.5 h-3.5 ml-0.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg>
-                      </div>
-                    )}
-                    <span className={`text-xs font-mono font-bold tracking-tight mt-px ${isTimerRunning ? 'text-green-700' : 'text-gray-600'}`}>{timer.known ? formatCardTimer(elapsedSeconds) : '—'}</span>
-                  </OperumButton>
+                  <CardTimerButton timer={timer} canStart={permissions.has('quadro:cards')} onStarted={() => onTimerStarted?.(card.id)} />
                 </div>
 
                 {/* Direita: tempo planejado/realizado + avatares */}

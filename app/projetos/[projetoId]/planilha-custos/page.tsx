@@ -6,7 +6,7 @@ import { getTree, resetTree } from '@/services/wbsService'
 import { podeSincronizar, sincronizarEapSprintSePermitido } from '@/services/eapSprintSyncService'
 import { statusDaSincronizacao } from '@/services/sincronizacaoStatus'
 import StatusSincronizacao from '@/components/sincronizacao/StatusSincronizacao'
-import { computarPlanilhaCustos, fmtDataBR, aplicarDescricoesDosCards, cardsDasAtividades, type Elaborador } from '@/lib/planilhaCustos'
+import { computarPlanilhaCustos, fmtDataBR, aplicarCardsDasAtividades, cardsDasAtividades, type Elaborador } from '@/lib/planilhaCustos'
 import prisma from '@/lib/prisma'
 import PlanilhaCustosView from '@/components/custos/PlanilhaCustosView'
 import type { Metadata } from 'next'
@@ -63,12 +63,17 @@ export default async function PlanilhaCustosPage({
     tree = await getTree(projetoId, tenantId)
   }
   const calculada = computarPlanilhaCustos(tree.nodes, tree.rootId, { valorReferencia, horasPorDia }, elaboradoresPorId)
-  // Descrição mostrada ao passar o mouse na tarefa: a atual do card ligado, quando houver.
+  // Card ligado a cada atividade: descrição atual, sprint e etapa (timer e painel de detalhes).
   const cardIds = cardsDasAtividades(calculada, tree.nodes)
   const cards = cardIds.length
-    ? await prisma.card.findMany({ where: { id: { in: cardIds }, deletedAt: null }, select: { id: true, description: true } })
+    ? await prisma.card.findMany({
+      where: { id: { in: cardIds }, deletedAt: null, OR: [{ projectId: projetoId }, { sprint: { projectId: projetoId } }] },
+      select: { id: true, description: true, sprintId: true, sprintColumn: { select: { title: true } } },
+    })
     : []
-  const planilha = aplicarDescricoesDosCards(calculada, tree.nodes, new Map(cards.map(c => [c.id, c.description ?? ''])))
+  const planilha = aplicarCardsDasAtividades(calculada, tree.nodes, new Map(cards.map(c => [c.id, {
+    description: c.description ?? '', sprintId: c.sprintId, etapa: c.sprintColumn?.title ?? null,
+  }])))
 
   return (
     <>
@@ -84,6 +89,8 @@ export default async function PlanilhaCustosPage({
       canEditAllActual={permissoes.has('planilha:realizado-todos')}
       // Inserir/excluir linha muda a EAP; excluir exige as mesmas permissões do autosave dela.
       canEditLinhas={canEditLinhas}
+      // Timer e descrição gravam no card da sprint: mesma permissão do quadro.
+      canUsarCards={permissoes.has('quadro:cards')}
       rootId={tree.rootId}
       planilha={planilha}
       elaboradores={elaboradores}

@@ -10,6 +10,8 @@ funcionalidade depois disso é uma versão MINOR.
 ## [1.52.0] — 2026-11-04
 
 - **Planilha de custos:** a macrofase ganha “Excluir macrofase” no menu de ações. A confirmação mostra o impacto (atividades, tarefas, sprints e custos) e pede o motivo quando a sprint tem dados. Ao confirmar, a macrofase e todas as atividades saem da EAP e das sprints. Com alterações pendentes na planilha, a exclusão pede para salvar ou descartar antes (ADR-087).
+- **Planilha de custos como a sprint da gestão:** cada atividade ligada a um card ganha o play/stop do quadro (só o ícone; o tempo aparece enquanto roda) e um botão de detalhes. O painel lateral mostra macrofase, etapa na sprint, responsáveis, timer e descrição, que pode ser editada ali e é a mesma do card. Ao pausar, o tempo entra no realizado (ADR-088).
+- **Planilha de custos:** arrastar e o menu de ações da macrofase passam para o início da linha, alinhados aos das atividades.
 - **Planilha de custos:** a coluna Atividades tem largura limitada. Nomes longos quebram em até 3 linhas, e o nome completo aparece ao passar o mouse ou ao editar.
 - **Exportação da planilha:** o valor por minuto aparece com duas casas decimais no Excel, como na tela (R$ 0,2251 → R$ 0,23). A célula guarda o valor completo, e os totais não mudam.
 - Versão escolhida acima de 1.51.0, reservada para a entrega de Markdown nos cards (branch `feat/markdown-cards-mcp`).
