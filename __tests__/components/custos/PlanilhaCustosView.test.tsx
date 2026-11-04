@@ -61,7 +61,7 @@ const planilha: PlanilhaDeCustos = {
           vpm: 1, jornadaDiaria: 8,
           minOrcado: 90, materiaisOrcado: 0, dataPrevista: null,
           rOrcado: 90, totalOrcado: 90,
-          minReal: 0, materiaisReal: 0, dataRealizacao: null,
+          minReal: 0, minRealDigitado: 0, minRealApontado: 0, materiaisReal: 0, dataRealizacao: null,
           rReal: 0, totalReal: 0,
           situacao: 'Pendente',
         },
@@ -571,16 +571,52 @@ describe('PlanilhaCustosView — situação ao vivo', () => {
 })
 
 describe('PlanilhaCustosView — permissões do realizado', () => {
-  it('tempo dos cards é somente leitura; materiais e data realizados continuam editáveis', () => {
+  it('tempo do timer soma com o digitado: Min continua editável e mostra a parte do timer (ADR-089)', () => {
     const fromCards = structuredClone(planilha)
-    Object.assign(fromCards.macrofases[0].atividades[0], { minReal: 90, tempoRealDosCards: true })
-    render(<ToastProvider><PlanilhaCustosView {...props} planilha={fromCards} /></ToastProvider>)
+    Object.assign(fromCards.macrofases[0].atividades[0], { minReal: 100 + 11 / 60, minRealDigitado: 100, minRealApontado: 11 / 60, tempoRealDosCards: true })
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditAllActual planilha={fromCards} /></ToastProvider>)
     const row = within(screen.getByText('A1 Atividade 1').closest('tr')!)
-    expect(row.queryByDisplayValue('0:00')).not.toBeInTheDocument()
-    expect(row.getByDisplayValue('1:30')).toBeInTheDocument() // Só o orçamento continua editável.
-    expect(row.getByText('1:30')).toHaveAttribute('title', expect.stringContaining('apontamentos'))
-    expect(row.getAllByRole('textbox').length).toBeGreaterThan(0)
+    // Min do realizado edita só a parte digitada; os 11 segundos do timer aparecem ao lado, com duas casas.
+    expect(row.getByDisplayValue('100')).toBeInTheDocument()
+    const selo = row.getByLabelText('mais 0,18 minutos do timer')
+    expect(selo).toHaveTextContent('0,18')
+    expect(selo).toHaveAttribute('title', expect.stringContaining('100 min digitados + 0,18 min'))
+    // Campo e selo dividem a mesma linha (mesmo grupo), sem aumentar a altura da linha.
+    expect(selo.closest('.planilha-campo-com-sufixo')).toContainElement(row.getByDisplayValue('100'))
+    // Horas do realizado mostra o total e não é editável quando há apontamentos.
+    expect(row.getByText('1:40')).toHaveAttribute('title', expect.stringContaining('apontamentos'))
   })
+
+  it('macrofase é uma faixa de seção: controles na coluna dos controles e contagem de atividades', () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
+    const linha = screen.getByRole('button', { name: 'Renomear M1 Fase 1' }).closest('tr')!
+    const [controles, titulo] = Array.from(linha.querySelectorAll('td'))
+    expect(controles).toHaveClass('planilha-phase-controls')
+    expect(within(controles).getByRole('button', { name: 'Ações da macrofase Fase 1' })).toBeInTheDocument()
+    expect(titulo).toHaveClass('planilha-phase-title')
+    expect(titulo).toHaveAttribute('colspan', '17')
+    expect(within(titulo).getByText('1 atividade')).toBeInTheDocument()
+  })
+
+  it('Sub-total e Total mostram os minutos com no máximo duas casas', () => {
+    const fromCards = structuredClone(planilha)
+    Object.assign(fromCards.macrofases[0].atividades[0], { minReal: 1640 + 11 / 60, minRealDigitado: 1640, minRealApontado: 11 / 60, tempoRealDosCards: true })
+    render(<ToastProvider><PlanilhaCustosView {...props} planilha={fromCards} /></ToastProvider>)
+    expect(screen.getByText('Sub-total').closest('tr')).toHaveTextContent('1.640,18')
+    expect(screen.getByText('Total do projeto').closest('tr')).toHaveTextContent('1.640,18')
+    expect(document.body.textContent).not.toContain('1640.18333')
+  })
+
+  it('editar o Min com apontamentos grava só a parte digitada', async () => {
+    const fromCards = structuredClone(planilha)
+    Object.assign(fromCards.macrofases[0].atividades[0], { minReal: 130, minRealDigitado: 100, minRealApontado: 30, tempoRealDosCards: true })
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditAllActual planilha={fromCards} /></ToastProvider>)
+    const row = within(screen.getByText('A1 Atividade 1').closest('tr')!)
+    fireEvent.change(row.getByDisplayValue('100'), { target: { value: '120' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'a1', { tempoRealMinutos: 120 }))
+  })
+
   function renderizarPermissoes(overrides: Partial<React.ComponentProps<typeof PlanilhaCustosView>>) {
     return render(<ToastProvider><PlanilhaCustosView {...props} currentUserId="u1" canEdit={false} canEditAllActual={false} {...overrides} /></ToastProvider>)
   }

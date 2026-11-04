@@ -63,12 +63,13 @@ describe('Custos — permissões por campo e responsável persistido', () => {
 })
 
 describe('vínculo com card/sprint (auditoria 24/10)', () => {
-  it('tempo com apontamentos encerrados só é corrigido no card, inclusive após exclusão', async () => {
-    tx.wbsNode.findFirst.mockReset().mockResolvedValueOnce({ id: 'n1', properties: { cardId: 'c1' } })
+  it('tempo digitado continua editável mesmo com apontamentos no card: os dois somam (ADR-089)', async () => {
+    tx.wbsNode.findFirst.mockReset()
+      .mockResolvedValueOnce({ id: 'n1', properties: { cardId: 'c1' } })
+      .mockResolvedValue({ id: 'root', version: 1 })
     tx.timeEntry.findFirst.mockResolvedValue({ id: 'registro-historico' })
-    await expect(updateNodeProperties(input, { userId: 'g', permissoes: permissions('planilha:realizado-todos') })).rejects.toThrow('apontamentos do card')
-    expect(tx.wbsNode.update).not.toHaveBeenCalled()
-    expect(tx.timeEntry.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ cardId: 'c1', isRunning: false, endedAt: { not: null }, user: { tenantId: 't1' } }) }))
+    await expect(updateNodeProperties(input, { userId: 'g', permissoes: permissions('planilha:realizado-todos') })).resolves.toBeDefined()
+    expect(tx.wbsNode.update).toHaveBeenCalled()
   })
   it('editar propriedades não troca o card nem a sprint ligados ao nó', async () => {
     tx.wbsNode.findFirst.mockReset()

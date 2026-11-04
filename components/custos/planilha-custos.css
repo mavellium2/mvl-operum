@@ -137,7 +137,18 @@
   border-top: 1px solid var(--sheet-phase-rule);
   border-bottom-color: var(--sheet-phase-rule);
 }
-.planilha-phase-content { min-height: 24px; }
+/* Faixa de seção da macrofase: separada das atividades por fundo, borda e respiro. */
+.planilha-table .planilha-phase-row td { padding-top: 9px; padding-bottom: 7px; vertical-align: middle; background: color-mix(in srgb, var(--sheet-accent, #3478be) 9%, var(--sheet-subhead)); border-top: 2px solid color-mix(in srgb, var(--sheet-accent, #3478be) 38%, var(--sheet-phase-rule)); }
+.planilha-phase-title .planilha-node-label { font-size: 13.5px; font-weight: 700; letter-spacing: .01em; }
+.planilha-phase-count { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--sheet-secondary, #64748b); white-space: nowrap; }
+.planilha-phase-content { min-height: 26px; }
+/* Linhas de atividade: tudo centralizado na vertical. */
+.planilha-table .planilha-activity-row td { vertical-align: middle; }
+/* Arrastar e menu ficam discretos e aparecem por inteiro na linha em foco. */
+.planilha-table tbody .planilha-node-controls { opacity: .4; }
+.planilha-table tbody tr:hover .planilha-node-controls, .planilha-table tbody .planilha-node-controls:focus-within { opacity: 1; }
+@media (hover: none) { .planilha-table tbody .planilha-node-controls { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) { .planilha-table tbody .planilha-node-controls { transition: opacity 160ms ease; } }
 .planilha-node-name { max-width: 100%; }
 .planilha-name-trigger { color: var(--sheet-ink); transition: color 180ms ease, background-color 180ms ease; }
 .planilha-name-trigger:hover, .planilha-name-trigger:focus-visible { color: var(--sheet-accent); background: var(--sheet-muted); }
@@ -163,7 +174,12 @@
 .planilha-activity-name .planilha-name-editor { display: flex; width: 100%; }
 .planilha-activity-name .planilha-name-input { flex: 1; min-width: 0; }
 /* Timer à esquerda do nome e botão de detalhes discreto, mais visível na linha em foco. */
-.planilha-activity-cell { display: flex; align-items: flex-start; gap: 4px; }
+.planilha-activity-cell { display: flex; align-items: center; gap: 4px; }
+/* Minutos do timer somados ao digitado: selo na mesma linha do campo Min do realizado. */
+.planilha-campo-com-sufixo { display: flex; align-items: center; gap: 4px; min-width: 96px; padding: 0 4px 0 0; border: 1px solid var(--sheet-frame, #bfdbfe); border-radius: 4px; background: var(--sheet-paper, #fff); }
+.planilha-campo-embutido { flex: 1; min-width: 40px; padding: 2px 6px; border: 0; background: transparent; text-align: right; font-size: 12px; outline: none; }
+.planilha-min-leitura { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.planilha-timer-chip { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; padding: 1px 5px; border-radius: 999px; font-size: 10px; font-weight: 600; line-height: 1.4; white-space: nowrap; color: #15803d; background: color-mix(in srgb, #22c55e 14%, transparent); font-variant-numeric: tabular-nums; cursor: help; }
 .planilha-activity-cell .planilha-node-name { flex: 1; min-width: 0; }
 .planilha-activity-cell .planilha-timer { margin-left: -4px; padding: 1px 4px; flex-shrink: 0; gap: 4px; }
 .planilha-detalhes-trigger { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 6px; color: var(--sheet-accent, var(--ap-accent)); opacity: .45; }

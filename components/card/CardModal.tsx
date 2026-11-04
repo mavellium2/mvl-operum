@@ -21,6 +21,7 @@ import MultiUserSelector from './MultiUserSelector'
 import { useOverlay } from '@/hooks/useOverlay'
 import { useAutosave } from '@/hooks/useAutosave'
 import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/cardUtils'
+import { formatarMinutos } from '@/lib/tempoRealizado'
 import {
   ATTACHMENT_ACCEPT, ATTACHMENT_TYPES_LABEL, MAX_ATTACHMENT_MB, erroDoAnexo,
   isLinkAttachment, linkHref, linkHost, linkThumbnail,
@@ -900,7 +901,7 @@ export default function CardModal({
                   <h3 className="mb-2 font-semibold text-slate-800">Planilha de Custos · {linhaPlanilha.codigo}</h3>
                   <p>Elaborado por: {linhaPlanilha.elaboradoPor || 'Não definido'}</p>
                   <p>Orçado: {linhaPlanilha.minOrcado} min · {linhaPlanilha.totalOrcado?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'}</p>
-                  <p>Realizado: {linhaPlanilha.minReal} min · {linhaPlanilha.totalReal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'}</p>
+                  <p>Realizado: {formatarMinutos(linhaPlanilha.minReal)} min · {linhaPlanilha.totalReal?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'}</p>
                   <p>Prevista: {fmtDataBR(linhaPlanilha.dataPrevista) || '—'}</p>
                   <p>Realização: {fmtDataBR(linhaPlanilha.dataRealizacao) || '—'}</p>
                 </section>}

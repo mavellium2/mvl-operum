@@ -1,6 +1,6 @@
 import { dataRealizacaoEfetiva } from '@/lib/dataRealizacao'
 import { elaboradoresDe, menorJornada, somaValoresPorMinuto } from './elaboradores'
-import { minutosRealizados } from './tempoRealizado'
+import { minutosRealizados, minutosDigitados, minutosApontados } from './tempoRealizado'
 import type { WbsNodeClient } from '@/types/wbs'
 import { custoFolhaPrevisto, custoFolhaRealizado, round2 } from '@/lib/custosCalc'
 
@@ -63,8 +63,13 @@ export interface LinhaAtividade {
   rOrcado: number | null
   totalOrcado: number | null
   // Realizado
+  /** Realizado total = digitado + apontamentos do card (ADR-089). */
   minReal: number
-  /** Tempo derivado do card: corrigir nos apontamentos, sem sobrescrever pela planilha. */
+  /** Parte digitada na planilha: é o que o campo Min do realizado edita. */
+  minRealDigitado: number
+  /** Parte que veio dos apontamentos encerrados do card (timer e lançamentos). */
+  minRealApontado: number
+  /** O card tem apontamentos: Horas e Dias do realizado passam a ser só leitura. */
   tempoRealDosCards?: boolean
   materiaisReal: number
   dataRealizacao: string | null
@@ -226,6 +231,8 @@ export function computarPlanilhaCustos(
         const minOrcado = p.tempoMinutos ?? 0
         const materiaisOrcado = p.materiais ?? 0
         const minReal = minutosRealizados(p)
+        const minRealDigitado = minutosDigitados(p)
+        const minRealApontado = minutosApontados(p)
         const materiaisReal = p.materiaisReal ?? 0
         // Jornada/valor derivam SOMENTE de quem elaborou a linha; sem elaborador
         // (ou sem salário/jornada) o valor é nenhum — não existe valor padrão.
@@ -250,6 +257,8 @@ export function computarPlanilhaCustos(
           rOrcado: vpm !== null ? round2(minOrcado * vpm) : null,
           totalOrcado: fatura(minOrcado, materiaisOrcado, vpm),
           minReal,
+          minRealDigitado,
+          minRealApontado,
           tempoRealDosCards: p.tempoRealApontadoSegundos !== undefined,
           materiaisReal,
           dataRealizacao: dataRealizacaoEfetiva(p),

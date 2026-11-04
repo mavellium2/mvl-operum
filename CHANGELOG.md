@@ -10,8 +10,10 @@ funcionalidade depois disso é uma versão MINOR.
 ## [1.52.0] — 2026-11-04
 
 - **Planilha de custos:** a macrofase ganha “Excluir macrofase” no menu de ações. A confirmação mostra o impacto (atividades, tarefas, sprints e custos) e pede o motivo quando a sprint tem dados. Ao confirmar, a macrofase e todas as atividades saem da EAP e das sprints. Com alterações pendentes na planilha, a exclusão pede para salvar ou descartar antes (ADR-087).
+- **Realizado não perde o tempo digitado:** antes, o primeiro apontamento do card (por exemplo, ao usar o play/stop) substituía os minutos digitados na planilha. Agora os dois somam: o campo Min continua editável com a parte digitada, e um selo na mesma linha mostra quanto veio do timer. Nenhuma atividade em produção estava nessa situação (ADR-089).
+- **Minutos com duas casas:** Sub-total, Total do projeto, quadro de tempo, gráficos e detalhes do card mostram minutos quebrados com duas casas (1.640,18) e inteiros sem casas.
 - **Planilha de custos como a sprint da gestão:** cada atividade ligada a um card ganha o play/stop do quadro (só o ícone; o tempo aparece enquanto roda) e um botão de detalhes. O painel lateral mostra macrofase, etapa na sprint, responsáveis, timer e descrição, que pode ser editada ali e é a mesma do card. Ao pausar, o tempo entra no realizado (ADR-088).
-- **Planilha de custos:** arrastar e o menu de ações da macrofase passam para o início da linha, alinhados aos das atividades.
+- **Planilha de custos:** a macrofase vira uma faixa de seção, com fundo e borda próprios, nome em destaque e a contagem de atividades. Arrastar e o menu de ações ficam no início, na mesma coluna dos controles das atividades, e aparecem por inteiro ao passar o mouse. Os itens das linhas de atividade ficam centralizados na vertical.
 - **Planilha de custos:** a coluna Atividades tem largura limitada. Nomes longos quebram em até 3 linhas, e o nome completo aparece ao passar o mouse ou ao editar.
 - **Exportação da planilha:** o valor por minuto aparece com duas casas decimais no Excel, como na tela (R$ 0,2251 → R$ 0,23). A célula guarda o valor completo, e os totais não mudam.
 - Versão escolhida acima de 1.51.0, reservada para a entrega de Markdown nos cards (branch `feat/markdown-cards-mcp`).
