@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import MentionNotifications from '@/components/notificacoes/MentionNotifications'
 import { usePathname } from 'next/navigation'
 import GlobalSidebar from '@/components/layout/GlobalSidebar'
 import { SidebarSessionProvider } from '@/hooks/useSidebarSession'
@@ -36,11 +37,12 @@ function ShellContent({ children }: { children: React.ReactNode }) {
 
   if (HIDDEN_PATHS.some(p => pathname.startsWith(p))) return <>{children}</>
 
-  if (isProjectPage) return <SidebarSessionProvider><IdleLogout />{children}</SidebarSessionProvider>
+  if (isProjectPage) return <SidebarSessionProvider><IdleLogout /><MentionNotifications />{children}</SidebarSessionProvider>
 
   return (
     <SidebarSessionProvider><div className="flex flex-1 overflow-hidden">
       <IdleLogout />
+      <MentionNotifications />
       {keepProject && navigation.project ? <ProjectPermissionsProvider permissions={navigation.project.permissions}><ProjectSidebar {...navigation.project} /></ProjectPermissionsProvider> : <GlobalSidebar />}
       <main className="flex-1 min-w-0 h-full overflow-y-auto pt-14 md:pt-0">
         {children}

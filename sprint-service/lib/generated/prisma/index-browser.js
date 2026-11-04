@@ -132,37 +132,18 @@ exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   tenantId: 'tenantId',
   name: 'name',
-  email: 'email'
-};
-
-exports.Prisma.UserProjectScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  projectId: 'projectId',
-  active: 'active',
-  horasDiarias: 'horasDiarias',
-  remuneracao: 'remuneracao'
-};
-
-exports.Prisma.NotificationScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  type: 'type',
-  title: 'title',
-  message: 'message',
-  reference: 'reference',
-  referenceType: 'referenceType',
-  status: 'status',
-  deletedAt: 'deletedAt',
-  createdAt: 'createdAt',
-  readAt: 'readAt',
-  updatedAt: 'updatedAt'
+  email: 'email',
+  cargo: 'cargo',
+  avatarUrl: 'avatarUrl',
+  hourlyRate: 'hourlyRate',
+  deletedAt: 'deletedAt'
 };
 
 exports.Prisma.ProjectScalarFieldEnum = {
   id: 'id',
   tenantId: 'tenantId',
-  name: 'name'
+  name: 'name',
+  deletedAt: 'deletedAt'
 };
 
 exports.Prisma.SprintScalarFieldEnum = {
@@ -185,6 +166,7 @@ exports.Prisma.SprintColumnScalarFieldEnum = {
   id: 'id',
   title: 'title',
   position: 'position',
+  color: 'color',
   sprintId: 'sprintId',
   deletedAt: 'deletedAt',
   createdAt: 'createdAt',
@@ -200,7 +182,6 @@ exports.Prisma.CardScalarFieldEnum = {
   sprintId: 'sprintId',
   sprintColumnId: 'sprintColumnId',
   sprintPosition: 'sprintPosition',
-  status: 'status',
   projectId: 'projectId',
   priority: 'priority',
   tagsImport: 'tagsImport',
@@ -208,18 +189,19 @@ exports.Prisma.CardScalarFieldEnum = {
   endDate: 'endDate',
   deletedAt: 'deletedAt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  orcado_min: 'orcado_min',
-  orcado_horas: 'orcado_horas',
-  orcado_dias: 'orcado_dias',
-  orcado_total: 'orcado_total',
-  data_prevista: 'data_prevista',
-  realizado_min: 'realizado_min',
-  realizado_horas: 'realizado_horas',
-  realizado_dias: 'realizado_dias',
-  realizado_total: 'realizado_total',
-  data_realizacao: 'data_realizacao',
-  situacao_status: 'situacao_status'
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.CardMovementScalarFieldEnum = {
+  id: 'id',
+  cardId: 'cardId',
+  userId: 'userId',
+  fromColumnId: 'fromColumnId',
+  fromColumnTitle: 'fromColumnTitle',
+  toColumnId: 'toColumnId',
+  toColumnTitle: 'toColumnTitle',
+  reason: 'reason',
+  movedAt: 'movedAt'
 };
 
 exports.Prisma.TagScalarFieldEnum = {
@@ -250,18 +232,6 @@ exports.Prisma.CommentScalarFieldEnum = {
   deletedAt: 'deletedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
-};
-
-exports.Prisma.AttachmentScalarFieldEnum = {
-  id: 'id',
-  cardId: 'cardId',
-  fileName: 'fileName',
-  fileType: 'fileType',
-  filePath: 'filePath',
-  fileSize: 'fileSize',
-  isCover: 'isCover',
-  deletedAt: 'deletedAt',
-  uploadedAt: 'uploadedAt'
 };
 
 exports.Prisma.TimeEntryScalarFieldEnum = {
@@ -314,6 +284,15 @@ exports.Prisma.AuditLogScalarFieldEnum = {
   timestamp: 'timestamp'
 };
 
+exports.Prisma.UserProjectScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  projectId: 'projectId',
+  active: 'active',
+  inactiveReason: 'inactiveReason',
+  inactivatedAt: 'inactivatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -339,12 +318,6 @@ exports.Prisma.JsonNullValueFilter = {
   JsonNull: Prisma.JsonNull,
   AnyNull: Prisma.AnyNull
 };
-exports.NotificationStatus = exports.$Enums.NotificationStatus = {
-  UNREAD: 'UNREAD',
-  READ: 'READ',
-  ARCHIVED: 'ARCHIVED'
-};
-
 exports.SprintStatus = exports.$Enums.SprintStatus = {
   PLANNED: 'PLANNED',
   ACTIVE: 'ACTIVE',
@@ -359,21 +332,20 @@ exports.CommentType = exports.$Enums.CommentType = {
 exports.Prisma.ModelName = {
   Tenant: 'Tenant',
   User: 'User',
-  UserProject: 'UserProject',
-  Notification: 'Notification',
   Project: 'Project',
   Sprint: 'Sprint',
   SprintColumn: 'SprintColumn',
   Card: 'Card',
+  CardMovement: 'CardMovement',
   Tag: 'Tag',
   CardTag: 'CardTag',
   CardResponsible: 'CardResponsible',
   Comment: 'Comment',
-  Attachment: 'Attachment',
   TimeEntry: 'TimeEntry',
   DashboardMetric: 'DashboardMetric',
   SprintFeedback: 'SprintFeedback',
-  AuditLog: 'AuditLog'
+  AuditLog: 'AuditLog',
+  UserProject: 'UserProject'
 };
 
 /**

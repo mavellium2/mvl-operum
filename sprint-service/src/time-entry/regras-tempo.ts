@@ -21,7 +21,7 @@ export function erroDoIntervalo({ inicio, fim }: Intervalo, agora: Date): string
   return null
 }
 
-export interface Existente { id: string; startedAt: Date; endedAt: Date | null; isRunning: boolean; cardTitle?: string | null }
+export interface Existente { id: string; startedAt: Date; endedAt: Date | null; isRunning: boolean; cardTitle?: string | null; description?: string | null }
 
 /** Primeiro lançamento do mesmo usuário que se sobrepõe ao intervalo (timer rodando vai até agora). */
 export function conflito(intervalo: Intervalo, existentes: readonly Existente[], agora: Date, ignorar?: string): Existente | null {
@@ -35,9 +35,24 @@ export function conflito(intervalo: Intervalo, existentes: readonly Existente[],
 
 const hora = (d: Date) => d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 
+function duracaoCurta(segundos: number): string {
+  const horas = Math.floor(segundos / 3600)
+  const minutos = Math.floor((segundos % 3600) / 60)
+  if (horas > 0 && minutos > 0) return `${horas} h ${minutos} min`
+  if (horas > 0) return `${horas} h`
+  if (minutos > 0) return `${minutos} min`
+  return `${segundos} s`
+}
+
 export function mensagemConflito(e: Existente): string {
-  const fim = e.isRunning || !e.endedAt ? 'agora (timer rodando)' : hora(e.endedAt)
-  return `Já existe um lançamento seu de ${hora(e.startedAt)} a ${fim}${e.cardTitle ? ` em "${e.cardTitle}"` : ''}. Ajuste os horários para não sobrepor.`
+  const cartao = e.cardTitle ? ` em "${e.cardTitle}"` : ''
+  const texto = e.description?.trim() ?? ''
+  const descricao = texto ? ` — "${texto.slice(0, 80)}${texto.length > 80 ? '…' : ''}"` : ''
+  if (e.isRunning || !e.endedAt) {
+    return `Já existe um lançamento seu em andamento, de ${hora(e.startedAt)} até agora (timer rodando)${cartao}${descricao}. O novo período se sobrepõe a ele. Pare o timer ou ajuste o novo lançamento.`
+  }
+  const duracao = duracaoCurta(Math.max(0, Math.floor((e.endedAt.getTime() - e.startedAt.getTime()) / 1000)))
+  return `Já existe um lançamento seu de ${duracao} (${hora(e.startedAt)} a ${hora(e.endedAt)})${cartao}${descricao}. O novo período se sobrepõe a ele. Edite ou exclua o lançamento existente, ou ajuste a duração do novo lançamento.`
 }
 
 /** Timer rodando há mais que o limite: deve ser encerrado no limite. */

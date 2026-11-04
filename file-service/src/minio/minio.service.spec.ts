@@ -33,4 +33,15 @@ describe('MinioService.getPresignedUrl (SDD 4.2)', () => {
     expect(minio.extractKey('https://storage-prod.operum.adm.br/mvloperum-prod/uploads/c1/foto.jpg')).toBe('uploads/c1/foto.jpg')
     expect(minio.extractKey('https://youtu.be/abc')).toBeNull()
   })
+
+  it('reassina anexos gravados com a antiga porta local do console', async () => {
+    const oldUrl = 'http://localhost:9001/mvloperum-prod/uploads/c1/foto.jpg'
+    expect(new MinioService().extractKey(oldUrl)).toBeNull()
+
+    process.env.MINIO_PUBLIC_URL = 'http://localhost:9000'
+    const minio = new MinioService()
+    const key = minio.extractKey(oldUrl)
+    expect(key).toBe('uploads/c1/foto.jpg')
+    expect(new URL(await minio.getPresignedUrl(key!)).origin).toBe('http://localhost:9000')
+  })
 })

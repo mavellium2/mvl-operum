@@ -29,6 +29,7 @@ export interface CardDaAtividade {
   sprintId: string | null
   /** Nome da coluna em que o card está ("A Fazer", "Em andamento"...). */
   etapa: string | null
+  priority?: string | null
 }
 
 /** Dados do card lidos pelo servidor para montar a planilha. */
@@ -36,6 +37,7 @@ export interface DadosDoCard {
   description: string
   sprintId: string | null
   etapa: string | null
+  priority?: string | null
 }
 
 export interface LinhaAtividade {
@@ -337,7 +339,7 @@ export function aplicarCardsDasAtividades(
         const cardId = nodes[a.nodeId]?.properties.cardId
         const card = cardId ? cards.get(cardId) : undefined
         if (!cardId || !card) return a
-        return { ...a, descricao: card.description.trim(), card: { id: cardId, sprintId: card.sprintId, etapa: card.etapa } }
+        return { ...a, descricao: card.description.trim(), card: { id: cardId, sprintId: card.sprintId, etapa: card.etapa, ...(card.priority && { priority: card.priority }) } }
       }),
     })),
   }

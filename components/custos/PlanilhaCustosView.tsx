@@ -4,7 +4,7 @@ import FormActions from '@/components/ui/FormActions'
 import ChangesPanel, { type ReviewChange } from '@/components/ui/ChangesPanel'
 import GlassPopover from '@/components/ui/GlassPopover'
 import OperumButton from '@/components/ui/GlassButton'
-import { Input as OperumInput, FieldGroup } from '@/components/ui/Field'
+import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { parseMoeda as parseMoedaLib } from '@/lib/dinheiro'
@@ -13,13 +13,14 @@ import ElaboradoresSelect from './ElaboradoresSelect'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
 import AtividadeDetalhesPainel, { type AtividadeDetalhe } from '@/components/custos/AtividadeDetalhesPainel'
+import { PRIORITY_LABELS } from '@/lib/cardUtils'
 import CardTimerButton from '@/components/card/CardTimerButton'
 import { useCardTimer } from '@/hooks/useCardTimer'
 import { menorJornada, somaValoresPorMinuto } from '@/lib/elaboradores'
 
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Download, Undo2, Plus, CircleHelp, Ellipsis, Save, ListChecks, GripVertical, PanelRightOpen, Timer } from 'lucide-react'
+import { Download, Undo2, Plus, CircleHelp, Ellipsis, Save, ListChecks, GripVertical, PanelRightOpen, Flag } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
 import { useGuardaSaida } from '@/components/documentos/editor/GuardaSaida'
@@ -54,7 +55,6 @@ type CampoLinha = Partial<{
   minOrcado: string
   materiaisOrcado: string
   dataPrevista: string
-  minReal: string
   materiaisReal: string
   dataRealizacao: string
   /** Ids separados por vírgula (o rascunho guarda texto). */
@@ -170,6 +170,9 @@ const somar = (a: Soma, b: Soma): Soma => ({
   min: a.min + b.min, dias: a.dias + b.dias, materiais: a.materiais + b.materiais, total: a.total + b.total, temTotal: a.temTotal || b.temTotal,
 })
 
+const jornadaDaLinha = (userIds: string[], elaboradores: Elaborador[], padrao: number): number =>
+  menorJornada(userIds.map(id => elaboradores.find(elaborador => elaborador.userId === id)?.horasDiarias)) ?? padrao
+
 /**
  * Sub-total de uma fase (orçado ou realizado): soma os MESMOS valores exibidos nas linhas,
  * rascunho incluso, cada célula arredondada como na linha, para bater com a soma visível.
@@ -184,10 +187,10 @@ function somaDaFase(
   let soma = SOMA_VAZIA
   for (const a of fase.atividades) {
     const r = rascunho[a.nodeId]
-    const min = lado === 'orcado' ? num(r?.minOrcado, a.minOrcado) : num(r?.minReal, a.minRealDigitado) + a.minRealApontado
+    const min = lado === 'orcado' ? num(r?.minOrcado, a.minOrcado) : a.minReal
     const materiais = lado === 'orcado' ? num(r?.materiaisOrcado, a.materiaisOrcado) : num(r?.materiaisReal, a.materiaisReal)
     const ids = idsAtuais(a, rascunho)
-    const horas = menorJornada(ids.map(id => elaboradores.find(x => x.userId === id)?.horasDiarias)) ?? horasPorDiaPadrao
+    const horas = jornadaDaLinha(ids, elaboradores, horasPorDiaPadrao)
     const total = totalDaLinha(min, vpmDaLinha(ids, elaboradores), materiais)
     soma = somar(soma, { min, dias: round2(min / 60 / horas), materiais, total: total ?? 0, temTotal: total !== null })
   }
@@ -294,7 +297,6 @@ export default function PlanilhaCustosView({
         if (campos.minOrcado !== undefined) props.tempoMinutos = Math.round(num(campos.minOrcado, 0))
         if (campos.materiaisOrcado !== undefined) props.materiais = Math.round(num(campos.materiaisOrcado, 0) * 100) / 100
         if (campos.dataPrevista !== undefined) props.dataPrevista = campos.dataPrevista || null
-        if (campos.minReal !== undefined) props.tempoRealMinutos = Math.round(num(campos.minReal, 0))
         if (campos.materiaisReal !== undefined) props.materiaisReal = Math.round(num(campos.materiaisReal, 0) * 100) / 100
         if (campos.dataRealizacao !== undefined) props.dataRealizacao = campos.dataRealizacao || null
         // Nomes e responsáveis do card são acertados no servidor (ADR-044).
@@ -398,21 +400,29 @@ export default function PlanilhaCustosView({
       },
     }
   }, [planilha, fasesAtuais, rascunho, elaboradores, nameDrafts])
-  const fieldLabels: Record<string, string> = { minOrcado: 'Tempo orçado', materiaisOrcado: 'Materiais orçados', dataPrevista: 'Data prevista', minReal: 'Tempo realizado', materiaisReal: 'Materiais realizados', dataRealizacao: 'Data de realização', elaboradoPorUserIds: 'Elaboradores' }
+  const fieldLabels: Record<string, string> = { minOrcado: 'Tempo orçado', materiaisOrcado: 'Materiais orçados', dataPrevista: 'Data prevista', materiaisReal: 'Materiais realizados', dataRealizacao: 'Data de realização', elaboradoPorUserIds: 'Elaboradores' }
   const reviewChanges: ReviewChange[] = [
     ...nameChanges.map(change => ({ ...change, chave: `name:${change.chave}` })),
     ...Object.entries(rascunho).flatMap(([nodeId, campos]) => {
       const original = planilha.macrofases.flatMap(f => f.atividades).find(a => a.nodeId === nodeId)
-      return Object.entries(campos).filter(([key, value]) => salvo[nodeId]?.[key as keyof CampoLinha] !== value).map(([key, value]) => ({ chave: `field:${nodeId}:${key}`, rotulo: `${original?.codigo ?? 'Nova'} · ${fieldLabels[key] ?? key}`, antes: String((key === 'minReal' ? original?.minRealDigitado : original?.[key as keyof typeof original]) ?? ''), depois: value ?? '' }))
+      return Object.entries(campos).filter(([key, value]) => salvo[nodeId]?.[key as keyof CampoLinha] !== value).map(([key, value]) => ({ chave: `field:${nodeId}:${key}`, rotulo: `${original?.codigo ?? 'Nova'} · ${fieldLabels[key] ?? key}`, antes: String(original?.[key as keyof typeof original] ?? ''), depois: value ?? '' }))
     }),
     ...structureOps.map(op => ({ chave: `structure:${op.id}`, rotulo: 'Estrutura da EAP', antes: '', depois: op.kind === 'create-phase' ? `Criar macrofase: ${op.title}` : op.kind === 'create-activity' ? `Criar atividade: ${op.title}` : op.kind === 'delete' ? 'Excluir item' : 'Mover item' })),
   ]
   useEffect(() => { pendenciasRef.current = reviewChanges.length })
-  const detalhe: AtividadeDetalhe | null = (() => {
+  const atividadeDetalhe: AtividadeDetalhe | null = (() => {
     if (!detalheId) return null
     for (const f of fasesAtuais) {
       const a = f.atividades.find(x => x.nodeId === detalheId)
-      if (a) return { nodeId: a.nodeId, codigo: a.codigo, titulo: nameDrafts[a.nodeId] ?? a.titulo, macrofase: `${f.codigo} ${nameDrafts[f.nodeId] ?? f.titulo}`, descricao: a.descricao, elaboradores: a.elaboradoPor, card: a.card }
+      if (!a) continue
+      const elaboradorIds = idsAtuais(a, rascunho)
+      const jornada = jornadaDaLinha(elaboradorIds, elaboradores, planilha.config.horasPorDia)
+      return {
+        nodeId: a.nodeId, codigo: a.codigo, titulo: nameDrafts[a.nodeId] ?? a.titulo,
+        descricao: a.descricao, elaboradores: a.elaboradoPor, elaboradorIds, card: a.card,
+        minReal: a.minReal, horasReal: hhmm(a.minReal), diasReal: dois(a.minReal / 60 / jornada),
+        minLegado: a.minRealDigitado,
+      }
     }
     return null
   })()
@@ -572,65 +582,69 @@ export default function PlanilhaCustosView({
       }} />
 
       {/* ── Tabela (F.2) ────────────────────────────────────────────────── */}
-      {semAtividades ? (
-        <div className="planilha-empty mt-4 rounded-xl border p-8 text-center">
-          <p className="text-gray-500">Nenhuma atividade derivável da EAP.</p>
-          <p className="mt-1 text-sm text-gray-400">Crie macrofases com atividades folha na EAP para gerar a planilha de custos.</p>
-        </div>
-      ) : (
-        <div className="planilha-table-scroll mt-3 overflow-auto rounded-xl border">
-          <table className="planilha-table w-full min-w-[1150px] border-separate border-spacing-0 text-sm">
-            <thead>
-              <tr className="bg-blue-600 text-white">
-                <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Macrofases</th>
-                <th rowSpan={2} className="planilha-activity-name border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Atividades</th>
-                <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Elaborada por</th>
-                <th colSpan={7} className="border border-blue-800 px-2 py-2 text-center text-xs font-bold">VALOR ORÇADO</th>
-                <th colSpan={8} className="border border-blue-800 px-2 py-2 text-center text-xs font-bold">VALOR REALIZADO</th>
-              </tr>
-              <tr className="bg-blue-100 text-blue-900">
-                {['Min', 'Horas', 'Dias', 'R$', 'Materiais', 'Total', 'Data Prevista', 'Min', 'Horas', 'Dias', 'R$', 'Materiais', 'Total', 'Data Realização', 'Situação'].map((h, i) => (
-                  <th key={i} className="border border-blue-200 px-2 py-1.5 text-center text-[11px] font-semibold">{h}</th>
+      <div className={`planilha-area-trabalho mt-3 ${atividadeDetalhe ? 'planilha-area-trabalho--com-detalhe' : ''}`}>
+        {semAtividades ? (
+          <div className="planilha-empty rounded-xl border p-8 text-center">
+            <p className="text-gray-500">Nenhuma atividade derivável da EAP.</p>
+            <p className="mt-1 text-sm text-gray-400">Crie macrofases com atividades folha na EAP para gerar a planilha de custos.</p>
+          </div>
+        ) : (
+          <div className="planilha-table-scroll min-w-0 overflow-auto rounded-xl border">
+            <table className="planilha-table w-full min-w-[1150px] border-separate border-spacing-0 text-sm">
+              <thead>
+                <tr className="bg-blue-600 text-white">
+                  <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Macrofases</th>
+                  <th rowSpan={2} className="planilha-activity-name border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Atividades</th>
+                  <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Elaborada por</th>
+                  <th colSpan={7} className="border border-blue-800 px-2 py-2 text-center text-xs font-bold">VALOR ORÇADO</th>
+                  <th colSpan={8} className="border border-blue-800 px-2 py-2 text-center text-xs font-bold">VALOR REALIZADO</th>
+                </tr>
+                <tr className="bg-blue-100 text-blue-900">
+                  {['Min', 'Horas', 'Dias', 'R$', 'Materiais', 'Total', 'Data Prevista', 'Min', 'Horas', 'Dias', 'R$', 'Materiais', 'Total', 'Data Realização', 'Situação'].map((h, i) => (
+                    <th key={i} className="border border-blue-200 px-2 py-1.5 text-center text-[11px] font-semibold">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {fasesAtuais.map(fase => (
+                  <FaseFragment
+                    key={fase.nodeId}
+                    fase={fase}
+                    fases={fasesAtuais}
+                    nameDrafts={nameDrafts}
+                    saveErrors={saveErrors}
+                    onNameDraft={setNameDraft}
+                    dragged={dragged}
+                    dragOverId={dragOverId}
+                    onDragStartNode={setDragged}
+                    onDragEndNode={() => { setDragged(null); setDragOverId(null) }}
+                    onDragOverNode={setDragOverId}
+                    onDropNode={dropOn}
+                    rascunho={rascunho}
+                    canEdit={canEdit}
+                    currentUserId={currentUserId}
+                    canEditOwnActual={canEditOwnActual}
+                    canEditAllActual={canEditAllActual}
+                    elaboradores={elaboradores}
+                    onCampoChange={setCampo}
+                    horasPorDiaPadrao={planilha.config.horasPorDia}
+                    acoes={acoes}
+                    canUsarCards={canUsarCards}
+                    detalheId={detalheId ?? undefined}
+                    onAbrirDetalhes={setDetalheId}
+                    onTimerParado={recarregar}
+                    novaLinha={novaLinha && (novaLinha.refId === fase.nodeId || fase.atividades.some(a => a.nodeId === novaLinha.refId)) ? novaLinha : null}
+                    onConfirmarNovaLinha={confirmarNovaLinha}
+                    onCancelarNovaLinha={cancelarNovaLinha}
+                  />
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {fasesAtuais.map(fase => (
-                <FaseFragment
-                  key={fase.nodeId}
-                  fase={fase}
-                  fases={fasesAtuais}
-                  nameDrafts={nameDrafts}
-                  saveErrors={saveErrors}
-                  onNameDraft={setNameDraft}
-                  dragged={dragged}
-                  dragOverId={dragOverId}
-                  onDragStartNode={setDragged}
-                  onDragEndNode={() => { setDragged(null); setDragOverId(null) }}
-                  onDragOverNode={setDragOverId}
-                  onDropNode={dropOn}
-                  rascunho={rascunho}
-                  canEdit={canEdit}
-                  currentUserId={currentUserId}
-                  canEditOwnActual={canEditOwnActual}
-                  canEditAllActual={canEditAllActual}
-                  elaboradores={elaboradores}
-                  onCampoChange={setCampo}
-                  horasPorDiaPadrao={planilha.config.horasPorDia}
-                  acoes={acoes}
-                  canUsarCards={canUsarCards}
-                  onAbrirDetalhes={setDetalheId}
-                  onTimerParado={recarregar}
-                  novaLinha={novaLinha && (novaLinha.refId === fase.nodeId || fase.atividades.some(a => a.nodeId === novaLinha.refId)) ? novaLinha : null}
-                  onConfirmarNovaLinha={confirmarNovaLinha}
-                  onCancelarNovaLinha={cancelarNovaLinha}
-                />
-              ))}
-              <LinhaSoma rotulo="Total do projeto" orcado={somaFases('orcado')} real={somaFases('real')} dataFim={dataFimProjeto} destaque />
-            </tbody>
-          </table>
-        </div>
-      )}
+                <LinhaSoma rotulo="Total do projeto" orcado={somaFases('orcado')} real={somaFases('real')} dataFim={dataFimProjeto} destaque />
+              </tbody>
+            </table>
+          </div>
+        )}
+        {atividadeDetalhe && <AtividadeDetalhesPainel key={atividadeDetalhe.nodeId} elaboradores={elaboradores} onElaboradoresChange={canEdit ? ids => setCampo(atividadeDetalhe.nodeId, 'elaboradoPorUserIds', ids.join(',')) : undefined} atividade={atividadeDetalhe} currentUserId={currentUserId} canUsarCards={canUsarCards} onFechar={fecharDetalhe} onAlterado={recarregar} tituloEditavel={canEditLinhas ? <InlineNodeName codigo={atividadeDetalhe.codigo} titulo={atividadeDetalhe.titulo} onDraft={title => setNameDraft(atividadeDetalhe.nodeId, title)} /> : undefined} />}
+      </div>
 
       {/* ── Quadros-resumo (F.4) e gráficos, maiores e um embaixo do outro ── */}
       {!semAtividades && (
@@ -662,7 +676,6 @@ export default function PlanilhaCustosView({
           router.refresh()
         }}
       />
-      {detalhe && <AtividadeDetalhesPainel projetoId={projetoId} atividade={detalhe} canUsarCards={canUsarCards} onFechar={fecharDetalhe} onAlterado={recarregar} />}
       {dialogoSaida}
     </div></ProjectAppearance>
   )
@@ -792,7 +805,7 @@ function MoveActivityRow({ fases, onMover, onCancelar }: { fases: PlanilhaDeCust
 
 const FaseFragment = memo(function FaseFragment({
   fase, fases, nameDrafts, saveErrors, onNameDraft, dragged, dragOverId, onDragStartNode, onDragEndNode, onDragOverNode, onDropNode, rascunho, canEdit, currentUserId, canEditOwnActual, canEditAllActual, elaboradores, onCampoChange, horasPorDiaPadrao,
-  acoes, canUsarCards, onAbrirDetalhes, onTimerParado, novaLinha, onConfirmarNovaLinha, onCancelarNovaLinha,
+  acoes, canUsarCards, detalheId, onAbrirDetalhes, onTimerParado, novaLinha, onConfirmarNovaLinha, onCancelarNovaLinha,
 }: {
   fase: PlanilhaDeCustos['macrofases'][number]
   fases: PlanilhaDeCustos['macrofases']
@@ -818,6 +831,7 @@ const FaseFragment = memo(function FaseFragment({
   acoes?: AcoesLinha
   canUsarCards: boolean
   /** Abre o painel lateral com etapa, timer e descrição da atividade. */
+  detalheId?: string
   onAbrirDetalhes: (nodeId: string) => void
   /** Ao pausar o timer de uma atividade, a planilha recarrega o realizado. */
   onTimerParado: () => void
@@ -854,12 +868,10 @@ const FaseFragment = memo(function FaseFragment({
   }
   // Jornada diária da linha: a menor jornada entre os elaboradores (todos trabalham
   // em paralelo); sem elaborador ou sem jornada cadastrada, a padrão do projeto.
-  const horasDe = (userIds: string[]): number =>
-    menorJornada(userIds.map(id => elaboradores.find(x => x.userId === id)?.horasDiarias)) ?? horasPorDiaPadrao
-  const texto = (v: string, title = '🔒 Campo calculado ou sem permissão de edição') => <span title={title} className="block rounded bg-gray-100 px-1 text-xs tabular-nums text-gray-700">{v}</span>
+  const texto = (v: string, title = '🔒 Campo calculado ou sem permissão de edição') => <span title={title} className="block px-1 text-xs tabular-nums text-gray-700">{v}</span>
   const clsCampo = 'w-full min-w-[64px] rounded border border-blue-200 bg-white px-1.5 py-0.5 text-right text-xs focus:border-blue-500 focus:outline-none'
   const clsData = 'w-full min-w-[124px] rounded border border-blue-200 bg-white px-1.5 py-0.5 text-right text-xs focus:border-blue-500 focus:outline-none'
-  const campoInput = (nodeId: string, campo: keyof CampoLinha, original: string | number | null | undefined, sufixo?: ReactNode) => {
+  const campoInput = (nodeId: string, campo: keyof CampoLinha, original: string | number | null | undefined) => {
     if (campo === 'dataPrevista' || campo === 'dataRealizacao') {
       return (
         <DateInput
@@ -869,20 +881,16 @@ const FaseFragment = memo(function FaseFragment({
         />
       )
     }
-    const input = (embutido: boolean) => (
+    return (
       <OperumInput
         type="text"
-        inputMode={campo === 'minOrcado' || campo === 'minReal' ? 'numeric' : undefined}
+        inputMode={campo === 'minOrcado' ? 'numeric' : undefined}
         value={valorDe(nodeId, campo, original)}
         onChange={e => onCampoChange(nodeId, campo, e.target.value)}
         onFocus={e => e.target.select()}
-        data-field-embedded={embutido || undefined}
-        className={embutido ? 'planilha-campo-embutido' : clsCampo}
+        className={clsCampo}
       />
     )
-    // Com sufixo (ex.: minutos do timer), campo e selo dividem a mesma linha.
-    if (sufixo) return <FieldGroup className="planilha-campo-com-sufixo">{input(true)}{sufixo}</FieldGroup>
-    return input(false)
   }
   // Materiais em moeda (R$ 300,00), com máscara: os centavos entram pela direita.
   const campoMoeda = (nodeId: string, campo: 'materiaisOrcado' | 'materiaisReal', valor: number) => (
@@ -898,8 +906,8 @@ const FaseFragment = memo(function FaseFragment({
     />
   )
   // Horas editável: com draft local, converte o digitado ("5.5" ou "5:30") para minutos
-  // e grava em minOrcado/minReal, fazendo Min e Dias atualizarem ao mesmo tempo.
-  const campoHoras = (nodeId: string, campo: 'minOrcado' | 'minReal', minAtual: number) => {
+  // e grava em minOrcado, fazendo Min e Dias atualizarem ao mesmo tempo.
+  const campoHoras = (nodeId: string, campo: 'minOrcado', minAtual: number) => {
     const key = `${nodeId}:${campo}:horas`
     return (
       <OperumInput
@@ -920,7 +928,7 @@ const FaseFragment = memo(function FaseFragment({
     )
   }
   // Dias editável: converte decimal digitado para minutos (dias × jornada × 60).
-  const campoDias = (nodeId: string, campo: 'minOrcado' | 'minReal', minAtual: number, jornada: number) => {
+  const campoDias = (nodeId: string, campo: 'minOrcado', minAtual: number, jornada: number) => {
     const key = `${nodeId}:${campo}:dias`
     return (
       <OperumInput
@@ -948,21 +956,17 @@ const FaseFragment = memo(function FaseFragment({
   return (
     <>
       <tr className="planilha-phase-row bg-gray-100 font-semibold text-gray-800" data-planilha-node={fase.nodeId} data-save-error={!!saveErrors[fase.nodeId] || undefined} data-drop-target={dragOverId === fase.nodeId || undefined} onDragOver={event => { if (dragged && dragged.nodeId !== fase.nodeId) { event.preventDefault(); onDragOverNode(fase.nodeId) } }} onDragLeave={() => { if (dragOverId === fase.nodeId) onDragOverNode(null) }} onDrop={event => onDropNode(event, fase.nodeId, 'phase')}>
-        {/* Faixa da macrofase: controles na mesma coluna dos controles das atividades,
-            nome em destaque a partir da coluna Atividades. */}
-        <td className="planilha-phase-controls border border-gray-200 px-1 py-1">
-          {acoes && <div className="planilha-node-controls flex items-center justify-center gap-0.5">
-            <DragHandle label={`Arrastar macrofase ${fase.titulo}`} nodeId={fase.nodeId} kind="phase" onStart={onDragStartNode} onEnd={onDragEndNode} />
-            <NodeActionsMenu label={`Ações da macrofase ${fase.titulo}`} actions={[
-              { label: 'Nova atividade', onClick: () => acoes.onInserir('filho', fase.nodeId) },
-              // Fase ainda não salva sai pelo descarte das alterações, não por aqui.
-              ...(fase.nodeId.startsWith('novo-') ? [] : [{ label: 'Excluir macrofase', tone: 'danger' as const, onClick: () => acoes.onExcluirFase({ nodeId: fase.nodeId, nome: fase.titulo, numero: fase.codigo }) }]),
-            ]} />
-          </div>}
-        </td>
-        <td colSpan={17} className="planilha-phase-title border border-gray-200 px-3 py-1">
+        <td colSpan={18} className="planilha-phase-title border border-gray-200 px-3 py-1">
           <div className="planilha-phase-content flex items-center gap-2">
             <InlineNodeName codigo={fase.codigo} titulo={nameDrafts[fase.nodeId] ?? fase.titulo} onDraft={acoes && !fase.nodeId.startsWith('novo-') ? title => onNameDraft(fase.nodeId, title) : undefined} />
+            {acoes && <div className="planilha-node-controls flex items-center shrink-0 gap-0.5">
+              <DragHandle label={`Arrastar macrofase ${fase.titulo}`} nodeId={fase.nodeId} kind="phase" onStart={onDragStartNode} onEnd={onDragEndNode} />
+              <NodeActionsMenu label={`Ações da macrofase ${fase.titulo}`} actions={[
+                { label: 'Nova atividade', onClick: () => acoes.onInserir('filho', fase.nodeId) },
+                // Fase ainda não salva sai pelo descarte das alterações, não por aqui.
+                ...(fase.nodeId.startsWith('novo-') ? [] : [{ label: 'Excluir macrofase', tone: 'danger' as const, onClick: () => acoes.onExcluirFase({ nodeId: fase.nodeId, nome: fase.titulo, numero: fase.codigo }) }]),
+              ]} />
+            </div>}
             <span className="planilha-phase-count">{fase.atividades.length} {fase.atividades.length === 1 ? 'atividade' : 'atividades'}</span>
           </div>
         </td>
@@ -970,42 +974,55 @@ const FaseFragment = memo(function FaseFragment({
       {saveErrors[fase.nodeId] && <tr className="planilha-save-error-row"><td colSpan={18} role="alert"><strong>{fase.codigo} {fase.titulo}</strong>: {saveErrors[fase.nodeId]} Ajuste a macrofase e clique em Salvar novamente.</td></tr>}
       {fase.atividades.map(a => {
         const canReal = canEditAllActual || (canEditOwnActual && !!currentUserId && idsDaLinha(a).includes(currentUserId))
-        // Realizado = digitado + apontamentos do card (ADR-089). Com apontamentos, só o
-        // Min (parte digitada) é editável; Horas e Dias mostram o total.
-        const canRealTime = canReal && !a.tempoRealDosCards
-        const origemTempo = a.tempoRealDosCards ? `Total: ${formatarMinutos(a.minRealDigitado)} min digitados + ${formatarMinutos(a.minRealApontado)} min dos apontamentos do card. Corrija o tempo do timer nos registros do card.` : undefined
         const minO = num(rascunho[a.nodeId]?.minOrcado, a.minOrcado)
         const matO = num(rascunho[a.nodeId]?.materiaisOrcado, a.materiaisOrcado)
-        const minR = num(rascunho[a.nodeId]?.minReal, a.minRealDigitado) + a.minRealApontado
+        const minR = a.minReal
         const matR = num(rascunho[a.nodeId]?.materiaisReal, a.materiaisReal)
         const userIds = idsAtuais(a, rascunho)
         const vpm = vpmDaLinha(userIds, elaboradores)
         const totalO = totalDaLinha(minO, vpm, matO)
         const totalR = totalDaLinha(minR, vpm, matR)
-        const horasLinha = horasDe(userIds)
+        const horasLinha = jornadaDaLinha(userIds, elaboradores, horasPorDiaPadrao)
         const nome = `${a.codigo} ${a.titulo}`
+        const nomeExibido = `${a.codigo} ${nameDrafts[a.nodeId] ?? a.titulo}`
+        const rotuloNome = a.descricao
+          ? <Dica label={a.descricao} multiline><span tabIndex={0} className="planilha-node-label rounded-sm underline decoration-dotted underline-offset-2 focus-visible:outline focus-visible:outline-2">{nomeExibido}</span></Dica>
+          : <span className="planilha-node-label" title={nomeExibido}>{nomeExibido}</span>
+        const prioridade = a.card?.priority ? PRIORITY_LABELS[a.card.priority] : undefined
+        const tempoReal = (valor: string, unidade: string) => a.nodeId.startsWith('novo-')
+          ? texto(valor)
+          : <OperumButton variant="custom" type="button" className="planilha-tempo-trigger" onClick={() => onAbrirDetalhes(a.nodeId)} aria-label={`${unidade} realizados de ${nome}: ${valor}. Abrir detalhes da atividade`}>{valor}</OperumButton>
         return (
           <Fragment key={a.nodeId}>
-          <tr className="planilha-activity-row group bg-white align-middle hover:bg-blue-50/30" data-planilha-node={a.nodeId} data-save-error={!!saveErrors[a.nodeId] || undefined} data-drop-target={dragOverId === a.nodeId || undefined} onDragOver={event => { if (dragged?.kind === 'activity' && dragged.nodeId !== a.nodeId) { event.preventDefault(); onDragOverNode(a.nodeId) } }} onDragLeave={() => { if (dragOverId === a.nodeId) onDragOverNode(null) }} onDrop={event => onDropNode(event, a.nodeId, 'activity')}>
+          <tr className="planilha-activity-row group bg-white align-middle hover:bg-blue-50/30" data-planilha-node={a.nodeId} data-detalhe-aberto={detalheId === a.nodeId || undefined} data-save-error={!!saveErrors[a.nodeId] || undefined} data-drop-target={dragOverId === a.nodeId || undefined} onDragOver={event => { if (dragged?.kind === 'activity' && dragged.nodeId !== a.nodeId) { event.preventDefault(); onDragOverNode(a.nodeId) } }} onDragLeave={() => { if (dragOverId === a.nodeId) onDragOverNode(null) }} onDrop={event => onDropNode(event, a.nodeId, 'activity')}>
             <td className="border border-gray-100 px-1 py-1">
-              {acoes && (
-                <div className="planilha-node-controls flex items-center justify-center gap-0.5">
-                  <DragHandle label={`Arrastar ${nome}`} nodeId={a.nodeId} kind="activity" onStart={onDragStartNode} onEnd={onDragEndNode} />
-                  <NodeActionsMenu label={`Ações de ${nome}`} actions={[
-                    { label: 'Nova atividade abaixo', onClick: () => acoes.onInserir('irmao', a.nodeId) },
-                    ...(fases.length > 1 ? [{ label: 'Mover para outra macrofase', onClick: () => setMoverAtividade(current => current === a.nodeId ? null : a.nodeId) }] : []),
-                    { label: 'Excluir atividade', tone: 'danger' as const, onClick: () => acoes.onExcluir(a.nodeId, nome) },
-                  ]} />
-                </div>
-              )}
+              <div className="flex items-center justify-center gap-1">
+                {prioridade && <span className="planilha-prioridade" data-prioridade={a.card?.priority} title={`Prioridade ${prioridade.label}`} role="img" aria-label={`Prioridade ${prioridade.label}`}><Flag className="h-4 w-4" strokeWidth={1.65} aria-hidden="true" /></span>}
+                {acoes && (
+                  <div className="planilha-node-controls flex items-center justify-center gap-0.5">
+                    <DragHandle label={`Arrastar ${nome}`} nodeId={a.nodeId} kind="activity" onStart={onDragStartNode} onEnd={onDragEndNode} />
+                    <NodeActionsMenu label={`Ações de ${nome}`} actions={[
+                      { label: 'Nova atividade abaixo', onClick: () => acoes.onInserir('irmao', a.nodeId) },
+                      ...(fases.length > 1 ? [{ label: 'Mover para outra macrofase', onClick: () => setMoverAtividade(current => current === a.nodeId ? null : a.nodeId) }] : []),
+                      { label: 'Excluir atividade', tone: 'danger' as const, onClick: () => acoes.onExcluir(a.nodeId, nome) },
+                    ]} />
+                  </div>
+                )}
+              </div>
             </td>
             {/* Largura limitada: nomes longos quebram em até 3 linhas; o nome completo aparece ao passar o mouse. */}
             <td className="planilha-activity-name border border-gray-100 px-2 py-1 text-xs font-medium text-gray-800">
               <div className="planilha-activity-cell">
                 {a.card && <TimerDaAtividade cardId={a.card.id} canStart={canUsarCards} onStopped={onTimerParado} />}
-                <InlineNodeName codigo={a.codigo} titulo={nameDrafts[a.nodeId] ?? a.titulo} descricao={a.descricao} onDraft={acoes && !a.nodeId.startsWith('novo-') ? title => onNameDraft(a.nodeId, title) : undefined} />
+                {a.nodeId.startsWith('novo-') ? (
+                  <InlineNodeName codigo={a.codigo} titulo={a.titulo} />
+                ) : (
+                  <OperumButton variant="custom" type="button" onClick={() => onAbrirDetalhes(a.nodeId)} aria-expanded={detalheId === a.nodeId} className="planilha-node-name planilha-name-trigger rounded px-1 py-0.5 text-left">
+                    {rotuloNome}
+                  </OperumButton>
+                )}
                 {!a.nodeId.startsWith('novo-') && (
-                  <OperumButton variant="custom" type="button" onClick={() => onAbrirDetalhes(a.nodeId)} aria-label={`Detalhes de ${nome}`} title="Descrição, tempo e etapa na sprint" className="planilha-detalhes-trigger">
+                  <OperumButton variant="custom" type="button" onClick={() => onAbrirDetalhes(a.nodeId)} aria-label={`Detalhes de ${nome}`} aria-expanded={detalheId === a.nodeId} title="Descrição, tempo e etapa na sprint" className="planilha-detalhes-trigger">
                     <PanelRightOpen className="h-3.5 w-3.5" aria-hidden="true" />
                   </OperumButton>
                 )}
@@ -1039,27 +1056,19 @@ const FaseFragment = memo(function FaseFragment({
               {canEdit ? campoInput(a.nodeId, 'dataPrevista', a.dataPrevista) : texto(fmtDataBR(a.dataPrevista))}
             </td>
             <td className="border border-gray-100 px-1 py-1 text-right">
-              {(() => {
-                // Minutos do timer como selo na mesma linha do campo, sem aumentar a altura.
-                const selo = a.minRealApontado > 0
-                  ? <span className="planilha-timer-chip" title={origemTempo} aria-label={`mais ${formatarMinutos(a.minRealApontado)} minutos do timer`}><Timer className="h-3 w-3" aria-hidden="true" />{formatarMinutos(a.minRealApontado)}</span>
-                  : undefined
-                return canReal
-                  ? campoInput(a.nodeId, 'minReal', a.minRealDigitado, selo)
-                  : <span className="planilha-min-leitura">{texto(formatarMinutos(a.minRealDigitado), origemTempo)}{selo}</span>
-              })()}
+              {tempoReal(formatarMinutos(minR), 'Minutos')}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right">
-              {canRealTime ? campoHoras(a.nodeId, 'minReal', minR) : texto(hhmm(minR), origemTempo)}
+              {tempoReal(hhmm(minR), 'Horas')}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right">
-              {canRealTime ? campoDias(a.nodeId, 'minReal', minR, horasLinha) : texto(dois(minR / 60 / horasLinha), origemTempo)}
+              {tempoReal(dois(minR / 60 / horasLinha), 'Dias')}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right">{celulaR(vpm)}</td>
             <td className="border border-gray-100 px-1 py-1 text-right">
               {canReal ? campoMoeda(a.nodeId, 'materiaisReal', matR) : texto(brl(matR))}
             </td>
-            <td className="border border-gray-100 px-2 py-1 text-right font-semibold text-gray-900">{texto(totalR === null ? '—' : brl(totalR), 'Total = (Min × R$) + Materiais')}</td>
+            <td className="border border-gray-100 px-2 py-1 text-right font-semibold text-gray-900">{texto(totalR === null ? '—' : brl(totalR), 'Total = (Min realizados × R$) + Materiais')}</td>
             <td className="border border-gray-100 px-1 py-1 min-w-[132px]">
               {canReal ? campoInput(a.nodeId, 'dataRealizacao', a.dataRealizacao) : texto(fmtDataBR(a.dataRealizacao))}
             </td>
@@ -1069,7 +1078,7 @@ const FaseFragment = memo(function FaseFragment({
               </span>
             </td>
           </tr>
-          {saveErrors[a.nodeId] && <tr className="planilha-save-error-row"><td colSpan={18} role="alert"><strong>{nome}</strong> · {Object.keys(rascunho[a.nodeId] ?? {}).map(campo => ({ minOrcado: 'tempo orçado', materiaisOrcado: 'materiais orçados', dataPrevista: 'data prevista', minReal: 'tempo realizado', materiaisReal: 'materiais realizados', dataRealizacao: 'data de realização', elaboradoPorUserIds: 'elaboradores' }[campo] ?? campo)).join(', ')}: {saveErrors[a.nodeId]} Corrija os dados e clique em Salvar novamente.</td></tr>}
+          {saveErrors[a.nodeId] && <tr className="planilha-save-error-row"><td colSpan={18} role="alert"><strong>{nome}</strong> · {Object.keys(rascunho[a.nodeId] ?? {}).map(campo => ({ minOrcado: 'tempo orçado', materiaisOrcado: 'materiais orçados', dataPrevista: 'data prevista', materiaisReal: 'materiais realizados', dataRealizacao: 'data de realização', elaboradoPorUserIds: 'elaboradores' }[campo] ?? campo)).join(', ')}: {saveErrors[a.nodeId]} Corrija os dados e clique em Salvar novamente.</td></tr>}
           {moverAtividade === a.nodeId && acoes && <MoveActivityRow
             fases={fases.filter(f => f.nodeId !== fase.nodeId)}
             onCancelar={() => setMoverAtividade(null)}

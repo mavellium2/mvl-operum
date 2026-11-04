@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { fetchWithSession } from '@/lib/clientFetch'
-interface SidebarUser { name: string; avatarUrl?: string | null; role?: string; platformOperator?: boolean }
+interface SidebarUser { id?: string; name: string; avatarUrl?: string | null; role?: string; platformOperator?: boolean }
 const Context = createContext<{ user: SidebarUser | null; loading: boolean } | null>(null)
 export function SidebarSessionProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()

@@ -4639,10 +4639,14 @@ export namespace Prisma {
 
   export type ProjectAvgAggregateOutputType = {
     ano: number | null
+    macroFasesRevision: number | null
+    macroFasesSyncedRevision: number | null
   }
 
   export type ProjectSumAggregateOutputType = {
     ano: number | null
+    macroFasesRevision: number | null
+    macroFasesSyncedRevision: number | null
   }
 
   export type ProjectMinAggregateOutputType = {
@@ -4663,7 +4667,13 @@ export namespace Prisma {
     restricoes: string | null
     limitesAutoridade: string | null
     semestre: string | null
+    anoAms: string | null
+    termo: string | null
+    turno: string | null
     ano: number | null
+    macroFasesRevision: number | null
+    macroFasesSyncedRevision: number | null
+    macroFasesSyncError: string | null
     status: $Enums.ProjectStatus | null
     deletedAt: Date | null
     createdAt: Date | null
@@ -4688,7 +4698,13 @@ export namespace Prisma {
     restricoes: string | null
     limitesAutoridade: string | null
     semestre: string | null
+    anoAms: string | null
+    termo: string | null
+    turno: string | null
     ano: number | null
+    macroFasesRevision: number | null
+    macroFasesSyncedRevision: number | null
+    macroFasesSyncError: string | null
     status: $Enums.ProjectStatus | null
     deletedAt: Date | null
     createdAt: Date | null
@@ -4713,8 +4729,14 @@ export namespace Prisma {
     restricoes: number
     limitesAutoridade: number
     semestre: number
+    anoAms: number
+    termo: number
+    turno: number
     ano: number
     departamentos: number
+    macroFasesRevision: number
+    macroFasesSyncedRevision: number
+    macroFasesSyncError: number
     status: number
     deletedAt: number
     createdAt: number
@@ -4725,10 +4747,14 @@ export namespace Prisma {
 
   export type ProjectAvgAggregateInputType = {
     ano?: true
+    macroFasesRevision?: true
+    macroFasesSyncedRevision?: true
   }
 
   export type ProjectSumAggregateInputType = {
     ano?: true
+    macroFasesRevision?: true
+    macroFasesSyncedRevision?: true
   }
 
   export type ProjectMinAggregateInputType = {
@@ -4749,7 +4775,13 @@ export namespace Prisma {
     restricoes?: true
     limitesAutoridade?: true
     semestre?: true
+    anoAms?: true
+    termo?: true
+    turno?: true
     ano?: true
+    macroFasesRevision?: true
+    macroFasesSyncedRevision?: true
+    macroFasesSyncError?: true
     status?: true
     deletedAt?: true
     createdAt?: true
@@ -4774,7 +4806,13 @@ export namespace Prisma {
     restricoes?: true
     limitesAutoridade?: true
     semestre?: true
+    anoAms?: true
+    termo?: true
+    turno?: true
     ano?: true
+    macroFasesRevision?: true
+    macroFasesSyncedRevision?: true
+    macroFasesSyncError?: true
     status?: true
     deletedAt?: true
     createdAt?: true
@@ -4799,8 +4837,14 @@ export namespace Prisma {
     restricoes?: true
     limitesAutoridade?: true
     semestre?: true
+    anoAms?: true
+    termo?: true
+    turno?: true
     ano?: true
     departamentos?: true
+    macroFasesRevision?: true
+    macroFasesSyncedRevision?: true
+    macroFasesSyncError?: true
     status?: true
     deletedAt?: true
     createdAt?: true
@@ -4912,8 +4956,14 @@ export namespace Prisma {
     restricoes: string | null
     limitesAutoridade: string | null
     semestre: string | null
+    anoAms: string | null
+    termo: string | null
+    turno: string | null
     ano: number | null
     departamentos: string[]
+    macroFasesRevision: number
+    macroFasesSyncedRevision: number
+    macroFasesSyncError: string | null
     status: $Enums.ProjectStatus
     deletedAt: Date | null
     createdAt: Date
@@ -4957,8 +5007,14 @@ export namespace Prisma {
     restricoes?: boolean
     limitesAutoridade?: boolean
     semestre?: boolean
+    anoAms?: boolean
+    termo?: boolean
+    turno?: boolean
     ano?: boolean
     departamentos?: boolean
+    macroFasesRevision?: boolean
+    macroFasesSyncedRevision?: boolean
+    macroFasesSyncError?: boolean
     status?: boolean
     deletedAt?: boolean
     createdAt?: boolean
@@ -4989,8 +5045,14 @@ export namespace Prisma {
     restricoes?: boolean
     limitesAutoridade?: boolean
     semestre?: boolean
+    anoAms?: boolean
+    termo?: boolean
+    turno?: boolean
     ano?: boolean
     departamentos?: boolean
+    macroFasesRevision?: boolean
+    macroFasesSyncedRevision?: boolean
+    macroFasesSyncError?: boolean
     status?: boolean
     deletedAt?: boolean
     createdAt?: boolean
@@ -5016,8 +5078,14 @@ export namespace Prisma {
     restricoes?: boolean
     limitesAutoridade?: boolean
     semestre?: boolean
+    anoAms?: boolean
+    termo?: boolean
+    turno?: boolean
     ano?: boolean
     departamentos?: boolean
+    macroFasesRevision?: boolean
+    macroFasesSyncedRevision?: boolean
+    macroFasesSyncError?: boolean
     status?: boolean
     deletedAt?: boolean
     createdAt?: boolean
@@ -5043,15 +5111,21 @@ export namespace Prisma {
     restricoes?: boolean
     limitesAutoridade?: boolean
     semestre?: boolean
+    anoAms?: boolean
+    termo?: boolean
+    turno?: boolean
     ano?: boolean
     departamentos?: boolean
+    macroFasesRevision?: boolean
+    macroFasesSyncedRevision?: boolean
+    macroFasesSyncError?: boolean
     status?: boolean
     deletedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type ProjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "name" | "description" | "logoUrl" | "slogan" | "location" | "startDate" | "endDate" | "justificativa" | "objetivos" | "metodologia" | "descricaoProduto" | "premissas" | "restricoes" | "limitesAutoridade" | "semestre" | "ano" | "departamentos" | "status" | "deletedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["project"]>
+  export type ProjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "name" | "description" | "logoUrl" | "slogan" | "location" | "startDate" | "endDate" | "justificativa" | "objetivos" | "metodologia" | "descricaoProduto" | "premissas" | "restricoes" | "limitesAutoridade" | "semestre" | "anoAms" | "termo" | "turno" | "ano" | "departamentos" | "macroFasesRevision" | "macroFasesSyncedRevision" | "macroFasesSyncError" | "status" | "deletedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["project"]>
   export type ProjectInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
     members?: boolean | Project$membersArgs<ExtArgs>
@@ -5094,8 +5168,20 @@ export namespace Prisma {
       restricoes: string | null
       limitesAutoridade: string | null
       semestre: string | null
+      /**
+       * Ano da turma no AMS ("1" ou "2"), só para período anual; distinto de termo e ano calendário.
+       */
+      anoAms: string | null
+      termo: string | null
+      turno: string | null
       ano: number | null
       departamentos: string[]
+      /**
+       * Durable desired macrofase batch and last EAP revision applied by the app.
+       */
+      macroFasesRevision: number
+      macroFasesSyncedRevision: number
+      macroFasesSyncError: string | null
       status: $Enums.ProjectStatus
       deletedAt: Date | null
       createdAt: Date
@@ -5545,8 +5631,14 @@ export namespace Prisma {
     readonly restricoes: FieldRef<"Project", 'String'>
     readonly limitesAutoridade: FieldRef<"Project", 'String'>
     readonly semestre: FieldRef<"Project", 'String'>
+    readonly anoAms: FieldRef<"Project", 'String'>
+    readonly termo: FieldRef<"Project", 'String'>
+    readonly turno: FieldRef<"Project", 'String'>
     readonly ano: FieldRef<"Project", 'Int'>
     readonly departamentos: FieldRef<"Project", 'String[]'>
+    readonly macroFasesRevision: FieldRef<"Project", 'Int'>
+    readonly macroFasesSyncedRevision: FieldRef<"Project", 'Int'>
+    readonly macroFasesSyncError: FieldRef<"Project", 'String'>
     readonly status: FieldRef<"Project", 'ProjectStatus'>
     readonly deletedAt: FieldRef<"Project", 'DateTime'>
     readonly createdAt: FieldRef<"Project", 'DateTime'>
@@ -6072,13 +6164,24 @@ export namespace Prisma {
 
   export type AggregateProjectMacroFase = {
     _count: ProjectMacroFaseCountAggregateOutputType | null
+    _avg: ProjectMacroFaseAvgAggregateOutputType | null
+    _sum: ProjectMacroFaseSumAggregateOutputType | null
     _min: ProjectMacroFaseMinAggregateOutputType | null
     _max: ProjectMacroFaseMaxAggregateOutputType | null
+  }
+
+  export type ProjectMacroFaseAvgAggregateOutputType = {
+    position: number | null
+  }
+
+  export type ProjectMacroFaseSumAggregateOutputType = {
+    position: number | null
   }
 
   export type ProjectMacroFaseMinAggregateOutputType = {
     id: string | null
     projectId: string | null
+    position: number | null
     fase: string | null
     dataLimite: string | null
     custo: string | null
@@ -6089,6 +6192,7 @@ export namespace Prisma {
   export type ProjectMacroFaseMaxAggregateOutputType = {
     id: string | null
     projectId: string | null
+    position: number | null
     fase: string | null
     dataLimite: string | null
     custo: string | null
@@ -6099,6 +6203,7 @@ export namespace Prisma {
   export type ProjectMacroFaseCountAggregateOutputType = {
     id: number
     projectId: number
+    position: number
     fase: number
     dataLimite: number
     custo: number
@@ -6108,9 +6213,18 @@ export namespace Prisma {
   }
 
 
+  export type ProjectMacroFaseAvgAggregateInputType = {
+    position?: true
+  }
+
+  export type ProjectMacroFaseSumAggregateInputType = {
+    position?: true
+  }
+
   export type ProjectMacroFaseMinAggregateInputType = {
     id?: true
     projectId?: true
+    position?: true
     fase?: true
     dataLimite?: true
     custo?: true
@@ -6121,6 +6235,7 @@ export namespace Prisma {
   export type ProjectMacroFaseMaxAggregateInputType = {
     id?: true
     projectId?: true
+    position?: true
     fase?: true
     dataLimite?: true
     custo?: true
@@ -6131,6 +6246,7 @@ export namespace Prisma {
   export type ProjectMacroFaseCountAggregateInputType = {
     id?: true
     projectId?: true
+    position?: true
     fase?: true
     dataLimite?: true
     custo?: true
@@ -6177,6 +6293,18 @@ export namespace Prisma {
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
+     * Select which fields to average
+    **/
+    _avg?: ProjectMacroFaseAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ProjectMacroFaseSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
      * Select which fields to find the minimum value
     **/
     _min?: ProjectMacroFaseMinAggregateInputType
@@ -6207,6 +6335,8 @@ export namespace Prisma {
     take?: number
     skip?: number
     _count?: ProjectMacroFaseCountAggregateInputType | true
+    _avg?: ProjectMacroFaseAvgAggregateInputType
+    _sum?: ProjectMacroFaseSumAggregateInputType
     _min?: ProjectMacroFaseMinAggregateInputType
     _max?: ProjectMacroFaseMaxAggregateInputType
   }
@@ -6214,12 +6344,15 @@ export namespace Prisma {
   export type ProjectMacroFaseGroupByOutputType = {
     id: string
     projectId: string
+    position: number
     fase: string
     dataLimite: string | null
     custo: string | null
     createdAt: Date
     updatedAt: Date
     _count: ProjectMacroFaseCountAggregateOutputType | null
+    _avg: ProjectMacroFaseAvgAggregateOutputType | null
+    _sum: ProjectMacroFaseSumAggregateOutputType | null
     _min: ProjectMacroFaseMinAggregateOutputType | null
     _max: ProjectMacroFaseMaxAggregateOutputType | null
   }
@@ -6241,6 +6374,7 @@ export namespace Prisma {
   export type ProjectMacroFaseSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     projectId?: boolean
+    position?: boolean
     fase?: boolean
     dataLimite?: boolean
     custo?: boolean
@@ -6252,6 +6386,7 @@ export namespace Prisma {
   export type ProjectMacroFaseSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     projectId?: boolean
+    position?: boolean
     fase?: boolean
     dataLimite?: boolean
     custo?: boolean
@@ -6263,6 +6398,7 @@ export namespace Prisma {
   export type ProjectMacroFaseSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     projectId?: boolean
+    position?: boolean
     fase?: boolean
     dataLimite?: boolean
     custo?: boolean
@@ -6274,6 +6410,7 @@ export namespace Prisma {
   export type ProjectMacroFaseSelectScalar = {
     id?: boolean
     projectId?: boolean
+    position?: boolean
     fase?: boolean
     dataLimite?: boolean
     custo?: boolean
@@ -6281,7 +6418,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ProjectMacroFaseOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectId" | "fase" | "dataLimite" | "custo" | "createdAt" | "updatedAt", ExtArgs["result"]["projectMacroFase"]>
+  export type ProjectMacroFaseOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectId" | "position" | "fase" | "dataLimite" | "custo" | "createdAt" | "updatedAt", ExtArgs["result"]["projectMacroFase"]>
   export type ProjectMacroFaseInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     project?: boolean | ProjectDefaultArgs<ExtArgs>
   }
@@ -6300,6 +6437,7 @@ export namespace Prisma {
     scalars: $Extensions.GetPayloadResult<{
       id: string
       projectId: string
+      position: number
       fase: string
       dataLimite: string | null
       custo: string | null
@@ -6731,6 +6869,7 @@ export namespace Prisma {
   interface ProjectMacroFaseFieldRefs {
     readonly id: FieldRef<"ProjectMacroFase", 'String'>
     readonly projectId: FieldRef<"ProjectMacroFase", 'String'>
+    readonly position: FieldRef<"ProjectMacroFase", 'Int'>
     readonly fase: FieldRef<"ProjectMacroFase", 'String'>
     readonly dataLimite: FieldRef<"ProjectMacroFase", 'String'>
     readonly custo: FieldRef<"ProjectMacroFase", 'String'>
@@ -9438,6 +9577,8 @@ export namespace Prisma {
     userId: string | null
     projectId: string | null
     active: boolean | null
+    inactiveReason: string | null
+    inactivatedAt: Date | null
     role: string | null
     departmentId: string | null
     hourlyRate: number | null
@@ -9453,6 +9594,8 @@ export namespace Prisma {
     userId: string | null
     projectId: string | null
     active: boolean | null
+    inactiveReason: string | null
+    inactivatedAt: Date | null
     role: string | null
     departmentId: string | null
     hourlyRate: number | null
@@ -9468,6 +9611,8 @@ export namespace Prisma {
     userId: number
     projectId: number
     active: number
+    inactiveReason: number
+    inactivatedAt: number
     role: number
     departmentId: number
     hourlyRate: number
@@ -9499,6 +9644,8 @@ export namespace Prisma {
     userId?: true
     projectId?: true
     active?: true
+    inactiveReason?: true
+    inactivatedAt?: true
     role?: true
     departmentId?: true
     hourlyRate?: true
@@ -9514,6 +9661,8 @@ export namespace Prisma {
     userId?: true
     projectId?: true
     active?: true
+    inactiveReason?: true
+    inactivatedAt?: true
     role?: true
     departmentId?: true
     hourlyRate?: true
@@ -9529,6 +9678,8 @@ export namespace Prisma {
     userId?: true
     projectId?: true
     active?: true
+    inactiveReason?: true
+    inactivatedAt?: true
     role?: true
     departmentId?: true
     hourlyRate?: true
@@ -9631,6 +9782,8 @@ export namespace Prisma {
     userId: string
     projectId: string
     active: boolean
+    inactiveReason: string | null
+    inactivatedAt: Date | null
     role: string | null
     departmentId: string | null
     hourlyRate: number | null
@@ -9665,6 +9818,8 @@ export namespace Prisma {
     userId?: boolean
     projectId?: boolean
     active?: boolean
+    inactiveReason?: boolean
+    inactivatedAt?: boolean
     role?: boolean
     departmentId?: boolean
     hourlyRate?: boolean
@@ -9683,6 +9838,8 @@ export namespace Prisma {
     userId?: boolean
     projectId?: boolean
     active?: boolean
+    inactiveReason?: boolean
+    inactivatedAt?: boolean
     role?: boolean
     departmentId?: boolean
     hourlyRate?: boolean
@@ -9701,6 +9858,8 @@ export namespace Prisma {
     userId?: boolean
     projectId?: boolean
     active?: boolean
+    inactiveReason?: boolean
+    inactivatedAt?: boolean
     role?: boolean
     departmentId?: boolean
     hourlyRate?: boolean
@@ -9719,6 +9878,8 @@ export namespace Prisma {
     userId?: boolean
     projectId?: boolean
     active?: boolean
+    inactiveReason?: boolean
+    inactivatedAt?: boolean
     role?: boolean
     departmentId?: boolean
     hourlyRate?: boolean
@@ -9729,7 +9890,7 @@ export namespace Prisma {
     order?: boolean
   }
 
-  export type UserProjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "projectId" | "active" | "role" | "departmentId" | "hourlyRate" | "remuneracao" | "horasDiarias" | "startDate" | "endDate" | "order", ExtArgs["result"]["userProject"]>
+  export type UserProjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "projectId" | "active" | "inactiveReason" | "inactivatedAt" | "role" | "departmentId" | "hourlyRate" | "remuneracao" | "horasDiarias" | "startDate" | "endDate" | "order", ExtArgs["result"]["userProject"]>
   export type UserProjectInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     project?: boolean | ProjectDefaultArgs<ExtArgs>
@@ -9758,6 +9919,8 @@ export namespace Prisma {
       userId: string
       projectId: string
       active: boolean
+      inactiveReason: string | null
+      inactivatedAt: Date | null
       role: string | null
       departmentId: string | null
       hourlyRate: number | null
@@ -10196,6 +10359,8 @@ export namespace Prisma {
     readonly userId: FieldRef<"UserProject", 'String'>
     readonly projectId: FieldRef<"UserProject", 'String'>
     readonly active: FieldRef<"UserProject", 'Boolean'>
+    readonly inactiveReason: FieldRef<"UserProject", 'String'>
+    readonly inactivatedAt: FieldRef<"UserProject", 'DateTime'>
     readonly role: FieldRef<"UserProject", 'String'>
     readonly departmentId: FieldRef<"UserProject", 'String'>
     readonly hourlyRate: FieldRef<"UserProject", 'Float'>
@@ -15107,6 +15272,8 @@ export namespace Prisma {
     estado: string | null
     notes: string | null
     isActive: boolean | null
+    inactiveReason: string | null
+    inactivatedAt: Date | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -15129,6 +15296,8 @@ export namespace Prisma {
     estado: string | null
     notes: string | null
     isActive: boolean | null
+    inactiveReason: string | null
+    inactivatedAt: Date | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -15151,6 +15320,8 @@ export namespace Prisma {
     estado: number
     notes: number
     isActive: number
+    inactiveReason: number
+    inactivatedAt: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -15175,6 +15346,8 @@ export namespace Prisma {
     estado?: true
     notes?: true
     isActive?: true
+    inactiveReason?: true
+    inactivatedAt?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -15197,6 +15370,8 @@ export namespace Prisma {
     estado?: true
     notes?: true
     isActive?: true
+    inactiveReason?: true
+    inactivatedAt?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -15219,6 +15394,8 @@ export namespace Prisma {
     estado?: true
     notes?: true
     isActive?: true
+    inactiveReason?: true
+    inactivatedAt?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -15314,6 +15491,8 @@ export namespace Prisma {
     estado: string | null
     notes: string | null
     isActive: boolean
+    inactiveReason: string | null
+    inactivatedAt: Date | null
     createdAt: Date
     updatedAt: Date
     _count: StakeholderCountAggregateOutputType | null
@@ -15353,6 +15532,8 @@ export namespace Prisma {
     estado?: boolean
     notes?: boolean
     isActive?: boolean
+    inactiveReason?: boolean
+    inactivatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     projects?: boolean | Stakeholder$projectsArgs<ExtArgs>
@@ -15378,6 +15559,8 @@ export namespace Prisma {
     estado?: boolean
     notes?: boolean
     isActive?: boolean
+    inactiveReason?: boolean
+    inactivatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
@@ -15401,6 +15584,8 @@ export namespace Prisma {
     estado?: boolean
     notes?: boolean
     isActive?: boolean
+    inactiveReason?: boolean
+    inactivatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
@@ -15424,11 +15609,13 @@ export namespace Prisma {
     estado?: boolean
     notes?: boolean
     isActive?: boolean
+    inactiveReason?: boolean
+    inactivatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type StakeholderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "name" | "logoUrl" | "company" | "competence" | "email" | "phone" | "cep" | "logradouro" | "numero" | "complemento" | "bairro" | "cidade" | "estado" | "notes" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["stakeholder"]>
+  export type StakeholderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "name" | "logoUrl" | "company" | "competence" | "email" | "phone" | "cep" | "logradouro" | "numero" | "complemento" | "bairro" | "cidade" | "estado" | "notes" | "isActive" | "inactiveReason" | "inactivatedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["stakeholder"]>
   export type StakeholderInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     projects?: boolean | Stakeholder$projectsArgs<ExtArgs>
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
@@ -15465,6 +15652,8 @@ export namespace Prisma {
       estado: string | null
       notes: string | null
       isActive: boolean
+      inactiveReason: string | null
+      inactivatedAt: Date | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["stakeholder"]>
@@ -15909,6 +16098,8 @@ export namespace Prisma {
     readonly estado: FieldRef<"Stakeholder", 'String'>
     readonly notes: FieldRef<"Stakeholder", 'String'>
     readonly isActive: FieldRef<"Stakeholder", 'Boolean'>
+    readonly inactiveReason: FieldRef<"Stakeholder", 'String'>
+    readonly inactivatedAt: FieldRef<"Stakeholder", 'DateTime'>
     readonly createdAt: FieldRef<"Stakeholder", 'DateTime'>
     readonly updatedAt: FieldRef<"Stakeholder", 'DateTime'>
   }
@@ -17515,8 +17706,14 @@ export namespace Prisma {
     restricoes: 'restricoes',
     limitesAutoridade: 'limitesAutoridade',
     semestre: 'semestre',
+    anoAms: 'anoAms',
+    termo: 'termo',
+    turno: 'turno',
     ano: 'ano',
     departamentos: 'departamentos',
+    macroFasesRevision: 'macroFasesRevision',
+    macroFasesSyncedRevision: 'macroFasesSyncedRevision',
+    macroFasesSyncError: 'macroFasesSyncError',
     status: 'status',
     deletedAt: 'deletedAt',
     createdAt: 'createdAt',
@@ -17529,6 +17726,7 @@ export namespace Prisma {
   export const ProjectMacroFaseScalarFieldEnum: {
     id: 'id',
     projectId: 'projectId',
+    position: 'position',
     fase: 'fase',
     dataLimite: 'dataLimite',
     custo: 'custo',
@@ -17568,6 +17766,8 @@ export namespace Prisma {
     userId: 'userId',
     projectId: 'projectId',
     active: 'active',
+    inactiveReason: 'inactiveReason',
+    inactivatedAt: 'inactivatedAt',
     role: 'role',
     departmentId: 'departmentId',
     hourlyRate: 'hourlyRate',
@@ -17650,6 +17850,8 @@ export namespace Prisma {
     estado: 'estado',
     notes: 'notes',
     isActive: 'isActive',
+    inactiveReason: 'inactiveReason',
+    inactivatedAt: 'inactivatedAt',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -17962,8 +18164,14 @@ export namespace Prisma {
     restricoes?: StringNullableFilter<"Project"> | string | null
     limitesAutoridade?: StringNullableFilter<"Project"> | string | null
     semestre?: StringNullableFilter<"Project"> | string | null
+    anoAms?: StringNullableFilter<"Project"> | string | null
+    termo?: StringNullableFilter<"Project"> | string | null
+    turno?: StringNullableFilter<"Project"> | string | null
     ano?: IntNullableFilter<"Project"> | number | null
     departamentos?: StringNullableListFilter<"Project">
+    macroFasesRevision?: IntFilter<"Project"> | number
+    macroFasesSyncedRevision?: IntFilter<"Project"> | number
+    macroFasesSyncError?: StringNullableFilter<"Project"> | string | null
     status?: EnumProjectStatusFilter<"Project"> | $Enums.ProjectStatus
     deletedAt?: DateTimeNullableFilter<"Project"> | Date | string | null
     createdAt?: DateTimeFilter<"Project"> | Date | string
@@ -17993,8 +18201,14 @@ export namespace Prisma {
     restricoes?: SortOrderInput | SortOrder
     limitesAutoridade?: SortOrderInput | SortOrder
     semestre?: SortOrderInput | SortOrder
+    anoAms?: SortOrderInput | SortOrder
+    termo?: SortOrderInput | SortOrder
+    turno?: SortOrderInput | SortOrder
     ano?: SortOrderInput | SortOrder
     departamentos?: SortOrder
+    macroFasesRevision?: SortOrder
+    macroFasesSyncedRevision?: SortOrder
+    macroFasesSyncError?: SortOrderInput | SortOrder
     status?: SortOrder
     deletedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
@@ -18028,8 +18242,14 @@ export namespace Prisma {
     restricoes?: StringNullableFilter<"Project"> | string | null
     limitesAutoridade?: StringNullableFilter<"Project"> | string | null
     semestre?: StringNullableFilter<"Project"> | string | null
+    anoAms?: StringNullableFilter<"Project"> | string | null
+    termo?: StringNullableFilter<"Project"> | string | null
+    turno?: StringNullableFilter<"Project"> | string | null
     ano?: IntNullableFilter<"Project"> | number | null
     departamentos?: StringNullableListFilter<"Project">
+    macroFasesRevision?: IntFilter<"Project"> | number
+    macroFasesSyncedRevision?: IntFilter<"Project"> | number
+    macroFasesSyncError?: StringNullableFilter<"Project"> | string | null
     status?: EnumProjectStatusFilter<"Project"> | $Enums.ProjectStatus
     deletedAt?: DateTimeNullableFilter<"Project"> | Date | string | null
     createdAt?: DateTimeFilter<"Project"> | Date | string
@@ -18059,8 +18279,14 @@ export namespace Prisma {
     restricoes?: SortOrderInput | SortOrder
     limitesAutoridade?: SortOrderInput | SortOrder
     semestre?: SortOrderInput | SortOrder
+    anoAms?: SortOrderInput | SortOrder
+    termo?: SortOrderInput | SortOrder
+    turno?: SortOrderInput | SortOrder
     ano?: SortOrderInput | SortOrder
     departamentos?: SortOrder
+    macroFasesRevision?: SortOrder
+    macroFasesSyncedRevision?: SortOrder
+    macroFasesSyncError?: SortOrderInput | SortOrder
     status?: SortOrder
     deletedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
@@ -18093,8 +18319,14 @@ export namespace Prisma {
     restricoes?: StringNullableWithAggregatesFilter<"Project"> | string | null
     limitesAutoridade?: StringNullableWithAggregatesFilter<"Project"> | string | null
     semestre?: StringNullableWithAggregatesFilter<"Project"> | string | null
+    anoAms?: StringNullableWithAggregatesFilter<"Project"> | string | null
+    termo?: StringNullableWithAggregatesFilter<"Project"> | string | null
+    turno?: StringNullableWithAggregatesFilter<"Project"> | string | null
     ano?: IntNullableWithAggregatesFilter<"Project"> | number | null
     departamentos?: StringNullableListFilter<"Project">
+    macroFasesRevision?: IntWithAggregatesFilter<"Project"> | number
+    macroFasesSyncedRevision?: IntWithAggregatesFilter<"Project"> | number
+    macroFasesSyncError?: StringNullableWithAggregatesFilter<"Project"> | string | null
     status?: EnumProjectStatusWithAggregatesFilter<"Project"> | $Enums.ProjectStatus
     deletedAt?: DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Project"> | Date | string
@@ -18107,6 +18339,7 @@ export namespace Prisma {
     NOT?: ProjectMacroFaseWhereInput | ProjectMacroFaseWhereInput[]
     id?: StringFilter<"ProjectMacroFase"> | string
     projectId?: StringFilter<"ProjectMacroFase"> | string
+    position?: IntFilter<"ProjectMacroFase"> | number
     fase?: StringFilter<"ProjectMacroFase"> | string
     dataLimite?: StringNullableFilter<"ProjectMacroFase"> | string | null
     custo?: StringNullableFilter<"ProjectMacroFase"> | string | null
@@ -18118,6 +18351,7 @@ export namespace Prisma {
   export type ProjectMacroFaseOrderByWithRelationInput = {
     id?: SortOrder
     projectId?: SortOrder
+    position?: SortOrder
     fase?: SortOrder
     dataLimite?: SortOrderInput | SortOrder
     custo?: SortOrderInput | SortOrder
@@ -18132,6 +18366,7 @@ export namespace Prisma {
     OR?: ProjectMacroFaseWhereInput[]
     NOT?: ProjectMacroFaseWhereInput | ProjectMacroFaseWhereInput[]
     projectId?: StringFilter<"ProjectMacroFase"> | string
+    position?: IntFilter<"ProjectMacroFase"> | number
     fase?: StringFilter<"ProjectMacroFase"> | string
     dataLimite?: StringNullableFilter<"ProjectMacroFase"> | string | null
     custo?: StringNullableFilter<"ProjectMacroFase"> | string | null
@@ -18143,14 +18378,17 @@ export namespace Prisma {
   export type ProjectMacroFaseOrderByWithAggregationInput = {
     id?: SortOrder
     projectId?: SortOrder
+    position?: SortOrder
     fase?: SortOrder
     dataLimite?: SortOrderInput | SortOrder
     custo?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: ProjectMacroFaseCountOrderByAggregateInput
+    _avg?: ProjectMacroFaseAvgOrderByAggregateInput
     _max?: ProjectMacroFaseMaxOrderByAggregateInput
     _min?: ProjectMacroFaseMinOrderByAggregateInput
+    _sum?: ProjectMacroFaseSumOrderByAggregateInput
   }
 
   export type ProjectMacroFaseScalarWhereWithAggregatesInput = {
@@ -18159,6 +18397,7 @@ export namespace Prisma {
     NOT?: ProjectMacroFaseScalarWhereWithAggregatesInput | ProjectMacroFaseScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"ProjectMacroFase"> | string
     projectId?: StringWithAggregatesFilter<"ProjectMacroFase"> | string
+    position?: IntWithAggregatesFilter<"ProjectMacroFase"> | number
     fase?: StringWithAggregatesFilter<"ProjectMacroFase"> | string
     dataLimite?: StringNullableWithAggregatesFilter<"ProjectMacroFase"> | string | null
     custo?: StringNullableWithAggregatesFilter<"ProjectMacroFase"> | string | null
@@ -18307,6 +18546,8 @@ export namespace Prisma {
     userId?: StringFilter<"UserProject"> | string
     projectId?: StringFilter<"UserProject"> | string
     active?: BoolFilter<"UserProject"> | boolean
+    inactiveReason?: StringNullableFilter<"UserProject"> | string | null
+    inactivatedAt?: DateTimeNullableFilter<"UserProject"> | Date | string | null
     role?: StringNullableFilter<"UserProject"> | string | null
     departmentId?: StringNullableFilter<"UserProject"> | string | null
     hourlyRate?: FloatNullableFilter<"UserProject"> | number | null
@@ -18325,6 +18566,8 @@ export namespace Prisma {
     userId?: SortOrder
     projectId?: SortOrder
     active?: SortOrder
+    inactiveReason?: SortOrderInput | SortOrder
+    inactivatedAt?: SortOrderInput | SortOrder
     role?: SortOrderInput | SortOrder
     departmentId?: SortOrderInput | SortOrder
     hourlyRate?: SortOrderInput | SortOrder
@@ -18347,6 +18590,8 @@ export namespace Prisma {
     userId?: StringFilter<"UserProject"> | string
     projectId?: StringFilter<"UserProject"> | string
     active?: BoolFilter<"UserProject"> | boolean
+    inactiveReason?: StringNullableFilter<"UserProject"> | string | null
+    inactivatedAt?: DateTimeNullableFilter<"UserProject"> | Date | string | null
     role?: StringNullableFilter<"UserProject"> | string | null
     departmentId?: StringNullableFilter<"UserProject"> | string | null
     hourlyRate?: FloatNullableFilter<"UserProject"> | number | null
@@ -18365,6 +18610,8 @@ export namespace Prisma {
     userId?: SortOrder
     projectId?: SortOrder
     active?: SortOrder
+    inactiveReason?: SortOrderInput | SortOrder
+    inactivatedAt?: SortOrderInput | SortOrder
     role?: SortOrderInput | SortOrder
     departmentId?: SortOrderInput | SortOrder
     hourlyRate?: SortOrderInput | SortOrder
@@ -18388,6 +18635,8 @@ export namespace Prisma {
     userId?: StringWithAggregatesFilter<"UserProject"> | string
     projectId?: StringWithAggregatesFilter<"UserProject"> | string
     active?: BoolWithAggregatesFilter<"UserProject"> | boolean
+    inactiveReason?: StringNullableWithAggregatesFilter<"UserProject"> | string | null
+    inactivatedAt?: DateTimeNullableWithAggregatesFilter<"UserProject"> | Date | string | null
     role?: StringNullableWithAggregatesFilter<"UserProject"> | string | null
     departmentId?: StringNullableWithAggregatesFilter<"UserProject"> | string | null
     hourlyRate?: FloatNullableWithAggregatesFilter<"UserProject"> | number | null
@@ -18693,6 +18942,8 @@ export namespace Prisma {
     estado?: StringNullableFilter<"Stakeholder"> | string | null
     notes?: StringNullableFilter<"Stakeholder"> | string | null
     isActive?: BoolFilter<"Stakeholder"> | boolean
+    inactiveReason?: StringNullableFilter<"Stakeholder"> | string | null
+    inactivatedAt?: DateTimeNullableFilter<"Stakeholder"> | Date | string | null
     createdAt?: DateTimeFilter<"Stakeholder"> | Date | string
     updatedAt?: DateTimeFilter<"Stakeholder"> | Date | string
     projects?: ProjectStakeholderListRelationFilter
@@ -18717,6 +18968,8 @@ export namespace Prisma {
     estado?: SortOrderInput | SortOrder
     notes?: SortOrderInput | SortOrder
     isActive?: SortOrder
+    inactiveReason?: SortOrderInput | SortOrder
+    inactivatedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     projects?: ProjectStakeholderOrderByRelationAggregateInput
@@ -18744,6 +18997,8 @@ export namespace Prisma {
     estado?: StringNullableFilter<"Stakeholder"> | string | null
     notes?: StringNullableFilter<"Stakeholder"> | string | null
     isActive?: BoolFilter<"Stakeholder"> | boolean
+    inactiveReason?: StringNullableFilter<"Stakeholder"> | string | null
+    inactivatedAt?: DateTimeNullableFilter<"Stakeholder"> | Date | string | null
     createdAt?: DateTimeFilter<"Stakeholder"> | Date | string
     updatedAt?: DateTimeFilter<"Stakeholder"> | Date | string
     projects?: ProjectStakeholderListRelationFilter
@@ -18768,6 +19023,8 @@ export namespace Prisma {
     estado?: SortOrderInput | SortOrder
     notes?: SortOrderInput | SortOrder
     isActive?: SortOrder
+    inactiveReason?: SortOrderInput | SortOrder
+    inactivatedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: StakeholderCountOrderByAggregateInput
@@ -18796,6 +19053,8 @@ export namespace Prisma {
     estado?: StringNullableWithAggregatesFilter<"Stakeholder"> | string | null
     notes?: StringNullableWithAggregatesFilter<"Stakeholder"> | string | null
     isActive?: BoolWithAggregatesFilter<"Stakeholder"> | boolean
+    inactiveReason?: StringNullableWithAggregatesFilter<"Stakeholder"> | string | null
+    inactivatedAt?: DateTimeNullableWithAggregatesFilter<"Stakeholder"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Stakeholder"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Stakeholder"> | Date | string
   }
@@ -19032,8 +19291,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -19063,8 +19328,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -19092,8 +19363,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -19123,8 +19400,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -19153,8 +19436,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -19178,8 +19467,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -19204,8 +19499,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -19214,6 +19515,7 @@ export namespace Prisma {
 
   export type ProjectMacroFaseCreateInput = {
     id?: string
+    position?: number
     fase: string
     dataLimite?: string | null
     custo?: string | null
@@ -19225,6 +19527,7 @@ export namespace Prisma {
   export type ProjectMacroFaseUncheckedCreateInput = {
     id?: string
     projectId: string
+    position?: number
     fase: string
     dataLimite?: string | null
     custo?: string | null
@@ -19234,6 +19537,7 @@ export namespace Prisma {
 
   export type ProjectMacroFaseUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
     fase?: StringFieldUpdateOperationsInput | string
     dataLimite?: NullableStringFieldUpdateOperationsInput | string | null
     custo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19245,6 +19549,7 @@ export namespace Prisma {
   export type ProjectMacroFaseUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     projectId?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
     fase?: StringFieldUpdateOperationsInput | string
     dataLimite?: NullableStringFieldUpdateOperationsInput | string | null
     custo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19255,6 +19560,7 @@ export namespace Prisma {
   export type ProjectMacroFaseCreateManyInput = {
     id?: string
     projectId: string
+    position?: number
     fase: string
     dataLimite?: string | null
     custo?: string | null
@@ -19264,6 +19570,7 @@ export namespace Prisma {
 
   export type ProjectMacroFaseUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
     fase?: StringFieldUpdateOperationsInput | string
     dataLimite?: NullableStringFieldUpdateOperationsInput | string | null
     custo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19274,6 +19581,7 @@ export namespace Prisma {
   export type ProjectMacroFaseUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     projectId?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
     fase?: StringFieldUpdateOperationsInput | string
     dataLimite?: NullableStringFieldUpdateOperationsInput | string | null
     custo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19415,6 +19723,8 @@ export namespace Prisma {
   export type UserProjectCreateInput = {
     id?: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -19432,6 +19742,8 @@ export namespace Prisma {
     userId: string
     projectId: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
@@ -19445,6 +19757,8 @@ export namespace Prisma {
   export type UserProjectUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -19462,6 +19776,8 @@ export namespace Prisma {
     userId?: StringFieldUpdateOperationsInput | string
     projectId?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -19477,6 +19793,8 @@ export namespace Prisma {
     userId: string
     projectId: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
@@ -19490,6 +19808,8 @@ export namespace Prisma {
   export type UserProjectUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -19504,6 +19824,8 @@ export namespace Prisma {
     userId?: StringFieldUpdateOperationsInput | string
     projectId?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -19810,6 +20132,8 @@ export namespace Prisma {
     estado?: string | null
     notes?: string | null
     isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     projects?: ProjectStakeholderCreateNestedManyWithoutStakeholderInput
@@ -19834,6 +20158,8 @@ export namespace Prisma {
     estado?: string | null
     notes?: string | null
     isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     projects?: ProjectStakeholderUncheckedCreateNestedManyWithoutStakeholderInput
@@ -19856,6 +20182,8 @@ export namespace Prisma {
     estado?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     projects?: ProjectStakeholderUpdateManyWithoutStakeholderNestedInput
@@ -19880,6 +20208,8 @@ export namespace Prisma {
     estado?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     projects?: ProjectStakeholderUncheckedUpdateManyWithoutStakeholderNestedInput
@@ -19903,6 +20233,8 @@ export namespace Prisma {
     estado?: string | null
     notes?: string | null
     isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -19924,6 +20256,8 @@ export namespace Prisma {
     estado?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -19946,6 +20280,8 @@ export namespace Prisma {
     estado?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -20272,6 +20608,17 @@ export namespace Prisma {
     isEmpty?: boolean
   }
 
+  export type IntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
+  }
+
   export type EnumProjectStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.ProjectStatus | EnumProjectStatusFieldRefInput<$PrismaModel>
     in?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
@@ -20327,8 +20674,14 @@ export namespace Prisma {
     restricoes?: SortOrder
     limitesAutoridade?: SortOrder
     semestre?: SortOrder
+    anoAms?: SortOrder
+    termo?: SortOrder
+    turno?: SortOrder
     ano?: SortOrder
     departamentos?: SortOrder
+    macroFasesRevision?: SortOrder
+    macroFasesSyncedRevision?: SortOrder
+    macroFasesSyncError?: SortOrder
     status?: SortOrder
     deletedAt?: SortOrder
     createdAt?: SortOrder
@@ -20337,6 +20690,8 @@ export namespace Prisma {
 
   export type ProjectAvgOrderByAggregateInput = {
     ano?: SortOrder
+    macroFasesRevision?: SortOrder
+    macroFasesSyncedRevision?: SortOrder
   }
 
   export type ProjectMaxOrderByAggregateInput = {
@@ -20357,7 +20712,13 @@ export namespace Prisma {
     restricoes?: SortOrder
     limitesAutoridade?: SortOrder
     semestre?: SortOrder
+    anoAms?: SortOrder
+    termo?: SortOrder
+    turno?: SortOrder
     ano?: SortOrder
+    macroFasesRevision?: SortOrder
+    macroFasesSyncedRevision?: SortOrder
+    macroFasesSyncError?: SortOrder
     status?: SortOrder
     deletedAt?: SortOrder
     createdAt?: SortOrder
@@ -20382,7 +20743,13 @@ export namespace Prisma {
     restricoes?: SortOrder
     limitesAutoridade?: SortOrder
     semestre?: SortOrder
+    anoAms?: SortOrder
+    termo?: SortOrder
+    turno?: SortOrder
     ano?: SortOrder
+    macroFasesRevision?: SortOrder
+    macroFasesSyncedRevision?: SortOrder
+    macroFasesSyncError?: SortOrder
     status?: SortOrder
     deletedAt?: SortOrder
     createdAt?: SortOrder
@@ -20391,6 +20758,8 @@ export namespace Prisma {
 
   export type ProjectSumOrderByAggregateInput = {
     ano?: SortOrder
+    macroFasesRevision?: SortOrder
+    macroFasesSyncedRevision?: SortOrder
   }
 
   export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -20427,6 +20796,22 @@ export namespace Prisma {
     _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
   export type EnumProjectStatusWithAggregatesFilter<$PrismaModel = never> = {
     equals?: $Enums.ProjectStatus | EnumProjectStatusFieldRefInput<$PrismaModel>
     in?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
@@ -20445,6 +20830,7 @@ export namespace Prisma {
   export type ProjectMacroFaseCountOrderByAggregateInput = {
     id?: SortOrder
     projectId?: SortOrder
+    position?: SortOrder
     fase?: SortOrder
     dataLimite?: SortOrder
     custo?: SortOrder
@@ -20452,9 +20838,14 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type ProjectMacroFaseAvgOrderByAggregateInput = {
+    position?: SortOrder
+  }
+
   export type ProjectMacroFaseMaxOrderByAggregateInput = {
     id?: SortOrder
     projectId?: SortOrder
+    position?: SortOrder
     fase?: SortOrder
     dataLimite?: SortOrder
     custo?: SortOrder
@@ -20465,11 +20856,16 @@ export namespace Prisma {
   export type ProjectMacroFaseMinOrderByAggregateInput = {
     id?: SortOrder
     projectId?: SortOrder
+    position?: SortOrder
     fase?: SortOrder
     dataLimite?: SortOrder
     custo?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type ProjectMacroFaseSumOrderByAggregateInput = {
+    position?: SortOrder
   }
 
   export type BoolFilter<$PrismaModel = never> = {
@@ -20594,17 +20990,6 @@ export namespace Prisma {
     departmentId?: SortOrder
   }
 
-  export type IntFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntFilter<$PrismaModel> | number
-  }
-
   export type DepartmentNullableScalarRelationFilter = {
     is?: DepartmentWhereInput | null
     isNot?: DepartmentWhereInput | null
@@ -20620,6 +21005,8 @@ export namespace Prisma {
     userId?: SortOrder
     projectId?: SortOrder
     active?: SortOrder
+    inactiveReason?: SortOrder
+    inactivatedAt?: SortOrder
     role?: SortOrder
     departmentId?: SortOrder
     hourlyRate?: SortOrder
@@ -20642,6 +21029,8 @@ export namespace Prisma {
     userId?: SortOrder
     projectId?: SortOrder
     active?: SortOrder
+    inactiveReason?: SortOrder
+    inactivatedAt?: SortOrder
     role?: SortOrder
     departmentId?: SortOrder
     hourlyRate?: SortOrder
@@ -20657,6 +21046,8 @@ export namespace Prisma {
     userId?: SortOrder
     projectId?: SortOrder
     active?: SortOrder
+    inactiveReason?: SortOrder
+    inactivatedAt?: SortOrder
     role?: SortOrder
     departmentId?: SortOrder
     hourlyRate?: SortOrder
@@ -20672,22 +21063,6 @@ export namespace Prisma {
     remuneracao?: SortOrder
     horasDiarias?: SortOrder
     order?: SortOrder
-  }
-
-  export type IntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type EnumRoleScopeFilter<$PrismaModel = never> = {
@@ -20883,6 +21258,8 @@ export namespace Prisma {
     estado?: SortOrder
     notes?: SortOrder
     isActive?: SortOrder
+    inactiveReason?: SortOrder
+    inactivatedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -20905,6 +21282,8 @@ export namespace Prisma {
     estado?: SortOrder
     notes?: SortOrder
     isActive?: SortOrder
+    inactiveReason?: SortOrder
+    inactivatedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -20927,6 +21306,8 @@ export namespace Prisma {
     estado?: SortOrder
     notes?: SortOrder
     isActive?: SortOrder
+    inactiveReason?: SortOrder
+    inactivatedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -21366,6 +21747,14 @@ export namespace Prisma {
     push?: string | string[]
   }
 
+  export type IntFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
   export type EnumProjectStatusFieldUpdateOperationsInput = {
     set?: $Enums.ProjectStatus
   }
@@ -21658,14 +22047,6 @@ export namespace Prisma {
     create?: XOR<DepartmentCreateWithoutUserProjectsInput, DepartmentUncheckedCreateWithoutUserProjectsInput>
     connectOrCreate?: DepartmentCreateOrConnectWithoutUserProjectsInput
     connect?: DepartmentWhereUniqueInput
-  }
-
-  export type IntFieldUpdateOperationsInput = {
-    set?: number
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
   }
 
   export type UserUpdateOneRequiredWithoutProjectsNestedInput = {
@@ -22177,6 +22558,33 @@ export namespace Prisma {
     not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
 
+  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
+  export type NestedFloatFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatFilter<$PrismaModel> | number
+  }
+
   export type NestedEnumProjectStatusWithAggregatesFilter<$PrismaModel = never> = {
     equals?: $Enums.ProjectStatus | EnumProjectStatusFieldRefInput<$PrismaModel>
     in?: $Enums.ProjectStatus[] | ListEnumProjectStatusFieldRefInput<$PrismaModel>
@@ -22216,33 +22624,6 @@ export namespace Prisma {
     _max?: NestedFloatNullableFilter<$PrismaModel>
   }
 
-  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
-  }
-
-  export type NestedFloatFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel>
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatFilter<$PrismaModel> | number
-  }
-
   export type NestedEnumRoleScopeFilter<$PrismaModel = never> = {
     equals?: $Enums.RoleScope | EnumRoleScopeFieldRefInput<$PrismaModel>
     in?: $Enums.RoleScope[] | ListEnumRoleScopeFieldRefInput<$PrismaModel>
@@ -22277,8 +22658,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -22306,8 +22693,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -22417,6 +22810,8 @@ export namespace Prisma {
     estado?: string | null
     notes?: string | null
     isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     projects?: ProjectStakeholderCreateNestedManyWithoutStakeholderInput
@@ -22439,6 +22834,8 @@ export namespace Prisma {
     estado?: string | null
     notes?: string | null
     isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     projects?: ProjectStakeholderUncheckedCreateNestedManyWithoutStakeholderInput
@@ -22491,8 +22888,14 @@ export namespace Prisma {
     restricoes?: StringNullableFilter<"Project"> | string | null
     limitesAutoridade?: StringNullableFilter<"Project"> | string | null
     semestre?: StringNullableFilter<"Project"> | string | null
+    anoAms?: StringNullableFilter<"Project"> | string | null
+    termo?: StringNullableFilter<"Project"> | string | null
+    turno?: StringNullableFilter<"Project"> | string | null
     ano?: IntNullableFilter<"Project"> | number | null
     departamentos?: StringNullableListFilter<"Project">
+    macroFasesRevision?: IntFilter<"Project"> | number
+    macroFasesSyncedRevision?: IntFilter<"Project"> | number
+    macroFasesSyncError?: StringNullableFilter<"Project"> | string | null
     status?: EnumProjectStatusFilter<"Project"> | $Enums.ProjectStatus
     deletedAt?: DateTimeNullableFilter<"Project"> | Date | string | null
     createdAt?: DateTimeFilter<"Project"> | Date | string
@@ -22598,6 +23001,8 @@ export namespace Prisma {
     estado?: StringNullableFilter<"Stakeholder"> | string | null
     notes?: StringNullableFilter<"Stakeholder"> | string | null
     isActive?: BoolFilter<"Stakeholder"> | boolean
+    inactiveReason?: StringNullableFilter<"Stakeholder"> | string | null
+    inactivatedAt?: DateTimeNullableFilter<"Stakeholder"> | Date | string | null
     createdAt?: DateTimeFilter<"Stakeholder"> | Date | string
     updatedAt?: DateTimeFilter<"Stakeholder"> | Date | string
   }
@@ -22605,6 +23010,8 @@ export namespace Prisma {
   export type UserProjectCreateWithoutUserInput = {
     id?: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -22620,6 +23027,8 @@ export namespace Prisma {
     id?: string
     projectId: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
@@ -22712,6 +23121,8 @@ export namespace Prisma {
     userId?: StringFilter<"UserProject"> | string
     projectId?: StringFilter<"UserProject"> | string
     active?: BoolFilter<"UserProject"> | boolean
+    inactiveReason?: StringNullableFilter<"UserProject"> | string | null
+    inactivatedAt?: DateTimeNullableFilter<"UserProject"> | Date | string | null
     role?: StringNullableFilter<"UserProject"> | string | null
     departmentId?: StringNullableFilter<"UserProject"> | string | null
     hourlyRate?: FloatNullableFilter<"UserProject"> | number | null
@@ -22810,6 +23221,8 @@ export namespace Prisma {
   export type UserProjectCreateWithoutProjectInput = {
     id?: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -22825,6 +23238,8 @@ export namespace Prisma {
     id?: string
     userId: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
@@ -22875,6 +23290,7 @@ export namespace Prisma {
 
   export type ProjectMacroFaseCreateWithoutProjectInput = {
     id?: string
+    position?: number
     fase: string
     dataLimite?: string | null
     custo?: string | null
@@ -22884,6 +23300,7 @@ export namespace Prisma {
 
   export type ProjectMacroFaseUncheckedCreateWithoutProjectInput = {
     id?: string
+    position?: number
     fase: string
     dataLimite?: string | null
     custo?: string | null
@@ -23016,6 +23433,7 @@ export namespace Prisma {
     NOT?: ProjectMacroFaseScalarWhereInput | ProjectMacroFaseScalarWhereInput[]
     id?: StringFilter<"ProjectMacroFase"> | string
     projectId?: StringFilter<"ProjectMacroFase"> | string
+    position?: IntFilter<"ProjectMacroFase"> | number
     fase?: StringFilter<"ProjectMacroFase"> | string
     dataLimite?: StringNullableFilter<"ProjectMacroFase"> | string | null
     custo?: StringNullableFilter<"ProjectMacroFase"> | string | null
@@ -23067,8 +23485,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -23097,8 +23521,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -23141,8 +23571,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -23171,8 +23607,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -23236,6 +23678,8 @@ export namespace Prisma {
   export type UserProjectCreateWithoutDepartmentInput = {
     id?: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -23252,6 +23696,8 @@ export namespace Prisma {
     userId: string
     projectId: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -23506,8 +23952,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -23536,8 +23988,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -23642,8 +24100,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -23672,8 +24136,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24058,8 +24528,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -24088,8 +24564,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -24188,8 +24670,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24218,8 +24706,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24422,8 +24916,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -24452,8 +24952,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -24485,6 +24991,8 @@ export namespace Prisma {
     estado?: string | null
     notes?: string | null
     isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     tenant: TenantCreateNestedOneWithoutStakeholdersInput
@@ -24508,6 +25016,8 @@ export namespace Prisma {
     estado?: string | null
     notes?: string | null
     isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -24545,8 +25055,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24575,8 +25091,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24614,6 +25136,8 @@ export namespace Prisma {
     estado?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenant?: TenantUpdateOneRequiredWithoutStakeholdersNestedInput
@@ -24637,6 +25161,8 @@ export namespace Prisma {
     estado?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -24658,8 +25184,14 @@ export namespace Prisma {
     restricoes?: string | null
     limitesAutoridade?: string | null
     semestre?: string | null
+    anoAms?: string | null
+    termo?: string | null
+    turno?: string | null
     ano?: number | null
     departamentos?: ProjectCreatedepartamentosInput | string[]
+    macroFasesRevision?: number
+    macroFasesSyncedRevision?: number
+    macroFasesSyncError?: string | null
     status?: $Enums.ProjectStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
@@ -24705,6 +25237,8 @@ export namespace Prisma {
     estado?: string | null
     notes?: string | null
     isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -24726,8 +25260,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24755,8 +25295,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24784,8 +25330,14 @@ export namespace Prisma {
     restricoes?: NullableStringFieldUpdateOperationsInput | string | null
     limitesAutoridade?: NullableStringFieldUpdateOperationsInput | string | null
     semestre?: NullableStringFieldUpdateOperationsInput | string | null
+    anoAms?: NullableStringFieldUpdateOperationsInput | string | null
+    termo?: NullableStringFieldUpdateOperationsInput | string | null
+    turno?: NullableStringFieldUpdateOperationsInput | string | null
     ano?: NullableIntFieldUpdateOperationsInput | number | null
     departamentos?: ProjectUpdatedepartamentosInput | string[]
+    macroFasesRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncedRevision?: IntFieldUpdateOperationsInput | number
+    macroFasesSyncError?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumProjectStatusFieldUpdateOperationsInput | $Enums.ProjectStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24883,6 +25435,8 @@ export namespace Prisma {
     estado?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     projects?: ProjectStakeholderUpdateManyWithoutStakeholderNestedInput
@@ -24905,6 +25459,8 @@ export namespace Prisma {
     estado?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     projects?: ProjectStakeholderUncheckedUpdateManyWithoutStakeholderNestedInput
@@ -24927,6 +25483,8 @@ export namespace Prisma {
     estado?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -24935,6 +25493,8 @@ export namespace Prisma {
     id?: string
     projectId: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
@@ -24962,6 +25522,8 @@ export namespace Prisma {
   export type UserProjectUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -24977,6 +25539,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     projectId?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -24991,6 +25555,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     projectId?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -25047,6 +25613,8 @@ export namespace Prisma {
     id?: string
     userId: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
@@ -25068,6 +25636,7 @@ export namespace Prisma {
 
   export type ProjectMacroFaseCreateManyProjectInput = {
     id?: string
+    position?: number
     fase: string
     dataLimite?: string | null
     custo?: string | null
@@ -25085,6 +25654,8 @@ export namespace Prisma {
   export type UserProjectUpdateWithoutProjectInput = {
     id?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -25100,6 +25671,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -25114,6 +25687,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -25153,6 +25728,7 @@ export namespace Prisma {
 
   export type ProjectMacroFaseUpdateWithoutProjectInput = {
     id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
     fase?: StringFieldUpdateOperationsInput | string
     dataLimite?: NullableStringFieldUpdateOperationsInput | string | null
     custo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25162,6 +25738,7 @@ export namespace Prisma {
 
   export type ProjectMacroFaseUncheckedUpdateWithoutProjectInput = {
     id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
     fase?: StringFieldUpdateOperationsInput | string
     dataLimite?: NullableStringFieldUpdateOperationsInput | string | null
     custo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25171,6 +25748,7 @@ export namespace Prisma {
 
   export type ProjectMacroFaseUncheckedUpdateManyWithoutProjectInput = {
     id?: StringFieldUpdateOperationsInput | string
+    position?: IntFieldUpdateOperationsInput | number
     fase?: StringFieldUpdateOperationsInput | string
     dataLimite?: NullableStringFieldUpdateOperationsInput | string | null
     custo?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25209,6 +25787,8 @@ export namespace Prisma {
     userId: string
     projectId: string
     active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
     role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -25236,6 +25816,8 @@ export namespace Prisma {
   export type UserProjectUpdateWithoutDepartmentInput = {
     id?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -25252,6 +25834,8 @@ export namespace Prisma {
     userId?: StringFieldUpdateOperationsInput | string
     projectId?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -25266,6 +25850,8 @@ export namespace Prisma {
     userId?: StringFieldUpdateOperationsInput | string
     projectId?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null

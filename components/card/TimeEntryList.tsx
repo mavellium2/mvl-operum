@@ -1,5 +1,6 @@
 'use client'
 
+import { Pencil, Trash2 } from 'lucide-react'
 import FormActions from '@/components/ui/FormActions'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput } from '@/components/ui/Field'
@@ -14,11 +15,11 @@ interface TimeEntry {
   createdAt: Date | string
 }
 
-function formatDuration(seconds: number): string {
+function formatDuration(seconds: number, showSeconds: boolean): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m`
-  return `${m}m`
+  const time = h > 0 ? `${h}h ${m.toString().padStart(2, '0')}m` : `${m}m`
+  return showSeconds ? `${time} ${String(seconds % 60).padStart(2, '0')}s` : time
 }
 
 function formatDate(d: Date | string): string {
@@ -29,10 +30,12 @@ function formatDate(d: Date | string): string {
 interface Props {
   cardId: string
   refreshKey?: number
+  readOnly?: boolean
+  compact?: boolean
   onChanged?: () => void
 }
 
-export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) {
+export default function TimeEntryList({ cardId, refreshKey, readOnly = false, compact = false, onChanged }: Props) {
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editHours, setEditHours] = useState('0')
@@ -106,7 +109,7 @@ export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) 
     <ul className="flex flex-col gap-1 mt-2" aria-label="Registros de tempo">
       {entries.map(entry => (
         <li key={entry.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-          {editingId === entry.id ? (
+          {!readOnly && editingId === entry.id ? (
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <div>
@@ -165,32 +168,32 @@ export default function TimeEntryList({ cardId, refreshKey, onChanged }: Props) 
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col gap-0.5 min-w-0">
                 <span className="text-sm font-medium text-gray-800 tabular-nums">
-                  {formatDuration(entry.duration)}
+                  {formatDuration(entry.duration, compact)}
                 </span>
                 {entry.description && (
                   <span className="text-xs text-gray-500 truncate">{entry.description}</span>
                 )}
                 <span className="text-xs text-gray-400">{formatDate(entry.createdAt)}</span>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <OperumButton variant="default"
+              {!readOnly && <div className="flex items-center gap-1 shrink-0">
+                <OperumButton variant={compact ? "custom" : "default"}
                   type="button"
-                  aria-label="Editar registro"
+                  aria-label="Editar registro" title={compact ? "Editar registro" : undefined}
                   onClick={(e) => { e.stopPropagation(); startEdit(entry) }}
                   className="text-xs text-blue-500 hover:text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 hover:bg-blue-50"
                 >
-                  Editar
+                  {compact ? <Pencil size={14} aria-hidden="true" /> : "Editar"}
                 </OperumButton>
-                <OperumButton variant="danger"
+                <OperumButton variant={compact ? "custom" : "danger"}
                   type="button"
-                  aria-label="Excluir registro"
+                  aria-label="Excluir registro" title={compact ? "Excluir registro" : undefined}
                   onClick={(e) => { e.stopPropagation(); handleDelete(entry.id) }}
                   disabled={loading}
                   className="text-xs text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded border border-red-100 hover:bg-red-50 disabled:opacity-50"
                 >
-                  Excluir
+                  {compact ? <Trash2 size={14} aria-hidden="true" /> : "Excluir"}
                 </OperumButton>
-              </div>
+              </div>}
             </div>
           )}
         </li>

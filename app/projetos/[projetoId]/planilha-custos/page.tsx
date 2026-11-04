@@ -68,11 +68,11 @@ export default async function PlanilhaCustosPage({
   const cards = cardIds.length
     ? await prisma.card.findMany({
       where: { id: { in: cardIds }, deletedAt: null, OR: [{ projectId: projetoId }, { sprint: { projectId: projetoId } }] },
-      select: { id: true, description: true, sprintId: true, sprintColumn: { select: { title: true } } },
+      select: { id: true, description: true, priority: true, sprintId: true, sprintColumn: { select: { title: true } } },
     })
     : []
   const planilha = aplicarCardsDasAtividades(calculada, tree.nodes, new Map(cards.map(c => [c.id, {
-    description: c.description ?? '', sprintId: c.sprintId, etapa: c.sprintColumn?.title ?? null,
+    description: c.description ?? '', priority: c.priority, sprintId: c.sprintId, etapa: c.sprintColumn?.title ?? null,
   }])))
 
   return (

@@ -10,7 +10,6 @@ import { addResponsibleAction, removeResponsibleAction, getResponsiblesAction } 
 interface User {
   id: string
   name: string
-  email: string
   avatarUrl?: string | null
   cargo?: string | null
 }
@@ -21,6 +20,9 @@ interface MultiUserSelectorProps {
   onResponsiblesChange?: (responsibles: Responsible[]) => void
   /** Modo de criação: ainda não existe card — só seleção local, sem chamadas à API. */
   pending?: boolean
+  selection?: { ids: string[]; onChange: (ids: string[]) => void }
+  selectLabel?: string
+  compact?: boolean
 }
 
 interface Responsible {
@@ -28,14 +30,19 @@ interface Responsible {
   user: { id: string; name: string; cargo: string | null; avatarUrl: string | null }
 }
 
-export default function MultiUserSelector({ cardId, users, onResponsiblesChange, pending = false }: MultiUserSelectorProps) {
-  const [responsibles, setResponsibles] = useState<Responsible[]>([])
-  const [loading, setLoading] = useState(!pending)
+export default function MultiUserSelector({ cardId, users, onResponsiblesChange, pending = false, selection, selectLabel = 'Adicionar responsável', compact = false }: MultiUserSelectorProps) {
+  const [storedResponsibles, setResponsibles] = useState<Responsible[]>([])
+  const local = pending || !!selection
+  const [loading, setLoading] = useState(!local)
+  const responsibles = selection ? selection.ids.map(userId => {
+    const user = users.find(option => option.id === userId)
+    return { userId, user: { id: userId, name: user?.name ?? 'Usuário indisponível', cargo: user?.cargo ?? null, avatarUrl: user?.avatarUrl ?? null } }
+  }) : storedResponsibles
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    if (pending) return
+    if (local) return
     getResponsiblesAction(cardId).then(result => {
       if (cancelled) return
       if ('responsibles' in result && result.responsibles) {
@@ -45,10 +52,15 @@ export default function MultiUserSelector({ cardId, users, onResponsiblesChange,
       setLoading(false)
     })
     return () => { cancelled = true }
-  }, [cardId, pending])
+  }, [cardId, local])
 
   async function handleToggle(userId: string) {
     const isSelected = responsibles.some(r => r.userId === userId)
+
+    if (selection) {
+      selection.onChange(isSelected ? selection.ids.filter(id => id !== userId) : [...selection.ids, userId])
+      return
+    }
 
     if (pending) {
       if (isSelected) {
@@ -93,17 +105,17 @@ export default function MultiUserSelector({ cardId, users, onResponsiblesChange,
   if (loading) return <div className="text-xs text-gray-400">Carregando...</div>
 
   return (
-    <div className="space-y-2">
-      {erro && <p role="alert" className="text-xs text-red-600">{erro}</p>}
+    <div className={compact ? "flex min-w-0 items-center gap-1" : "space-y-2"}>
+      {erro && <p role="alert" className="w-full text-xs text-red-600">{erro}</p>}
       {responsibles.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
+        <div className={compact ? "flex min-w-0 items-center gap-1 overflow-x-auto p-0.5 [scrollbar-width:thin]" : "mb-2 flex flex-wrap gap-2"}>
           {responsibles.filter(r => r.user != null).map(r => (
             <div
               key={r.userId}
-              className="flex items-center gap-1.5 bg-blue-50 rounded-full pl-1 pr-2 py-0.5"
+              className={compact ? "flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 py-0.5 pl-1 pr-0.5" : "flex items-center gap-1.5 bg-blue-50 rounded-full pl-1 pr-2 py-0.5"}
             >
-              <UserAvatar name={r.user?.name ?? ''} avatarUrl={r.user?.avatarUrl} size="sm" />
-              <span className="text-xs text-blue-800 font-medium">{r.user?.name}</span>
+              <UserAvatar name={r.user?.name ?? ''} avatarUrl={r.user?.avatarUrl} size={compact ? "xs" : "sm"} />
+              <span title={compact ? r.user?.name : undefined} className={compact ? "truncate text-xs font-medium text-blue-800" : "text-xs text-blue-800 font-medium"}>{r.user?.name}</span>
               {r.user?.cargo && <span className="text-xs text-blue-500">({r.user.cargo})</span>}
               <GlassCloseButton type="button" onClick={() => handleToggle(r.userId)} className="ml-1   transition-colors" aria-label={`Remover ${r.user?.name ?? r.userId}`} />
             </div>
@@ -111,10 +123,12 @@ export default function MultiUserSelector({ cardId, users, onResponsiblesChange,
         </div>
       )}
       <Select
-        ariaLabel="Adicionar responsável"
+        compact={compact}
+        className={compact ? "shrink-0" : undefined}
+        ariaLabel={selectLabel}
         value=""
         onChange={v => { if (v) handleToggle(v) }}
-        placeholder="Adicionar responsável..."
+        placeholder={compact ? "+ Adicionar" : `${selectLabel}...`}
         options={users
           .filter(u => !responsibles.some(r => r.userId === u.id))
           .map(u => ({ value: u.id, label: u.name, description: u.cargo ?? undefined }))}

@@ -140,11 +140,13 @@ const atras = (h: number) => new Date(Date.now() - h * H)
 
 describe('lançamento manual: validação (ADR-046)', () => {
   it('recusa sobreposição com outro lançamento do mesmo usuário e diz qual é', async () => {
-    db.timeEntry.findMany.mockResolvedValue([{ id: 'e9', startedAt: atras(3.5), endedAt: atras(3.25), isRunning: false, card: { title: 'EAP' } }])
+    db.timeEntry.findMany.mockResolvedValue([{ id: 'e9', startedAt: atras(3.5), endedAt: atras(3.25), isRunning: false, description: 'Revisão do orçamento', card: { title: 'EAP' } }])
     await expect(service.createManual('ten1', 'c1', 'u1', { startedAt: atras(4).toISOString(), endedAt: atras(3).toISOString() }))
       .rejects.toThrow(ConflictException)
     await expect(service.createManual('ten1', 'c1', 'u1', { startedAt: atras(4).toISOString(), endedAt: atras(3).toISOString() }))
       .rejects.toThrow(/Já existe um lançamento seu .* em "EAP"/)
+    await expect(service.createManual('ten1', 'c1', 'u1', { startedAt: atras(4).toISOString(), endedAt: atras(3).toISOString() }))
+      .rejects.toThrow(/de 15 min .*"Revisão do orçamento".*Edite ou exclua o lançamento existente/)
     expect(db.timeEntry.create).not.toHaveBeenCalled()
   })
 

@@ -115,3 +115,9 @@ export function fromDatetimeLocal(value: string): string | null {
   const d = new Date(value)
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
+
+export const PRIORITY_LABELS: Record<string, { label: string; cls: string }> = {
+  baixa:  { label: 'Baixa',  cls: 'bg-slate-100 text-slate-600' },
+  media:  { label: 'Média',  cls: 'bg-yellow-100 text-yellow-700' },
+  alta:   { label: 'Alta',   cls: 'bg-red-100 text-red-600' },
+}

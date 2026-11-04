@@ -3,6 +3,7 @@
 import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { notificationsApi } from '@/lib/api-client'
+import prisma from '@/lib/prisma'
 
 export async function getNotificacoesAction(filters?: { status?: string; type?: string }) {
   try {
@@ -11,6 +12,20 @@ export async function getNotificacoesAction(filters?: { status?: string; type?: 
     if (filters?.type) return notifications.filter(n => n.type === filters.type)
     if (filters?.status) return notifications.filter(n => n.status === filters.status)
     return notifications
+  } catch {
+    return []
+  }
+}
+
+export async function getUnreadMentionsAction() {
+  try {
+    const { userId } = await verifySession()
+    return await prisma.notification.findMany({
+      where: { userId, type: 'MENTIONED', status: 'UNREAD', deletedAt: null },
+      select: { id: true, title: true, message: true },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
   } catch {
     return []
   }

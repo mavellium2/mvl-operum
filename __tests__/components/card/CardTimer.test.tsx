@@ -119,7 +119,22 @@ describe('CardTimer', () => {
     await user.clear(screen.getByLabelText(/minutos/i))
     await user.type(screen.getByLabelText(/minutos/i), '30')
     await user.click(screen.getByRole('button', { name: /salvar/i }))
-    expect(mockAddManual).toHaveBeenCalledWith('c1', 1, 30)
+    expect(mockAddManual).toHaveBeenCalledWith('c1', 1, 30, 0, undefined, 0)
+  })
+
+  it('aceita dias no lançamento manual e não deixa zero preso no campo', async () => {
+    const user = userEvent.setup()
+    render(<CardTimer cardId="c1" />)
+    await waitFor(() => screen.getByRole('button', { name: /iniciar timer/i }))
+    await user.click(screen.getByRole('button', { name: /adicionar manualmente/i }))
+
+    const dias = screen.getByLabelText(/dias/i)
+    expect(dias).toHaveValue(null)
+    await user.type(dias, '2')
+    await user.type(screen.getByLabelText(/horas/i), '3')
+    await user.click(screen.getByRole('button', { name: /salvar/i }))
+
+    expect(mockAddManual).toHaveBeenCalledWith('c1', 3, 0, 0, undefined, 2)
   })
 
   it('shows error when hours and minutes are both 0', async () => {

@@ -1108,11 +1108,35 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-089 — Realizado soma os minutos digitados com os apontamentos do card
 
 - **Data:** 2026-11-04.
-- **Status:** implementada. Substitui em parte a [ADR-065](#adr-065--realizado-por-projeção-dos-apontamentos-encerrados-dos-cards).
+- **Status:** implementada e substituída no fluxo da planilha pela [ADR-090](#adr-090--lançamentos-de-tempo-como-fonte-do-realizado-na-planilha). Substitui em parte a [ADR-065](#adr-065--realizado-por-projeção-dos-apontamentos-encerrados-dos-cards).
 - **Contexto:** pela ADR-065, o primeiro apontamento encerrado do card substituía o tempo digitado na planilha. O Vinícius digitou 100 minutos no realizado e iniciou o timer: ao pausar, a planilha passou a mostrar só o tempo do timer, e não havia como voltar o valor pela tela. O valor digitado continuava guardado em `tempoRealMinutos`, apenas ignorado. Em 04/11/2026, nenhuma atividade em produção tinha ao mesmo tempo minutos digitados e apontamentos, então a mudança não altera valores existentes.
-- **Escolha:** realizado = `tempoRealMinutos` (digitado) + soma dos apontamentos encerrados do card (`minutosRealizados`, `lib/tempoRealizado.ts`). O campo Min do realizado edita só a parte digitada e continua editável depois do primeiro apontamento; o servidor deixou de recusar essa edição. Ao lado do campo, a planilha mostra a parte do timer ("+0,18 do timer"); Horas e Dias mostram o total e ficam somente leitura quando há apontamentos. Minutos são exibidos sem casas quando inteiros e com duas casas quando quebrados (`formatarMinutos`).
+- **Escolha:** realizado = `tempoRealMinutos` (digitado) + soma dos apontamentos encerrados do card (`minutosRealizados`, `lib/tempoRealizado.ts`). As células de minutos, horas e dias mostram o total e abrem o painel da atividade. O painel separa a parte digitada dos registros do card. Minutos são exibidos sem casas quando inteiros e com duas casas quando quebrados (`formatarMinutos`).
 - **Justificativa:** nada do que foi digitado se perde, e o valor pode ser corrigido a qualquer momento. A projeção continua cobrindo todos os caminhos de escrita de tempo (quadro, planilha e MCP), sem conversão nem cópia.
 - **Alternativas consideradas:** converter os minutos digitados em um lançamento manual no card no primeiro apontamento (exigiria interceptar todos os caminhos de criação, inclusive o MCP direto no sprint-service, e escolher autor e horário para o lançamento); manter a substituição (perde o valor digitado).
-- **Consequências:** o risco de dupla contagem, motivo da rejeição na ADR-065, passa a depender de quem lança: se alguém digitar o tempo e também usar o timer para o mesmo trabalho, o realizado soma os dois. A dica do campo mostra a composição para facilitar a correção. O tempo do card no quadro continua mostrando só os apontamentos.
+- **Consequências:** o risco de dupla contagem, motivo da rejeição na ADR-065, passa a depender de quem lança: se alguém digitar o tempo e também usar o timer para o mesmo trabalho, o realizado soma os dois. O painel da atividade explica a composição do realizado. O tempo do card no quadro continua mostrando só os apontamentos.
 - **Condição de revisão:** se a dupla contagem aparecer na homologação, avaliar converter o digitado em lançamento do card.
 - **Referências:** `lib/tempoRealizado.ts`, `lib/planilhaCustos.ts`, `services/wbsService.ts` (`updateNodeProperties`), `components/custos/PlanilhaCustosView.tsx`, `__tests__/unit/services/realizadoDosCards.test.ts`, `__tests__/unit/tempoRealizado.test.ts`.
+
+
+## ADR-090 — Lançamentos de tempo como fonte do realizado na planilha
+
+- **Data:** 2026-11-04.
+- **Status:** implementada. Substitui o fluxo da planilha da [ADR-089](#adr-089--realizado-soma-os-minutos-digitados-com-os-apontamentos-do-card).
+- **Contexto:** a planilha oferecia um valor manual agregado e uma lista de lançamentos do card. O usuário pediu um único fluxo para registrar e corrigir tempo.
+- **Escolha:** a aba Tempo registra novos valores no card. A migração cria um lançamento encerrado por atividade com tempo legado e remove o valor de origem na mesma instrução. Usa a atualização do nó como referência de data e o elaborador ou responsável identificado como autor.
+- **Justificativa:** os registros individuais podem ser consultados e editados no mesmo fluxo, com o total preservado na conversão.
+- **Alternativas consideradas:** manter a edição do agregado junto dos lançamentos ou retirar o campo sem converter seus valores. A primeira mantém duas entradas para o mesmo trabalho. A segunda deixa o tempo histórico fora da lista.
+- **Consequências:** se faltar vínculo válido ou autor identificável, o valor legado permanece no total e a interface sinaliza a pendência. A data e o autor do registro migrado são referências do nó e do vínculo, pois o agregado antigo não guardava os metadados do lançamento.
+- **Referências:** `prisma/migrations/20261104090000_tempo_manual_em_lancamentos/migration.sql`, `components/custos/AtividadeDetalhesPainel.tsx`, `lib/tempoRealizado.ts`.
+
+## ADR-091 — Lançamento manual acima de 12 h é dividido automaticamente
+
+- **Data:** 2026-11-04.
+- **Status:** implementada. Complementa a [ADR-046](#adr-046--lançamentos-de-tempo-editáveis-validados-e-com-limite-de-12-h-no-timer).
+- **Contexto:** a ADR-046 limita cada lançamento manual a 12 h para impedir que um esquecimento vire dias. Com o campo Dias no formulário do timer, o usuário passou a lançar períodos maiores e recebia o erro "Um lançamento pode ter no máximo 12 h. Divida em mais de um.", tendo de dividir manualmente.
+- **Escolha:** a Server Action `addManualTimeAction` divide o total em lançamentos contíguos de até 12 h, do mais antigo para o mais recente, mantendo a descrição e o mesmo intervalo total. Se um lançamento falhar, os já criados são removidos e o erro é devolvido. O formulário aceita até 31 dias.
+- **Justificativa:** o limite por lançamento continua no sprint-service e vale para todos os clientes; a divisão automática evita que o usuário calcule os cortes. O teto de 31 dias limita a quantidade de chamadas e de lançamentos criados de uma vez.
+- **Alternativas consideradas:** dividir no sprint-service (mudaria o contrato de resposta de um lançamento para vários e afetaria o MCP); manter o erro e pedir divisão manual (foi o comportamento que o usuário pediu para corrigir); aumentar o limite do serviço (contrariaria a ADR-046).
+- **Consequências:** um lançamento de 2 dias vira quatro lançamentos de 12 h, todos com a mesma descrição; a soma do realizado não muda. A operação não é atômica no banco: a Server Action compensa removendo os lançamentos criados se um passo falhar. O MCP continua recusando acima de 12 h e não divide automaticamente.
+- **Condições de revisão:** pedido de divisão também no MCP ou na edição de um lançamento, ou de um teto diferente de 31 dias.
+- **Referências:** `app/actions/time.ts`, `components/card/CardTimer.tsx`, `sprint-service/src/time-entry/regras-tempo.ts`, [ADR-046](#adr-046--lançamentos-de-tempo-editáveis-validados-e-com-limite-de-12-h-no-timer).

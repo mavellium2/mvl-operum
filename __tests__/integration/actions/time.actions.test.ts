@@ -56,6 +56,48 @@ describe('addManualTimeAction', () => {
     expect(cardsApi.createManualEntry).not.toHaveBeenCalled()
   })
 
+  it('divide dias em lançamentos de até 12 h, do mais antigo ao mais recente', async () => {
+    mockVerify.mockResolvedValue({ userId: 'u1', role: 'member' })
+    vi.mocked(cardsApi.createManualEntry).mockResolvedValue({ id: ENTRY_ID, duration: 43200, isManual: true })
+    const result = await addManualTimeAction(CARD_ID, 0, 0, 0, undefined, 2)
+    expect(cardsApi.createManualEntry).toHaveBeenCalledTimes(4)
+    const chamadas = vi.mocked(cardsApi.createManualEntry).mock.calls
+    const duracoes = chamadas.map(([, payload]) =>
+      (new Date(payload.endedAt).getTime() - new Date(payload.startedAt).getTime()) / 1000)
+    expect(duracoes).toEqual([12 * 3600, 12 * 3600, 12 * 3600, 12 * 3600])
+    for (let i = 1; i < chamadas.length; i++) {
+      expect(chamadas[i][1].startedAt).toBe(chamadas[i - 1][1].endedAt)
+    }
+    expect(result).toMatchObject({ entries: expect.any(Array) })
+  })
+
+  it('completa o limite e lança o restante em outro registro', async () => {
+    mockVerify.mockResolvedValue({ userId: 'u1', role: 'member' })
+    vi.mocked(cardsApi.createManualEntry).mockResolvedValue({ id: ENTRY_ID, duration: 43200, isManual: true })
+    await addManualTimeAction(CARD_ID, 13, 0)
+    expect(cardsApi.createManualEntry).toHaveBeenCalledTimes(2)
+    const duracoes = vi.mocked(cardsApi.createManualEntry).mock.calls.map(([, payload]) =>
+      (new Date(payload.endedAt).getTime() - new Date(payload.startedAt).getTime()) / 1000)
+    expect(duracoes).toEqual([12 * 3600, 3600])
+  })
+
+  it('mantém um único lançamento quando o total cabe no limite', async () => {
+    mockVerify.mockResolvedValue({ userId: 'u1', role: 'member' })
+    vi.mocked(cardsApi.createManualEntry).mockResolvedValue({ id: ENTRY_ID, duration: 43200, isManual: true })
+    await addManualTimeAction(CARD_ID, 12, 0)
+    expect(cardsApi.createManualEntry).toHaveBeenCalledTimes(1)
+  })
+
+  it('desfaz os lançamentos já gravados se um deles falhar', async () => {
+    mockVerify.mockResolvedValue({ userId: 'u1', role: 'member' })
+    vi.mocked(cardsApi.createManualEntry)
+      .mockResolvedValueOnce({ id: ENTRY_ID, isManual: true })
+      .mockRejectedValueOnce(new Error('Já existe um lançamento seu nesse horário'))
+    const result = await addManualTimeAction(CARD_ID, 13, 0)
+    expect(result).toMatchObject({ error: 'Já existe um lançamento seu nesse horário' })
+    expect(timeEntriesApi.delete).toHaveBeenCalledWith(ENTRY_ID)
+  })
+
   it('passes description to service when provided', async () => {
     mockVerify.mockResolvedValue({ userId: 'u1', role: 'member' })
     vi.mocked(cardsApi.createManualEntry).mockResolvedValue({ id: ENTRY_ID, duration: 3600, description: 'Revisão' })
@@ -77,6 +119,20 @@ describe('addManualTimeAction', () => {
     mockVerify.mockResolvedValue({ userId: 'u1', role: 'member' })
     const result = await addManualTimeAction(CARD_ID, -1, 0)
     expect(result).toMatchObject({ error: expect.any(String) })
+    expect(cardsApi.createManualEntry).not.toHaveBeenCalled()
+  })
+
+  it('recusa dias acima do teto de 31', async () => {
+    mockVerify.mockResolvedValue({ userId: 'u1', role: 'member' })
+    const result = await addManualTimeAction(CARD_ID, 0, 0, 0, undefined, 32)
+    expect(result).toMatchObject({ error: expect.stringContaining('31') })
+    expect(cardsApi.createManualEntry).not.toHaveBeenCalled()
+  })
+
+  it('recusa total acima de 31 dias mesmo com horas extras', async () => {
+    mockVerify.mockResolvedValue({ userId: 'u1', role: 'member' })
+    const result = await addManualTimeAction(CARD_ID, 168, 0, 0, undefined, 31)
+    expect(result).toMatchObject({ error: expect.stringContaining('31 dias') })
     expect(cardsApi.createManualEntry).not.toHaveBeenCalled()
   })
 

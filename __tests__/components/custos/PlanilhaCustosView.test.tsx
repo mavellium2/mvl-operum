@@ -25,6 +25,25 @@ vi.mock('@/app/actions/time', () => ({
   getCardsTimerAction: vi.fn(async (ids: string[]) => Object.fromEntries(ids.map(id => [id, { seconds: 0, entry: null }]))),
   pauseTimerAction: vi.fn(),
   startTimerAction: vi.fn(),
+  addManualTimeAction: vi.fn(),
+  getTimeEntriesAction: vi.fn().mockResolvedValue({ entries: [] }),
+  updateTimeEntryAction: vi.fn(),
+  deleteTimeEntryAction: vi.fn(),
+}))
+vi.mock('@/app/actions/attachments', () => ({
+  listCardAttachmentsAction: vi.fn().mockResolvedValue({ attachments: [] }),
+  deleteAttachmentAction: vi.fn(),
+  renameAttachmentAction: vi.fn(),
+}))
+vi.mock('@/app/actions/comentarios', () => ({
+  getCommentsAction: vi.fn().mockResolvedValue({ comments: [] }),
+  createCommentAction: vi.fn(),
+  updateCommentAction: vi.fn(),
+  deleteCommentAction: vi.fn(),
+}))
+vi.mock('@/app/actions/tags', () => ({
+  assignTagToCardAction: vi.fn(),
+  removeTagFromCardAction: vi.fn(),
 }))
 vi.mock('@/app/actions/projetoEdicao', () => ({
   impactoExclusaoFaseAction: vi.fn().mockResolvedValue({
@@ -286,13 +305,16 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     expect(within(screen.getByRole('dialog', { name: 'Ações de A1 Atividade 1' })).getByText('Excluir atividade')).toBeInTheDocument()
   })
 
-  it('clicar no nome edita, sair guarda rascunho e Salvar sincroniza pela ação da EAP', async () => {
+  it('editar o nome no painel guarda rascunho e Salvar sincroniza pela ação da EAP', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
-    fireEvent.click(screen.getByRole('button', { name: 'Renomear A1 Atividade 1' }))
-    const campo = screen.getByRole('textbox', { name: 'Renomear A1' })
+    fireEvent.click(screen.getByRole('button', { name: 'Detalhes de A1 Atividade 1' }))
+    const painel = screen.getByRole('region', { name: 'Detalhes de A1 Atividade 1' })
+    fireEvent.click(within(painel).getByRole('button', { name: 'Renomear A1 Atividade 1' }))
+    const campo = within(painel).getByRole('textbox', { name: 'Renomear A1' })
     fireEvent.change(campo, { target: { value: 'Nova atividade' } })
     fireEvent.blur(campo)
-    expect(screen.getByText('A1 Nova atividade')).toBeInTheDocument()
+    expect(within(painel).getByText('A1 Nova atividade')).toBeInTheDocument()
+    expect(screen.getAllByText('A1 Nova atividade').length).toBeGreaterThan(0)
     expect(renameNodeAction).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: /1 alterações não salvas/ })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
@@ -325,11 +347,11 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     expect(screen.getByRole('columnheader', { name: 'Atividades' })).toHaveClass('planilha-activity-name')
   })
 
-  it('arrastar e ações da macrofase ficam no início da linha, antes do nome', () => {
+  it('título da macrofase fica antes dos controles de arrastar e ações', () => {
     render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
     const linha = screen.getByRole('button', { name: 'Renomear M1 Fase 1' }).closest('tr')!
     const botoes = within(linha).getAllByRole('button').map(b => b.getAttribute('aria-label') ?? b.getAttribute('title'))
-    expect(botoes.indexOf('Ações da macrofase Fase 1')).toBeLessThan(botoes.indexOf('Renomear M1 Fase 1'))
+    expect(botoes.indexOf('Renomear M1 Fase 1')).toBeLessThan(botoes.indexOf('Ações da macrofase Fase 1'))
   })
 
   const comCard = (descricao = 'Usar tinta acrílica') => {
@@ -351,28 +373,28 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     expect(screen.queryByRole('button', { name: 'Iniciar timer' })).toBeNull()
   })
 
-  it('painel de detalhes mostra etapa e descrição e salva a descrição no card da sprint', async () => {
+  it('painel de detalhes mostra a descrição do card e salva pelo card da sprint', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} canUsarCards /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Detalhes de A1 Atividade 1' }))
-    const painel = screen.getByRole('dialog', { name: 'Detalhes de A1 Atividade 1' })
-    expect(within(painel).getByText('Em andamento')).toBeInTheDocument()
+    const painel = screen.getByRole('region', { name: 'Detalhes de A1 Atividade 1' })
     expect(within(painel).getByText('Usar tinta acrílica')).toBeInTheDocument()
-    expect(within(painel).getByRole('link', { name: /Abrir o card na sprint/ })).toHaveAttribute('href', '/projetos/p1/sprints/s1?card=c1')
-    fireEvent.click(within(painel).getByRole('button', { name: 'Editar' }))
-    fireEvent.change(within(painel).getByRole('textbox', { name: 'Descrição da atividade' }), { target: { value: 'Duas demãos de tinta acrílica' } })
-    fireEvent.click(within(painel).getByRole('button', { name: 'Salvar descrição' }))
+    const descricao = within(painel).getByText('Descrição').closest('section')!
+    fireEvent.click(within(descricao).getByRole('button', { name: 'Editar' }))
+    fireEvent.change(within(descricao).getByRole('textbox', { name: 'Descrição do card' }), { target: { value: 'Duas demãos de tinta acrílica' } })
+    fireEvent.click(within(descricao).getByRole('button', { name: 'Concluir' }))
     await waitFor(() => expect(patchCardAction).toHaveBeenCalledWith('s1', 'c1', { description: 'Duas demãos de tinta acrílica' }))
     expect(await within(painel).findByText('Duas demãos de tinta acrílica')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByRole('dialog', { name: 'Detalhes de A1 Atividade 1' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Detalhes de A1 Atividade 1' })).toBeNull()
   })
 
   it('sem permissão nos cards, o painel mostra a descrição sem editar', () => {
     render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Detalhes de A1 Atividade 1' }))
-    const painel = screen.getByRole('dialog', { name: 'Detalhes de A1 Atividade 1' })
+    const painel = screen.getByRole('region', { name: 'Detalhes de A1 Atividade 1' })
     expect(within(painel).getByText('Usar tinta acrílica')).toBeInTheDocument()
-    expect(within(painel).queryByRole('button', { name: 'Editar' })).toBeNull()
+    const descricao = within(painel).getByText('Descrição').closest('section')!
+    expect(within(descricao).queryByRole('button', { name: 'Editar' })).toBeNull()
   })
 
   it('excluir macrofase abre o diálogo de impacto e exclui a fase com as atividades', async () => {
@@ -387,10 +409,13 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
 
   it('com alterações pendentes, pede para salvar antes de excluir a macrofase', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
-    fireEvent.click(screen.getByRole('button', { name: 'Renomear A1 Atividade 1' }))
-    const campo = screen.getByRole('textbox', { name: 'Renomear A1' })
+    fireEvent.click(screen.getByRole('button', { name: 'Detalhes de A1 Atividade 1' }))
+    const painel = screen.getByRole('region', { name: 'Detalhes de A1 Atividade 1' })
+    fireEvent.click(within(painel).getByRole('button', { name: 'Renomear A1 Atividade 1' }))
+    const campo = within(painel).getByRole('textbox', { name: 'Renomear A1' })
     fireEvent.change(campo, { target: { value: 'Outro nome' } })
     fireEvent.blur(campo)
+    fireEvent.keyDown(window, { key: 'Escape' })
     fireEvent.click(screen.getByRole('button', { name: 'Ações da macrofase Fase 1' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Ações da macrofase Fase 1' })).getByText('Excluir macrofase'))
     expect(await screen.findByText('Salve ou descarte as alterações pendentes antes de excluir uma macrofase.')).toBeInTheDocument()
@@ -571,30 +596,22 @@ describe('PlanilhaCustosView — situação ao vivo', () => {
 })
 
 describe('PlanilhaCustosView — permissões do realizado', () => {
-  it('tempo do timer soma com o digitado: Min continua editável e mostra a parte do timer (ADR-089)', () => {
+  it('tempo do timer soma com o digitado no total realizado (ADR-089)', () => {
     const fromCards = structuredClone(planilha)
     Object.assign(fromCards.macrofases[0].atividades[0], { minReal: 100 + 11 / 60, minRealDigitado: 100, minRealApontado: 11 / 60, tempoRealDosCards: true })
     render(<ToastProvider><PlanilhaCustosView {...props} canEditAllActual planilha={fromCards} /></ToastProvider>)
     const row = within(screen.getByText('A1 Atividade 1').closest('tr')!)
-    // Min do realizado edita só a parte digitada; os 11 segundos do timer aparecem ao lado, com duas casas.
-    expect(row.getByDisplayValue('100')).toBeInTheDocument()
-    const selo = row.getByLabelText('mais 0,18 minutos do timer')
-    expect(selo).toHaveTextContent('0,18')
-    expect(selo).toHaveAttribute('title', expect.stringContaining('100 min digitados + 0,18 min'))
-    // Campo e selo dividem a mesma linha (mesmo grupo), sem aumentar a altura da linha.
-    expect(selo.closest('.planilha-campo-com-sufixo')).toContainElement(row.getByDisplayValue('100'))
-    // Horas do realizado mostra o total e não é editável quando há apontamentos.
-    expect(row.getByText('1:40')).toHaveAttribute('title', expect.stringContaining('apontamentos'))
+    expect(row.getByRole('button', { name: /Minutos realizados de A1 Atividade 1: 100,18/ })).toBeInTheDocument()
+    expect(row.getByRole('button', { name: /Horas realizados de A1 Atividade 1: 1:40/ })).toBeInTheDocument()
   })
 
-  it('macrofase é uma faixa de seção: controles na coluna dos controles e contagem de atividades', () => {
+  it('macrofase é uma faixa de seção com os controles junto ao título e a contagem de atividades', () => {
     render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
     const linha = screen.getByRole('button', { name: 'Renomear M1 Fase 1' }).closest('tr')!
-    const [controles, titulo] = Array.from(linha.querySelectorAll('td'))
-    expect(controles).toHaveClass('planilha-phase-controls')
-    expect(within(controles).getByRole('button', { name: 'Ações da macrofase Fase 1' })).toBeInTheDocument()
+    const [titulo] = Array.from(linha.querySelectorAll('td'))
     expect(titulo).toHaveClass('planilha-phase-title')
-    expect(titulo).toHaveAttribute('colspan', '17')
+    expect(titulo).toHaveAttribute('colspan', '18')
+    expect(within(titulo).getByRole('button', { name: 'Ações da macrofase Fase 1' })).toBeInTheDocument()
     expect(within(titulo).getByText('1 atividade')).toBeInTheDocument()
   })
 
@@ -607,14 +624,11 @@ describe('PlanilhaCustosView — permissões do realizado', () => {
     expect(document.body.textContent).not.toContain('1640.18333')
   })
 
-  it('editar o Min com apontamentos grava só a parte digitada', async () => {
-    const fromCards = structuredClone(planilha)
-    Object.assign(fromCards.macrofases[0].atividades[0], { minReal: 130, minRealDigitado: 100, minRealApontado: 30, tempoRealDosCards: true })
-    render(<ToastProvider><PlanilhaCustosView {...props} canEditAllActual planilha={fromCards} /></ToastProvider>)
+  it('Min realizado abre o painel de detalhes da atividade', () => {
+    render(<ToastProvider><PlanilhaCustosView {...props} canEditAllActual /></ToastProvider>)
     const row = within(screen.getByText('A1 Atividade 1').closest('tr')!)
-    fireEvent.change(row.getByDisplayValue('100'), { target: { value: '120' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'a1', { tempoRealMinutos: 120 }))
+    fireEvent.click(row.getByRole('button', { name: /Minutos realizados de A1 Atividade 1/ }))
+    expect(screen.getByRole('region', { name: 'Detalhes de A1 Atividade 1' })).toBeInTheDocument()
   })
 
   function renderizarPermissoes(overrides: Partial<React.ComponentProps<typeof PlanilhaCustosView>>) {
@@ -623,39 +637,39 @@ describe('PlanilhaCustosView — permissões do realizado', () => {
   it('membro edita somente o realizado da própria linha, com orçado bloqueado', () => {
     renderizarPermissoes({ canEditOwnActual: true })
     const linha = within(screen.getByText('A1 Atividade 1').closest('tr')!)
-    expect(linha.getByDisplayValue('0:00')).toBeInTheDocument()
-    expect(linha.queryByDisplayValue('1:30')).not.toBeInTheDocument()
+    expect(linha.getByLabelText('Materiais realizados')).toBeInTheDocument()
+    expect(linha.queryByLabelText('Materiais orçados')).toBeNull()
     expect(linha.queryByRole('combobox')).not.toBeInTheDocument()
-    expect(linha.getByText('1:30')).toHaveClass('bg-gray-100')
-    expect(linha.getByDisplayValue('0:00')).toHaveClass('border-blue-200')
+    expect(linha.getByText('90')).toBeInTheDocument()
   })
   it('realizado próprio não libera linha de outro usuário', () => {
     renderizarPermissoes({ canEditOwnActual: true, currentUserId: 'u2' })
     const linha = within(screen.getByText('A1 Atividade 1').closest('tr')!)
+    expect(linha.queryByLabelText('Materiais realizados')).toBeNull()
     expect(linha.queryByRole('textbox')).not.toBeInTheDocument()
   })
   it('permissão de realizado de todos libera outra linha sem liberar orçamento', () => {
     renderizarPermissoes({ canEditAllActual: true, currentUserId: 'u2' })
     const linha = within(screen.getByText('A1 Atividade 1').closest('tr')!)
-    expect(linha.getByDisplayValue('0:00')).toBeInTheDocument()
-    expect(linha.queryByDisplayValue('1:30')).not.toBeInTheDocument()
+    expect(linha.getByLabelText('Materiais realizados')).toBeInTheDocument()
+    expect(linha.queryByLabelText('Materiais orçados')).toBeNull()
   })
   it('permissão de orçado isolada mantém realizado bloqueado', () => {
     renderizarPermissoes({ canEdit: true })
     const linha = within(screen.getByText('A1 Atividade 1').closest('tr')!)
-    expect(linha.getByDisplayValue('1:30')).toBeInTheDocument()
-    expect(linha.queryByDisplayValue('0:00')).not.toBeInTheDocument()
+    expect(linha.getByDisplayValue('90')).toBeInTheDocument()
+    expect(linha.getByLabelText('Materiais orçados')).toBeInTheDocument()
+    expect(linha.queryByLabelText('Materiais realizados')).toBeNull()
   })
   it('falha ao salvar mantém o valor digitado e exibe o erro', async () => {
-      vi.mocked(updateNodePropertiesAction).mockResolvedValue({ ok: false, error: 'Sem permissão para editar' })
-      renderizarPermissoes({ canEditOwnActual: true })
-      const horas = within(screen.getByText('A1 Atividade 1').closest('tr')!).getByDisplayValue('0:00')
-      fireEvent.change(horas, { target: { value: '2:30' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-      await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalled())
-      expect(horas).toHaveValue('2:30')
-      expect(screen.getAllByRole('alert').some(alert => alert.textContent?.includes('Sem permissão para editar'))).toBe(true)
-      expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'a1', { tempoRealMinutos: 150 })
+    vi.mocked(updateNodePropertiesAction).mockResolvedValue({ ok: false, error: 'Sem permissão para editar' })
+    renderizarPermissoes({ canEdit: true })
+    const min = within(screen.getByText('A1 Atividade 1').closest('tr')!).getByDisplayValue('90')
+    fireEvent.change(min, { target: { value: '120' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'a1', { tempoMinutos: 120 }))
+    expect(min).toHaveValue('120')
+    expect(screen.getAllByRole('alert').some(alert => alert.textContent?.includes('Sem permissão para editar'))).toBe(true)
   })
 })
 
