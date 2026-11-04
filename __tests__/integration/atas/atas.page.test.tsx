@@ -17,9 +17,13 @@ describe('rota antiga /projetos/:id/atas', () => {
   })
 
   it('"← Voltar às atas" da Nova Ata e da Ata levam para a Documentação', () => {
+    // O link de voltar fica na área de trabalho compartilhada pelas duas páginas.
+    const workspace = readFileSync(join(process.cwd(), 'components/atas/AtaWorkspace.tsx'), 'utf8')
+    expect(workspace).toContain('href={`/projetos/${projetoId}/documentacao?doc=atas`}')
+    expect(workspace).not.toContain('href={`/projetos/${projetoId}/atas`}')
     for (const pagina of ['nova/page.tsx', '[ataId]/page.tsx']) {
       const fonte = readFileSync(join(process.cwd(), 'app/projetos/[projetoId]/atas', pagina), 'utf8')
-      expect(fonte).toContain('href={`/projetos/${projetoId}/documentacao?doc=atas`}')
+      expect(fonte).toContain('<AtaWorkspace projetoId={projetoId}')
       expect(fonte).not.toContain('href={`/projetos/${projetoId}/atas`}')
     }
   })
