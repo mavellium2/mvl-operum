@@ -20,18 +20,18 @@ const valueText = (value: number, currency: boolean) => currency ? reais.format(
 
 function Colunas3D({ title, rows, currency = false }: { title: string; rows: Linha[]; currency?: boolean }) {
   const scale = escalaExcel(rows.flatMap(row => [row.orcado, row.real]))
-  const labelWidth = Math.max(42, ...rows.flatMap(row => [row.orcado, row.real]).map(value => valueText(value, currency).length * 7 + 16))
+  const labelWidth = Math.max(42, ...rows.flatMap(row => [row.orcado, row.real]).map(value => valueText(value, currency).length * 5.5 + 12))
   const left = currency ? 110 : 60
-  const width = Math.max(720, rows.length * (Math.max(116, labelWidth + 24)) + left + 35)
+  const width = Math.max(720, rows.length * (Math.max(128, labelWidth * 2 + 24)) + left + 35)
   const right = width - 35, bottom = 245, top = 22, dx = 9, dy = -8
   const groupWidth = (right - left) / Math.max(rows.length, 1)
-  const barWidth = Math.min(24, groupWidth / 3)
+  const barWidth = Math.min(Math.max(44, labelWidth), groupWidth / 2.5)
   const ticks = Array.from({ length: Math.round(scale.max / scale.step) + 1 }, (_, index) => index * scale.step)
   return <GlassCard as="section" className="planilha-chart-card planilha-3d-card rounded-xl border">
     <div className="planilha-chart-heading"><div><h3>{title}</h3><p>{currency ? 'Comparativo de custos por macrofase' : 'Comparativo de tempo por macrofase'}</p></div><span>{rows.length} {rows.length === 1 ? 'fase' : 'fases'}</span></div>
     <div className="planilha-chart-legend"><span><i style={{ background: CORES_EXCEL[0] }} />Orçado</span><span><i style={{ background: CORES_EXCEL[1] }} />Real</span></div>
     <div className="planilha-3d-scroll" role="region" aria-label={`Visualização de ${title}`} tabIndex={0}>
-    <svg viewBox={`0 0 ${width} 365`} role="img" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: Math.min(width, 720), fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
+    <svg viewBox={`0 0 ${width} 325`} role="img" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: Math.min(width, 720), fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>{title}</title><desc>{rows.map(row => `${row.fase}: Orçado ${valueText(row.orcado, currency)}, Real ${valueText(row.real, currency)}`).join('; ')}</desc>
       <path d={`M${left} ${top} l${dx * 2} ${dy * 2} V${bottom + dy * 2} L${left} ${bottom} Z M${left} ${bottom} H${right} l${dx * 2} ${dy * 2} H${left + dx * 2} M${right + dx * 2} ${bottom + dy * 2} V${top + dy * 2}`} fill="none" stroke="var(--ap-border)" strokeWidth={0.6} />
       {ticks.map(value => <text key={value} x={left - 3} y={bottom - value / scale.max * (bottom - top) + 3} textAnchor="end" fontSize={11}>{valueText(Number(value.toPrecision(8)), currency)}</text>)}
@@ -51,7 +51,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
               <path d={`M${x + barWidth} ${y} l${dx} ${dy} v${height} l${-dx} ${-dy} Z`} fill={shade(color, 0.78)} />
             </g>
           })}
-          <text x={center} y={bottom + 68} textAnchor="middle" fontSize={11}>
+          <text x={center} y={bottom + 23} textAnchor="middle" fontSize={11}>
             <title>{row.fase}</title>
             {(row.fase.match(/.{1,22}(?:\s|$)|\S{23,}/g) ?? [row.fase]).map((line, lineIndex) => <tspan key={lineIndex} x={center} dy={lineIndex ? 14 : 0}>{line.trim()}</tspan>)}
           </text>
@@ -61,12 +61,10 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
       <g data-chart-labels="foreground">
         {rows.flatMap((row, index) => {
           const center = left + groupWidth * (index + 0.5)
-          const labelY = bottom + 23
           return [row.orcado, row.real].map((raw, series) => {
             const value = Math.max(0, Number.isFinite(raw) ? raw : 0)
             return <g key={`${index}:${series}`} data-value-label={series === 0 ? 'Orçado' : 'Real'}>
-              <circle cx={center - labelWidth / 2 + 4} cy={labelY + series * 19 - 4} r={3} fill={CORES_EXCEL[series]} />
-              <text x={center + 6} y={labelY + series * 19} textAnchor="middle" fontSize={12} fontWeight="600">{valueText(value, currency)}</text>
+              <text x={center + (series - 0.5) * barWidth} y={bottom - value / scale.max * (bottom - top) + (value / scale.max * (bottom - top) >= 14 ? 11 : -2)} textAnchor="middle" fontSize={9} fontWeight="600" fill={value > 0 ? '#fff' : 'var(--ap-muted)'}>{valueText(value, currency)}</text>
             </g>
           })
         })}
