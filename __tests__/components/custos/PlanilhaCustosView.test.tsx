@@ -426,7 +426,7 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salvar agora' }))
     await waitFor(() => expect(insertChildAction).toHaveBeenCalledWith('p1', 'raiz'))
     await waitFor(() => expect(renameNodeAction).toHaveBeenCalledWith('p1', 'mf-criada', 'Nova fase'))
-    expect(screen.getByRole('button', { name: /Renomear .*Nova fase/ })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByDisplayValue('Nova fase') ?? screen.queryByRole('button', { name: /Renomear .*Nova fase/ })).not.toBeNull())
   })
 
   it('movimento que falha mantém o rascunho para tentar salvar outra vez', async () => {

@@ -9,6 +9,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.53.0] — 2026-11-05
 
+- **Gráficos da planilha:** mantidos os três gráficos anteriores e adicionadas colunas agrupadas 3D para Valores e Tempo e pizza 3D para Elaboração das Atividades, conforme referência Excel fornecida. Preserva títulos, paleta Office 2007, valores sobre as colunas, rótulos inclinados e legenda lateral da pizza. Renderização SVG com dados vivos, descrição acessível e sem animações de recálculo.
+
 - **Cards legíveis:** descrições e comentários passam a mostrar Markdown, com títulos, listas, negrito, tabelas, checklists e links. HTML digitado não é executado, links externos abrem em outra aba e tabelas largas rolam dentro do próprio bloco. Comentários longos deixam de virar uma linha só; durante a busca de comentários, o texto aparece simples com os termos realçados. Incorpora a 1.51.0, que não chegou a ser publicada.
 
 - **Minicard do quadro:** o resumo da descrição aparece como texto simples, sem os símbolos de Markdown.

@@ -34,6 +34,7 @@ import { updateNodePropertiesAction, insertChildAction, insertSiblingAction, ren
 import { fmtDataBR, maiorData, situacaoDe, valorPorMinutoDoElaborador, type PlanilhaDeCustos, type SituacaoAtividade, type Elaborador } from '@/lib/planilhaCustos'
 import { minutosDeHoras, minutosDeDias, round2 } from '@/lib/custosCalc'
 import { formatarMinutos } from '@/lib/tempoRealizado'
+import GraficosPlanilha3D from './GraficosPlanilha3D'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 
 interface Props {
@@ -151,8 +152,8 @@ const SITUACAO_CLASS: Record<SituacaoAtividade, string> = {
   Pendente: 'bg-gray-100 text-gray-700',
 }
 
-const CORES_PIE = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#dc2626', '#0d9488', '#ca8a04', '#4f46e5']
 
+const CORES_PIE = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#dc2626', '#0d9488', '#ca8a04', '#4f46e5']
 const num = (v: string | undefined, fallback: number): number => {
   if (v === undefined) return fallback
   const n = parseFloat(String(v).replace(',', '.'))
@@ -831,6 +832,7 @@ export default function PlanilhaCustosView({
             <QuadroElaborador planilha={planilhaAtual} />
           </div>
           <Graficos planilha={planilhaAtual} />
+          <GraficosPlanilha3D planilha={planilhaAtual} />
         </>
       )}
 
