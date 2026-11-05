@@ -1,5 +1,5 @@
 import { hydrateRoot } from 'react-dom/client'
-import { render, screen, act, fireEvent } from '@testing-library/react'
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react'
 import { renderToStaticMarkup, renderToString } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { writeFileSync } from 'node:fs'
@@ -55,7 +55,7 @@ describe('gráficos 3D da referência Excel', () => {
   it('permite ocultar séries, selecionar colunas e destacar elaboradores pelo teclado', () => {
     const { container } = render(<Graficos planilha={planilha} />)
     fireEvent.click(screen.getAllByRole('button', { name: 'Orçado', exact: true })[0])
-    expect(container.querySelector('[data-series="Orçado"]')).toHaveStyle({ display: 'none' })
+    expect(container.querySelector('[data-series="Orçado"]')).toHaveStyle({ visibility: 'hidden' })
     fireEvent.click(screen.getAllByRole('button', { name: 'Orçado', exact: true })[0])
     const bar = screen.getByRole('button', { name: /1.1 Planejamento.*Orçado: R/ })
     fireEvent.focus(bar)
@@ -74,6 +74,16 @@ describe('gráficos 3D da referência Excel', () => {
     fireEvent.blur(slice)
     expect(slice).toHaveAttribute('opacity', '1')
     expect(screen.getAllByRole('status')[2]).not.toHaveTextContent('Maria Júlia: 5 atividades')
+  })
+  it('anima o reenquadramento da série visível e restaura a comparação', async () => {
+    const { container } = render(<Graficos planilha={planilha} />)
+    const bar = container.querySelector('[data-series="Orçado"] path')!
+    const before = bar.getAttribute('d')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Real', exact: true })[0])
+    await waitFor(() => expect(bar.getAttribute('d')).not.toBe(before))
+    expect(container.innerHTML).not.toMatch(/NaN|Infinity/)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Real', exact: true })[0])
+    await waitFor(() => expect(bar.getAttribute('d')).toBe(before))
   })
   it('atualiza os valores com a planilha e não exibe NaN em dados vazios', () => {
     const { rerender, container } = render(<Graficos planilha={planilha} />)

@@ -393,3 +393,8 @@ button.planilha-prioridade:focus-visible { outline: 2px solid var(--sheet-accent
 .planilha-chart-detail strong, .planilha-chart-detail span { display: block; }
 .planilha-chart-detail strong { color: var(--ap-text); }
 @media (prefers-reduced-motion: reduce) { .planilha-chart-mark { transition: none; } }
+
+.planilha-chart-column, .planilha-chart-value { transition: opacity 220ms ease, visibility 220ms; }
+.planilha-chart-rise { transform-origin: 0 245px; animation: planilha-chart-rise 550ms cubic-bezier(.2,.7,.3,1) both; }
+@keyframes planilha-chart-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .planilha-chart-rise { animation: none; } .planilha-chart-column, .planilha-chart-value { transition: none; } }
