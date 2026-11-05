@@ -9,6 +9,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.54.0] — 2026-11-05
 
+- **Fluidez da pizza 3D:** preenchimento elíptico com recortes separados para topo e profundidade, aceleração/desaceleração suave em 700ms e percentuais com fade sem cortes.
+
 - **Carregamento e produção:** skeleton nos gráficos, com carregamento antecipado e animação independente ao entrar na tela, sem esperar 50% de visibilidade. Histórico compatível com produção sem a tabela legada `public.Attachment`, corrigindo o erro P2021 ao abrir a planilha e restaurar versões.
 
 - **Desempenho da planilha:** atividades montadas em blocos de 30 conforme a rolagem, resumos e gráficos próximos à tela, painéis carregados ao abrir e atualização de resumos sem bloquear a digitação. Preserva rascunhos, foco de atividades novas e totais completos.

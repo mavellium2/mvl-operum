@@ -46,6 +46,12 @@ describe('gráficos 3D da referência Excel', () => {
     expect(container.querySelectorAll('path[fill="#4F81BD"]').length).toBeGreaterThan(0)
     expect(container.querySelectorAll('path[fill="#C0504D"]').length).toBeGreaterThan(0)
     expect(screen.getByText('45.45')).toBeInTheDocument()
+    const pie = screen.getByRole('group', { name: 'Elaboração das Atividades (%)' })
+    const masks = pie.querySelectorAll('defs path')
+    expect(masks).toHaveLength(2)
+    expect(masks[0].getAttribute('d')).toContain('M330 250')
+    expect(masks[1].getAttribute('d')).toContain('M330 278')
+    expect(screen.getByText('45.45').closest('[clip-path]')).toBeNull()
     expect(container.querySelectorAll('svg')[0].textContent).toMatch(/R\$\s28,44/)
     if (process.env.OPERUM_CHART_PREVIEW === '1') {
       const markup = renderToStaticMarkup(<Graficos planilha={planilha} />)

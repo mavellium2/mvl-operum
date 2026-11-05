@@ -410,3 +410,6 @@ button.planilha-prioridade:focus-visible { outline: 2px solid var(--sheet-accent
 .planilha-chart-load { position: absolute; bottom: 8px; right: 12px; font-size: 12px; }
 
 svg[data-entered="true"] .planilha-chart-rise { animation-play-state: running; }
+
+.planilha-pie-value { transition: opacity 160ms ease; }
+@media (prefers-reduced-motion: reduce) { .planilha-pie-value { transition: none; } }

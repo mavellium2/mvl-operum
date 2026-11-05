@@ -21,7 +21,7 @@ const numeros = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 })
 const valueText = (value: number, currency: boolean) => currency ? reais.format(value) : numeros.format(value)
 
 // Shared by column rearrangement and the pie reveal; cancel on updates/unmount.
-function useChartNumber(target: number, initial = target) {
+function useChartNumber(target: number, initial = target, duration = 420) {
   const [value, setValue] = useState(initial)
   const current = useRef(initial)
   useEffect(() => {
@@ -32,19 +32,20 @@ function useChartNumber(target: number, initial = target) {
     let started: number | undefined
     const tick = (time: number) => {
       started ??= time
-      const progress = reduced ? 1 : Math.min(1, (time - started) / 420)
-      current.current = from + (target - from) * (1 - (1 - progress) ** 3)
+      const progress = reduced ? 1 : Math.min(1, (time - started) / duration)
+      const eased = duration > 420 ? progress * progress * (3 - 2 * progress) : 1 - (1 - progress) ** 3
+      current.current = from + (target - from) * eased
       setValue(current.current)
       if (progress < 1) frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [target])
+  }, [target, duration])
   return value
 }
 
 function Colunas3D({ title, rows, currency = false }: { title: string; rows: Linha[]; currency?: boolean }) {
-  const entrance = useAnimacaoGraficoVisivel()
+  const { ref: chartRef, entered } = useAnimacaoGraficoVisivel()
   const [visible, setVisible] = useState([true, true])
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
@@ -67,7 +68,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
     <div className="planilha-chart-heading"><div><h3>{title}</h3><p>{currency ? 'Comparativo de custos por macrofase' : 'Comparativo de tempo por macrofase'}</p></div><span>{rows.length} {rows.length === 1 ? 'fase' : 'fases'}</span></div>
     <div className="planilha-chart-legend">{['Orçado', 'Real'].map((name, index) => <GlassButton key={name} variant="custom" className="planilha-chart-toggle" aria-pressed={visible[index]} onClick={() => { setVisible(current => current.map((value, i) => i === index ? !value : value)); setHovered(null) }}><i style={{ background: CORES_EXCEL[index] }} />{name}</GlassButton>)}</div>
     <div className="planilha-3d-scroll" role="region" aria-label={`Visualização de ${title}`} tabIndex={0}>
-    <svg ref={entrance.ref} data-entered={entrance.entered} viewBox={`0 0 ${width} 325`} role="group" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: Math.min(width, 720), fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
+    <svg ref={chartRef} data-entered={entered} viewBox={`0 0 ${width} 325`} role="group" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: Math.min(width, 720), fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>{title}</title><desc>{rows.map(row => `${row.fase}: Orçado ${valueText(row.orcado, currency)}, Real ${valueText(row.real, currency)}`).join('; ')}</desc>
       <path d={`M${left} ${top} l${dx * 2} ${dy * 2} V${bottom + dy * 2} L${left} ${bottom} Z M${left} ${bottom} H${right} l${dx * 2} ${dy * 2} H${left + dx * 2} M${right + dx * 2} ${bottom + dy * 2} V${top + dy * 2}`} fill="none" stroke="var(--ap-border)" strokeWidth={0.6} />
       {ticks.map(value => <text key={value} x={left - 3} y={bottom - value / scaleMax * (bottom - top) + 3} textAnchor="end" fontSize={11}>{valueText(Number(value.toPrecision(8)), currency)}</text>)}
@@ -119,7 +120,7 @@ function sector(cx: number, cy: number, rx: number, ry: number, start: number, e
   return `M${cx} ${cy} L${point(start)} A${rx} ${ry} 0 ${end - start > Math.PI ? 1 : 0} 1 ${point(end)} Z`
 }
 function Pizza3D({ rows, total }: { rows: { elaborador: string; qtdeAtividades: number; percentual: number }[]; total: number }) {
-  const entrance = useAnimacaoGraficoVisivel()
+  const { ref: chartRef, entered } = useAnimacaoGraficoVisivel()
   const [selected, setSelected] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
   const active = hovered
@@ -129,24 +130,30 @@ function Pizza3D({ rows, total }: { rows: { elaborador: string; qtdeAtividades: 
     const end = start + row.percentual / 100 * Math.PI * 2
     return { ...row, start, end, color: CORES_EXCEL[index % CORES_EXCEL.length] }
   })
-  const reveal = useChartNumber(entrance.entered ? 1 : 0, 0)
+  const reveal = useChartNumber(entered ? 1 : 0, 0, 700)
   const revealId = useId()
   const cx = 330, cy = 250, rx = 285, ry = rx * Math.sin(50 * Math.PI / 180), depth = 28
   return <GlassCard as="section" className="planilha-chart-card planilha-3d-card planilha-3d-pie-card rounded-xl border">
     <div className="planilha-chart-heading"><div><h3>Elaboração das Atividades (%)</h3><p>Distribuição das atividades entre os elaboradores</p></div><span>{total} atividades</span></div>
     <div className="planilha-3d-pie-layout">
-    <svg ref={entrance.ref} data-entered={entrance.entered} viewBox="0 0 660 520" role="group" aria-label="Elaboração das Atividades (%)" data-chart-type="pie-3d" data-rotation-x="50" style={{ display: 'block', width: '100%', minWidth: 0, maxWidth: 600, fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
+    <svg ref={chartRef} data-entered={entered} viewBox="0 0 660 520" role="group" aria-label="Elaboração das Atividades (%)" data-chart-type="pie-3d" data-rotation-x="50" style={{ display: 'block', width: '100%', minWidth: 0, maxWidth: 600, fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>Elaboração das Atividades (%)</title><desc>{slices.map(row => `${row.elaborador}: ${row.percentual.toFixed(2)}%`).join('; ')}</desc>
-      <defs><clipPath id={revealId}><path d={sector(cx, cy, 900, 900, -Math.PI / 2, -Math.PI / 2 + reveal * Math.PI * 2)} /></clipPath></defs>
-      <g clipPath={`url(#${revealId})`}>
+      <defs>
+        <clipPath id={`${revealId}-top`}><path d={sector(cx, cy, rx + 1, ry + 1, -Math.PI / 2, -Math.PI / 2 + reveal * Math.PI * 2)} /></clipPath>
+        <clipPath id={`${revealId}-depth`}><path d={sector(cx, cy + depth, rx + 1, ry + 1, -Math.PI / 2, -Math.PI / 2 + reveal * Math.PI * 2)} /></clipPath>
+      </defs>
+      <g clipPath={`url(#${revealId}-depth)`}>
       {slices.map((slice, index) => <path key={`depth:${index}`} d={sector(cx, cy + depth, rx, ry, slice.start, slice.end)} fill={shade(slice.color, 0.72)} opacity={active && active !== slice.elaborador ? 0.35 : 1} />)}
+      </g>
+      <g clipPath={`url(#${revealId}-top)`}>
       {/* SVG controls retain native geometry; matching HTML actions use GlassButton below. */}
       {slices.map((slice, index) => <g key={index} role="button" tabIndex={0} aria-label={`${slice.elaborador}: ${numeros.format(slice.percentual)}% · ${slice.qtdeAtividades} atividades`} aria-pressed={selected === slice.elaborador} className="planilha-chart-mark" opacity={active && active !== slice.elaborador ? 0.35 : 1} onMouseEnter={() => setHovered(slice.elaborador)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(slice.elaborador)} onBlur={() => setHovered(null)} onClick={() => select(slice.elaborador)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(slice.elaborador) } if (event.key === 'Escape') { setSelected(null); setHovered(null) } }}>
         <title>{`${slice.elaborador}: ${slice.percentual.toFixed(2)}% · ${slice.qtdeAtividades} atividades`}</title>
         <path d={sector(cx, cy, rx, ry, slice.start, slice.end)} fill={slice.color} />
-        <text x={cx + Math.cos((slice.start + slice.end) / 2) * rx * 0.82} y={cy + Math.sin((slice.start + slice.end) / 2) * ry * 0.82} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight="600" fill="#102334">{slice.percentual.toFixed(2)}</text>
+
       </g>)}
       </g>
+      {slices.map(slice => <text key={`label:${slice.elaborador}`} className="planilha-pie-value" style={{ pointerEvents: 'none', opacity: reveal >= 0.999 || -Math.PI / 2 + reveal * Math.PI * 2 >= (slice.start + slice.end) / 2 ? 1 : 0 }} x={cx + Math.cos((slice.start + slice.end) / 2) * rx * 0.82} y={cy + Math.sin((slice.start + slice.end) / 2) * ry * 0.82} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight="600" fill="#102334">{slice.percentual.toFixed(2)}</text>)}
       {!slices.length && <text x={330} y={250} textAnchor="middle" fontSize={14} fill="var(--ap-muted)">{total ? 'Nenhuma atividade com elaborador.' : 'Nenhuma atividade cadastrada.'}</text>}
     </svg>
     <div className="planilha-3d-legend" aria-label="Elaboradores">{slices.map(slice => <GlassButton key={slice.elaborador} variant="custom" className="planilha-donut-item planilha-chart-toggle" aria-pressed={selected === slice.elaborador} onClick={() => select(slice.elaborador)} onMouseEnter={() => setHovered(slice.elaborador)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(slice.elaborador)} onBlur={() => setHovered(null)}><i style={{ backgroundColor: slice.color }} /><span title={slice.elaborador}>{slice.elaborador}</span><strong>{slice.qtdeAtividades}</strong><small>{slice.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%</small></GlassButton>)}</div>
