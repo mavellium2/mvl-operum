@@ -59,7 +59,7 @@ beforeEach(() => {
   vi.mocked(updateNodePropertiesAction).mockResolvedValue({ ok: true, serverVersion: 2 })
   vi.mocked(renameNodeAction).mockResolvedValue({ ok: true, serverVersion: 2 })
   vi.mocked(moveNodeAction).mockResolvedValue({ ok: true, serverVersion: 2 })
-  vi.mocked(insertChildAction).mockResolvedValue({ ok: true, nodeId: 'novo-real', serverVersion: 2 })
+  vi.mocked(insertChildAction).mockResolvedValue({ ok: true, nodeId: 'mf-criada', serverVersion: 2 })
   vi.mocked(insertSiblingAction).mockResolvedValue({ ok: true, nodeId: 'atividade-real', serverVersion: 2 })
   vi.mocked(deleteNodeAction).mockResolvedValue({ ok: true, serverVersion: 2 })
 })
@@ -425,7 +425,7 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     expect(insertChildAction).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Salvar agora' }))
     await waitFor(() => expect(insertChildAction).toHaveBeenCalledWith('p1', 'raiz'))
-    await waitFor(() => expect(renameNodeAction).toHaveBeenCalledWith('p1', 'novo-real', 'Nova fase'))
+    await waitFor(() => expect(renameNodeAction).toHaveBeenCalledWith('p1', 'mf-criada', 'Nova fase'))
     expect(screen.getByRole('button', { name: /Renomear .*Nova fase/ })).toBeInTheDocument()
   })
 
@@ -623,7 +623,9 @@ describe('PlanilhaCustosView — permissões do realizado', () => {
     const linha = within(screen.getByText('1.1.1 Atividade 1').closest('tr')!)
     expect(linha.getByLabelText('Materiais realizados')).toBeInTheDocument()
     expect(linha.queryByLabelText('Materiais orçados')).toBeNull()
-    expect(linha.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(linha.getByRole('combobox', { name: 'Data de realização da atividade' })).toBeInTheDocument()
+    expect(linha.queryByRole('combobox', { name: 'Data prevista da atividade' })).toBeNull()
+    expect(linha.queryByRole('button', { name: /^Elaborado por/ })).toBeNull()
     expect(linha.getByText('90')).toBeInTheDocument()
   })
   it('realizado próprio não libera linha de outro usuário', () => {
