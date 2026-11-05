@@ -23,7 +23,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
   const labelWidth = Math.max(42, ...rows.flatMap(row => [row.orcado, row.real]).map(value => valueText(value, currency).length * 5.5 + 12))
   const left = currency ? 110 : 60
   const width = Math.max(720, rows.length * (Math.max(128, labelWidth * 2 + 24)) + left + 35)
-  const right = width - 35, bottom = 245, top = 22, dx = 9, dy = -8
+  const right = width - 35, bottom = 245, top = 28, dx = 13, dy = -11
   const groupWidth = (right - left) / Math.max(rows.length, 1)
   const barWidth = Math.min(Math.max(44, labelWidth), groupWidth / 2.5)
   const ticks = Array.from({ length: Math.round(scale.max / scale.step) + 1 }, (_, index) => index * scale.step)
