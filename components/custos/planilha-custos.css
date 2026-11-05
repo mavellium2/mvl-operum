@@ -370,3 +370,15 @@ button.planilha-prioridade:focus-visible { outline: 2px solid var(--sheet-accent
 .planilha-header-main > .planilha-period { flex-shrink: 0; }
 
 .planilha-excel-chart { min-width: 0; overflow-x: auto; overflow-y: hidden; }
+
+.planilha-3d-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.planilha-3d-card { padding: 16px; }
+.planilha-3d-scroll { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--ap-border) transparent; }
+.planilha-3d-scroll:focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 2px; border-radius: 8px; }
+.planilha-3d-pie-card { grid-column: 1 / -1; }
+.planilha-3d-pie-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(240px, 1fr); align-items: center; gap: 24px; margin-top: 12px; }
+.planilha-3d-legend { display: grid; gap: 8px; min-width: 0; }
+.planilha-3d-legend .planilha-donut-item { padding: 10px 12px; font-size: 12px; }
+.planilha-3d-legend .planilha-donut-item span { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 1000px) { .planilha-3d-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .planilha-3d-card { padding: 12px; } .planilha-3d-pie-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; } }

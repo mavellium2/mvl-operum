@@ -9,6 +9,10 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.54.0] — 2026-11-05
 
+- **Apresentação dos gráficos 3D:** cards, tipografia e textos adaptados à aparência do Operum; legenda de elaboradores responsiva com nomes completos. Valores financeiros em reais, com rótulos separados acima das colunas e renderizados em primeiro plano.
+
+- **Hidratação dos gráficos:** títulos SVG gerados como texto único, evitando diferenças entre servidor e navegador e a recriação da página no cliente.
+
 - **Gráficos da planilha:** preservados os quadros-resumo e substituídos os gráficos Valores por macrofase, Tempo por macrofase e Atividades por elaborador por colunas agrupadas 3D para Valores e Tempo e pizza 3D para Elaboração das Atividades, conforme referência Excel fornecida. Preserva títulos, paleta Office 2007, valores sobre as colunas, rótulos inclinados e legenda lateral da pizza. Renderização SVG com dados vivos, descrição acessível e sem animações de recálculo.
 
 ## [1.53.0] — 2026-11-05

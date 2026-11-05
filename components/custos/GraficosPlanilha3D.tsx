@@ -14,21 +14,27 @@ export function escalaExcel(values: number[]) {
   return { step, max: Math.max(step, Math.ceil(max / step) * step) }
 }
 type Linha = { fase: string; orcado: number; real: number }
-const valueText = (value: number, currency: boolean) => currency ? value.toFixed(2) : Number(value.toFixed(2)).toString()
+const reais = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+const numeros = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 })
+const valueText = (value: number, currency: boolean) => currency ? reais.format(value) : numeros.format(value)
 
 function Colunas3D({ title, rows, currency = false }: { title: string; rows: Linha[]; currency?: boolean }) {
   const scale = escalaExcel(rows.flatMap(row => [row.orcado, row.real]))
-  const width = Math.max(1000, rows.length * 68 + 600)
-  const left = 355, right = width - 240, bottom = 155, top = 60, dx = 9, dy = -8
+  const labelWidth = Math.max(42, ...rows.flatMap(row => [row.orcado, row.real]).map(value => valueText(value, currency).length * 7 + 16))
+  const left = currency ? 110 : 60
+  const width = Math.max(720, rows.length * (labelWidth * 2 + 40) + left + 35)
+  const right = width - 35, bottom = 200, top = 45, dx = 9, dy = -8
   const groupWidth = (right - left) / Math.max(rows.length, 1)
-  const barWidth = Math.min(18, groupWidth / 3)
+  const barWidth = Math.min(24, groupWidth / 3)
   const ticks = Array.from({ length: Math.round(scale.max / scale.step) + 1 }, (_, index) => index * scale.step)
-  return <GlassCard as="section" className="planilha-excel-chart" style={{ background: '#fff', color: '#000', borderRadius: 0, boxShadow: 'none', border: '1px solid #d9d9d9' }}>
-    <svg viewBox={`0 0 ${width} 310`} role="img" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: 800, fontFamily: 'Calibri, Carlito, Arial, sans-serif' }}>
+  return <GlassCard as="section" className="planilha-chart-card planilha-3d-card rounded-xl border">
+    <div className="planilha-chart-heading"><div><h3>{title}</h3><p>{currency ? 'Comparativo de custos por macrofase' : 'Comparativo de tempo por macrofase'}</p></div><span>{rows.length} {rows.length === 1 ? 'fase' : 'fases'}</span></div>
+    <div className="planilha-chart-legend"><span><i style={{ background: CORES_EXCEL[0] }} />Orçado</span><span><i style={{ background: CORES_EXCEL[1] }} />Real</span></div>
+    <div className="planilha-3d-scroll" role="region" aria-label={`Visualização de ${title}`} tabIndex={0}>
+    <svg viewBox={`0 0 ${width} 370`} role="img" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: width, fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>{title}</title><desc>{rows.map(row => `${row.fase}: Orçado ${valueText(row.orcado, currency)}, Real ${valueText(row.real, currency)}`).join('; ')}</desc>
-      <text x={width / 2} y={31} textAnchor="middle" fontSize={17} fontWeight="bold" fill="#757575">{title}</text>
-      <path d={`M${left} ${top} l${dx * 2} ${dy * 2} V${bottom + dy * 2} L${left} ${bottom} Z M${left} ${bottom} H${right} l${dx * 2} ${dy * 2} H${left + dx * 2} M${right + dx * 2} ${bottom + dy * 2} V${top + dy * 2}`} fill="none" stroke="#888" strokeWidth={0.6} />
-      {ticks.map(value => <text key={value} x={left - 3} y={bottom - value / scale.max * (bottom - top) + 3} textAnchor="end" fontSize={9}>{Number(value.toPrecision(8))}</text>)}
+      <path d={`M${left} ${top} l${dx * 2} ${dy * 2} V${bottom + dy * 2} L${left} ${bottom} Z M${left} ${bottom} H${right} l${dx * 2} ${dy * 2} H${left + dx * 2} M${right + dx * 2} ${bottom + dy * 2} V${top + dy * 2}`} fill="none" stroke="var(--ap-border)" strokeWidth={0.6} />
+      {ticks.map(value => <text key={value} x={left - 3} y={bottom - value / scale.max * (bottom - top) + 3} textAnchor="end" fontSize={11}>{valueText(Number(value.toPrecision(8)), currency)}</text>)}
       {rows.map((row, index) => {
         const center = left + groupWidth * (index + 0.5)
         return <g key={`${row.fase}:${index}`}>
@@ -39,18 +45,36 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
             const y = bottom - height
             const color = CORES_EXCEL[series]
             return <g key={series} data-series={series === 0 ? 'Orçado' : 'Real'}>
-              <title>{row.fase} · {series === 0 ? 'Orçado' : 'Real'}: {valueText(value, currency)}</title>
+              <title>{`${row.fase} · ${series === 0 ? 'Orçado' : 'Real'}: ${valueText(value, currency)}`}</title>
               <path d={`M${x} ${y} h${barWidth} v${height} h${-barWidth} Z`} fill={color} />
               <path d={`M${x} ${y} l${dx} ${dy} h${barWidth} l${-dx} ${-dy} Z`} fill={shade(color, 1.12)} />
               <path d={`M${x + barWidth} ${y} l${dx} ${dy} v${height} l${-dx} ${-dy} Z`} fill={shade(color, 0.78)} />
-              <text x={x + barWidth / 2 + dx / 2} y={y + dy - 4} textAnchor="middle" fontSize={10} fontWeight="bold">{valueText(value, currency)}</text>
             </g>
           })}
-          <text transform={`translate(${center + 4},${bottom + 10}) rotate(-45)`} textAnchor="end" fontSize={9}>{row.fase}</text>
+          <text transform={`translate(${center + 4},${bottom + 10}) rotate(-40)`} textAnchor="end" fontSize={11}>{row.fase}</text>
         </g>
       })}
-      {!rows.length && <text x={width / 2} y={130} textAnchor="middle" fontSize={12} fill="#757575">Nenhuma macrofase com dados.</text>}
+      {!rows.length && <text x={width / 2} y={130} textAnchor="middle" fontSize={12} fill="var(--ap-muted)">Nenhuma macrofase com dados.</text>}
+      <g data-chart-labels="foreground">
+        {rows.flatMap((row, index) => {
+          const center = left + groupWidth * (index + 0.5)
+          const highest = Math.max(0, row.orcado, row.real)
+          const labelY = bottom - highest / scale.max * (bottom - top) + dy - 24
+          return [row.orcado, row.real].map((raw, series) => {
+            const value = Math.max(0, Number.isFinite(raw) ? raw : 0)
+            const x = series === 0 ? center - labelWidth - 7 : center + dx + 7
+            const barX = center + (series - 0.5) * barWidth + dx / 2
+            const barY = bottom - value / scale.max * (bottom - top) + dy
+            return <g key={`${index}:${series}`} data-value-label={series === 0 ? 'Orçado' : 'Real'}>
+              <path d={`M${barX} ${barY} L${x + labelWidth / 2} ${labelY + 22}`} stroke={CORES_EXCEL[series]} strokeOpacity={0.5} fill="none" />
+              <rect x={x} y={labelY} width={labelWidth} height={22} rx={5} fill="var(--ap-surface)" stroke={CORES_EXCEL[series]} strokeOpacity={0.4} />
+              <text x={x + labelWidth / 2} y={labelY + 15} textAnchor="middle" fontSize={12} fontWeight="600">{valueText(value, currency)}</text>
+            </g>
+          })
+        })}
+      </g>
     </svg>
+    </div>
   </GlassCard>
 }
 function sector(cx: number, cy: number, rx: number, ry: number, start: number, end: number) {
@@ -64,22 +88,22 @@ function Pizza3D({ rows, total }: { rows: { elaborador: string; qtdeAtividades: 
     const end = start + row.percentual / 100 * Math.PI * 2
     return { ...row, start, end, color: CORES_EXCEL[index % CORES_EXCEL.length] }
   })
-  const cx = 365, cy = 280, rx = 285, ry = rx * Math.sin(50 * Math.PI / 180), depth = 28
-  const height = Math.max(560, slices.length * 30 + 100)
-  return <GlassCard as="section" className="planilha-excel-chart" style={{ background: '#fff', color: '#000', borderRadius: 0, boxShadow: 'none', border: '1px solid #d9d9d9' }}>
-    <svg viewBox={`0 0 1000 ${height}`} role="img" aria-label="Elaboração das Atividades (%)" data-chart-type="pie-3d" data-rotation-x="50" style={{ display: 'block', width: '100%', minWidth: 700, fontFamily: 'Calibri, Carlito, Arial, sans-serif' }}>
+  const cx = 330, cy = 250, rx = 285, ry = rx * Math.sin(50 * Math.PI / 180), depth = 28
+  return <GlassCard as="section" className="planilha-chart-card planilha-3d-card planilha-3d-pie-card rounded-xl border">
+    <div className="planilha-chart-heading"><div><h3>Elaboração das Atividades (%)</h3><p>Distribuição das atividades entre os elaboradores</p></div><span>{total} atividades</span></div>
+    <div className="planilha-3d-pie-layout">
+    <svg viewBox="0 0 660 520" role="img" aria-label="Elaboração das Atividades (%)" data-chart-type="pie-3d" data-rotation-x="50" style={{ display: 'block', width: '100%', minWidth: 0, maxWidth: 600, fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>Elaboração das Atividades (%)</title><desc>{slices.map(row => `${row.elaborador}: ${row.percentual.toFixed(2)}%`).join('; ')}</desc>
-      <text x={500} y={32} textAnchor="middle" fontSize={22} fontWeight="bold" fill="#757575">Elaboração das Atividades (%)</text>
       {slices.map((slice, index) => <path key={`depth:${index}`} d={sector(cx, cy + depth, rx, ry, slice.start, slice.end)} fill={shade(slice.color, 0.72)} />)}
       {slices.map((slice, index) => <g key={index}>
-        <title>{slice.elaborador}: {slice.percentual.toFixed(2)}% · {slice.qtdeAtividades} atividades</title>
+        <title>{`${slice.elaborador}: ${slice.percentual.toFixed(2)}% · ${slice.qtdeAtividades} atividades`}</title>
         <path d={sector(cx, cy, rx, ry, slice.start, slice.end)} fill={slice.color} />
-        <text x={cx + Math.cos((slice.start + slice.end) / 2) * rx * 0.82} y={cy + Math.sin((slice.start + slice.end) / 2) * ry * 0.82} textAnchor="middle" dominantBaseline="middle" fontSize={12}>{slice.percentual.toFixed(2)}</text>
-        <rect x={690} y={250 + index * 30} width={13} height={13} fill={slice.color} />
-        <text x={710} y={263 + index * 30} fontSize={20} fontWeight="bold">{slice.elaborador}</text>
+        <text x={cx + Math.cos((slice.start + slice.end) / 2) * rx * 0.82} y={cy + Math.sin((slice.start + slice.end) / 2) * ry * 0.82} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight="600" fill="#102334">{slice.percentual.toFixed(2)}</text>
       </g>)}
-      {!slices.length && <text x={500} y={280} textAnchor="middle" fontSize={14} fill="#757575">{total ? 'Nenhuma atividade com elaborador.' : 'Nenhuma atividade cadastrada.'}</text>}
+      {!slices.length && <text x={330} y={250} textAnchor="middle" fontSize={14} fill="var(--ap-muted)">{total ? 'Nenhuma atividade com elaborador.' : 'Nenhuma atividade cadastrada.'}</text>}
     </svg>
+    <div className="planilha-3d-legend" aria-label="Elaboradores">{slices.map(slice => <div key={slice.elaborador} className="planilha-donut-item"><i style={{ backgroundColor: slice.color }} /><span title={slice.elaborador}>{slice.elaborador}</span><strong>{slice.qtdeAtividades}</strong><small>{slice.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%</small></div>)}</div>
+    </div>
   </GlassCard>
 }
 export default memo(function GraficosPlanilha3D({ planilha }: { planilha: PlanilhaDeCustos }) {
@@ -87,7 +111,7 @@ export default memo(function GraficosPlanilha3D({ planilha }: { planilha: Planil
   // para fechar 100%, inclusive quando uma atividade possui vários elaboradores.
   const total = planilha.quadros.elaboradores.reduce((sum, row) => sum + Math.max(0, row.qtdeAtividades), 0)
   const rows = planilha.quadros.elaboradores.map(row => ({ ...row, percentual: total ? Math.max(0, row.qtdeAtividades) / total * 100 : 0 }))
-  return <div className="mt-4 grid gap-5" data-planilha-charts="excel-3d" style={{ minWidth: 0 }}>
+  return <div className="planilha-charts planilha-3d-grid mt-4" data-planilha-charts="excel-3d" style={{ minWidth: 0 }}>
     <Colunas3D title="Valores: Orçado e Real (R$)" currency rows={planilha.quadros.valor.map(row => ({ fase: row.fase, orcado: row.orcado, real: row.realizado }))} />
     <Colunas3D title="Tempo: Orçado e Real (Minutos)" rows={planilha.quadros.tempo.map(row => ({ fase: row.fase, orcado: row.minOrcado, real: row.minReal }))} />
     <Pizza3D rows={rows} total={planilha.qtdeAtividades} />
