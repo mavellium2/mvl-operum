@@ -22,8 +22,8 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
   const scale = escalaExcel(rows.flatMap(row => [row.orcado, row.real]))
   const labelWidth = Math.max(42, ...rows.flatMap(row => [row.orcado, row.real]).map(value => valueText(value, currency).length * 7 + 16))
   const left = currency ? 110 : 60
-  const width = Math.max(720, rows.length * (labelWidth * 2 + 40) + left + 35)
-  const right = width - 35, bottom = 200, top = 45, dx = 9, dy = -8
+  const width = Math.max(720, rows.length * (Math.max(116, labelWidth + 24)) + left + 35)
+  const right = width - 35, bottom = 245, top = 22, dx = 9, dy = -8
   const groupWidth = (right - left) / Math.max(rows.length, 1)
   const barWidth = Math.min(24, groupWidth / 3)
   const ticks = Array.from({ length: Math.round(scale.max / scale.step) + 1 }, (_, index) => index * scale.step)
@@ -31,7 +31,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
     <div className="planilha-chart-heading"><div><h3>{title}</h3><p>{currency ? 'Comparativo de custos por macrofase' : 'Comparativo de tempo por macrofase'}</p></div><span>{rows.length} {rows.length === 1 ? 'fase' : 'fases'}</span></div>
     <div className="planilha-chart-legend"><span><i style={{ background: CORES_EXCEL[0] }} />Orçado</span><span><i style={{ background: CORES_EXCEL[1] }} />Real</span></div>
     <div className="planilha-3d-scroll" role="region" aria-label={`Visualização de ${title}`} tabIndex={0}>
-    <svg viewBox={`0 0 ${width} 370`} role="img" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: width, fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
+    <svg viewBox={`0 0 ${width} 365`} role="img" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: Math.min(width, 720), fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>{title}</title><desc>{rows.map(row => `${row.fase}: Orçado ${valueText(row.orcado, currency)}, Real ${valueText(row.real, currency)}`).join('; ')}</desc>
       <path d={`M${left} ${top} l${dx * 2} ${dy * 2} V${bottom + dy * 2} L${left} ${bottom} Z M${left} ${bottom} H${right} l${dx * 2} ${dy * 2} H${left + dx * 2} M${right + dx * 2} ${bottom + dy * 2} V${top + dy * 2}`} fill="none" stroke="var(--ap-border)" strokeWidth={0.6} />
       {ticks.map(value => <text key={value} x={left - 3} y={bottom - value / scale.max * (bottom - top) + 3} textAnchor="end" fontSize={11}>{valueText(Number(value.toPrecision(8)), currency)}</text>)}
@@ -51,24 +51,22 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
               <path d={`M${x + barWidth} ${y} l${dx} ${dy} v${height} l${-dx} ${-dy} Z`} fill={shade(color, 0.78)} />
             </g>
           })}
-          <text transform={`translate(${center + 4},${bottom + 10}) rotate(-40)`} textAnchor="end" fontSize={11}>{row.fase}</text>
+          <text x={center} y={bottom + 68} textAnchor="middle" fontSize={11}>
+            <title>{row.fase}</title>
+            {(row.fase.match(/.{1,22}(?:\s|$)|\S{23,}/g) ?? [row.fase]).map((line, lineIndex) => <tspan key={lineIndex} x={center} dy={lineIndex ? 14 : 0}>{line.trim()}</tspan>)}
+          </text>
         </g>
       })}
       {!rows.length && <text x={width / 2} y={130} textAnchor="middle" fontSize={12} fill="var(--ap-muted)">Nenhuma macrofase com dados.</text>}
       <g data-chart-labels="foreground">
         {rows.flatMap((row, index) => {
           const center = left + groupWidth * (index + 0.5)
-          const highest = Math.max(0, row.orcado, row.real)
-          const labelY = bottom - highest / scale.max * (bottom - top) + dy - 24
+          const labelY = bottom + 23
           return [row.orcado, row.real].map((raw, series) => {
             const value = Math.max(0, Number.isFinite(raw) ? raw : 0)
-            const x = series === 0 ? center - labelWidth - 7 : center + dx + 7
-            const barX = center + (series - 0.5) * barWidth + dx / 2
-            const barY = bottom - value / scale.max * (bottom - top) + dy
             return <g key={`${index}:${series}`} data-value-label={series === 0 ? 'Orçado' : 'Real'}>
-              <path d={`M${barX} ${barY} L${x + labelWidth / 2} ${labelY + 22}`} stroke={CORES_EXCEL[series]} strokeOpacity={0.5} fill="none" />
-              <rect x={x} y={labelY} width={labelWidth} height={22} rx={5} fill="var(--ap-surface)" stroke={CORES_EXCEL[series]} strokeOpacity={0.4} />
-              <text x={x + labelWidth / 2} y={labelY + 15} textAnchor="middle" fontSize={12} fontWeight="600">{valueText(value, currency)}</text>
+              <circle cx={center - labelWidth / 2 + 4} cy={labelY + series * 19 - 4} r={3} fill={CORES_EXCEL[series]} />
+              <text x={center + 6} y={labelY + series * 19} textAnchor="middle" fontSize={12} fontWeight="600">{valueText(value, currency)}</text>
             </g>
           })
         })}
