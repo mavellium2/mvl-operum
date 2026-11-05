@@ -1,10 +1,13 @@
 'use client'
 
 import { usePlanilhaAutosave } from '@/hooks/usePlanilhaAutosave'
-import HistoricoPlanilha from './HistoricoPlanilha'
+import dynamic from 'next/dynamic'
+import { SobDemandaPlanilha, MaisAtividadesPlanilha } from './CarregamentoPlanilha'
+const HistoricoPlanilha = dynamic(() => import('./HistoricoPlanilha'))
 import { salvarHistoricoPlanilhaAction } from '@/app/actions/planilhaHistorico'
 import { rotuloVersaoPlanilha } from '@/lib/planilhaVersion'
-import AtividadeRascunho, { type ArquivoRascunho } from './AtividadeRascunho'
+import type { ArquivoRascunho } from './AtividadeRascunho'
+const AtividadeRascunho = dynamic(() => import('./AtividadeRascunho'))
 import { fetchWithSession } from '@/lib/clientFetch'
 import { getActivityCardAction, patchActivityDescriptionAction, patchActivityPriorityAction } from '@/app/actions/sprintBoard'
 import { repetirSincronizacaoAction } from '@/app/actions/sincronizacao'
@@ -18,11 +21,12 @@ import Dica from '@/components/ui/Tooltip'
 import ElaboradoresSelect from './ElaboradoresSelect'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
-import AtividadeDetalhesPainel, { type AtividadeDetalhe } from '@/components/custos/AtividadeDetalhesPainel'
+import type { AtividadeDetalhe } from '@/components/custos/AtividadeDetalhesPainel'
+const AtividadeDetalhesPainel = dynamic(() => import('./AtividadeDetalhesPainel'))
 import PrioridadeAtividade from './PrioridadeAtividade'
 import { menorJornada, somaValoresPorMinuto } from '@/lib/elaboradores'
 
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, startTransition, type DragEvent } from 'react'
+import { Fragment, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, startTransition, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Download, History, Undo2, Plus, CircleHelp, Trash2, Save, ListChecks, GripVertical, PanelRightOpen } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
@@ -34,7 +38,7 @@ import { updateNodePropertiesAction, insertChildAction, insertSiblingAction, ren
 import { fmtDataBR, maiorData, situacaoDe, valorPorMinutoDoElaborador, type PlanilhaDeCustos, type SituacaoAtividade, type Elaborador } from '@/lib/planilhaCustos'
 import { minutosDeHoras, minutosDeDias, round2 } from '@/lib/custosCalc'
 import { formatarMinutos } from '@/lib/tempoRealizado'
-import GraficosPlanilha3D from './GraficosPlanilha3D'
+const GraficosPlanilha3D = dynamic(() => import('./GraficosPlanilha3D'))
 
 interface Props {
   initialVersion?: number
@@ -468,6 +472,7 @@ export default function PlanilhaCustosView({
       },
     }
   }, [planilha, fasesAtuais, rascunho, elaboradores, nameDrafts])
+  const planilhaResumo = useDeferredValue(planilhaAtual)
   const fieldLabels: Record<string, string> = { minOrcado: 'Tempo orçado', materiaisOrcado: 'Materiais orçados', dataPrevista: 'Data prevista', materiaisReal: 'Materiais realizados', dataRealizacao: 'Data de realização', elaboradoPorUserIds: 'Elaboradores' }
   const reviewChanges: ReviewChange[] = [
     ...nameChanges.map(change => ({ ...change, chave: `name:${change.chave}` })),
@@ -824,12 +829,13 @@ export default function PlanilhaCustosView({
       {/* ── Quadros-resumo (F.4) e gráficos, maiores e um embaixo do outro ── */}
       {!semAtividades && (
         <>
-          <div className="planilha-summary-grid mt-4 grid grid-cols-1 gap-3 xl:grid-cols-3">
-            <QuadroValor planilha={planilhaAtual} />
-            <QuadroTempo planilha={planilhaAtual} />
-            <QuadroElaborador planilha={planilhaAtual} />
+          <SobDemandaPlanilha label="quadros-resumo"><div className="planilha-summary-grid mt-4 grid grid-cols-1 gap-3 xl:grid-cols-3">
+            <QuadroValor planilha={planilhaResumo} />
+            <QuadroTempo planilha={planilhaResumo} />
+            <QuadroElaborador planilha={planilhaResumo} />
           </div>
-          <GraficosPlanilha3D planilha={planilhaAtual} />
+          </SobDemandaPlanilha>
+          <SobDemandaPlanilha label="gráficos"><GraficosPlanilha3D planilha={planilhaResumo} /></SobDemandaPlanilha>
         </>
       )}
 
@@ -995,6 +1001,11 @@ const FaseFragment = memo(function FaseFragment({
   onConfirmarNovaLinha: (titulo: string) => Promise<void>
   onCancelarNovaLinha: () => void
 }) {
+  const [rowLimit, setRowLimit] = useState(30)
+  const loadMoreRows = useCallback(() => setRowLimit(limit => limit + 30), [])
+  // Reveal new rows immediately so insertion can focus the inline title.
+  const lastNewRow = fase.atividades.findLastIndex(a => a.nodeId.startsWith('novo-'))
+  const visibleRows = Math.max(rowLimit, lastNewRow + 1, fase.atividades.findIndex(a => a.nodeId === detalheId) + 1)
   const [choosingPosition, setChoosingPosition] = useState(false)
   // Draft local de digitação para Horas/Dias/Materiais: enquanto o usuário edita, o campo
   // mostra o texto bruto (em vez de reformatar cada tecla, o que "cortava" a digitação,
@@ -1153,7 +1164,7 @@ const FaseFragment = memo(function FaseFragment({
         </td>
       </tr>
       {saveErrors[fase.nodeId] && <tr className="planilha-save-error-row"><td colSpan={18} role="alert"><strong>{fase.codigo} {fase.titulo}</strong>: {saveErrors[fase.nodeId]} Ajuste a macrofase e clique em Salvar novamente.</td></tr>}
-      {fase.atividades.map(a => {
+      {fase.atividades.slice(0, visibleRows).map(a => {
         const canReal = canEditAllActual || (canEditOwnActual && !!currentUserId && idsDaLinha(a).includes(currentUserId))
         const minO = num(rascunho[a.nodeId]?.minOrcado, a.minOrcado)
         const matO = num(rascunho[a.nodeId]?.materiaisOrcado, a.materiaisOrcado)
@@ -1257,6 +1268,7 @@ const FaseFragment = memo(function FaseFragment({
         )
       })}
       {novaLinha?.tipo === 'filho' && novaLinha.refId === fase.nodeId && linhaNova}
+      {visibleRows < fase.atividades.length && <MaisAtividadesPlanilha remaining={fase.atividades.length - visibleRows} onLoad={loadMoreRows} />}
       <LinhaSoma
         rotulo="Sub-total"
         orcado={subO}

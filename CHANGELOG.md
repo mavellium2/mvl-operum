@@ -9,6 +9,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.54.0] — 2026-11-05
 
+- **Desempenho da planilha:** atividades montadas em blocos de 30 conforme a rolagem, resumos e gráficos próximos à tela, painéis carregados ao abrir e atualização de resumos sem bloquear a digitação. Preserva rascunhos, foco de atividades novas e totais completos.
+
 - **Animação dos gráficos:** colunas crescem na entrada e a pizza é preenchida progressivamente. Ocultar ou mostrar séries anima a centralização, largura e escala das colunas, com cancelamento no descarte e respeito a movimento reduzido.
 
 - **Interação nos gráficos:** legenda clicável para mostrar/ocultar Orçado e Real, detalhes de valores e diferenças ao passar o mouse ou focar, seleção de macrofases e elaboradores, navegação por Tab e seleção por Enter/Espaço; Esc limpa o destaque. Ao sair do hover ou foco, todas as colunas e fatias recuperam a visibilidade normal.

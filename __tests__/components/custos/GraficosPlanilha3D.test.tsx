@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { render, screen, act, fireEvent, waitFor } from '@testing-library/react'
 import { renderToStaticMarkup, renderToString } from 'react-dom/server'
@@ -97,3 +98,5 @@ describe('gráficos 3D da referência Excel', () => {
     expect(escalaExcel([100]).max).toBe(100)
   })
 })
+
+vi.mock('@/components/custos/CarregamentoPlanilha', async importOriginal => { const original = await importOriginal<typeof import('@/components/custos/CarregamentoPlanilha')>(); return { ...original, SobDemandaPlanilha: ({ children }: { children: ReactNode }) => children } })
