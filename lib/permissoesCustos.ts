@@ -1,7 +1,7 @@
 import type { Permissao } from './permissoes'
 import { elaboradoresDe } from './elaboradores'
 
-export const CAMPOS_REALIZADO = new Set(['tempoRealMinutos', 'materiaisReal', 'dataRealizacao', 'percentualConclusao'])
+export const CAMPOS_REALIZADO = new Set(['tempoRealAjusteMinutos', 'tempoRealMinutos', 'materiaisReal', 'dataRealizacao', 'percentualConclusao'])
 export const CAMPOS_ORCADO = new Set(['tempoMinutos', 'materiais', 'dataPrevista', 'elaboradoPorUserId', 'elaboradoPorUserIds', 'elaboradoPor', 'cost', 'durationDays', 'dataLimite', 'custo'])
 
 /** Realizado próprio: o usuário é um dos elaboradores da linha (aceita a lista ou o id antigo). */

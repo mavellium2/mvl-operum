@@ -1081,6 +1081,18 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Condição de revisão:** revisar a precedência temporal se houver edição simultânea frequente entre planilha e quadro.
 - **Referências:** `components/custos/PlanilhaCustosView.tsx`, `services/wbsService.ts`, `__tests__/unit/wbsSprintSync.test.ts`.
 
+## ADR-086 — Markdown nas descrições e comentários de cards e regra de escrita no MCP
+
+- **Data:** 2026-11-04.
+- **Status:** implementada.
+- **Contexto:** descrições e comentários escritos por pessoas e por agentes via MCP já usavam Markdown (o editor do card insere `**`, `*` e `- `), mas a tela mostrava o texto cru. Nos comentários, até as quebras de linha sumiam, e textos longos, como a matriz de acessos de 04/11/2026, ficavam ilegíveis. As instruções do MCP não orientavam como escrever.
+- **Escolha:** um componente compartilhado, `components/ui/MarkdownText.tsx`, com `react-markdown` 10.1.0 e `remark-gfm` 4.0.1, usado na descrição e nos comentários do `CardModal`. O minicard converte a descrição em texto simples (`lib/utils/markdownTexto.ts`). No MCP, `mcp-server/src/writing.ts` define a regra de escrita, que vai nas instruções do servidor e na descrição dos campos de texto das tools de tarefa e comentário.
+- **Justificativa:** `react-markdown` monta elementos React sem `dangerouslySetInnerHTML`, ignora HTML digitado e descarta URLs perigosas por padrão, então não exige sanitização própria. As instruções do servidor chegam a todo cliente MCP (Claude, ChatGPT, Codex), e a regra fica num lugar só.
+- **Alternativas consideradas:** renderizador próprio com expressões regulares (mais código para manter e risco de XSS); `marked` com sanitização via DOMPurify (HTML como string e duas dependências para manter seguras); apenas `whitespace-pre-wrap` (mantém linhas, mas não resolve tabelas, títulos e listas).
+- **Consequências:** duas dependências novas de produção no app. Textos antigos continuam válidos, porque texto simples é Markdown válido. Agentes que ignorem as instruções ainda podem escrever mal, mas o resultado aparece formatado. Descrições de sprint e de projeto continuam como texto simples.
+- **Condição de revisão:** se outras áreas (sprints, projetos, atas) precisarem de Markdown, reutilizar `MarkdownText` em vez de criar outra renderização.
+- **Referências:** `components/ui/MarkdownText.tsx`, `components/card/CardModal.tsx`, `components/card/Card.tsx`, `lib/utils/markdownTexto.ts`, `mcp-server/src/writing.ts`, `mcp-server/src/server.ts`, `__tests__/components/ui/MarkdownText.test.tsx`.
+
 ## ADR-087 — Exclusão de macrofase pela planilha é imediata e reutiliza o diálogo do cadastro
 
 - **Data:** 2026-11-04.
@@ -1121,7 +1133,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-090 — Lançamentos de tempo como fonte do realizado na planilha
 
 - **Data:** 2026-11-04.
-- **Status:** implementada. Substitui o fluxo da planilha da [ADR-089](#adr-089--realizado-soma-os-minutos-digitados-com-os-apontamentos-do-card).
+- **Status:** parcialmente substituída pela ADR-092 quanto à edição direta do total na planilha. Substitui o fluxo da planilha da [ADR-089](#adr-089--realizado-soma-os-minutos-digitados-com-os-apontamentos-do-card).
 - **Contexto:** a planilha oferecia um valor manual agregado e uma lista de lançamentos do card. O usuário pediu um único fluxo para registrar e corrigir tempo.
 - **Escolha:** a aba Tempo registra novos valores no card. A migração cria um lançamento encerrado por atividade com tempo legado e remove o valor de origem na mesma instrução. Usa a atualização do nó como referência de data e o elaborador ou responsável identificado como autor.
 - **Justificativa:** os registros individuais podem ser consultados e editados no mesmo fluxo, com o total preservado na conversão.
@@ -1140,3 +1152,27 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** um lançamento de 2 dias vira quatro lançamentos de 12 h, todos com a mesma descrição; a soma do realizado não muda. A operação não é atômica no banco: a Server Action compensa removendo os lançamentos criados se um passo falhar. O MCP continua recusando acima de 12 h e não divide automaticamente.
 - **Condições de revisão:** pedido de divisão também no MCP ou na edição de um lançamento, ou de um teto diferente de 31 dias.
 - **Referências:** `app/actions/time.ts`, `components/card/CardTimer.tsx`, `sprint-service/src/time-entry/regras-tempo.ts`, [ADR-046](#adr-046--lançamentos-de-tempo-editáveis-validados-e-com-limite-de-12-h-no-timer).
+
+## ADR-092 — Edição direta do total realizado com ajuste explícito
+
+- **Data:** 2026-11-05.
+- **Status:** implementada; substitui parcialmente a ADR-090 na edição do agregado.
+- **Contexto:** o usuário solicitou editar Min/Horas/Dias diretamente, inclusive reduzindo valores originados em apontamentos.
+- **Escolha:** persistir `tempoRealAjusteMinutos` nas propriedades da atividade. Realizado = máximo de zero e manual + apontamentos + ajuste. A edição salva a diferença entre o total informado e manual + apontamentos.
+- **Justificativa:** permite corrigir o total sem apagar ou atribuir artificialmente registros de tempo de outras pessoas.
+- **Alternativas consideradas:** limitar o total aos apontamentos (impedia a edição solicitada); reescrever os lançamentos individuais (alteraria o histórico e a autoria).
+- **Consequências:** novos apontamentos continuam incrementando o total. Ajustes negativos podem absorver reduções futuras dos apontamentos até o piso zero. O histórico individual permanece distinto do total ajustado. A permissão do ajuste é a mesma de realizado próprio/todos. Não exige migration, pois usa propriedades JSON existentes.
+- **Condições de revisão:** revisar a apresentação do ajuste no painel de tempo quando for necessário reconciliar detalhadamente o agregado com os registros individuais.
+- **Referências:** `lib/tempoRealizado.ts`, `lib/permissoesCustos.ts`, `components/custos/PlanilhaCustosView.tsx`, ADR-090.
+
+## ADR-093 — Salvamento automático e histórico restaurável da planilha
+
+- **Data:** 2026-11-05.
+- **Status:** implementada.
+- **Contexto:** o usuário precisa trabalhar na planilha e no painel lateral sem salvar manualmente a cada operação e poder voltar a um estado anterior. O histórico de Editar projeto cobre apenas o formulário, não a árvore, cards e registros da planilha.
+- **Escolha:** agrupar edições por uma pausa de 1,2 s, manter Salvar agora como alternativa e registrar snapshots duráveis em `PlanilhaVersao`, separados da versão do produto e de `ProjetoVersao`. A primeira versão é `v1.0.1`; cada índice avança a sequência em base 100 (`v1.0.99 → v1.1.0`).
+- **Justificativa:** a pausa evita uma versão por tecla; snapshots permitem restaurar estrutura, campos, descrições, prioridades, responsáveis, referências a anexos, comentários e lançamentos encerrados. O usuário vê pendências, salvamento, sucesso e falhas. Gravações de propriedades em background evitam revalidação da página por célula; derivados são propagados uma vez por lote, e sincronização completa ocorre apenas ao alterar estrutura/nome. Refreshes necessários usam transição de baixa prioridade. Falhas preservam rascunhos e IDs temporários para nova tentativa.
+- **Alternativas consideradas:** continuar exigindo Salvar; reaproveitar `ProjetoVersao` (contrato restrito ao formulário); guardar histórico apenas no navegador (não durável nem compartilhado).
+- **Consequências:** snapshots iguais são deduplicados por conteúdo canônico. A restauração ocorre em transação serializável, com lock por tenant/projeto e proteção contra lista histórica desatualizada. Preserva alterações ainda sem snapshot e registra uma nova versão; não apaga versões anteriores. Restauração exige editar projeto, orçamento, realizado de todos e cards. Leituras exigem acesso ao projeto e à planilha. Cronômetros ativos bloqueiam restauração. Arquivos são restaurados por referência a uploads retidos, sem recriar blobs que tenham sido removidos fisicamente. Operações normais da planilha e snapshots são etapas distintas: uma falha intermediária é exibida e pode ser repetida; o snapshot inicial permite retornar ao estado anterior. Histórico paginado, sem descarte automático das versões antigas. Para restaurar anexos reais atomicamente, o serviço acessa também os metadados de `files.Attachment` no banco compartilhado, além da tabela legada de `public`; os blobs continuam sob responsabilidade do file-service. Isso acopla a restauração ao schema existente de arquivos e às credenciais compartilhadas atuais.
+- **Condições de revisão:** avaliar armazenamento incremental e retenção quando o volume dos snapshots crescer; integrar todos os escritores externos ao mesmo histórico se o produto passar a exigir versionamento de alterações feitas fora da planilha.
+- **Referências:** `services/planilhaVersoes.ts`, `app/actions/planilhaHistorico.ts`, `hooks/usePlanilhaAutosave.ts`, `components/custos/HistoricoPlanilha.tsx`, `prisma/migrations/20261105130000_planilha_versoes/migration.sql`.

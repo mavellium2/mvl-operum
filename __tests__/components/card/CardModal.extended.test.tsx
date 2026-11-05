@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProjectPermissionsProvider } from '@/components/permissoes/ProjectPermissions'
 import { getCardPlanilhaAction } from '@/app/actions/sprintBoard'
@@ -163,6 +163,18 @@ describe('CardModal extended', () => {
   })
 
   describe('autosave da descrição', () => {
+    it('na planilha salva a descrição durante a edição sem exigir Concluir', async () => {
+      const onPatch = vi.fn().mockResolvedValue(undefined)
+      render(<CardModal {...defaultProps} embedded autosaveEmbeddedDescription onPatch={onPatch} />)
+      await userEvent.click(screen.getByText('Description'))
+      const textarea = screen.getByPlaceholderText('Adicione detalhes, critérios de aceite...')
+      fireEvent.change(textarea, { target: { value: 'Texto salvo automaticamente' } })
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 900)) })
+      expect(onPatch).toHaveBeenCalledWith({ description: 'Texto salvo automaticamente' })
+      expect(textarea).toHaveValue('Texto salvo automaticamente')
+      expect(screen.getByText('Salvo')).toBeInTheDocument()
+    })
+
     it('fechar pelo X logo após digitar grava a descrição (não perde o texto)', async () => {
       const onPatch = vi.fn().mockResolvedValue(undefined)
       const onClose = vi.fn()

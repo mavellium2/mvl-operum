@@ -3,6 +3,7 @@
 import FormActions from '@/components/ui/FormActions'
 import OperumButton from '@/components/ui/GlassButton'
 import { Textarea as OperumTextarea } from '@/components/ui/Field'
+import MarkdownText from '@/components/ui/MarkdownText'
 
 interface CardDescriptionProps {
   draftDescription: string
@@ -59,7 +60,7 @@ export default function CardDescription({
       {readOnly ? (
         <div className="card-descricao-leitura min-h-[72px] p-3 rounded-lg bg-slate-50 text-sm text-slate-700 border border-slate-200">
           {draftDescription
-            ? <div className="whitespace-pre-wrap">{draftDescription}</div>
+            ? <MarkdownText>{draftDescription}</MarkdownText>
             : <span className="text-slate-400 text-sm">Sem descrição.</span>
           }
         </div>
@@ -100,7 +101,7 @@ export default function CardDescription({
           className="card-descricao-leitura min-h-[72px] p-3 rounded-lg cursor-text bg-slate-50 hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200"
         >
           {draftDescription
-            ? <div className="whitespace-pre-wrap">{draftDescription}</div>
+            ? <MarkdownText>{draftDescription}</MarkdownText>
             : <span className="text-slate-400 text-sm">Clique para adicionar uma descrição...</span>
           }
         </div>

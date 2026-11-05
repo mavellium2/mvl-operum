@@ -11,6 +11,22 @@ function Campo({ inicial = '', onChange = vi.fn() }: { inicial?: string; onChang
 }
 
 describe('SeletorData', () => {
+  it('ícone é botão focável, abre com foco no dia e Esc retorna ao ícone', () => {
+    render(<Campo inicial="2026-11-16" />)
+    const button = screen.getByRole('button', { name: 'Abrir calendário — Data' })
+    expect(button).toHaveAttribute('type', 'button')
+    expect(button.tabIndex).toBe(0)
+    button.focus()
+    fireEvent.click(button)
+    const day = screen.getByRole('button', { name: /^16 de novembro de 2026/ })
+    expect(day).toHaveFocus()
+    fireEvent.keyDown(day, { key: 'ArrowRight' })
+    expect(screen.getByRole('button', { name: /^17 de novembro de 2026/ })).toHaveFocus()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(button).toHaveFocus()
+  })
+
   it('digitar dd/mm/aaaa envia a data em ISO; data inválida permanece no rascunho com indicação visual', () => {
     const onChange = vi.fn()
     render(<Campo onChange={onChange} />)

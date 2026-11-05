@@ -494,3 +494,36 @@ export async function getCardPlanilhaAction(cardId: string) {
     return { linha }
   } catch { return { error: 'Não foi possível carregar os dados da planilha.' } }
 }
+
+/** Resolve o card sincronizado da atividade, sem aceitar um card de outro projeto. */
+export async function patchActivityPriorityAction(projectId: string, nodeId: string, priority: string) {
+  try {
+    const session = await verifySession()
+    const { tenantId } = session
+    await requireProjectPermission(session, projectId, 'quadro:cards')
+    const tree = await getTree(projectId, tenantId)
+    const node = tree.nodes[nodeId]
+    if (!node?.properties.cardId) return { error: 'O card da atividade ainda não foi sincronizado. Tente salvar novamente.' }
+    return await patchCardAction('', node.properties.cardId, { priority: priority as 'baixa' | 'media' | 'alta' })
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Não foi possível salvar a prioridade.' }
+  }
+}
+
+export async function getActivityCardAction(projectId: string, nodeId: string) {
+  try {
+    const session = await verifySession()
+    await requireProjectPermission(session, projectId, 'quadro:cards')
+    const tree = await getTree(projectId, session.tenantId)
+    const cardId = tree.nodes[nodeId]?.properties.cardId
+    return cardId ? { cardId } : { error: 'O card da atividade ainda não foi sincronizado. Tente salvar novamente.' }
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Não foi possível acessar o card.' }
+  }
+}
+
+export async function patchActivityDescriptionAction(projectId: string, nodeId: string, description: string) {
+  const result = await getActivityCardAction(projectId, nodeId)
+  if (!result.cardId) return { error: result.error ?? 'Não foi possível acessar a atividade.' }
+  return patchCardAction('', result.cardId, { description })
+}

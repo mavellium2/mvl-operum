@@ -58,3 +58,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Antes de concluir, verificar o primeiro e o último campo e confirmar que Salvar continua visível no topo e no fim da rolagem. Testar também modais e janelas com menor altura nas áreas alteradas.
 
 - Painéis de alterações devem reutilizar `ChangesPanel` (editor de projeto e acessos). Não criar resumos paralelos com marcação, animação ou estilos próprios. Ao encontrar uma implementação ainda inline que precisa de novo consumidor, extraí-la e migrar o original na mesma alteração.
+
+# Salvamento da planilha de custos
+
+- As edições da planilha devem ser salvas automaticamente após uma pausa, com indicação de pendência, salvando, sucesso e erro. Não exigir salvar manualmente para usar o painel de uma atividade nova.
+- Agrupar mudanças próximas no mesmo salvamento e registrar versões restauráveis no histórico. Preservar edições novas que ocorram durante um salvamento em andamento; falhas não podem descartar o rascunho.
+- O histórico da planilha usa rótulos sequenciais `v1.0.1`, `v1.0.2`, …, `v1.0.99`, `v1.1.0`. Não confundir versões do conteúdo com a versão do produto. Restaurar mantém as versões anteriores e registra uma nova versão.

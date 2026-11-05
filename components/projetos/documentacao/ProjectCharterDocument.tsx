@@ -1,6 +1,10 @@
 'use client'
 
+import GrupoEnvolvidos, { EnvolvidosLayout } from './GrupoEnvolvidos'
+import EnvolvidosEditor from './EnvolvidosEditor'
+import { exibirEnvolvidos } from '@/lib/charterEnvolvidos'
 import { forwardRef } from 'react'
+import MoedaInput from '@/components/ui/MoedaInput'
 import type { MacroFase } from './MacroFaseTable'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import { formatDateBR } from '@/lib/date'
@@ -52,8 +56,8 @@ export interface EdicaoTermo {
   dataAprovacaoRaw: string
   onDataAprovacao: (data: string) => void
   onFase: (id: string, campo: keyof Omit<MacroFase, 'id'>, valor: string) => void
-  onAdicionarFase: () => void
-  onRemoverFase: (id: string) => void
+  onAdicionarFase?: () => void
+  onRemoverFase?: (id: string) => void
 }
 
 export const TITULO_TERMO = 'Termo de Abertura de Projeto'
@@ -63,21 +67,7 @@ export const TITULO_TERMO = 'Termo de Abertura de Projeto'
 const moeda = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 function formatCusto(value: string | null | undefined): string {
   const n = parseDocumentCost(value)
-  return n === 0 ? '–' : moeda(n)
-}
-
-/** "Rótulo: valor" por linha → grupos (o mesmo rótulo repetido junta os valores). */
-function agruparEnvolvidos(texto: string): { rotulo: string; valores: string[] }[] {
-  const grupos: { rotulo: string; valores: string[] }[] = []
-  for (const linha of texto.split('\n').map(l => l.trim()).filter(Boolean)) {
-    const i = linha.indexOf(':')
-    const rotulo = i > 0 ? linha.slice(0, i).trim() : ''
-    const valor = i > 0 ? linha.slice(i + 1).trim() : linha
-    const grupo = grupos.find(g => g.rotulo.toLowerCase() === rotulo.toLowerCase())
-    if (grupo) grupo.valores.push(valor)
-    else grupos.push({ rotulo, valores: [valor] })
-  }
-  return grupos
+  return value === null || value === undefined || value.trim() === '' ? '–' : moeda(n)
 }
 
 const nada = () => {}
@@ -114,13 +104,10 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
     const campo = (c: CampoTermo) => (v: string) => ed?.onCampo(c, v)
 
     const total = fases.reduce((sum, f) => sum + parseDocumentCost(f.custo), 0)
-    const grupos = agruparEnvolvidos(principaisEnvolvidos)
+    const grupos = exibirEnvolvidos(principaisEnvolvidos, [])
     const instituicao = categoria || grupos.find(g => /^institui[cç][aã]o/i.test(g.rotulo))?.valores.join(' / ') || ''
     const integrantes = membros.filter(m => m.name).map(m => (m.papel?.trim() ? `${m.name} – ${m.papel.trim()}` : m.name))
-    // "Integrantes do Grupo" (a equipe do projeto) entra depois do professor, como no modelo.
-    const idxProfessor = grupos.findIndex(g => /^professor/i.test(g.rotulo))
-    const blocos: { rotulo: string; valores: string[] }[] = [...grupos]
-    if (integrantes.length > 0) blocos.splice(idxProfessor + 1, 0, { rotulo: 'Integrantes do Grupo', valores: integrantes })
+    const blocos = exibirEnvolvidos(principaisEnvolvidos, integrantes)
     const aprovador = aprovadoPor || gerenteProjeto
 
     // Premissas e restrições lado a lado, item a item (uma linha de cada texto por linha da tabela).
@@ -245,19 +232,17 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
           titulo="Macro Fases, prazos e custo"
           colunas={[{ rotulo: 'Macro fase', largura: '66%', alinhamento: 'center' }, { rotulo: 'Data limite', largura: '15%', alinhamento: 'center' }, { rotulo: 'Custo', largura: '19%', alinhamento: 'center' }]}
           estiloCabecalho={{ fontSize: '10pt', padding: '0 5px' }}
-          onAdicionar={ed?.onAdicionarFase}
-          rotuloAdicionar="Adicionar fase"
           rodape={
             <tr>
               <td style={{ ...celulaModelo, borderBottom: 'none', borderLeft: 'none' }} />
               <td style={{ ...celulaModelo, textAlign: 'right', fontWeight: 'bold' }}>Custo total</td>
-              <td style={celulaModelo}>{moeda(total)}</td>
+              <td style={{ ...celulaModelo, textAlign: 'right' }}>{moeda(total)}</td>
             </tr>
           }
         >
           {fases.length === 0 && !editavel && <tr><td colSpan={3} style={{ ...celulaModelo, color: '#6b7280', fontStyle: 'italic' }}>Nenhuma macro fase cadastrada.</td></tr>}
           {fases.map((f, i) => (
-            <LinhaLista key={f.id} onRemover={ed ? () => ed.onRemoverFase(f.id) : undefined} rotuloRemover={`Remover fase ${f.fase || i + 1}`}>
+            <LinhaLista key={f.id}>
               <td style={celulaModeloCampo}>
                 <div className="flex items-start" style={{ paddingLeft: 5 }}>
                   <span style={{ padding: '0 3px 0 0', whiteSpace: 'nowrap' }}>{`1.${i + 1}`}</span>
@@ -265,10 +250,14 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
                 </div>
               </td>
               <td style={celulaModelo}>{editavel ? <CampoData id={`fase-data-${f.id}`} rotulo="Data limite" ajuda="Até quando a fase precisa terminar." valor={f.dataLimite ?? ''} onChange={v => ed?.onFase(f.id, 'dataLimite', v)} /> : formatDateBR(f.dataLimite)}</td>
-              <td style={celulaModeloCampo}>
-                {editavel
-                  ? <CampoTexto id={`fase-custo-${f.id}`} rotulo="Custo" ajuda="Custo previsto da fase, em reais (ex.: 900,00)." pergunta="0,00" valor={f.custo ?? ''} onChange={v => ed?.onFase(f.id, 'custo', v)} max={30} linha compacto />
-                  : <div style={{ padding: '0 5px' }}>{formatCusto(f.custo)}</div>}
+              <td style={{ ...celulaModeloCampo, textAlign: 'right' }}>
+                {editavel ? <>
+                  <MoedaInput comSimbolo value={f.custo} aria-label={`Custo da macrofase ${f.fase || i + 1}`} rotulo="Custo"
+                    onValueChange={(_, value) => ed?.onFase(f.id, 'custo', value === null ? '' : value.toFixed(2))}
+                    className="w-full min-w-0 rounded-none border-0 bg-transparent px-1.5 py-0 text-right print:hidden"
+                    style={{ textAlign: 'right', font: 'inherit' }} />
+                  <span className="hidden print:block" style={{ padding: '0 5px' }}>{formatCusto(f.custo)}</span>
+                </> : <div style={{ padding: '0 5px' }}>{formatCusto(f.custo)}</div>}
               </td>
             </LinhaLista>
           ))}
@@ -276,23 +265,13 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
 
         <SecaoTexto estilo="titulo" titulo="Principais envolvidos" alturaMinima="20mm">
           {editavel ? (
-            <>
-              <CampoTexto id="principais-envolvidos" rotulo="Principais envolvidos" ajuda="Uma linha por pessoa ou grupo, no formato “Papel: Nome” (ex.: Professor(es): Fábio). A equipe entra sozinha." pergunta="quem participa ou apoia o projeto? (Papel: Nome)" valor={principaisEnvolvidos} onChange={campo('principaisEnvolvidos')} preencher={false} />
-              {integrantes.length > 0 && (
-                <CampoAutomatico padding="2px 6px 4px">
-                  <strong>Integrantes do Grupo:</strong> {integrantes.join(' · ')}
-                </CampoAutomatico>
-              )}
-            </>
+            <EnvolvidosEditor value={principaisEnvolvidos} membros={integrantes} onChange={campo('principaisEnvolvidos')} />
           ) : blocos.length === 0 ? null : (
-            <div style={{ padding: '1px 5px 4mm' }}>
-              {blocos.map((g, i) => (
-                <div key={i} style={{ breakInside: 'avoid' }}>
-                  {g.rotulo && <p style={{ fontWeight: 'bold', margin: '0 0 3mm' }}>{g.rotulo}</p>}
-                  {g.valores.map((v, j) => <p key={j} style={{ margin: '0 0 3mm' }}>{v}</p>)}
-                </div>
-              ))}
-            </div>
+            <EnvolvidosLayout>
+              {blocos.map((g, i) => <GrupoEnvolvidos key={i} titulo={g.rotulo ? <strong>{g.rotulo.replace(/:\s*$/, '')}:</strong> : null}>
+                {g.valores.map((v, j) => <p key={j} style={{ margin: 0 }}>- {v.replace(/^\s*-\s?/, '')}</p>)}
+              </GrupoEnvolvidos>)}
+            </EnvolvidosLayout>
           )}
         </SecaoTexto>
 

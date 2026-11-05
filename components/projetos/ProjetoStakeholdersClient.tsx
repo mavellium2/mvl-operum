@@ -509,7 +509,7 @@ export default function ProjetoStakeholdersClient({
   const showCol3 = selected !== null || isCreating
   const col2Active = addMode !== null && canManage
   const col1Width = col2Active || showCol3 ? 'xl:w-1/3' : 'w-full'
-  const col3Width = col2Active ? 'xl:w-1/3' : 'xl:flex-1'
+  const col3Width = painel ? 'min-w-0' : col2Active ? 'xl:w-1/3' : 'xl:flex-1'
 
   // ── Filtered lists
   const normalizarBusca = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
@@ -1362,7 +1362,7 @@ export default function ProjetoStakeholdersClient({
     <>
       {/* ── COLUMN 2 — Diretório (addMode) ── */}
       {col2Active && (
-        <div className="xl:w-1/3 w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in slide-in-from-left-4 duration-300">
+        <div className={`${painel ? 'min-w-0' : 'xl:w-1/3'} w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in slide-in-from-left-4 duration-300`}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">

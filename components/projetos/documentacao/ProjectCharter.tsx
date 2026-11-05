@@ -294,19 +294,10 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
 
   // ── Macro fases ────────────────────────────────────────────────────────────
 
-  function handleAddFase() {
-    if (!canEdit) return
-    const id = crypto.randomUUID()
-    setFases(prev => [...prev, { id, fase: '', dataLimite: '', custo: '' }])
-    // A nova linha já recebe o foco para digitar o nome da fase.
-    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(`[data-campo="fase-${CSS.escape(id)}"] textarea`)?.focus())
-  }
   function handleFaseChange(id: string, field: keyof Omit<MacroFase, 'id'>, value: string) {
     if (canEdit) setFases(prev => prev.map(f => f.id === id ? { ...f, [field]: value } : f))
   }
-  function handleRemoveFase(id: string) {
-    if (canEdit) setFases(prev => prev.filter(f => f.id !== id))
-  }
+
 
   // ── Print ──────────────────────────────────────────────────────────────────
 
@@ -517,8 +508,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     dataAprovacaoRaw: versionMeta.dataAprovacaoRaw,
     onDataAprovacao: v => setVersionMeta(m => ({ ...m, dataAprovacaoRaw: v })),
     onFase: handleFaseChange,
-    onAdicionarFase: handleAddFase,
-    onRemoverFase: handleRemoveFase,
+
   }
   const vigente = versions.filter(v => v.status === 'APPROVED').sort((a, b) => new Date(b.approvedAt ?? b.createdAt).getTime() - new Date(a.approvedAt ?? a.createdAt).getTime())[0]
   const pendentes = versions.filter(v => v.status === 'PENDING').length
@@ -549,7 +539,6 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
         onPdf={() => handlePrint()}
         onWord={() => void exportWord()}
         desfazer={historicoEdicao}
-        onAdicionarLinha={handleAddFase}
         saida={{
           pendente: canEdit && draftReady && !selectedVersion && base !== null && estadoAtual !== base,
           salvar: openCommitModal,

@@ -1,4 +1,5 @@
-import { AlignmentType, ImageRun, Packer, Paragraph, TextRun } from 'docx'
+import { exibirEnvolvidos } from '@/lib/charterEnvolvidos'
+import { AlignmentType, TabStopType, ImageRun, Packer, Paragraph, TextRun } from 'docx'
 import type { CharterDocumentProps } from '@/components/projetos/documentacao/ProjectCharterDocument'
 import { observacaoDaLinha, type ProjetoHeader, type Stakeholder } from '@/components/projetos/StakeholderDocument'
 import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
@@ -51,7 +52,7 @@ export async function buildCharterDocx(p: CharterDocumentProps) {
     heading('Descrição do produto do projeto'), ...p.descricaoProduto.split('\n').filter(Boolean).map(text => new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text, size: 18 })] })),
     heading('Premissas (hipóteses) e restrições para o projeto'), modelTable([5103,5103],[['Premissas (hipóteses)','Restrições'],[p.premissas,p.restricoes]],true),
     heading('Macro fases, prazos e custo'), modelTable([6124,2041,2041],[['Macro fase','Data limite','Custo'],...p.fases.map((f,i) => [`1.${i+1} ${f.fase}`,date(f.dataLimite),money(parseDocumentCost(f.custo))]),['Custo total','',money(total)]],true),
-    heading('Principais envolvidos'), ...paragraphs(p.principaisEnvolvidos), heading('Integrantes do grupo'), ...p.membros.flatMap(m => paragraphs(m.papel?.trim() ? `${m.name} – ${m.papel.trim()}` : m.name)),
+    heading('Principais envolvidos'), ...exibirEnvolvidos(p.principaisEnvolvidos, p.membros.map(m => m.papel?.trim() ? `${m.name} – ${m.papel.trim()}` : m.name)).flatMap(block => (block.valores.length ? block.valores : ['']).map((value, index) => new Paragraph({ spacing: { after: index === block.valores.length - 1 ? 180 : 0 }, tabStops: [{ type: TabStopType.LEFT, position: 1300 }], ...(index > 0 ? { indent: { left: 1300 } } : {}), children: [...(index === 0 && block.rotulo ? [new TextRun({ text: `${block.rotulo.replace(/:\s*$/, '')}:`, bold: true }), new TextRun({ text: '\t', break: 1 })] : []), new TextRun(value ? `- ${value.replace(/^\s*-\s?/, '')}` : '')] }))),
     heading('Designação de gerente'), modelTable([3062,7144],[['Gerente do projeto',p.gerenteProjeto],['Limites de autoridade',p.limitesAutoridade]]),
     ...(p.metodologia ? [heading('Metodologia do projeto'),...paragraphs(p.metodologia)] : [])
   ], '© 02_Project Charter')

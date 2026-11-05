@@ -41,6 +41,21 @@ describe('contrato das tools', () => {
   it('servidor declara instruções de uso', async () => {
     expect(h.client.getInstructions()).toMatch(/tenant → projeto → sprint → coluna → tarefa/)
   })
+
+  it('instruções trazem a regra de escrita, e os campos de texto apontam para ela', async () => {
+    expect(h.client.getInstructions()).toMatch(/Como escrever descrições de cards e comentários/)
+    const { tools } = await h.client.listTools()
+    const campo = (tool: string, prop: string) =>
+      (tools.find(t => t.name === tool)?.inputSchema.properties?.[prop] as { description?: string } | undefined)?.description ?? ''
+    for (const [tool, prop] of [
+      ['operum_create_task', 'description'],
+      ['operum_update_task', 'description'],
+      ['operum_create_comment', 'content'],
+      ['operum_update_comment', 'content'],
+    ]) {
+      expect(campo(tool, prop), `${tool}.${prop}`).toMatch(/regra de escrita/)
+    }
+  })
 })
 
 describe('identidade e tenants', () => {

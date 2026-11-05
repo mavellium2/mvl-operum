@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { useState } from 'react'
 import { render, screen, fireEvent, waitFor, act, renderHook } from '@testing-library/react'
+import EnvolvidosEditor from '@/components/projetos/documentacao/EnvolvidosEditor'
+import { Input } from '@/components/ui/Field'
 import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
 import { CampoAutomatico, CampoTexto, Folha, romano, secao } from '@/components/documentos/editor/folha'
 import { useDesfazer } from '@/hooks/useDesfazer'
@@ -23,6 +25,23 @@ function Documento({ onSalvar = vi.fn() }: { onSalvar?: () => void }) {
 }
 
 describe('EditorDocumento — tela de edição de documento', () => {
+  it('Tab no título dos envolvidos avança para a pessoa e Shift+Tab retorna ao título', () => {
+    function Form() {
+      const [value, setValue] = useState('## Professores: (externos)\nAna')
+      return <EditorDocumento documento="Termo" editavel status="salvo"><Input aria-label="Início do documento" /><EnvolvidosEditor value={value} membros={[]} onChange={setValue} /></EditorDocumento>
+    }
+    render(<Form />)
+    const title = screen.getByRole('textbox', { name: 'Título do grupo 1' })
+    title.focus()
+    fireEvent.keyDown(title, { key: 'Tab' })
+    const person = screen.getByRole('textbox', { name: 'Pessoa 1 de Professores: (externos)' })
+    expect(person).toHaveFocus()
+    fireEvent.keyDown(person, { key: 'Tab', shiftKey: true })
+    expect(title).toHaveFocus()
+    fireEvent.change(title, { target: { value: 'Apoio: equipe / cliente & parceiros ' } })
+    expect(title).toHaveValue('Apoio: equipe / cliente & parceiros ')
+  })
+
   it('barra com os grupos do desenho', () => {
     render(<Documento />)
     for (const grupo of ['Documento', 'Edição', 'Navegar', 'Download', 'Outros']) {

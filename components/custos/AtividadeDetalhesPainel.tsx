@@ -37,7 +37,7 @@ export interface AtividadeDetalhe {
  * Painel lateral de uma atividade da Planilha de Custos: etapa, responsáveis, timer
  * e descrição. Timer e descrição são os do card da sprint (mesma fonte do quadro).
  */
-export default function AtividadeDetalhesPainel({ atividade, elaboradores, onElaboradoresChange, canUsarCards, currentUserId, onFechar, onAlterado, tituloEditavel }: {
+export default function AtividadeDetalhesPainel({ atividade, elaboradores, onElaboradoresChange, canUsarCards, currentUserId, onFechar, onAlterado, tituloEditavel, draftEditor }: {
   elaboradores: Elaborador[]
   onElaboradoresChange?: (ids: string[]) => void
   atividade: AtividadeDetalhe
@@ -47,6 +47,7 @@ export default function AtividadeDetalhesPainel({ atividade, elaboradores, onEla
   onFechar: () => void
   /** Chamado depois de salvar a descrição ou parar o timer, para a planilha recarregar. */
   onAlterado: () => void
+  draftEditor?: ReactNode
   tituloEditavel?: ReactNode
 }) {
   const [aba, setAba] = useState<'tempo' | 'atividade' | 'comentarios'>('atividade')
@@ -102,7 +103,7 @@ export default function AtividadeDetalhesPainel({ atividade, elaboradores, onEla
                 }} />
               </section>
             </>
-          ) : <p className="atividade-detalhes-ajuda">Os lançamentos ficam disponíveis quando a atividade estiver vinculada a um card.</p>}
+          ) : <p className="atividade-detalhes-ajuda">Preparando a atividade para registrar tempo. Ela será salva automaticamente após a edição do título.</p>}
         </div>
         <div role="tabpanel" id={abas[0].panelId} aria-labelledby={abas[0].id} hidden={aba !== 'atividade'} className="atividade-detalhes-pagina">
           <section className="atividade-elaboradores atividade-detalhes-secao">
@@ -116,12 +117,13 @@ export default function AtividadeDetalhesPainel({ atividade, elaboradores, onEla
                 selectLabel="Adicionar elaborador"
               />
             ) : <p className="atividade-detalhes-texto">{atividade.elaboradores || 'Sem elaborador'}</p>}
-            {!card && <p className="atividade-detalhes-texto">{atividade.descricao || 'Sem descrição.'}</p>}
+            {!card && !draftEditor && <p className="atividade-detalhes-texto">{atividade.descricao || 'Sem descrição.'}</p>}
           </section>
+          {!card && draftEditor}
           {card && <CardDaSprint key={card.id} card={card} atividade={atividade} elaboradores={elaboradores} commentsTarget={commentsTarget} commentsVisible={aba === 'comentarios'} onAttachmentShared={() => setAba('comentarios')} currentUserId={currentUserId} podeEditar={canUsarCards} onClose={onFechar} onChanged={onAlterado} />}
         </div>
         <div ref={setCommentsTarget} role="tabpanel" id={abas[2].panelId} aria-labelledby={abas[2].id} hidden={aba !== 'comentarios'} className="atividade-detalhes-pagina atividade-comentarios-pagina">
-          {!card && <p className="atividade-detalhes-ajuda">Os comentários ficam disponíveis quando a atividade estiver vinculada a um card.</p>}
+          {!card && <p className="atividade-detalhes-ajuda">Preparando a atividade para comentários. Ela será salva automaticamente após a edição do título.</p>}
         </div>
       </div>
     </DetailPanel>
@@ -177,6 +179,7 @@ function CardDaSprint({ card, atividade, elaboradores, commentsTarget, commentsV
       const resultado = await alterar()
       if (resultado.error) throw new Error(resultado.error)
       setAttachments(atualizar)
+      onChanged()
     } catch (error) {
       setErroAnexos(error instanceof Error ? error.message : 'Não foi possível alterar o anexo.')
     }
@@ -234,6 +237,7 @@ function CardDaSprint({ card, atividade, elaboradores, commentsTarget, commentsV
       {erroAnexos && <p role="alert" className="atividade-detalhes-erro">{erroAnexos}</p>}
       <CardModal
         isOpen
+        autosaveEmbeddedDescription
         embedded
         readOnly={!podeEditar}
         onClose={onClose}
@@ -274,6 +278,7 @@ function CardDaSprint({ card, atividade, elaboradores, commentsTarget, commentsV
           const { createdAt, uploadedAt, ...dados } = await response.json()
           const attachment: Attachment = { ...dados, uploadedAt: new Date(uploadedAt ?? createdAt).getTime() }
           setAttachments(atuais => [...atuais.filter(anexo => anexo.id !== attachment.id), attachment])
+          onChanged()
           return attachment
         } : undefined}
         onAttachmentRename={podeEditar ? (id, name) => atualizarAnexos(
@@ -298,18 +303,21 @@ function CardDaSprint({ card, atividade, elaboradores, commentsTarget, commentsV
           const comment = resultado.comment
           commentsRevision.current += 1
           setComments(atuais => atuais.some(atual => atual.id === comment.id) ? atuais : [...atuais, comment])
+          onChanged()
         }}
         onEditComment={async (id, content) => {
           const resultado = await updateCommentAction(card.id, id, content)
           if (resultado.error) throw new Error(resultado.error)
           commentsRevision.current += 1
           setComments(atuais => atuais.map(comment => comment.id === id ? { ...comment, content } : comment))
+          onChanged()
         }}
         onDeleteComment={async id => {
           const resultado = await deleteCommentAction(card.id, id)
           if (resultado.error) throw new Error(resultado.error)
           commentsRevision.current += 1
           setComments(atuais => atuais.filter(comment => comment.id !== id))
+          onChanged()
         }}
       />
     </div>

@@ -26,6 +26,7 @@ import { TagSelector } from '../tag/TagSelector'
 import MultiUserSelector from './MultiUserSelector'
 import { useOverlay } from '@/hooks/useOverlay'
 import { useAutosave } from '@/hooks/useAutosave'
+import MarkdownText from '@/components/ui/MarkdownText'
 import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/cardUtils'
 import { formatarMinutos } from '@/lib/tempoRealizado'
 import {
@@ -45,6 +46,8 @@ export type CardSubmitResult = { success: true } | { error: string }
 interface CardModalProps {
   isOpen: boolean
   embedded?: boolean
+  autosaveEmbeddedDescription?: boolean
+  onDescriptionDraftChange?: (description: string) => void
   onPriorityChange?: (priority: string) => Promise<{ error?: string } | void>
   onClose: () => void
   onSubmit: (data: { title: string; description: string; color: CardColor; priority: string; responsibles?: string[]; files?: File[]; startDate?: string | null; endDate?: string | null }) => Promise<CardSubmitResult>
@@ -245,7 +248,7 @@ function AttachmentIcon({ fileType }: { fileType: string }) {
 }
 
 export default function CardModal({
-  isOpen, embedded = false, onPriorityChange, onClose, onSubmit, initialCard, readOnly: requestedReadOnly = false, users, boardTags,
+  isOpen, embedded = false, autosaveEmbeddedDescription = false, onDescriptionDraftChange, onPriorityChange, onClose, onSubmit, initialCard, readOnly: requestedReadOnly = false, users, boardTags,
   attachments = [], onAttachmentUpload, onAttachmentRename, onAttachmentDelete, onAttachmentSetCover,
   comments = [], commentsTarget, commentsVisible = true, mentionUsers = [], commentsLoadError, attachmentUploadError, onAttachmentShared, onAddComment, onEditComment, onDeleteComment, currentUser, onResponsiblesChange, onTimerStarted, onPatch,
 }: CardModalProps) {
@@ -392,7 +395,7 @@ export default function CardModal({
       if (res && res.error) throw new Error(res.error)
       if (initialCardRef.current?.id === savingCardId) setSavedDescription(description)
     },
-    { enabled: autosaveEnabled && !embedded },
+    { enabled: autosaveEnabled && (!embedded || autosaveEmbeddedDescription) },
   )
   const resetDescAutosave = descAutosave.reset
 
@@ -487,9 +490,8 @@ export default function CardModal({
   }
 
   const handleCloseDescEditor = async () => {
-    if (!embedded) {
-      void descAutosave.flush()
-      setIsEditingDesc(false)
+    if (!embedded || autosaveEmbeddedDescription) {
+      if (await descAutosave.flush()) setIsEditingDesc(false)
       return
     }
     if (savingRef.current) return
@@ -900,7 +902,9 @@ export default function CardModal({
                           )
                         })}
                       </div>}
-                      <CommentText text={caption} busca={buscaComentariosAtiva ? buscaComentarios : ''} />
+                      {buscaComentariosAtiva
+                        ? <CommentText text={caption} busca={buscaComentarios} />
+                        : <MarkdownText>{caption}</MarkdownText>}
                     </div>
                   )}
                 </div>
@@ -1025,14 +1029,14 @@ export default function CardModal({
               isEditingDesc={isEditingDesc}
               hasUnsavedDescription={hasUnsavedDescription}
               autosaveEnabled={autosaveEnabled}
-              autosaveInfo={embedded ? null : autosaveInfo}
+              autosaveInfo={embedded && !autosaveEmbeddedDescription ? null : autosaveInfo}
               saving={saving}
               canRetry={descAutosave.status === 'error'}
               onEdit={() => setIsEditingDesc(true)}
-              onChange={setDraftDescription}
+              onChange={value => { setDraftDescription(value); onDescriptionDraftChange?.(value) }}
               onSave={autosaveEnabled ? handleCloseDescEditor : handleSaveDescription}
-              onCancel={() => { setDraftDescription(savedDescription); setIsEditingDesc(false); if (embedded) setError('') }}
-              onFlush={embedded ? undefined : () => { void descAutosave.flush() }}
+              onCancel={() => { setDraftDescription(savedDescription); onDescriptionDraftChange?.(savedDescription); setIsEditingDesc(false); if (embedded) setError('') }}
+              onFlush={embedded && !autosaveEmbeddedDescription ? undefined : () => { void descAutosave.flush() }}
               onInsertMarkdown={insertMarkdown}
             />
 

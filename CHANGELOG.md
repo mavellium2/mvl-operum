@@ -7,6 +7,78 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.53.0] — 2026-11-05
+
+- **Cards legíveis:** descrições e comentários passam a mostrar Markdown, com títulos, listas, negrito, tabelas, checklists e links. HTML digitado não é executado, links externos abrem em outra aba e tabelas largas rolam dentro do próprio bloco. Comentários longos deixam de virar uma linha só; durante a busca de comentários, o texto aparece simples com os termos realçados. Incorpora a 1.51.0, que não chegou a ser publicada.
+
+- **Minicard do quadro:** o resumo da descrição aparece como texto simples, sem os símbolos de Markdown.
+
+- **MCP:** as instruções do servidor trazem uma regra de escrita para agentes (resultado primeiro, parágrafos curtos, listas e linha em branco entre blocos), e os campos de descrição e comentário apontam para ela.
+
+- **Dependências:** `react-markdown` 10.1.0 e `remark-gfm` 4.0.1 (ADR-086).
+
+- **Partes interessadas:** diretório e formulário dos painéis de adicionar interno/externo ocupam toda a largura disponível, sem herdar a largura de um terço da tela de cadastros.
+
+- **EAP documental:** árvore textual usa a mesma família de fonte do cabeçalho (Arial), mantendo negrito e recuos da hierarquia.
+
+- **Remover envolvidos:** lixeira em cada pessoa dos grupos personalizados e Backspace em linhas vazias removem a linha, preservando o restante e devolvendo o foco à anterior.
+
+- **Espaçamento de envolvidos:** edição, leitura e impressão usam o mesmo bloco compartilhado: título em linha inteira, lista na linha seguinte com recuo de 22,5 mm, entrelinha compacta e 4 mm entre grupos. Controles de reordenação não aumentam a altura do título.
+
+- **Teclado e títulos nos documentos:** Tab/Shift+Tab percorrem também os novos campos e botões sem voltar ao início. Títulos preservam espaços e pontuação digitados. Todas as listas de envolvidos começam na linha abaixo de seu título.
+
+- **Listas de envolvidos:** títulos e pessoas alinhados em colunas, com hífen antes de cada pessoa; botão de adicionar título com foco imediato e Enter para avançar/inserir pessoas. Mesma apresentação na leitura, impressão e Word.
+
+- **Principais envolvidos no Termo:** adicionar títulos com conteúdo multilinha, mover blocos completos para cima/baixo e exibir integrantes um por linha. A ordem também é preservada na impressão e no Word; documentos antigos continuam legíveis.
+
+- **Custos no Termo de Abertura:** valores alinhados à direita e formatados em reais, com máscara de moeda na edição.
+
+- **Termo de Abertura:** removidas as ações de adicionar e excluir macrofases no documento; a gestão da estrutura permanece no projeto/EAP/planilha.
+
+- **Navegação de atas:** o submenu Documentação permanece aberto na lista, criação e leitura/edição de atas, com Atas de Reunião selecionado.
+
+- **Editar projeto:** Objetivo e Descrição do Produto/Serviço ocupam toda a largura do formulário, com a descrição abaixo do objetivo.
+
+- **Barra superior da planilha:** título, período, status e ações alinhados em uma única linha, com rolagem horizontal em telas pequenas.
+
+- **Desempenho do salvamento automático:** edições de campos não recarregam a tabela nem repetem a sincronização completa EAP/sprints. Cálculos derivados são propagados uma vez por lote; atualizações necessárias de estrutura usam transição de baixa prioridade.
+
+- **Continuidade no salvamento:** atividades novas permanecem visíveis entre a confirmação da estrutura e a chegada dos dados atualizados do servidor, sem desaparecer e reaparecer.
+
+- **Salvamento automático e versões da planilha:** alterações são gravadas após uma pausa, sem exigir Salvar para trabalhar. O histórico registra estados restauráveis com autor e data, numerados `v1.0.1`, `v1.0.2`, …, `v1.0.99`, `v1.1.0`. Restaurar preserva o histórico e gera uma nova versão. Inclui estrutura, campos, descrição, prioridade, responsáveis, anexos, comentários e lançamentos encerrados; cronômetros precisam estar parados para restaurar.
+
+- **Abas de nova atividade:** seção de conversa não aparece na aba Atividade; comentários permanecem separados na aba própria.
+
+- **Painel de nova atividade:** descrição editável e seleção, renomeação e remoção de anexos disponíveis antes de salvar. Arquivos ficam no rascunho e são enviados automaticamente após a criação do card; falhas preservam os arquivos pendentes e não reenviam os concluídos.
+
+- **Prioridade antes de salvar:** novas atividades já exibem a bandeira logo após o título na ordem do Tab. A seleção fica no rascunho e é aplicada ao card após criação e sincronização automáticas; falhas preservam a escolha para tentar novamente.
+
+- **Prioridade na tabela:** clicar na bandeira permite escolher Baixa, Média ou Alta, com gravação direta no card, sem abrir o painel lateral e respeitando as permissões existentes.
+
+- **Acessibilidade na planilha:** seletor de elaboradores ganha foco visível no campo e na pessoa selecionada; setas, Home/End percorrem opções, Espaço/Enter marcam, Esc retorna ao campo e Tab avança. Rolar a lista não fecha o seletor.
+
+- **Calendário acessível:** ícone do SeletorData agora é botão na ordem do Tab, com foco visível e ativação por Enter/Espaço; abre no dia selecionado e Esc devolve o foco ao ícone.
+
+- **Datas na planilha:** Data prevista e Data realização passam a usar o mesmo SeletorData de Editar projeto, com calendário e navegação por teclado compartilhados.
+
+- **Formatação de minutos:** células de realizado e conversões de horas/dias exibem no máximo duas casas decimais, evitando dízimas extensas.
+
+- **Tempo realizado editável:** Min, Horas e Dias exibem o realizado total já existente (manual mais apontamentos). A edição ajusta a parcela manual pela diferença, sem duplicar apontamentos, com conversão entre unidades e atualização dos totais. A edição permite reduzir o total por um ajuste explícito, sem alterar os lançamentos (ADR-092). Os apontamentos do card continuam somados ao manual, preservando a regra de cálculo e as permissões existentes.
+
+- **Atividades na planilha:** removidos os controles de iniciar/parar timer das linhas.
+
+- **Painel de atividade:** ícone lateral disponível desde a criação da linha, incluindo edição do título e elaboradores no rascunho.
+
+- **Ações das atividades:** menu substituído por “+” para inserir imediatamente abaixo e lixeira com confirmação de exclusão. A inserção intermediária renumera os irmãos na prévia e na EAP ao salvar; o “+” da macrofase continua acrescentando no fim.
+
+- **Nova atividade:** o “+” da macrofase cria a última atividade; o “+” da atividade insere abaixo dela, já com o próximo código hierárquico na prévia e sincronização explícita com as sprints ao salvar (conforme permissões). A linha aparece completa, com foco e seleção no título e os demais campos disponíveis para preenchimento direto, sem formulário intermediário.
+
+- **Ações da macrofase na planilha:** botão “+” adiciona uma tarefa diretamente, substituindo o menu de três pontos e sua opção de exclusão.
+
+- **Numeração de macrofases:** após editar o título de um novo bloco, o campo de número recebe foco e seleção automaticamente; digitar a posição e pressionar Enter reorganiza a planilha sem cliques adicionais. Salvar exige essa escolha e aplica a ordem à EAP, cuja sincronização atualiza os códigos das sprints vinculadas.
+
+- **Planilha de custos:** adicionar macrofase cria diretamente um bloco no início da tabela, com numeração automática e foco no título para edição, pendente de Salvar. Botão compacto de adicionar macrofase posicionado à direita do título da coluna Macrofases. A ação continua disponível na planilha vazia.
+
 ## [1.52.0] — 2026-11-04
 
 - **Card na planilha de custos:** bandeiras indicam a prioridade das atividades. O painel lateral abre na aba Atividade pelo ícone da linha ou pelos valores realizados. A aba Atividade usa o componente do card da sprint encaixado no painel lateral, com edição da descrição e da prioridade, comentários e anexos. Arquivos enviados pela conversa aparecem como mensagens e também em Anexos. Menções a pessoas do projeto geram notificações e um aviso no canto da tela.

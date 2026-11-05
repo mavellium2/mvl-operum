@@ -1,3 +1,4 @@
+import { garantirVersaoInicialPlanilha } from '@/services/planilhaVersoes'
 import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
@@ -75,10 +76,13 @@ export default async function PlanilhaCustosPage({
     description: c.description ?? '', priority: c.priority, sprintId: c.sprintId, etapa: c.sprintColumn?.title ?? null,
   }])))
 
+  const initialVersion = await garantirVersaoInicialPlanilha({ tenantId, projectId: projetoId, userId })
+
   return (
     <>
     <StatusSincronizacao projectId={projetoId} inicial={statusSync} podeSincronizar={sincroniza} flutuante />
     <PlanilhaCustosView
+      initialVersion={initialVersion}
       projetoId={projetoId}
       nomeProjeto={project.name}
       inicioProjeto={project.startDate ? fmtDataBR(project.startDate.toISOString()) : '—'}
