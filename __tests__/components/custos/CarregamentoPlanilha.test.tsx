@@ -22,6 +22,23 @@ describe('carregamento sob demanda da planilha', () => {
     unmount()
     expect(disconnect).toHaveBeenCalled()
   })
+  it('aguarda metade do gráfico entrar na tela antes de montar e animar', () => {
+    let notify: IntersectionObserverCallback = () => {}
+    let options: IntersectionObserverInit | undefined
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: IntersectionObserverCallback, config: IntersectionObserverInit) { notify = callback; options = config }
+      observe = vi.fn()
+      disconnect = vi.fn()
+    })
+    render(<SobDemandaPlanilha whenVisible label="gráfico"><p>Gráfico animado</p></SobDemandaPlanilha>)
+    expect(options).toMatchObject({ rootMargin: '0px', threshold: 0.5 })
+    expect(screen.getByRole('status', { name: 'Carregando gráfico' })).toBeInTheDocument()
+    act(() => notify([{ isIntersecting: true, intersectionRatio: 0.1 }] as IntersectionObserverEntry[], {} as IntersectionObserver))
+    expect(screen.queryByText('Gráfico animado')).not.toBeInTheDocument()
+    act(() => notify([{ isIntersecting: true, intersectionRatio: 0.5 }] as IntersectionObserverEntry[], {} as IntersectionObserver))
+    expect(screen.getByText('Gráfico animado')).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'Carregando gráfico' })).not.toBeInTheDocument()
+  })
   it('permite carregar conteúdo e próximas atividades sem observer pelo teclado', () => {
     vi.stubGlobal('IntersectionObserver', undefined)
     const load = vi.fn()

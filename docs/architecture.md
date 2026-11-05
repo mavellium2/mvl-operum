@@ -1436,3 +1436,6 @@ A apresentação dos gráficos 3D usa GlassCard, tokens de aparência e cabeçal
 
 
 A planilha monta as atividades em blocos de 30 por macrofase, carregando os próximos ao aproximar da rolagem, com botão alternativo para teclado. Linhas novas e a atividade aberta são reveladas imediatamente; linhas montadas e rascunhos são preservados. Totais, exportação e autosave continuam usando o conjunto completo de dados recebido, sem paginação no servidor. `CarregamentoPlanilha` adia a montagem dos resumos e de cada gráfico até a proximidade da tela; gráficos e painéis de detalhes/histórico usam imports dinâmicos. Resumos usam `useDeferredValue` para priorizar a digitação. Não há novo endpoint nem alteração de autorização, persistência ou contratos.
+
+
+Gráficos exibem `SkeletonGraficoPlanilha` (base visual `Skeleton`) enquanto aguardam montagem/importação. Cada gráfico só é montado quando 50% da área reservada entra na viewport real, sem margem antecipada, para iniciar a animação durante a leitura. Resumos e lotes de atividades mantêm pré-carregamento próximo à tela. O histórico consulta `to_regclass` antes de ler ou restaurar anexos legados em `public.Attachment`, que pode não existir em produção; `files.Attachment` continua sendo a fonte dos uploads atuais. A checagem evita abortar a transação de criação do snapshot inicial com P2021.

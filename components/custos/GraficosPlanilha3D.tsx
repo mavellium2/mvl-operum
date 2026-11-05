@@ -157,8 +157,8 @@ export default memo(function GraficosPlanilha3D({ planilha }: { planilha: Planil
   const total = planilha.quadros.elaboradores.reduce((sum, row) => sum + Math.max(0, row.qtdeAtividades), 0)
   const rows = planilha.quadros.elaboradores.map(row => ({ ...row, percentual: total ? Math.max(0, row.qtdeAtividades) / total * 100 : 0 }))
   return <div className="planilha-charts planilha-3d-grid mt-4" data-planilha-charts="excel-3d" style={{ minWidth: 0 }}>
-    <SobDemandaPlanilha label="gráfico de valores"><Colunas3D title="Valores: Orçado e Real (R$)" currency rows={planilha.quadros.valor.map(row => ({ fase: row.fase, orcado: row.orcado, real: row.realizado }))} /></SobDemandaPlanilha>
-    <SobDemandaPlanilha label="gráfico de tempo"><Colunas3D title="Tempo: Orçado e Real (Minutos)" rows={planilha.quadros.tempo.map(row => ({ fase: row.fase, orcado: row.minOrcado, real: row.minReal }))} /></SobDemandaPlanilha>
-    <SobDemandaPlanilha label="gráfico de elaboradores"><Pizza3D rows={rows} total={planilha.qtdeAtividades} /></SobDemandaPlanilha>
+    <SobDemandaPlanilha whenVisible label="gráfico de valores"><Colunas3D title="Valores: Orçado e Real (R$)" currency rows={planilha.quadros.valor.map(row => ({ fase: row.fase, orcado: row.orcado, real: row.realizado }))} /></SobDemandaPlanilha>
+    <SobDemandaPlanilha whenVisible label="gráfico de tempo"><Colunas3D title="Tempo: Orçado e Real (Minutos)" rows={planilha.quadros.tempo.map(row => ({ fase: row.fase, orcado: row.minOrcado, real: row.minReal }))} /></SobDemandaPlanilha>
+    <SobDemandaPlanilha whenVisible label="gráfico de elaboradores"><Pizza3D rows={rows} total={planilha.qtdeAtividades} /></SobDemandaPlanilha>
   </div>
 })

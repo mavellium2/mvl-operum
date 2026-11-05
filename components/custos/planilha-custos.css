@@ -401,3 +401,10 @@ button.planilha-prioridade:focus-visible { outline: 2px solid var(--sheet-accent
 
 .planilha-demand-section { min-width: 0; }
 .planilha-demand-section:has(> button) { min-height: 120px; display: grid; place-items: center; border: 1px solid var(--ap-border); border-radius: 12px; }
+
+.planilha-chart-placeholder { position: relative; width: 100%; }
+.planilha-chart-skeleton { padding: 20px; min-height: 380px; border-radius: 12px; }
+.planilha-chart-skeleton-bars { display: flex; align-items: end; gap: 5%; height: 230px; margin-top: 24px; padding: 0 3%; border-bottom: 1px solid var(--ap-border); }
+.planilha-chart-skeleton-bars > div { display: flex; align-items: end; gap: 4px; height: 100%; flex: 1; }
+.planilha-chart-skeleton-bars .operum-skeleton { flex: 1; }
+.planilha-chart-load { position: absolute; bottom: 8px; right: 12px; font-size: 12px; }

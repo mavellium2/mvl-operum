@@ -9,6 +9,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.54.0] — 2026-11-05
 
+- **Carregamento e produção:** skeleton nos gráficos; animações aguardam o gráfico entrar na tela. Histórico compatível com produção sem a tabela legada `public.Attachment`, corrigindo o erro P2021 ao abrir a planilha e restaurar versões.
+
 - **Desempenho da planilha:** atividades montadas em blocos de 30 conforme a rolagem, resumos e gráficos próximos à tela, painéis carregados ao abrir e atualização de resumos sem bloquear a digitação. Preserva rascunhos, foco de atividades novas e totais completos.
 
 - **Animação dos gráficos:** colunas crescem na entrada e a pizza é preenchida progressivamente. Ocultar ou mostrar séries anima a centralização, largura e escala das colunas, com cancelamento no descarte e respeito a movimento reduzido.

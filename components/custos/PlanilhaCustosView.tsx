@@ -2,7 +2,7 @@
 
 import { usePlanilhaAutosave } from '@/hooks/usePlanilhaAutosave'
 import dynamic from 'next/dynamic'
-import { SobDemandaPlanilha, MaisAtividadesPlanilha } from './CarregamentoPlanilha'
+import { SobDemandaPlanilha, MaisAtividadesPlanilha, SkeletonGraficoPlanilha } from './CarregamentoPlanilha'
 const HistoricoPlanilha = dynamic(() => import('./HistoricoPlanilha'))
 import { salvarHistoricoPlanilhaAction } from '@/app/actions/planilhaHistorico'
 import { rotuloVersaoPlanilha } from '@/lib/planilhaVersion'
@@ -38,7 +38,7 @@ import { updateNodePropertiesAction, insertChildAction, insertSiblingAction, ren
 import { fmtDataBR, maiorData, situacaoDe, valorPorMinutoDoElaborador, type PlanilhaDeCustos, type SituacaoAtividade, type Elaborador } from '@/lib/planilhaCustos'
 import { minutosDeHoras, minutosDeDias, round2 } from '@/lib/custosCalc'
 import { formatarMinutos } from '@/lib/tempoRealizado'
-const GraficosPlanilha3D = dynamic(() => import('./GraficosPlanilha3D'))
+const GraficosPlanilha3D = dynamic(() => import('./GraficosPlanilha3D'), { loading: () => <SkeletonGraficoPlanilha label="gráficos" /> })
 
 interface Props {
   initialVersion?: number

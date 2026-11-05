@@ -1,0 +1,6 @@
+.operum-skeleton { border-radius: 6px; background: color-mix(in srgb, var(--ap-text, #64748b) 10%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  .operum-skeleton { animation: operum-skeleton-loading 1.4s ease-in-out infinite alternate; }
+  @keyframes operum-skeleton-loading { from { opacity: .45; } to { opacity: .85; } }
+}
+@media (prefers-reduced-transparency: reduce) { .operum-skeleton { background: var(--ap-border, #94a3b8); } }
