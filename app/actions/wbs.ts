@@ -193,6 +193,7 @@ export async function updateNodePropertiesAction(
   projetoId: string,
   nodeId: string,
   properties: Record<string, unknown>,
+  options?: { background?: boolean },
 ): Promise<Result<{ serverVersion: number }>> {
   try {
     const sessao = await verifySession()
@@ -207,8 +208,8 @@ export async function updateNodePropertiesAction(
     // Quem entrou como elaborador virou responsável do card: recebe o mesmo aviso do card.
     if (cardId) await Promise.all(responsaveisAdicionados.map(uid => notifyAssignedResponsible(cardId, uid)))
     // Data prevista / orçado mudaram: atualiza data fim da fase/sprint/projeto e custo da fase.
-    await propagarPlanilhaDeCustos(projetoId, tenantId).catch(error => console.error('[planilha] falha ao propagar', error))
-    revalidatePath(`/projetos/${projetoId}/planilha-custos`)
+    if (!options?.background) await propagarPlanilhaDeCustos(projetoId, tenantId).catch(error => console.error('[planilha] falha ao propagar', error))
+    if (!options?.background) revalidatePath(`/projetos/${projetoId}/planilha-custos`)
     return { ok: true, ...result }
   } catch (e) {
     return err(e)

@@ -87,6 +87,7 @@ function RodapeTela({ pagina, total }: { pagina: number; total: number }) {
 }
 
 const bordaEap = '1px solid #000'
+const FONTE_CABECALHO = 'Arial, Arimo, Helvetica, sans-serif'
 const celEap: React.CSSProperties = { border: bordaEap, padding: '1px 5px', verticalAlign: 'top', textAlign: 'left', fontSize: '10pt', lineHeight: 1.3, fontWeight: 'bold', fontFamily: 'Calibri, Carlito, Arial, Helvetica, sans-serif' }
 const celEapCampo: React.CSSProperties = { ...celEap, padding: 0 }
 /** Rótulo em negrito e itálico ("Versão:", "Data de aprovação:"), como no modelo. */
@@ -105,7 +106,7 @@ function CabecalhoEap({ titulo, logoUrl }: { titulo: string; logoUrl?: string | 
             ? <div style={{ width: '30mm', height: '20mm', border: '1px solid #4a6fa5', background: '#9db7e0', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '11pt', lineHeight: 1.15 }}>Logo do<br />Projeto</div>
             : null}
       </div>
-      <h1 style={{ flex: 1, margin: 0, textAlign: 'center', fontFamily: 'Arial, Arimo, Helvetica, sans-serif', fontSize: '15pt', fontWeight: 'bold', lineHeight: 1.2 }}>{titulo}</h1>
+      <h1 style={{ flex: 1, margin: 0, textAlign: 'center', fontFamily: FONTE_CABECALHO, fontSize: '15pt', fontWeight: 'bold', lineHeight: 1.2 }}>{titulo}</h1>
       <div aria-hidden="true" style={{ width: '40mm', flexShrink: 0 }} />
     </div>
   )
@@ -237,7 +238,7 @@ const EapDocumentSheet = forwardRef<HTMLDivElement, EapDocumentSheetProps>(
         return <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>Estrutura da EAP vazia — use o editor para montar a árvore.</div>
       }
       return (
-        <ListaPaginada style={{ fontFamily: '"Times New Roman", Tinos, Times, serif', fontSize: '10.5pt', lineHeight: 1.25 }}>
+        <ListaPaginada style={{ fontFamily: FONTE_CABECALHO, fontSize: '10.5pt', lineHeight: 1.25 }}>
           {flat.map(node => {
             const temFilhos = (node.children?.length ?? 0) > 0
             const texto = node.level === 1 ? `${node.code}. ${node.title}` : `${node.code} ${node.title}`

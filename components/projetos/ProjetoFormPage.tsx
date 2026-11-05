@@ -104,8 +104,8 @@ function Propriedade({ Icone, rotulo, htmlFor, children }: { Icone: typeof Flag;
 /** Campos do Termo de Abertura (Diretrizes e Escopo), na ordem e com os nomes do formulário. */
 const CAMPOS_TERMO: { nome: CampoTextoTermo; Icone: typeof Flag; placeholder: string; largo: boolean }[] = [
   { nome: 'justificativa', Icone: Lightbulb, placeholder: 'Qual problema este projeto resolve? Por que é necessário?', largo: true },
-  { nome: 'objetivos', Icone: Target, placeholder: 'O que caracteriza o sucesso deste projeto?', largo: false },
-  { nome: 'descricaoProduto', Icone: Package, placeholder: 'Detalhe técnico ou funcional do que será entregue...', largo: false },
+  { nome: 'objetivos', Icone: Target, placeholder: 'O que caracteriza o sucesso deste projeto?', largo: true },
+  { nome: 'descricaoProduto', Icone: Package, placeholder: 'Detalhe técnico ou funcional do que será entregue...', largo: true },
   { nome: 'metodologia', Icone: Wrench, placeholder: 'Ex: Desenvolvimento Ágil usando Scrum quinzenal.', largo: true },
   { nome: 'premissas', Icone: ListChecks, placeholder: 'Cenários assumidos como verdadeiros para o planejamento...', largo: false },
   { nome: 'restricoes', Icone: ShieldAlert, placeholder: 'Limites de orçamento, tempo ou recursos obrigatórios...', largo: false },

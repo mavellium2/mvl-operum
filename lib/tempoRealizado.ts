@@ -12,11 +12,11 @@ export function minutosApontados(properties: WbsNodeProperties): number {
 }
 
 /**
- * Realizado = minutos digitados + minutos dos apontamentos do card (ADR-089).
+ * Realizado = manual + apontamentos + ajuste explícito, com piso zero (ADR-092).
  * Somar evita que o primeiro apontamento apague o que já foi digitado.
  */
 export function minutosRealizados(properties: WbsNodeProperties): number {
-  return minutosDigitados(properties) + minutosApontados(properties)
+  return Math.max(0, minutosDigitados(properties) + minutosApontados(properties) + (properties.tempoRealAjusteMinutos ?? 0))
 }
 
 /** Minutos para exibir: inteiros sem casas (200); quebrados com duas casas (0,10 · 1.640,18). */

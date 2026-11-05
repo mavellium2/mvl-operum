@@ -1121,7 +1121,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-090 — Lançamentos de tempo como fonte do realizado na planilha
 
 - **Data:** 2026-11-04.
-- **Status:** implementada. Substitui o fluxo da planilha da [ADR-089](#adr-089--realizado-soma-os-minutos-digitados-com-os-apontamentos-do-card).
+- **Status:** parcialmente substituída pela ADR-092 quanto à edição direta do total na planilha. Substitui o fluxo da planilha da [ADR-089](#adr-089--realizado-soma-os-minutos-digitados-com-os-apontamentos-do-card).
 - **Contexto:** a planilha oferecia um valor manual agregado e uma lista de lançamentos do card. O usuário pediu um único fluxo para registrar e corrigir tempo.
 - **Escolha:** a aba Tempo registra novos valores no card. A migração cria um lançamento encerrado por atividade com tempo legado e remove o valor de origem na mesma instrução. Usa a atualização do nó como referência de data e o elaborador ou responsável identificado como autor.
 - **Justificativa:** os registros individuais podem ser consultados e editados no mesmo fluxo, com o total preservado na conversão.
@@ -1140,3 +1140,27 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** um lançamento de 2 dias vira quatro lançamentos de 12 h, todos com a mesma descrição; a soma do realizado não muda. A operação não é atômica no banco: a Server Action compensa removendo os lançamentos criados se um passo falhar. O MCP continua recusando acima de 12 h e não divide automaticamente.
 - **Condições de revisão:** pedido de divisão também no MCP ou na edição de um lançamento, ou de um teto diferente de 31 dias.
 - **Referências:** `app/actions/time.ts`, `components/card/CardTimer.tsx`, `sprint-service/src/time-entry/regras-tempo.ts`, [ADR-046](#adr-046--lançamentos-de-tempo-editáveis-validados-e-com-limite-de-12-h-no-timer).
+
+## ADR-092 — Edição direta do total realizado com ajuste explícito
+
+- **Data:** 2026-11-05.
+- **Status:** implementada; substitui parcialmente a ADR-090 na edição do agregado.
+- **Contexto:** o usuário solicitou editar Min/Horas/Dias diretamente, inclusive reduzindo valores originados em apontamentos.
+- **Escolha:** persistir `tempoRealAjusteMinutos` nas propriedades da atividade. Realizado = máximo de zero e manual + apontamentos + ajuste. A edição salva a diferença entre o total informado e manual + apontamentos.
+- **Justificativa:** permite corrigir o total sem apagar ou atribuir artificialmente registros de tempo de outras pessoas.
+- **Alternativas consideradas:** limitar o total aos apontamentos (impedia a edição solicitada); reescrever os lançamentos individuais (alteraria o histórico e a autoria).
+- **Consequências:** novos apontamentos continuam incrementando o total. Ajustes negativos podem absorver reduções futuras dos apontamentos até o piso zero. O histórico individual permanece distinto do total ajustado. A permissão do ajuste é a mesma de realizado próprio/todos. Não exige migration, pois usa propriedades JSON existentes.
+- **Condições de revisão:** revisar a apresentação do ajuste no painel de tempo quando for necessário reconciliar detalhadamente o agregado com os registros individuais.
+- **Referências:** `lib/tempoRealizado.ts`, `lib/permissoesCustos.ts`, `components/custos/PlanilhaCustosView.tsx`, ADR-090.
+
+## ADR-093 — Salvamento automático e histórico restaurável da planilha
+
+- **Data:** 2026-11-05.
+- **Status:** implementada.
+- **Contexto:** o usuário precisa trabalhar na planilha e no painel lateral sem salvar manualmente a cada operação e poder voltar a um estado anterior. O histórico de Editar projeto cobre apenas o formulário, não a árvore, cards e registros da planilha.
+- **Escolha:** agrupar edições por uma pausa de 1,2 s, manter Salvar agora como alternativa e registrar snapshots duráveis em `PlanilhaVersao`, separados da versão do produto e de `ProjetoVersao`. A primeira versão é `v1.0.1`; cada índice avança a sequência em base 100 (`v1.0.99 → v1.1.0`).
+- **Justificativa:** a pausa evita uma versão por tecla; snapshots permitem restaurar estrutura, campos, descrições, prioridades, responsáveis, referências a anexos, comentários e lançamentos encerrados. O usuário vê pendências, salvamento, sucesso e falhas. Gravações de propriedades em background evitam revalidação da página por célula; derivados são propagados uma vez por lote, e sincronização completa ocorre apenas ao alterar estrutura/nome. Refreshes necessários usam transição de baixa prioridade. Falhas preservam rascunhos e IDs temporários para nova tentativa.
+- **Alternativas consideradas:** continuar exigindo Salvar; reaproveitar `ProjetoVersao` (contrato restrito ao formulário); guardar histórico apenas no navegador (não durável nem compartilhado).
+- **Consequências:** snapshots iguais são deduplicados por conteúdo canônico. A restauração ocorre em transação serializável, com lock por tenant/projeto e proteção contra lista histórica desatualizada. Preserva alterações ainda sem snapshot e registra uma nova versão; não apaga versões anteriores. Restauração exige editar projeto, orçamento, realizado de todos e cards. Leituras exigem acesso ao projeto e à planilha. Cronômetros ativos bloqueiam restauração. Arquivos são restaurados por referência a uploads retidos, sem recriar blobs que tenham sido removidos fisicamente. Operações normais da planilha e snapshots são etapas distintas: uma falha intermediária é exibida e pode ser repetida; o snapshot inicial permite retornar ao estado anterior. Histórico paginado, sem descarte automático das versões antigas. Para restaurar anexos reais atomicamente, o serviço acessa também os metadados de `files.Attachment` no banco compartilhado, além da tabela legada de `public`; os blobs continuam sob responsabilidade do file-service. Isso acopla a restauração ao schema existente de arquivos e às credenciais compartilhadas atuais.
+- **Condições de revisão:** avaliar armazenamento incremental e retenção quando o volume dos snapshots crescer; integrar todos os escritores externos ao mesmo histórico se o produto passar a exigir versionamento de alterações feitas fora da planilha.
+- **Referências:** `services/planilhaVersoes.ts`, `app/actions/planilhaHistorico.ts`, `hooks/usePlanilhaAutosave.ts`, `components/custos/HistoricoPlanilha.tsx`, `prisma/migrations/20261105130000_planilha_versoes/migration.sql`.

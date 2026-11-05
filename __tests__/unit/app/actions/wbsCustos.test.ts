@@ -1,10 +1,12 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('@/services/planilhaService', () => ({ propagarPlanilhaDeCustos: vi.fn().mockResolvedValue(null) }))
 vi.mock('@/lib/dal', () => ({ verifySession: vi.fn() }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/services/authz', () => ({ exigirPermissao: vi.fn(), permissoesNoProjeto: vi.fn() }))
 vi.mock('@/services/wbsService', () => ({ updateNodeProperties: vi.fn(), WbsConflictError: class extends Error {}, WbsValidationError: class extends Error {} }))
+import { propagarPlanilhaDeCustos } from '@/services/planilhaService'
 import { verifySession } from '@/lib/dal'
 import { exigirPermissao, permissoesNoProjeto } from '@/services/authz'
 import { updateNodeProperties } from '@/services/wbsService'
@@ -15,6 +17,7 @@ const session = { userId: 'u1', tenantId: 't1', role: 'member' }
 const permissoes = new Set(['planilha:realizado-proprio'] as const)
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.mocked(propagarPlanilhaDeCustos).mockResolvedValue(null)
   vi.mocked(verifySession).mockResolvedValue(session as never)
   vi.mocked(permissoesNoProjeto).mockResolvedValue(permissoes)
   vi.mocked(updateNodeProperties).mockResolvedValue({ serverVersion: 2 })
@@ -27,6 +30,12 @@ describe('Action da planilha — autorização no servidor', () => {
     expect(exigirPermissao).toHaveBeenCalledWith(session, 'p1', 'planilha:ver')
     expect(updateNodeProperties).toHaveBeenCalledWith({ nodeId: 'n1', projectId: 'p1', tenantId: 't1', properties: { tempoRealMinutos: 30 } }, { userId: 'u1', permissoes })
     expect(revalidatePath).toHaveBeenCalledWith('/projetos/p1/planilha-custos')
+  })
+  it('salva em segundo plano com autorização, sem recarregar nem recalcular o projeto por campo', async () => {
+    expect(await updateNodePropertiesAction('p1', 'n1', { tempoRealMinutos: 30 }, { background: true })).toEqual({ ok: true, serverVersion: 2 })
+    expect(updateNodeProperties).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 't1' }), { userId: 'u1', permissoes })
+    expect(revalidatePath).not.toHaveBeenCalled()
+    expect(propagarPlanilhaDeCustos).not.toHaveBeenCalled()
   })
   it('nega gravação quando leitura foi revogada', async () => {
     vi.mocked(exigirPermissao).mockRejectedValue(new Error('Sem permissão'))

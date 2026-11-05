@@ -910,7 +910,7 @@ export function CampoData({ id, rotulo, ajuda, valor, onChange }: CampoBase & { 
 }
 
 /** Marca o input de data/pessoa como foco navegável (Tab do editor). */
-export const SELETOR_FOCO = '[data-campo-foco], [data-campo] input:not([type="hidden"]):not([tabindex="-1"]), [data-campo] select, [data-campo] button[role="combobox"]'
+export const SELETOR_FOCO = '[data-campo-foco], input:not([type="hidden"]):not([type="file"]):not([tabindex="-1"]), textarea:not([tabindex="-1"]), select:not([tabindex="-1"]), button:not([tabindex="-1"]), a[href]:not([tabindex="-1"])'
 
 /**
  * 5. LISTA / TABELA — linhas repetíveis; o "+ Adicionar" fica no fim da

@@ -35,14 +35,18 @@ export default function ElaboradoresSelect({ tarefa, value, options, onChange }:
       if (!rootRef.current?.contains(alvo) && !panelRef.current?.contains(alvo)) setOpen(false)
     }
     const fechar = () => setOpen(false)
+    const aoRolar = (event: Event) => {
+      if (event.target instanceof Node && panelRef.current?.contains(event.target)) return
+      fechar()
+    }
     document.addEventListener('mousedown', fora)
     window.addEventListener('resize', fechar)
-    window.addEventListener('scroll', fechar, true)
+    window.addEventListener('scroll', aoRolar, true)
     panelRef.current?.querySelector<HTMLInputElement>('input')?.focus()
     return () => {
       document.removeEventListener('mousedown', fora)
       window.removeEventListener('resize', fechar)
-      window.removeEventListener('scroll', fechar, true)
+      window.removeEventListener('scroll', aoRolar, true)
     }
   }, [open])
 
@@ -62,12 +66,18 @@ export default function ElaboradoresSelect({ tarefa, value, options, onChange }:
         ref={buttonRef}
         type="button"
         onClick={() => (open ? setOpen(false) : abrir())}
-        aria-haspopup="true"
+        onKeyDown={event => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault()
+            abrir()
+          }
+        }}
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-label={`Elaborado por — ${tarefa}: ${nomes.length ? nomes.join(', ') : 'ninguém'}`}
         title={nomes.join(', ') || undefined}
-        className="flex w-full min-w-[110px] max-w-[220px] items-center gap-1 rounded border border-blue-200 bg-white px-1.5 py-0.5 text-left text-xs focus:border-blue-500 focus:outline-none"
+        className="planilha-elaboradores-trigger flex w-full min-w-[110px] max-w-[220px] items-center gap-1 rounded border border-blue-200 bg-white px-1.5 py-0.5 text-left text-xs focus:border-blue-500 focus:outline-none"
       >
         <span className="flex-1 truncate">{nomes.length ? nomes.join(', ') : '—'}</span>
         <ChevronDown className="h-3 w-3 shrink-0 text-gray-400" aria-hidden="true" />
@@ -76,15 +86,44 @@ export default function ElaboradoresSelect({ tarefa, value, options, onChange }:
         <div
           ref={panelRef}
           id={panelId}
-          role="group"
+          role="dialog"
           aria-label={`Elaborado por — ${tarefa}`}
-          onKeyDown={e => { if (e.key === 'Escape') { setOpen(false); buttonRef.current?.focus() } }}
+          onKeyDown={event => {
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              event.stopPropagation()
+              setOpen(false)
+              buttonRef.current?.focus()
+              return
+            }
+            if (event.key === 'Tab') {
+              // Restore the trigger before native Tab advances to the next table field.
+              setOpen(false)
+              buttonRef.current?.focus()
+              return
+            }
+            const items = Array.from(panelRef.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]') ?? [])
+            if (!items.length) return
+            const current = items.indexOf(document.activeElement as HTMLInputElement)
+            let next: number | undefined
+            if (event.key === 'ArrowDown') next = (current + 1) % items.length
+            if (event.key === 'ArrowUp') next = (current - 1 + items.length) % items.length
+            if (event.key === 'Home') next = 0
+            if (event.key === 'End') next = items.length - 1
+            if (next !== undefined) {
+              event.preventDefault()
+              items[next].focus()
+            } else if (event.key === 'Enter' && current >= 0) {
+              event.preventDefault()
+              items[current].click()
+            }
+          }}
           style={pos ? { top: pos.top, left: pos.left } : undefined}
           className="fixed z-50 max-h-64 min-w-[12rem] overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg"
         >
           {options.length === 0 && <p className="px-3 py-2 text-xs text-gray-500">Nenhum membro no projeto.</p>}
           {options.map(o => (
-            <label key={o.userId} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-gray-800 hover:bg-blue-50">
+            <label key={o.userId} className="planilha-elaborador-option flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-gray-800 hover:bg-blue-50">
               <input
                 type="checkbox"
                 checked={value.includes(o.userId)}
@@ -94,7 +133,7 @@ export default function ElaboradoresSelect({ tarefa, value, options, onChange }:
               {o.name}
             </label>
           ))}
-          <p className="border-t border-gray-100 px-3 pt-1.5 text-[10px] text-gray-500">São os responsáveis do card da tarefa.</p>
+          <p className="border-t border-gray-100 px-3 pt-1.5 text-[10px] text-gray-500">↑ ↓ navegar · Espaço marcar · Esc fechar · Tab próximo campo.</p>
         </div>
       )}
     </div>

@@ -9,6 +9,14 @@ describe('tempo realizado (ADR-089)', () => {
     expect(minutosRealizados(p)).toBeCloseTo(100 + 11 / 60)
   })
 
+  it('ajusta o total sem apagar apontamentos e acompanha novos lançamentos', () => {
+    const p = { tempoRealMinutos: 0, tempoRealApontadoSegundos: 6000, tempoRealAjusteMinutos: -75.5 }
+    expect(minutosRealizados(p)).toBe(24.5)
+    expect(minutosApontados(p)).toBe(100)
+    expect(minutosRealizados({ ...p, tempoRealApontadoSegundos: 6600 })).toBe(34.5)
+    expect(minutosRealizados({ ...p, tempoRealApontadoSegundos: 0 })).toBe(0)
+  })
+
   it('sem digitado nem apontamentos, o realizado é zero', () => {
     expect(minutosRealizados({})).toBe(0)
   })

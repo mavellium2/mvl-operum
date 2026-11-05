@@ -61,14 +61,14 @@
 }
 
 .planilha-header { position: sticky; top: 0; z-index: 30; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
-.planilha-header-main { display: grid; grid-template-columns: minmax(160px, 1fr) auto auto; align-items: center; gap: 14px; min-height: 36px; }
-.planilha-identity { max-width: 100%; }
+.planilha-header-main { display: flex; flex-wrap: nowrap; align-items: center; gap: 10px; min-height: 36px; }
+.planilha-identity { flex: 1; min-width: 160px; max-width: 100%; }
 .planilha-identity-divider { width: 1px; height: 15px; flex: none; background: var(--ap-border); }
 .planilha-subtitle, .planilha-period, .planilha-empty p { color: var(--ap-muted); }
 .planilha-period { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--ap-border); border-radius: 9px; background: color-mix(in srgb, var(--ap-input) 55%, transparent); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .planilha-period span:nth-child(2) { color: var(--ap-accent); }
 .planilha-period small { color: var(--ap-muted); font-size: inherit; font-weight: 500; }
-.planilha-actions.form-actions { position: static; bottom: auto; width: auto; padding: 0; gap: 7px; flex-shrink: 0; display: flex; align-items: center; }
+.planilha-actions.form-actions { position: static; bottom: auto; width: auto; padding: 0; gap: 7px; flex-shrink: 0; display: flex; flex-wrap: nowrap; align-items: center; }
 .planilha-action-group { display: inline-flex; align-items: center; gap: 4px; padding: 3px; border: 1px solid var(--ap-border); border-radius: 11px; background: color-mix(in srgb, var(--ap-input) 38%, transparent); }
 .planilha-action-divider { width: 1px; height: 20px; background: var(--ap-border); }
 .planilha-actions .glass-button { min-height: 30px; padding: 5px 9px; }
@@ -143,10 +143,10 @@
   border-bottom-color: var(--sheet-phase-rule);
 }
 /* Faixa de seção da macrofase: separada das atividades por fundo, borda e respiro. */
-.planilha-table .planilha-phase-row td { padding-top: 9px; padding-bottom: 7px; vertical-align: middle; background: color-mix(in srgb, var(--sheet-accent, #3478be) 9%, var(--sheet-subhead)); border-top: 2px solid color-mix(in srgb, var(--sheet-accent, #3478be) 38%, var(--sheet-phase-rule)); }
+.planilha-table .planilha-phase-row td { padding-top: 3px; padding-bottom: 3px; vertical-align: middle; background: color-mix(in srgb, var(--sheet-accent, #3478be) 9%, var(--sheet-subhead)); border-top: 2px solid color-mix(in srgb, var(--sheet-accent, #3478be) 38%, var(--sheet-phase-rule)); }
 .planilha-phase-title .planilha-node-label { font-size: 13.5px; font-weight: 700; letter-spacing: .01em; }
 .planilha-phase-count { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--sheet-secondary, #64748b); white-space: nowrap; }
-.planilha-phase-content { min-height: 26px; }
+.planilha-phase-content { min-height: 24px; }
 /* Linhas de atividade: tudo centralizado na vertical. */
 .planilha-table .planilha-activity-row td { vertical-align: middle; }
 /* Arrastar e menu ficam discretos e aparecem por inteiro na linha em foco. */
@@ -173,7 +173,7 @@
 .planilha-name-editor { max-width: 100%; }
 /* Coluna Atividades: largura limitada, nomes longos quebram em até 3 linhas. */
 .planilha-activity-name { width: 260px; min-width: 240px; max-width: 260px; white-space: normal; }
-.planilha-table { --sheet-actions-width: 84px; }
+.planilha-table { --sheet-actions-width: 115px; }
 .planilha-table thead tr:first-child th:first-child,
 .planilha-table .planilha-activity-row > td:first-child {
   position: sticky; left: 0; width: var(--sheet-actions-width); min-width: var(--sheet-actions-width); max-width: var(--sheet-actions-width);
@@ -184,7 +184,8 @@
 }
 .planilha-table thead tr:first-child th:first-child,
 .planilha-table thead tr:first-child th.planilha-activity-name { z-index: 5; }
-.planilha-table .planilha-activity-row > td:nth-child(3) { isolation: isolate; }
+.planilha-table .planilha-activity-row > td:nth-child(3) { vertical-align: middle; }
+.planilha-table .planilha-activity-row > td:nth-child(3):focus-within { position: relative; z-index: 6; }
 .planilha-table .planilha-activity-row > :is(td:first-child, .planilha-activity-name) { z-index: 2; background: var(--sheet-row-bg, var(--sheet-paper)); }
 .planilha-table .planilha-phase-content { position: sticky; left: 12px; width: max-content; max-width: calc(100vw - 48px); }
 .planilha-table .planilha-activity-row > :is(td:nth-child(4), td:nth-child(11)) { width: 76px; }
@@ -250,7 +251,7 @@ body[data-operum-period='night'] .planilha-node-menu .planilha-menu-danger { col
 .planilha-table .planilha-total-row td { border-right-color: var(--sheet-total-rule); border-bottom-color: var(--sheet-total-rule); }
 .planilha-table .planilha-activity-row td:nth-child(2),
 .planilha-table .planilha-activity-row td .text-gray-700 { color: var(--sheet-ink); }
-.planilha-table .planilha-activity-row :is(input, button[aria-haspopup]) {
+.planilha-table .planilha-activity-row :is(input, button[aria-haspopup]:not(.date-calendar-trigger):not(.planilha-prioridade)) {
   color: var(--sheet-ink);
   background: var(--sheet-paper);
   border-color: var(--sheet-rule);
@@ -312,14 +313,13 @@ body[data-operum-period='night'] .planilha-node-menu .planilha-menu-danger { col
 
 @media (max-width: 640px) {
   .planilha-header { position: relative; }
-  .planilha-identity { max-width: 100%; width: 100%; }
-  .planilha-header-main { grid-template-columns: 1fr; gap: 8px; }
+  .planilha-identity { max-width: 100%; width: auto; }
+  .planilha-header-main { gap: 8px; overflow-x: auto; }
   .planilha-period { width: fit-content; }
-  .planilha-actions { width: 100%; justify-content: flex-end; }
+  .planilha-actions { width: auto; justify-content: flex-end; }
   .planilha-table-scroll { max-height: 70dvh; }
 }
 @media (min-width: 641px) and (max-width: 1100px) {
-  .planilha-header-main { grid-template-columns: minmax(160px, 1fr) auto; }
   .planilha-period { display: none; }
 }
 
@@ -335,3 +335,36 @@ body[data-operum-period='night'] .planilha-node-menu .planilha-menu-danger { col
 .planilha-prioridade svg { fill: color-mix(in srgb, currentColor 16%, transparent); }
 .planilha-prioridade[data-prioridade="media"] { color: #a36512; }
 .planilha-prioridade[data-prioridade="alta"] { color: #d14150; }
+
+.planilha-theme .planilha-add-macrofase { display: inline-flex; align-items: center; justify-content: center; width: 24px; min-width: 24px; height: 24px; min-height: 24px; padding: 0; }
+
+.planilha-phase-title .planilha-name-input { height: 24px; min-height: 24px; padding-top: 2px; padding-bottom: 2px; line-height: 18px; }
+
+.planilha-add-task { color: inherit; background: transparent; border: 0; padding: 0; opacity: .6; }
+.planilha-add-task:hover { opacity: 1; }
+.planilha-add-task:focus-visible { opacity: 1; outline: 2px solid var(--sheet-accent, var(--ap-accent)); outline-offset: 1px; }
+
+.planilha-table .planilha-elaboradores-trigger:focus-visible {
+  outline: 2px solid var(--sheet-accent, var(--ap-accent));
+  outline-offset: 2px;
+  border-color: var(--sheet-accent, var(--ap-accent));
+}
+
+.planilha-elaborador-option:focus-within { background: var(--sheet-subhead, #dbeafe); outline: 2px solid var(--sheet-accent, #3478be); outline-offset: -2px; }
+
+/* Campos curtos mantêm a mesma largura no orçado e no realizado. */
+.planilha-table .planilha-activity-row > :is(td:nth-child(5), td:nth-child(12)) { width: 68px; padding-left: 4px; padding-right: 4px; }
+.planilha-table .planilha-activity-row > :is(td:nth-child(6), td:nth-child(13)) { width: 60px; padding-left: 4px; padding-right: 4px; }
+.planilha-table .planilha-activity-row > :is(td:nth-child(8), td:nth-child(15)) { width: 96px; }
+.planilha-table .planilha-activity-row > :is(td:nth-child(5), td:nth-child(12)) input { width: 60px; min-width: 0; }
+.planilha-table .planilha-activity-row > :is(td:nth-child(6), td:nth-child(13)) input { width: 52px; min-width: 0; }
+.planilha-table .planilha-activity-row > :is(td:nth-child(8), td:nth-child(15)) input { width: 88px; min-width: 0; }
+
+.planilha-table .planilha-date-input { padding-left: 4px; padding-right: 26px; text-align: left; }
+
+button.planilha-prioridade { background: transparent; border: 0; }
+button.planilha-prioridade:hover { opacity: .75; }
+button.planilha-prioridade:focus-visible { outline: 2px solid var(--sheet-accent, var(--ap-accent)); }
+
+.planilha-save-status { flex: 0 0 auto; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planilha-header-main > .planilha-period { flex-shrink: 0; }

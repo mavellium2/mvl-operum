@@ -1,11 +1,17 @@
 'use client'
 
+import { usePlanilhaAutosave } from '@/hooks/usePlanilhaAutosave'
+import HistoricoPlanilha from './HistoricoPlanilha'
+import { salvarHistoricoPlanilhaAction } from '@/app/actions/planilhaHistorico'
+import { rotuloVersaoPlanilha } from '@/lib/planilhaVersion'
+import AtividadeRascunho, { type ArquivoRascunho } from './AtividadeRascunho'
+import { fetchWithSession } from '@/lib/clientFetch'
+import { getActivityCardAction, patchActivityDescriptionAction, patchActivityPriorityAction } from '@/app/actions/sprintBoard'
+import { repetirSincronizacaoAction } from '@/app/actions/sincronizacao'
 import FormActions from '@/components/ui/FormActions'
 import ChangesPanel, { type ReviewChange } from '@/components/ui/ChangesPanel'
-import GlassPopover from '@/components/ui/GlassPopover'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput } from '@/components/ui/Field'
-import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { parseMoeda as parseMoedaLib } from '@/lib/dinheiro'
 import Dica from '@/components/ui/Tooltip'
@@ -13,18 +19,16 @@ import ElaboradoresSelect from './ElaboradoresSelect'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
 import AtividadeDetalhesPainel, { type AtividadeDetalhe } from '@/components/custos/AtividadeDetalhesPainel'
-import { PRIORITY_LABELS } from '@/lib/cardUtils'
-import CardTimerButton from '@/components/card/CardTimerButton'
-import { useCardTimer } from '@/hooks/useCardTimer'
+import PrioridadeAtividade from './PrioridadeAtividade'
 import { menorJornada, somaValoresPorMinuto } from '@/lib/elaboradores'
 
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, startTransition, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Download, Undo2, Plus, CircleHelp, Ellipsis, Save, ListChecks, GripVertical, PanelRightOpen, Flag } from 'lucide-react'
+import { Download, History, Undo2, Plus, CircleHelp, Trash2, Save, ListChecks, GripVertical, PanelRightOpen } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
 import { useGuardaSaida } from '@/components/documentos/editor/GuardaSaida'
-import DateInput from '@/components/ui/DateInput'
+import SeletorData from '@/components/ui/SeletorData'
 import './planilha-custos.css'
 import { updateNodePropertiesAction, insertChildAction, insertSiblingAction, renameNodeAction, deleteNodeAction, moveNodeAction } from '@/app/actions/wbs'
 import { fmtDataBR, maiorData, situacaoDe, valorPorMinutoDoElaborador, type PlanilhaDeCustos, type SituacaoAtividade, type Elaborador } from '@/lib/planilhaCustos'
@@ -33,6 +37,7 @@ import { formatarMinutos } from '@/lib/tempoRealizado'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 
 interface Props {
+  initialVersion?: number
   projetoId: string
   nomeProjeto: string
   inicioProjeto: string
@@ -52,7 +57,9 @@ interface Props {
 }
 
 type CampoLinha = Partial<{
+  descricao: string
   minOrcado: string
+  minReal: string
   materiaisOrcado: string
   dataPrevista: string
   materiaisReal: string
@@ -63,7 +70,7 @@ type CampoLinha = Partial<{
 }>
 
 type StructureOp =
-  | { id: string; kind: 'create-phase'; title: string; tempId: string }
+  | { id: string; kind: 'create-phase'; title: string; tempId: string; positionChosen?: boolean }
   | { id: string; kind: 'create-activity'; title: string; tempId: string; refId: string; relation: 'irmao' | 'filho' }
   | { id: string; kind: 'move'; nodeId: string; targetId: string; position: 'INSIDE' | 'BEFORE' | 'AFTER' }
   | { id: string; kind: 'delete'; nodeId: string }
@@ -80,10 +87,28 @@ function previewStructure(source: PlanilhaDeCustos['macrofases'], operations: St
   let fases = source.map(f => ({ ...f, atividades: [...f.atividades] }))
   for (const op of operations) {
     if (op.kind === 'create-phase') {
-      fases = [...fases, { nodeId: op.tempId, codigo: 'Nova', titulo: op.title, atividades: [], minOrcado: 0, materiaisOrcado: 0, totalOrcado: 0, minReal: 0, materiaisReal: 0, totalReal: 0, dataFim: null }]
+      fases = [{ nodeId: op.tempId, codigo: 'Nova', titulo: op.title, atividades: [], minOrcado: 0, materiaisOrcado: 0, totalOrcado: 0, minReal: 0, materiaisReal: 0, totalReal: 0, dataFim: null }, ...fases]
     } else if (op.kind === 'create-activity') {
       const atividade: PlanilhaDeCustos['macrofases'][number]['atividades'][number] = { nodeId: op.tempId, codigo: 'Nova', titulo: op.title, descricao: '', elaboradoPor: '', elaboradoPorUserId: null, elaboradoPorUserIds: [], vpm: null, jornadaDiaria: null, minOrcado: 0, materiaisOrcado: 0, dataPrevista: null, rOrcado: null, totalOrcado: null, minReal: 0, minRealDigitado: 0, minRealApontado: 0, materiaisReal: 0, dataRealizacao: null, rReal: null, totalReal: null, situacao: 'Pendente' }
-      fases = fases.map(f => f.nodeId === op.refId && op.relation === 'filho' ? { ...f, atividades: [...f.atividades, atividade] } : op.relation === 'irmao' && f.atividades.some(a => a.nodeId === op.refId) ? { ...f, atividades: f.atividades.flatMap(a => a.nodeId === op.refId ? [a, atividade] : [a]) } : f)
+      fases = fases.map(f => {
+        if (op.relation === 'irmao') {
+          const ref = f.atividades.find(a => a.nodeId === op.refId)
+          if (!ref) return f
+          const parts = ref.codigo.split('.')
+          const parent = parts.slice(0, -1).join('.')
+          const next = Number(parts.at(-1)) + 1
+          const shifted = f.atividades.map(a => {
+            if (!a.codigo.startsWith(`${parent}.`)) return a
+            const suffix = a.codigo.slice(parent.length + 1).split('.')
+            const index = Number(suffix[0])
+            return index >= next ? { ...a, codigo: `${parent}.${[index + 1, ...suffix.slice(1)].join('.')}` } : a
+          })
+          return { ...f, atividades: shifted.flatMap(a => a.nodeId === op.refId ? [a, { ...atividade, codigo: `${parent}.${next}` }] : [a]) }
+        }
+        if (f.nodeId !== op.refId) return f
+        const next = Math.max(0, ...f.atividades.map(a => Number(a.codigo.slice(f.codigo.length + 1).split('.')[0]) || 0)) + 1
+        return { ...f, atividades: [...f.atividades, { ...atividade, codigo: `${f.codigo}.${next}` }] }
+      })
     } else if (op.kind === 'delete') {
       fases = fases.filter(f => f.nodeId !== op.nodeId).map(f => ({ ...f, atividades: f.atividades.filter(a => a.nodeId !== op.nodeId) }))
     } else {
@@ -107,7 +132,11 @@ function previewStructure(source: PlanilhaDeCustos['macrofases'], operations: St
       }
     }
   }
-  return fases
+  const prefix = source[0]?.codigo.split('.').slice(0, -1).join('.') || '1'
+  return fases.map((fase, index) => {
+    const codigo = `${prefix}.${index + 1}`
+    return { ...fase, codigo, atividades: fase.atividades.map(a => ({ ...a, codigo: a.codigo.startsWith(`${fase.codigo}.`) ? codigo + a.codigo.slice(fase.codigo.length) : a.codigo })) }
+  })
 }
 
 const lista = (csv: string): string[] => csv.split(',').map(v => v.trim()).filter(Boolean)
@@ -187,7 +216,7 @@ function somaDaFase(
   let soma = SOMA_VAZIA
   for (const a of fase.atividades) {
     const r = rascunho[a.nodeId]
-    const min = lado === 'orcado' ? num(r?.minOrcado, a.minOrcado) : a.minReal
+    const min = lado === 'orcado' ? num(r?.minOrcado, a.minOrcado) : num(r?.minReal, a.minReal)
     const materiais = lado === 'orcado' ? num(r?.materiaisOrcado, a.materiaisOrcado) : num(r?.materiaisReal, a.materiaisReal)
     const ids = idsAtuais(a, rascunho)
     const horas = jornadaDaLinha(ids, elaboradores, horasPorDiaPadrao)
@@ -198,7 +227,7 @@ function somaDaFase(
 }
 
 export default function PlanilhaCustosView({
-  projetoId, nomeProjeto, inicioProjeto, fimProjeto, canEdit, currentUserId, canEditOwnActual = false, canEditAllActual = false, canEditLinhas = false, canUsarCards = false, rootId, planilha, elaboradores, exportUrl,
+  initialVersion, projetoId, nomeProjeto, inicioProjeto, fimProjeto, canEdit, currentUserId, canEditOwnActual = false, canEditAllActual = false, canEditLinhas = false, canUsarCards = false, rootId, planilha, elaboradores, exportUrl,
 }: Props) {
   const router = useRouter()
   const { toast } = useToast()
@@ -207,19 +236,33 @@ export default function PlanilhaCustosView({
   const [historia, setHistoria] = useState<Record<string, CampoLinha>[]>([])
   const [salvando, setSalvando] = useState(false)
   const [salvo, setSalvo] = useState<Record<string, CampoLinha>>({})
-  const [mostrarNovaMacrofase, setMostrarNovaMacrofase] = useState(false)
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({})
   const [nameHistory, setNameHistory] = useState<Record<string, string>[]>([])
   const [showNameChanges, setShowNameChanges] = useState(false)
   const [reviewAnchor, setReviewAnchor] = useState<{ left: number; top: number; width: number } | undefined>()
   const [savingNames, setSavingNames] = useState(false)
   const savingRef = useRef(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [lastVersion, setLastVersion] = useState<number | undefined>(initialVersion)
+  const [showHistory, setShowHistory] = useState(false)
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({})
   const [structureOps, setStructureOps] = useState<StructureOp[]>([])
+  const [fileDrafts, setFileDrafts] = useState<Record<string, ArquivoRascunho[]>>({})
+  const [priorityDrafts, setPriorityDrafts] = useState<Record<string, string>>({})
   const tempIds = useRef(new Map<string, string>())
   const [dragged, setDragged] = useState<{ nodeId: string; kind: 'phase' | 'activity' } | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
-  const fasesAtuais = useMemo(() => previewStructure(planilha.macrofases, structureOps), [planilha.macrofases, structureOps])
+  const latestServer = useRef(planilha.macrofases)
+  useEffect(() => { latestServer.current = planilha.macrofases }, [planilha.macrofases])
+  const [savedStructure, setSavedStructure] = useState<{ server: PlanilhaDeCustos['macrofases']; preview: PlanilhaDeCustos['macrofases']; ids: Record<string, string> } | null>(null)
+  const structureSource = savedStructure?.server === planilha.macrofases ? savedStructure.preview : planilha.macrofases
+  const fasesAtuais = useMemo(() => previewStructure(structureSource, structureOps.map(op => {
+    const resolve = (id: string) => { const mapped = savedStructure?.ids[id]; return mapped && structureSource.some(f => f.nodeId === mapped || f.atividades.some(a => a.nodeId === mapped)) ? mapped : id }
+    if (op.kind === 'create-activity') return { ...op, refId: resolve(op.refId) }
+    if (op.kind === 'move') return { ...op, nodeId: resolve(op.nodeId), targetId: resolve(op.targetId) }
+    if (op.kind === 'delete') return { ...op, nodeId: resolve(op.nodeId) }
+    return op
+  })), [structureSource, structureOps, savedStructure])
   const dirtyCount = Object.keys(rascunho).reduce((acc, nodeId) => {
     const cur = rascunho[nodeId]
     if (!cur || Object.keys(cur).length === 0) return acc
@@ -256,6 +299,7 @@ export default function PlanilhaCustosView({
 
   // ── Undo (Ctrl+Z) ────────────────────────────────────────────────────────────
   const setCampo = useCallback((nodeId: string, campo: keyof CampoLinha, valor: string) => {
+    setSaveStatus('idle')
     setSaveErrors(previous => { if (!previous[nodeId]) return previous; const next = { ...previous }; delete next[nodeId]; return next })
     setRascunho(prev => {
       setHistoria(h => [...h.slice(-99), prev])
@@ -291,9 +335,14 @@ export default function PlanilhaCustosView({
       const salvos: Record<string, CampoLinha> = {}
       for (const [nodeId, campos] of Object.entries(rascunho)) {
         if (excluidos.has(nodeId)) continue
-        if (!fasesAtuais.some(f => f.nodeId === nodeId || f.atividades.some(a => a.nodeId === nodeId))) continue
+        if (!fasesAtuais.some(f => f.nodeId === nodeId || f.nodeId === tempIds.current.get(nodeId) || f.atividades.some(a => a.nodeId === nodeId || a.nodeId === tempIds.current.get(nodeId)))) continue
         if (JSON.stringify(salvo[nodeId]) === JSON.stringify(campos)) continue
         const props: Record<string, unknown> = {}
+        if (campos.descricao !== undefined) props.description = campos.descricao
+        if (campos.minReal !== undefined) {
+          const atividade = fasesAtuais.flatMap(f => f.atividades).find(a => a.nodeId === nodeId)
+          props.tempoRealAjusteMinutos = Math.round((num(campos.minReal, 0) - (atividade?.minRealDigitado ?? 0) - (atividade?.minRealApontado ?? 0)) * 100) / 100
+        }
         if (campos.minOrcado !== undefined) props.tempoMinutos = Math.round(num(campos.minOrcado, 0))
         if (campos.materiaisOrcado !== undefined) props.materiais = Math.round(num(campos.materiaisOrcado, 0) * 100) / 100
         if (campos.dataPrevista !== undefined) props.dataPrevista = campos.dataPrevista || null
@@ -302,7 +351,7 @@ export default function PlanilhaCustosView({
         // Nomes e responsáveis do card são acertados no servidor (ADR-044).
         if (campos.elaboradoPorUserIds !== undefined) props.elaboradoPorUserIds = lista(campos.elaboradoPorUserIds)
 
-        const res = await updateNodePropertiesAction(projetoId, tempIds.current.get(nodeId) ?? nodeId, props)
+        const res = await updateNodePropertiesAction(projetoId, tempIds.current.get(nodeId) ?? nodeId, props, { background: true })
         if (!res.ok) erros[nodeId] = res.error
         else salvos[nodeId] = campos
       }
@@ -328,7 +377,13 @@ export default function PlanilhaCustosView({
   const [excluindo, setExcluindo] = useState<{ nodeId: string; nome: string } | null>(null)
   const [faseAExcluir, setFaseAExcluir] = useState<FaseExcluir | null>(null)
   const [detalheId, setDetalheId] = useState<string | null>(null)
-  const recarregar = useCallback(() => router.refresh(), [router])
+  const recarregar = useCallback(() => {
+    void salvarHistoricoPlanilhaAction(projetoId).then(result => {
+      if (result.error) { setSaveStatus('error'); toast(result.error, 'error') }
+      else { setLastVersion(result.numero); setSaveStatus('saved') }
+      startTransition(() => router.refresh())
+    }).catch(() => { setSaveStatus('error'); toast('A alteração foi salva, mas não foi possível registrar a versão. Tente novamente.', 'error') })
+  }, [router, projetoId, toast])
   const fecharDetalhe = useCallback(() => setDetalheId(null), [])
   // A exclusão de macrofase é imediata (mesmo diálogo do cadastro do projeto); com
   // alterações pendentes, o rascunho poderia apontar para itens que deixaram de existir.
@@ -340,7 +395,15 @@ export default function PlanilhaCustosView({
     }
     setFaseAExcluir(fase)
   }, [toast])
-  const acoes = useMemoAcoes(canEditLinhas, setNovaLinha, setExcluindo, pedirExclusaoFase, (nodeId, targetId, position) => {
+  const inserirAtividade = useCallback((linha: { tipo: 'irmao' | 'filho'; refId: string } | null) => {
+    if (!linha) return
+    setStructureOps(previous => {
+      const fase = previewStructure(structureSource, previous).find(f => f.nodeId === linha.refId || f.atividades.some(a => a.nodeId === linha.refId))
+      if (!fase) return previous
+      return [...previous, { id: crypto.randomUUID(), kind: 'create-activity', title: 'Nova atividade', tempId: `novo-${crypto.randomUUID()}`, refId: linha.tipo === 'irmao' ? linha.refId : fase.nodeId, relation: linha.tipo }]
+    })
+  }, [structureSource])
+  const acoes = useMemoAcoes(canEditLinhas, inserirAtividade, setExcluindo, pedirExclusaoFase, (nodeId, targetId, position) => {
     setStructureOps(previous => [...previous, { id: crypto.randomUUID(), kind: 'move', nodeId, targetId, position }])
     return Promise.resolve(true)
   })
@@ -357,10 +420,16 @@ export default function PlanilhaCustosView({
   }, [dragged, acoes])
   const criarMacrofase = useCallback(async (titulo: string): Promise<boolean> => {
     if (!rootId) { toast('Abra a EAP para iniciar a estrutura do projeto.', 'error'); return false }
-    setStructureOps(previous => [...previous, { id: crypto.randomUUID(), kind: 'create-phase', title: titulo, tempId: `novo-${crypto.randomUUID()}` }])
-    setMostrarNovaMacrofase(false)
+    const tempId = `novo-${crypto.randomUUID()}`
+    setStructureOps(previous => {
+      const first = previewStructure(structureSource, previous)[0]
+      const creation: StructureOp = { id: crypto.randomUUID(), kind: 'create-phase', title: titulo, tempId }
+      return first
+        ? [...previous, creation, { id: crypto.randomUUID(), kind: 'move', nodeId: tempId, targetId: first.nodeId, position: 'BEFORE' }]
+        : [...previous, creation]
+    })
     return true
-  }, [rootId, toast])
+  }, [rootId, toast, structureSource])
   const confirmarNovaLinha = useCallback(async (titulo: string) => {
     if (!novaLinha) return
     setStructureOps(previous => [...previous, { id: crypto.randomUUID(), kind: 'create-activity', title: titulo, tempId: `novo-${crypto.randomUUID()}`, refId: novaLinha.refId, relation: novaLinha.tipo }])
@@ -417,11 +486,13 @@ export default function PlanilhaCustosView({
       if (!a) continue
       const elaboradorIds = idsAtuais(a, rascunho)
       const jornada = jornadaDaLinha(elaboradorIds, elaboradores, planilha.config.horasPorDia)
+      const realizado = num(rascunho[a.nodeId]?.minReal, a.minReal)
+      const manual = a.minRealDigitado
       return {
         nodeId: a.nodeId, codigo: a.codigo, titulo: nameDrafts[a.nodeId] ?? a.titulo,
-        descricao: a.descricao, elaboradores: a.elaboradoPor, elaboradorIds, card: a.card,
-        minReal: a.minReal, horasReal: hhmm(a.minReal), diasReal: dois(a.minReal / 60 / jornada),
-        minLegado: a.minRealDigitado,
+        descricao: rascunho[a.nodeId]?.descricao ?? a.descricao, elaboradores: a.elaboradoPor, elaboradorIds, card: a.card,
+        minReal: realizado, horasReal: hhmm(realizado), diasReal: dois(realizado / 60 / jornada),
+        minLegado: manual,
       }
     }
     return null
@@ -436,7 +507,8 @@ export default function PlanilhaCustosView({
       const resolveId = (id: string) => tempIds.current.get(id) ?? id
       let result: { ok: boolean; error?: string }
       if (op.kind === 'create-phase' || op.kind === 'create-activity') {
-        const created = op.kind === 'create-phase'
+        const existingId = tempIds.current.get(op.tempId)
+        const created = existingId ? { ok: true as const, nodeId: existingId } : op.kind === 'create-phase'
           ? rootId ? await insertChildAction(projetoId, rootId) : { ok: false as const, error: 'A raiz da EAP não está disponível.' }
           : op.relation === 'irmao' ? await insertSiblingAction(projetoId, resolveId(op.refId)) : await insertChildAction(projetoId, resolveId(op.refId))
         if (created.ok) {
@@ -450,7 +522,7 @@ export default function PlanilhaCustosView({
       if (!result.ok) {
         const id = op.kind === 'create-phase' || op.kind === 'create-activity' ? op.tempId : op.nodeId
         setSaveErrors(previous => ({ ...previous, [id]: result.error ?? 'Não foi possível aplicar a alteração.' }))
-        setStructureOps(previous => previous.slice(aplicadas))
+        setStructureOps(previous => previous.filter(item => !structureOps.slice(0, aplicadas).some(applied => JSON.stringify(applied) === JSON.stringify(item))))
         setSalvando(false)
         toast(`Não foi possível salvar a estrutura: ${result.error ?? 'tente novamente.'}`, 'error')
         router.refresh()
@@ -464,15 +536,30 @@ export default function PlanilhaCustosView({
       setNameDrafts(previous => Object.fromEntries(Object.entries(previous).filter(([id]) => !excluidos.has(id))))
     }
     setSaveErrors(previous => Object.fromEntries(Object.entries(previous).filter(([id]) => !structureOps.some(op => (op.kind === 'create-phase' || op.kind === 'create-activity' ? op.tempId : op.nodeId) === id))))
-    setStructureOps([])
+    // Retain the committed rows until the refreshed server props arrive.
+    const savedPreview = previewStructure(structureSource, structureOps).map(fase => ({ ...fase,
+      nodeId: tempIds.current.get(fase.nodeId) ?? fase.nodeId,
+      atividades: fase.atividades.map(a => ({ ...a, nodeId: tempIds.current.get(a.nodeId) ?? a.nodeId })),
+    }))
+    setSavedStructure({ server: latestServer.current, preview: savedPreview, ids: Object.fromEntries(tempIds.current) })
+    setStructureOps(previous => previous.filter(op => !structureOps.some(saved => JSON.stringify(saved) === JSON.stringify(op))))
     setSalvando(false)
-    router.refresh()
     return true
   }
 
   async function salvarManual() {
+    if (Object.values(rascunho).some(row => row.minReal !== undefined && (!Number.isFinite(Number(row.minReal.replace(',', '.'))) || num(row.minReal, 0) < 0))) {
+      toast('Informe um tempo realizado válido, maior ou igual a zero.', 'error')
+      return
+    }
+    if (structureOps.some(op => op.kind === 'create-phase' && !op.positionChosen)) {
+      toast('Escolha o número de cada nova macrofase antes de salvar.', 'error')
+      return
+    }
     if (savingRef.current) return
     savingRef.current = true
+    setSaveStatus('saving')
+    let completed = false
     try {
       const excluidos = deletedNodeIds(structureOps, planilha.macrofases)
       if (!(await salvarEstrutura())) return
@@ -488,20 +575,82 @@ export default function PlanilhaCustosView({
           else salvos.push(change.chave)
         }
         setSavingNames(false)
-        if (salvos.length) setNameDrafts(previous => Object.fromEntries(Object.entries(previous).filter(([id]) => !salvos.includes(id))))
+        if (salvos.length) setNameDrafts(previous => Object.fromEntries(Object.entries(previous).filter(([id, title]) => !salvos.includes(id) || nameDrafts[id] !== title)))
         if (falhas.length) { toast(falhas[0], 'error'); return }
-        setNameHistory([])
+        setNameHistory(previous => previous.filter(item => !nameHistory.includes(item)))
         setShowNameChanges(false)
       }
-      tempIds.current.clear()
-      router.refresh()
+      if (detalheId && tempIds.current.has(detalheId)) setDetalheId(tempIds.current.get(detalheId)!)
+      const changedStructure = structureOps.length > 0 || nameChanges.length > 0
+      if (changedStructure && canEditLinhas && canUsarCards) {
+        const sync = await repetirSincronizacaoAction(projetoId)
+        if ('error' in sync) { toast(sync.error, 'warning'); return }
+      }
+      if (canUsarCards) for (const [nodeId, fields] of Object.entries(rascunho)) {
+        if (fields.descricao === undefined || fields.descricao === salvo[nodeId]?.descricao || excluidos.has(nodeId)) continue
+        const result = await patchActivityDescriptionAction(projetoId, tempIds.current.get(nodeId) ?? nodeId, fields.descricao)
+        if (result.error) {
+          setSalvo(previous => { const row = { ...previous[nodeId] }; delete row.descricao; return { ...previous, [nodeId]: row } })
+          toast(result.error, 'error')
+          return
+        }
+      }
+      for (const [nodeId, priority] of Object.entries(priorityDrafts)) {
+        if (excluidos.has(nodeId)) { setPriorityDrafts(previous => { const next = { ...previous }; delete next[nodeId]; return next }); continue }
+        const result = await patchActivityPriorityAction(projetoId, tempIds.current.get(nodeId) ?? nodeId, priority)
+        if (result.error) { toast(result.error, 'error'); return }
+        setPriorityDrafts(previous => { if (previous[nodeId] !== priority) return previous; const next = { ...previous }; delete next[nodeId]; return next })
+      }
+      for (const [nodeId, files] of Object.entries(fileDrafts)) {
+        if (excluidos.has(nodeId) || files.length === 0) continue
+        const result = await getActivityCardAction(projetoId, tempIds.current.get(nodeId) ?? nodeId)
+        if (!result.cardId) { toast(result.error ?? 'Não foi possível acessar os anexos.', 'error'); return }
+        for (const item of files) {
+          const form = new FormData()
+          form.append('cardId', result.cardId)
+          form.append('file', item.file, item.name)
+          const response = await fetchWithSession('/api/uploads', { method: 'POST', body: form })
+          if (!response.ok) { toast('Não foi possível enviar o anexo. Tente salvar novamente.', 'error'); return }
+          setFileDrafts(previous => ({ ...previous, [nodeId]: (previous[nodeId] ?? []).filter(file => file.id !== item.id) }))
+        }
+      }
+      const history = await salvarHistoricoPlanilhaAction(projetoId, dirtyCount > 0 && !changedStructure)
+      if (history.error) { toast(history.error, 'error'); return }
+      setLastVersion(history.numero)
+      // Move drafts to server IDs without replacing values typed during this save.
+      const remap = <T,>(entries: Record<string, T>) => Object.keys(entries).some(id => tempIds.current.has(id)) ? Object.fromEntries(Object.entries(entries).map(([id, value]) => [tempIds.current.get(id) ?? id, value])) : entries
+      setRascunho(previous => remap(previous))
+      setSalvo(previous => remap(previous))
+      setFileDrafts(previous => remap(previous))
+      setPriorityDrafts(previous => remap(previous))
+      setNameDrafts(previous => remap(previous))
+      completed = true
+      setSaveStatus('saved')
+      if (changedStructure || Object.values(fileDrafts).some(files => files.length > 0)) startTransition(() => router.refresh())
+      return true
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Não foi possível salvar. Suas alterações continuam pendentes.', 'error')
     } finally {
+      if (!completed) setSaveStatus('error')
       savingRef.current = false
     }
   }
-  const { dialogo: dialogoSaida } = useGuardaSaida(nameChanges.length || dirtyCount || structureOps.length ? {
+  const pendingFields = Object.fromEntries(Object.entries(rascunho).filter(([id, fields]) => JSON.stringify(fields) !== JSON.stringify(salvo[id])))
+  const pending = dirtyCount > 0 || nameChanges.length > 0 || structureOps.length > 0 || Object.values(fileDrafts).some(files => files.length > 0) || Object.keys(priorityDrafts).length > 0
+  const autosaveKey = JSON.stringify([pendingFields, nameDrafts, structureOps, priorityDrafts, Object.entries(fileDrafts).map(([id, files]) => [id, files.map(file => [file.id, file.name])])])
+  const canAutosave = !structureOps.some(op => op.kind === 'create-phase' && !op.positionChosen)
+  const lastAutosaveKey = useRef(autosaveKey)
+  useEffect(() => {
+    if (lastAutosaveKey.current !== autosaveKey) {
+      lastAutosaveKey.current = autosaveKey
+      setSaveStatus(previous => previous === 'error' ? 'idle' : previous)
+    }
+  }, [autosaveKey])
+  usePlanilhaAutosave({ changeKey: autosaveKey, enabled: pending && canAutosave && saveStatus !== 'error' && !showHistory, save: salvarManual, isSaving: () => savingRef.current })
+
+  const { dialogo: dialogoSaida } = useGuardaSaida(nameChanges.length || dirtyCount || structureOps.length || Object.values(fileDrafts).some(files => files.length > 0) || Object.keys(priorityDrafts).length ? {
     contexto: 'projeto', pendente: true, salvar: () => { void salvarManual() },
-    descartar: () => { setStructureOps([]); tempIds.current.clear(); setRascunho({}); setSalvo({}); setSaveErrors({}); setNameDrafts({}); setNameHistory([]); setShowNameChanges(false) },
+    descartar: () => { setFileDrafts({}); setPriorityDrafts({}); setSavedStructure(null); setStructureOps([]); tempIds.current.clear(); setRascunho({}); setSalvo({}); setSaveErrors({}); setNameDrafts({}); setNameHistory([]); setShowNameChanges(false) },
   } : undefined)
 
   return (
@@ -517,11 +666,11 @@ export default function PlanilhaCustosView({
           <div className="planilha-period" aria-label={`Período do projeto: data início ${inicioProjeto}, data fim ${fimProjeto}`}>
             <span><small>Data início</small> {inicioProjeto}</span><span aria-hidden="true">→</span><span><small>Data fim</small> {fimProjeto}</span>
           </div>
+          <span role="status" aria-live="polite" className="planilha-save-status text-xs text-[var(--ap-muted)]">{saveStatus === 'saving' ? 'Salvando…' : saveStatus === 'error' ? 'Falha ao salvar · tente novamente' : pending ? 'Alterações pendentes' : lastVersion ? `Salvo · ${rotuloVersaoPlanilha(Math.max(initialVersion ?? 0, lastVersion))}` : 'Salvamento automático'}</span>
           <FormActions surface="none" className="planilha-actions">
+          <OperumButton type="button" variant="custom" className="planilha-tool" title="Histórico da planilha" aria-label="Histórico da planilha" disabled={saveStatus === 'saving'} onClick={async () => { if (pending && !(await salvarManual())) return; setShowHistory(true) }}><History className="h-4 w-4" /></OperumButton>
           <div className="planilha-action-group">
-          {canEditLinhas && <OperumButton variant="default" type="button" onClick={() => setMostrarNovaMacrofase(v => !v)} className="planilha-action planilha-tool rounded-lg" aria-label="Adicionar macrofase" title="Adicionar macrofase" aria-expanded={mostrarNovaMacrofase}>
-            <Plus className="h-4 w-4" />
-          </OperumButton>}
+
           <a
             href={exportUrl}
             download
@@ -531,7 +680,7 @@ export default function PlanilhaCustosView({
           >
             <Download className="h-4 w-4" />
           </a>
-          <Dica label="Campos com borda são editáveis. Valores calculados ficam em superfície mais discreta. Quando houver apontamentos no card, corrija o tempo realizado nos registros do próprio card." multiline>
+          <Dica label="Campos com borda são editáveis. Valores calculados ficam em superfície mais discreta. Min, Horas e Dias realizados mostram o total já registrado. A edição ajusta o total da atividade sem alterar os registros de tempo do card." multiline>
             <OperumButton variant="custom" type="button" aria-label="Como editar a planilha" className="planilha-help planilha-tool inline-flex items-center justify-center rounded-lg"><CircleHelp className="h-4 w-4 shrink-0" /></OperumButton>
           </Dica>
           </div>
@@ -548,14 +697,14 @@ export default function PlanilhaCustosView({
             <ListChecks className="h-4 w-4" /><span className="planilha-tool-count">{reviewChanges.length}</span>
           </OperumButton>}
           </div>
-          {(canEdit || canEditOwnActual || canEditAllActual || canEditLinhas) && (dirtyCount > 0 || nameChanges.length > 0 || structureOps.length > 0) && (
+          {(canEdit || canEditOwnActual || canEditAllActual || canEditLinhas || canUsarCards) && (pending || saveStatus === 'error') && (
             <OperumButton variant="primary"
               type="button"
               onClick={salvarManual}
               disabled={salvando || savingNames}
               className="planilha-save planilha-tool rounded-lg disabled:opacity-60"
-              aria-label={savingNames || salvando ? 'Salvando alterações' : 'Salvar alterações'}
-              title="Salvar alterações"
+              aria-label={savingNames || salvando ? 'Salvando alterações' : 'Salvar agora'}
+              title="Salvar agora"
             >
               <Save className="h-4 w-4" />
             </OperumButton>
@@ -563,13 +712,7 @@ export default function PlanilhaCustosView({
           </FormActions>
         </div>
 
-        {mostrarNovaMacrofase && (
-          <NovoNome
-            label="Nome da nova macrofase"
-            onConfirmar={criarMacrofase}
-            onCancelar={() => setMostrarNovaMacrofase(false)}
-          />
-        )}
+
 
       </div>
       <ChangesPanel context={{ type: 'spreadsheet', id: projetoId }} floating open={showNameChanges && reviewChanges.length > 0} anchor={reviewAnchor} changes={reviewChanges} onClose={() => setShowNameChanges(false)} onUndo={key => {
@@ -586,6 +729,9 @@ export default function PlanilhaCustosView({
         {semAtividades ? (
           <div className="planilha-empty rounded-xl border p-8 text-center">
             <p className="text-gray-500">Nenhuma atividade derivável da EAP.</p>
+            <div className="mt-2 flex justify-center">{canEditLinhas && <OperumButton variant="default" type="button" onClick={() => void criarMacrofase('Nova macrofase')} className="planilha-action planilha-add-macrofase rounded-lg" aria-label="Adicionar macrofase" title="Adicionar macrofase">
+            <Plus className="h-4 w-4" />
+          </OperumButton>}</div>
             <p className="mt-1 text-sm text-gray-400">Crie macrofases com atividades folha na EAP para gerar a planilha de custos.</p>
           </div>
         ) : (
@@ -593,7 +739,14 @@ export default function PlanilhaCustosView({
             <table className="planilha-table w-full min-w-[1150px] border-separate border-spacing-0 text-sm">
               <thead>
                 <tr className="bg-blue-600 text-white">
-                  <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Macrofases</th>
+                  <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">
+                    <div className="flex items-center gap-2">
+                      <span>Macrofases</span>
+                      {canEditLinhas && <OperumButton variant="default" type="button" onClick={() => void criarMacrofase('Nova macrofase')} className="planilha-action planilha-add-macrofase rounded-lg" aria-label="Adicionar macrofase" title="Adicionar macrofase">
+            <Plus className="h-4 w-4" />
+          </OperumButton>}
+                    </div>
+                  </th>
                   <th rowSpan={2} className="planilha-activity-name border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Atividades</th>
                   <th rowSpan={2} className="border border-blue-800 px-2 py-2 text-left text-xs font-semibold">Elaborada por</th>
                   <th colSpan={7} className="border border-blue-800 px-2 py-2 text-center text-xs font-bold">VALOR ORÇADO</th>
@@ -613,7 +766,17 @@ export default function PlanilhaCustosView({
                     fases={fasesAtuais}
                     nameDrafts={nameDrafts}
                     saveErrors={saveErrors}
-                    onNameDraft={setNameDraft}
+                    onNameDraft={(nodeId, title) => {
+                      if (nodeId.startsWith('novo-')) {
+                        setStructureOps(previous => previous.map(op => (op.kind === 'create-phase' || op.kind === 'create-activity') && op.tempId === nodeId ? { ...op, title } : op))
+                      } else setNameDraft(nodeId, title)
+                    }}
+                    onPhasePosition={(nodeId, position) => {
+                      setStructureOps(previous => previous.map(op => op.kind === 'create-phase' && op.tempId === nodeId ? { ...op, positionChosen: true } : op))
+                      const others = fasesAtuais.filter(f => f.nodeId !== nodeId)
+                      const target = others[Math.min(position - 1, others.length - 1)]
+                      if (target) setStructureOps(previous => [...previous, { id: crypto.randomUUID(), kind: 'move', nodeId, targetId: target.nodeId, position: position > others.length ? 'AFTER' : 'BEFORE' }])
+                    }}
                     dragged={dragged}
                     dragOverId={dragOverId}
                     onDragStartNode={setDragged}
@@ -629,10 +792,12 @@ export default function PlanilhaCustosView({
                     onCampoChange={setCampo}
                     horasPorDiaPadrao={planilha.config.horasPorDia}
                     acoes={acoes}
-                    canUsarCards={canUsarCards}
                     detalheId={detalheId ?? undefined}
+                    priorityDrafts={priorityDrafts}
+                    onPriorityDraft={(nodeId, value) => setPriorityDrafts(previous => ({ ...previous, [nodeId]: value }))}
+                    canEditPriority={canUsarCards}
+                    onPriorityChanged={recarregar}
                     onAbrirDetalhes={setDetalheId}
-                    onTimerParado={recarregar}
                     novaLinha={novaLinha && (novaLinha.refId === fase.nodeId || fase.atividades.some(a => a.nodeId === novaLinha.refId)) ? novaLinha : null}
                     onConfirmarNovaLinha={confirmarNovaLinha}
                     onCancelarNovaLinha={cancelarNovaLinha}
@@ -643,7 +808,18 @@ export default function PlanilhaCustosView({
             </table>
           </div>
         )}
-        {atividadeDetalhe && <AtividadeDetalhesPainel key={atividadeDetalhe.nodeId} elaboradores={elaboradores} onElaboradoresChange={canEdit ? ids => setCampo(atividadeDetalhe.nodeId, 'elaboradoPorUserIds', ids.join(',')) : undefined} atividade={atividadeDetalhe} currentUserId={currentUserId} canUsarCards={canUsarCards} onFechar={fecharDetalhe} onAlterado={recarregar} tituloEditavel={canEditLinhas ? <InlineNodeName codigo={atividadeDetalhe.codigo} titulo={atividadeDetalhe.titulo} onDraft={title => setNameDraft(atividadeDetalhe.nodeId, title)} /> : undefined} />}
+        {atividadeDetalhe && <AtividadeDetalhesPainel draftEditor={atividadeDetalhe.nodeId.startsWith('novo-') ? <AtividadeRascunho
+          atividade={atividadeDetalhe} files={fileDrafts[atividadeDetalhe.nodeId] ?? []}
+          onFilesChange={files => setFileDrafts(previous => ({ ...previous, [atividadeDetalhe.nodeId]: files }))}
+          onDescriptionChange={value => setCampo(atividadeDetalhe.nodeId, 'descricao', value)}
+          onTitleChange={title => setStructureOps(previous => previous.map(op => op.kind === 'create-activity' && op.tempId === atividadeDetalhe.nodeId ? { ...op, title } : op))}
+          priority={priorityDrafts[atividadeDetalhe.nodeId] ?? 'baixa'}
+          onPriorityChange={value => setPriorityDrafts(previous => ({ ...previous, [atividadeDetalhe.nodeId]: value }))}
+          canEdit={canUsarCards}
+        /> : undefined} key={atividadeDetalhe.nodeId} elaboradores={elaboradores} onElaboradoresChange={canEdit ? ids => setCampo(atividadeDetalhe.nodeId, 'elaboradoPorUserIds', ids.join(',')) : undefined} atividade={atividadeDetalhe} currentUserId={currentUserId} canUsarCards={canUsarCards} onFechar={fecharDetalhe} onAlterado={recarregar} tituloEditavel={canEditLinhas ? <InlineNodeName codigo={atividadeDetalhe.codigo} titulo={atividadeDetalhe.titulo} onDraft={title => {
+          if (atividadeDetalhe.nodeId.startsWith('novo-')) setStructureOps(previous => previous.map(op => op.kind === 'create-activity' && op.tempId === atividadeDetalhe.nodeId ? { ...op, title } : op))
+          else setNameDraft(atividadeDetalhe.nodeId, title)
+        }} /> : undefined} />}
       </div>
 
       {/* ── Quadros-resumo (F.4) e gráficos, maiores e um embaixo do outro ── */}
@@ -673,9 +849,10 @@ export default function PlanilhaCustosView({
         onExcluida={() => {
           setFaseAExcluir(null)
           toast('Macrofase excluída com as atividades dela.')
-          router.refresh()
+          recarregar()
         }}
       />
+      {showHistory && <HistoricoPlanilha projectId={projetoId} canRestore={canEditLinhas && canUsarCards} onClose={() => setShowHistory(false)} onRestored={numero => { setLastVersion(numero); setRascunho({}); setSalvo({}); setStructureOps([]); setNameDrafts({}); setNameHistory([]); setPriorityDrafts({}); setFileDrafts({}); setDetalheId(null); setSaveStatus('saved'); router.refresh() }} />}
       {dialogoSaida}
     </div></ProjectAppearance>
   )
@@ -752,13 +929,10 @@ function NovaLinha({ onConfirmar, onCancelar }: { onConfirmar: (titulo: string) 
 }
 
 /** Play/stop do card ligado à atividade: o mesmo timer do quadro da sprint. */
-function TimerDaAtividade({ cardId, canStart, onStopped }: { cardId: string; canStart: boolean; onStopped: () => void }) {
-  const timer = useCardTimer(cardId)
-  return <CardTimerButton timer={timer} canStart={canStart} onStopped={onStopped} compacto className="planilha-timer" />
-}
 
-function InlineNodeName({ codigo, titulo, descricao, onDraft }: { codigo: string; titulo: string; descricao?: string; onDraft?: (title: string) => void }) {
-  const [editing, setEditing] = useState(false)
+
+function InlineNodeName({ codigo, titulo, descricao, onDraft, onCommitted, initiallyEditing = false }: { codigo: string; titulo: string; descricao?: string; onDraft?: (title: string) => void; initiallyEditing?: boolean; onCommitted?: () => void }) {
+  const [editing, setEditing] = useState(initiallyEditing)
   const [draft, setDraft] = useState(titulo)
   const cancelled = useRef(false)
   const confirmar = () => {
@@ -766,6 +940,7 @@ function InlineNodeName({ codigo, titulo, descricao, onDraft }: { codigo: string
     const value = draft.trim()
     if (value && value !== titulo) onDraft?.(value)
     setEditing(false)
+    if (value) onCommitted?.()
   }
   if (editing) return <span className="planilha-name-editor inline-flex items-center gap-1">
     <span className="shrink-0">{codigo}</span>
@@ -781,36 +956,21 @@ function DragHandle({ label, nodeId, kind, onStart, onEnd }: { label: string; no
   return <span draggable aria-hidden="true" title={label} onDragStart={event => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', nodeId); onStart({ nodeId, kind }) }} onDragEnd={onEnd} className="planilha-drag-handle inline-flex cursor-grab items-center justify-center rounded p-1 active:cursor-grabbing"><GripVertical className="h-3.5 w-3.5" /></span>
 }
 
-function NodeActionsMenu({ label, actions }: { label: string; actions: { label: string; onClick: () => void; disabled?: boolean; tone?: 'danger' }[] }) {
-  const anchor = useRef<HTMLButtonElement>(null)
-  const [open, setOpen] = useState(false)
-  return <>
-    <OperumButton ref={anchor} variant="custom" type="button" onClick={() => setOpen(v => !v)} aria-label={label} title={label} aria-haspopup="dialog" aria-expanded={open} className="planilha-icon-action rounded p-1"><Ellipsis className="h-4 w-4" /></OperumButton>
-    <GlassPopover open={open} onClose={() => setOpen(false)} anchor={anchor} label={label}>
-      <div className="planilha-node-menu flex flex-col gap-1">{actions.map(action => <OperumButton key={action.label} variant="custom" type="button" disabled={action.disabled} onClick={() => { setOpen(false); action.onClick() }} className={`rounded-lg px-3 py-2 text-left text-xs ${action.tone === 'danger' ? 'planilha-menu-danger' : ''}`}>{action.label}</OperumButton>)}</div>
-    </GlassPopover>
-  </>
-}
 
-function MoveActivityRow({ fases, onMover, onCancelar }: { fases: PlanilhaDeCustos['macrofases']; onMover: (targetId: string) => Promise<boolean>; onCancelar: () => void }) {
-  const [targetId, setTargetId] = useState(fases[0]?.nodeId ?? '')
-  const [busy, setBusy] = useState(false)
-  return <tr className="planilha-new-row"><td colSpan={18} className="px-2 py-1"><div className="planilha-new-name flex flex-wrap items-center gap-2 rounded-lg p-2">
-    <span className="text-xs font-semibold">Mover atividade para</span>
-    <Select compact ariaLabel="Macrofase de destino" className="min-w-[220px]" value={targetId} onChange={setTargetId} options={fases.map(f => ({ value: f.nodeId, label: `${f.codigo} ${f.titulo}` }))} />
-    <OperumButton variant="primary" type="button" disabled={busy || !targetId} onClick={async () => { setBusy(true); try { await onMover(targetId) } finally { setBusy(false) } }} className="planilha-inline-button rounded px-2.5 py-1 text-xs">{busy ? 'Movendo…' : 'Mover'}</OperumButton>
-    <OperumButton variant="default" type="button" onClick={onCancelar} className="planilha-inline-button rounded px-2.5 py-1 text-xs">Cancelar</OperumButton>
-  </div></td></tr>
-}
 
 const FaseFragment = memo(function FaseFragment({
-  fase, fases, nameDrafts, saveErrors, onNameDraft, dragged, dragOverId, onDragStartNode, onDragEndNode, onDragOverNode, onDropNode, rascunho, canEdit, currentUserId, canEditOwnActual, canEditAllActual, elaboradores, onCampoChange, horasPorDiaPadrao,
-  acoes, canUsarCards, detalheId, onAbrirDetalhes, onTimerParado, novaLinha, onConfirmarNovaLinha, onCancelarNovaLinha,
+  fase, fases, nameDrafts, saveErrors, onNameDraft, onPhasePosition, dragged, dragOverId, onDragStartNode, onDragEndNode, onDragOverNode, onDropNode, rascunho, canEdit, currentUserId, canEditOwnActual, canEditAllActual, elaboradores, onCampoChange, horasPorDiaPadrao,
+  acoes, priorityDrafts, onPriorityDraft, canEditPriority, onPriorityChanged, detalheId, onAbrirDetalhes, novaLinha, onConfirmarNovaLinha, onCancelarNovaLinha,
 }: {
+  priorityDrafts: Record<string, string>
+  onPriorityDraft: (nodeId: string, value: string) => void
+  canEditPriority: boolean
+  onPriorityChanged: () => void
   fase: PlanilhaDeCustos['macrofases'][number]
   fases: PlanilhaDeCustos['macrofases']
   nameDrafts: Record<string, string>
   saveErrors: Record<string, string>
+  onPhasePosition: (nodeId: string, position: number) => void
   onNameDraft: (nodeId: string, value: string) => void
   dragged: { nodeId: string; kind: 'phase' | 'activity' } | null
   dragOverId: string | null
@@ -829,17 +989,14 @@ const FaseFragment = memo(function FaseFragment({
   horasPorDiaPadrao: number
   /** Sem permissão para mudar a estrutura da EAP, não há ações de linha. */
   acoes?: AcoesLinha
-  canUsarCards: boolean
   /** Abre o painel lateral com etapa, timer e descrição da atividade. */
   detalheId?: string
   onAbrirDetalhes: (nodeId: string) => void
-  /** Ao pausar o timer de uma atividade, a planilha recarrega o realizado. */
-  onTimerParado: () => void
   novaLinha: { tipo: 'irmao' | 'filho'; refId: string } | null
   onConfirmarNovaLinha: (titulo: string) => Promise<void>
   onCancelarNovaLinha: () => void
 }) {
-  const [moverAtividade, setMoverAtividade] = useState<string | null>(null)
+  const [choosingPosition, setChoosingPosition] = useState(false)
   // Draft local de digitação para Horas/Dias/Materiais: enquanto o usuário edita, o campo
   // mostra o texto bruto (em vez de reformatar cada tecla, o que "cortava" a digitação,
   // inclusive no re-render do auto-save). No blur/Enter normaliza.
@@ -870,11 +1027,15 @@ const FaseFragment = memo(function FaseFragment({
   // em paralelo); sem elaborador ou sem jornada cadastrada, a padrão do projeto.
   const texto = (v: string, title = '🔒 Campo calculado ou sem permissão de edição') => <span title={title} className="block px-1 text-xs tabular-nums text-gray-700">{v}</span>
   const clsCampo = 'w-full min-w-[64px] rounded border border-blue-200 bg-white px-1.5 py-0.5 text-right text-xs focus:border-blue-500 focus:outline-none'
-  const clsData = 'w-full min-w-[124px] rounded border border-blue-200 bg-white px-1.5 py-0.5 text-right text-xs focus:border-blue-500 focus:outline-none'
+  const clsData = 'planilha-date-input w-full min-w-[108px] rounded border border-blue-200 bg-white px-1.5 py-0.5 text-right text-xs focus:border-blue-500 focus:outline-none'
+  const alterarTempo = (nodeId: string, campo: 'minOrcado' | 'minReal', valor: string) => {
+    onCampoChange(nodeId, campo, valor)
+  }
   const campoInput = (nodeId: string, campo: keyof CampoLinha, original: string | number | null | undefined) => {
     if (campo === 'dataPrevista' || campo === 'dataRealizacao') {
       return (
-        <DateInput
+        <SeletorData
+          ariaLabel={campo === 'dataPrevista' ? 'Data prevista da atividade' : 'Data de realização da atividade'}
           value={valorDe(nodeId, campo, original)}
           onChange={v => onCampoChange(nodeId, campo, v)}
           className={clsData}
@@ -884,9 +1045,9 @@ const FaseFragment = memo(function FaseFragment({
     return (
       <OperumInput
         type="text"
-        inputMode={campo === 'minOrcado' ? 'numeric' : undefined}
+        inputMode={campo === 'minOrcado' || campo === 'minReal' ? 'numeric' : undefined}
         value={valorDe(nodeId, campo, original)}
-        onChange={e => onCampoChange(nodeId, campo, e.target.value)}
+        onChange={e => campo === 'minReal' ? alterarTempo(nodeId, campo, e.target.value) : onCampoChange(nodeId, campo, e.target.value)}
         onFocus={e => e.target.select()}
         className={clsCampo}
       />
@@ -907,7 +1068,7 @@ const FaseFragment = memo(function FaseFragment({
   )
   // Horas editável: com draft local, converte o digitado ("5.5" ou "5:30") para minutos
   // e grava em minOrcado, fazendo Min e Dias atualizarem ao mesmo tempo.
-  const campoHoras = (nodeId: string, campo: 'minOrcado', minAtual: number) => {
+  const campoHoras = (nodeId: string, campo: 'minOrcado' | 'minReal', minAtual: number) => {
     const key = `${nodeId}:${campo}:horas`
     return (
       <OperumInput
@@ -918,7 +1079,7 @@ const FaseFragment = memo(function FaseFragment({
           const texto = e.target.value
           pintaDraft(key, texto)
           const min = minutosDeHoras(texto)
-          if (!Number.isNaN(min)) onCampoChange(nodeId, campo, String(min))
+          if (!Number.isNaN(min)) alterarTempo(nodeId, campo, String(Math.round(min * 100) / 100))
         }}
         onFocus={e => e.target.select()}
         onBlur={() => limparDraft(key)}
@@ -928,7 +1089,7 @@ const FaseFragment = memo(function FaseFragment({
     )
   }
   // Dias editável: converte decimal digitado para minutos (dias × jornada × 60).
-  const campoDias = (nodeId: string, campo: 'minOrcado', minAtual: number, jornada: number) => {
+  const campoDias = (nodeId: string, campo: 'minOrcado' | 'minReal', minAtual: number, jornada: number) => {
     const key = `${nodeId}:${campo}:dias`
     return (
       <OperumInput
@@ -939,7 +1100,7 @@ const FaseFragment = memo(function FaseFragment({
           const texto = e.target.value
           pintaDraft(key, texto)
           const min = minutosDeDias(texto, jornada)
-          if (!Number.isNaN(min)) onCampoChange(nodeId, campo, String(min))
+          if (!Number.isNaN(min)) alterarTempo(nodeId, campo, String(Math.round(min * 100) / 100))
         }}
         onFocus={e => e.target.select()}
         onBlur={() => limparDraft(key)}
@@ -958,14 +1119,35 @@ const FaseFragment = memo(function FaseFragment({
       <tr className="planilha-phase-row bg-gray-100 font-semibold text-gray-800" data-planilha-node={fase.nodeId} data-save-error={!!saveErrors[fase.nodeId] || undefined} data-drop-target={dragOverId === fase.nodeId || undefined} onDragOver={event => { if (dragged && dragged.nodeId !== fase.nodeId) { event.preventDefault(); onDragOverNode(fase.nodeId) } }} onDragLeave={() => { if (dragOverId === fase.nodeId) onDragOverNode(null) }} onDrop={event => onDropNode(event, fase.nodeId, 'phase')}>
         <td colSpan={18} className="planilha-phase-title border border-gray-200 px-3 py-1">
           <div className="planilha-phase-content flex items-center gap-2">
-            <InlineNodeName codigo={fase.codigo} titulo={nameDrafts[fase.nodeId] ?? fase.titulo} onDraft={acoes && !fase.nodeId.startsWith('novo-') ? title => onNameDraft(fase.nodeId, title) : undefined} />
+            <InlineNodeName onCommitted={() => { if (fase.nodeId.startsWith('novo-')) setChoosingPosition(true) }} initiallyEditing={!!acoes && fase.nodeId.startsWith('novo-')} codigo={fase.codigo} titulo={nameDrafts[fase.nodeId] ?? fase.titulo} onDraft={acoes ? title => onNameDraft(fase.nodeId, title) : undefined} />
+            {choosingPosition && <label className="inline-flex items-center gap-2 text-xs">
+              Número da macrofase
+              <OperumInput autoFocus type="number" min={1} max={fases.length} step={1}
+                aria-label="Número da nova macrofase" defaultValue={fases.findIndex(f => f.nodeId === fase.nodeId) + 1}
+                onFocus={event => event.target.select()}
+                onBlur={event => {
+                  const position = event.target.valueAsNumber
+                  if (!Number.isInteger(position) || position < 1 || position > fases.length) {
+                    event.target.reportValidity()
+                    return
+                  }
+                  onPhasePosition(fase.nodeId, position)
+                  setChoosingPosition(false)
+                }}
+                onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur() } }}
+                className="w-16 rounded border px-2 py-1 text-xs" required
+              />
+              <span className="font-normal">de 1 a {fases.length} · Enter para confirmar</span>
+            </label>}
             {acoes && <div className="planilha-node-controls flex items-center shrink-0 gap-0.5">
               <DragHandle label={`Arrastar macrofase ${fase.titulo}`} nodeId={fase.nodeId} kind="phase" onStart={onDragStartNode} onEnd={onDragEndNode} />
-              <NodeActionsMenu label={`Ações da macrofase ${fase.titulo}`} actions={[
-                { label: 'Nova atividade', onClick: () => acoes.onInserir('filho', fase.nodeId) },
-                // Fase ainda não salva sai pelo descarte das alterações, não por aqui.
-                ...(fase.nodeId.startsWith('novo-') ? [] : [{ label: 'Excluir macrofase', tone: 'danger' as const, onClick: () => acoes.onExcluirFase({ nodeId: fase.nodeId, nome: fase.titulo, numero: fase.codigo }) }]),
-              ]} />
+              <OperumButton variant="custom" type="button"
+                onClick={() => acoes.onInserir('filho', fase.nodeId)}
+                aria-label={`Adicionar tarefa à macrofase ${fase.titulo}`}
+                title="Adicionar tarefa"
+                className="planilha-add-task inline-flex h-6 w-6 items-center justify-center rounded">
+                <Plus className="h-3.5 w-3.5" />
+              </OperumButton>
             </div>}
             <span className="planilha-phase-count">{fase.atividades.length} {fase.atividades.length === 1 ? 'atividade' : 'atividades'}</span>
           </div>
@@ -976,7 +1158,7 @@ const FaseFragment = memo(function FaseFragment({
         const canReal = canEditAllActual || (canEditOwnActual && !!currentUserId && idsDaLinha(a).includes(currentUserId))
         const minO = num(rascunho[a.nodeId]?.minOrcado, a.minOrcado)
         const matO = num(rascunho[a.nodeId]?.materiaisOrcado, a.materiaisOrcado)
-        const minR = a.minReal
+        const minR = num(rascunho[a.nodeId]?.minReal, a.minReal)
         const matR = num(rascunho[a.nodeId]?.materiaisReal, a.materiaisReal)
         const userIds = idsAtuais(a, rascunho)
         const vpm = vpmDaLinha(userIds, elaboradores)
@@ -988,24 +1170,17 @@ const FaseFragment = memo(function FaseFragment({
         const rotuloNome = a.descricao
           ? <Dica label={a.descricao} multiline><span tabIndex={0} className="planilha-node-label rounded-sm underline decoration-dotted underline-offset-2 focus-visible:outline focus-visible:outline-2">{nomeExibido}</span></Dica>
           : <span className="planilha-node-label" title={nomeExibido}>{nomeExibido}</span>
-        const prioridade = a.card?.priority ? PRIORITY_LABELS[a.card.priority] : undefined
-        const tempoReal = (valor: string, unidade: string) => a.nodeId.startsWith('novo-')
-          ? texto(valor)
-          : <OperumButton variant="custom" type="button" className="planilha-tempo-trigger" onClick={() => onAbrirDetalhes(a.nodeId)} aria-label={`${unidade} realizados de ${nome}: ${valor}. Abrir detalhes da atividade`}>{valor}</OperumButton>
         return (
           <Fragment key={a.nodeId}>
           <tr className="planilha-activity-row group bg-white align-middle hover:bg-blue-50/30" data-planilha-node={a.nodeId} data-detalhe-aberto={detalheId === a.nodeId || undefined} data-save-error={!!saveErrors[a.nodeId] || undefined} data-drop-target={dragOverId === a.nodeId || undefined} onDragOver={event => { if (dragged?.kind === 'activity' && dragged.nodeId !== a.nodeId) { event.preventDefault(); onDragOverNode(a.nodeId) } }} onDragLeave={() => { if (dragOverId === a.nodeId) onDragOverNode(null) }} onDrop={event => onDropNode(event, a.nodeId, 'activity')}>
             <td className="border border-gray-100 px-1 py-1">
               <div className="flex items-center justify-center gap-1">
-                {prioridade && <span className="planilha-prioridade" data-prioridade={a.card?.priority} title={`Prioridade ${prioridade.label}`} role="img" aria-label={`Prioridade ${prioridade.label}`}><Flag className="h-4 w-4" strokeWidth={1.65} aria-hidden="true" /></span>}
+
                 {acoes && (
                   <div className="planilha-node-controls flex items-center justify-center gap-0.5">
                     <DragHandle label={`Arrastar ${nome}`} nodeId={a.nodeId} kind="activity" onStart={onDragStartNode} onEnd={onDragEndNode} />
-                    <NodeActionsMenu label={`Ações de ${nome}`} actions={[
-                      { label: 'Nova atividade abaixo', onClick: () => acoes.onInserir('irmao', a.nodeId) },
-                      ...(fases.length > 1 ? [{ label: 'Mover para outra macrofase', onClick: () => setMoverAtividade(current => current === a.nodeId ? null : a.nodeId) }] : []),
-                      { label: 'Excluir atividade', tone: 'danger' as const, onClick: () => acoes.onExcluir(a.nodeId, nome) },
-                    ]} />
+                    <OperumButton variant="custom" type="button" onClick={() => acoes.onInserir('irmao', a.nodeId)} aria-label={`Adicionar atividade abaixo de ${nome}`} title="Adicionar atividade abaixo" className="planilha-add-task inline-flex h-6 w-6 items-center justify-center rounded"><Plus className="h-3.5 w-3.5" /></OperumButton>
+                    <OperumButton variant="custom" type="button" onClick={() => acoes.onExcluir(a.nodeId, nome)} aria-label={`Excluir atividade ${nome}`} title="Excluir atividade" className="planilha-add-task inline-flex h-6 w-6 items-center justify-center rounded"><Trash2 className="h-3.5 w-3.5" /></OperumButton>
                   </div>
                 )}
               </div>
@@ -1013,19 +1188,17 @@ const FaseFragment = memo(function FaseFragment({
             {/* Largura limitada: nomes longos quebram em até 3 linhas; o nome completo aparece ao passar o mouse. */}
             <td className="planilha-activity-name border border-gray-100 px-2 py-1 text-xs font-medium text-gray-800">
               <div className="planilha-activity-cell">
-                {a.card && <TimerDaAtividade cardId={a.card.id} canStart={canUsarCards} onStopped={onTimerParado} />}
                 {a.nodeId.startsWith('novo-') ? (
-                  <InlineNodeName codigo={a.codigo} titulo={a.titulo} />
+                  <InlineNodeName initiallyEditing codigo={a.codigo} titulo={a.titulo} onDraft={title => onNameDraft(a.nodeId, title)} />
                 ) : (
                   <OperumButton variant="custom" type="button" onClick={() => onAbrirDetalhes(a.nodeId)} aria-expanded={detalheId === a.nodeId} className="planilha-node-name planilha-name-trigger rounded px-1 py-0.5 text-left">
                     {rotuloNome}
                   </OperumButton>
                 )}
-                {!a.nodeId.startsWith('novo-') && (
-                  <OperumButton variant="custom" type="button" onClick={() => onAbrirDetalhes(a.nodeId)} aria-label={`Detalhes de ${nome}`} aria-expanded={detalheId === a.nodeId} title="Descrição, tempo e etapa na sprint" className="planilha-detalhes-trigger">
+                {(a.card || a.nodeId.startsWith('novo-')) && <PrioridadeAtividade key={a.card ? `${a.card.id}:${a.card.priority}` : a.nodeId} card={a.card} draftPriority={priorityDrafts[a.nodeId]} onDraft={!a.card ? value => onPriorityDraft(a.nodeId, value) : undefined} nome={nome} canEdit={canEditPriority} onChanged={onPriorityChanged} />}
+                <OperumButton variant="custom" type="button" onClick={() => onAbrirDetalhes(a.nodeId)} aria-label={`Detalhes de ${nome}`} aria-expanded={detalheId === a.nodeId} title="Descrição, tempo e etapa na sprint" className="planilha-detalhes-trigger">
                     <PanelRightOpen className="h-3.5 w-3.5" aria-hidden="true" />
                   </OperumButton>
-                )}
               </div>
             </td>
             <td className="border border-gray-100 px-1 py-1">
@@ -1052,24 +1225,24 @@ const FaseFragment = memo(function FaseFragment({
               {canEdit ? campoMoeda(a.nodeId, 'materiaisOrcado', matO) : texto(brl(matO))}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right font-semibold text-gray-900">{texto(totalO === null ? '—' : brl(totalO), 'Total = (Min × R$) + Materiais')}</td>
-            <td className="border border-gray-100 px-1 py-1 min-w-[132px]">
+            <td className="border border-gray-100 px-1 py-1 w-[116px] min-w-[116px]">
               {canEdit ? campoInput(a.nodeId, 'dataPrevista', a.dataPrevista) : texto(fmtDataBR(a.dataPrevista))}
             </td>
             <td className="border border-gray-100 px-1 py-1 text-right">
-              {tempoReal(formatarMinutos(minR), 'Minutos')}
+              {canReal ? campoInput(a.nodeId, 'minReal', Math.round(a.minReal * 100) / 100) : texto(formatarMinutos(minR))}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right">
-              {tempoReal(hhmm(minR), 'Horas')}
+              {canReal ? campoHoras(a.nodeId, 'minReal', minR) : texto(hhmm(minR))}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right">
-              {tempoReal(dois(minR / 60 / horasLinha), 'Dias')}
+              {canReal ? campoDias(a.nodeId, 'minReal', minR, horasLinha) : texto(dois(minR / 60 / horasLinha))}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right">{celulaR(vpm)}</td>
             <td className="border border-gray-100 px-1 py-1 text-right">
               {canReal ? campoMoeda(a.nodeId, 'materiaisReal', matR) : texto(brl(matR))}
             </td>
             <td className="border border-gray-100 px-2 py-1 text-right font-semibold text-gray-900">{texto(totalR === null ? '—' : brl(totalR), 'Total = (Min realizados × R$) + Materiais')}</td>
-            <td className="border border-gray-100 px-1 py-1 min-w-[132px]">
+            <td className="border border-gray-100 px-1 py-1 w-[116px] min-w-[116px]">
               {canReal ? campoInput(a.nodeId, 'dataRealizacao', a.dataRealizacao) : texto(fmtDataBR(a.dataRealizacao))}
             </td>
             <td className="border border-gray-100 px-1 py-1 text-center">
@@ -1078,16 +1251,8 @@ const FaseFragment = memo(function FaseFragment({
               </span>
             </td>
           </tr>
-          {saveErrors[a.nodeId] && <tr className="planilha-save-error-row"><td colSpan={18} role="alert"><strong>{nome}</strong> · {Object.keys(rascunho[a.nodeId] ?? {}).map(campo => ({ minOrcado: 'tempo orçado', materiaisOrcado: 'materiais orçados', dataPrevista: 'data prevista', materiaisReal: 'materiais realizados', dataRealizacao: 'data de realização', elaboradoPorUserIds: 'elaboradores' }[campo] ?? campo)).join(', ')}: {saveErrors[a.nodeId]} Corrija os dados e clique em Salvar novamente.</td></tr>}
-          {moverAtividade === a.nodeId && acoes && <MoveActivityRow
-            fases={fases.filter(f => f.nodeId !== fase.nodeId)}
-            onCancelar={() => setMoverAtividade(null)}
-            onMover={async targetId => {
-              const ok = await acoes.onMover(a.nodeId, targetId, 'INSIDE')
-              if (ok) setMoverAtividade(null)
-              return ok
-            }}
-          />}
+          {saveErrors[a.nodeId] && <tr className="planilha-save-error-row"><td colSpan={18} role="alert"><strong>{nome}</strong> · {Object.keys(rascunho[a.nodeId] ?? {}).map(campo => ({ minReal: 'tempo realizado manual', minOrcado: 'tempo orçado', materiaisOrcado: 'materiais orçados', dataPrevista: 'data prevista', materiaisReal: 'materiais realizados', dataRealizacao: 'data de realização', elaboradoPorUserIds: 'elaboradores' }[campo] ?? campo)).join(', ')}: {saveErrors[a.nodeId]} Corrija os dados e clique em Salvar novamente.</td></tr>}
+
           {novaLinha?.tipo === 'irmao' && novaLinha.refId === a.nodeId && linhaNova}
           </Fragment>
         )

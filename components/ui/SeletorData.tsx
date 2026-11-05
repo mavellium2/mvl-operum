@@ -53,6 +53,9 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
 }) {
   const uid = useId()
   const campo = useRef<HTMLInputElement>(null)
+  const calendarButton = useRef<HTMLButtonElement>(null)
+  const focusCalendar = useRef(false)
+  const returnToButton = useRef(false)
   const painel = useRef<HTMLDivElement>(null)
   const [texto, setTexto] = useState(isoParaBr(value))
   const [ultimoValor, setUltimoValor] = useState(value)
@@ -104,7 +107,7 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
     if (!aberto) return
     const fora = (e: MouseEvent) => {
       const alvo = e.target as Node
-      if (!painel.current?.contains(alvo) && !campo.current?.contains(alvo)) fechar()
+      if (!painel.current?.contains(alvo) && !campo.current?.contains(alvo) && !calendarButton.current?.contains(alvo)) fechar()
     }
     document.addEventListener('mousedown', fora)
     return () => document.removeEventListener('mousedown', fora)
@@ -118,7 +121,8 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
     onChange(iso)
     setTexto(isoParaBr(iso))
     fechar()
-    campo.current?.focus()
+    if (returnToButton.current) calendarButton.current?.focus()
+    else campo.current?.focus()
   }
   function moverFoco(novo: string) {
     const x = deIso(novo)!
@@ -133,6 +137,13 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
     painel.current.querySelector<HTMLButtonElement>(`[data-dia="${foco}"]`)?.focus({ preventScroll: true })
   }, [aberto, foco, mes])
 
+  useEffect(() => {
+    if (aberto && posicao && focusCalendar.current && painel.current) {
+      focusCalendar.current = false
+      painel.current.querySelector<HTMLButtonElement>(`[data-dia="${foco}"]`)?.focus({ preventScroll: true })
+    }
+  }, [aberto, posicao, foco])
+
   function teclas(e: KeyboardEvent<HTMLDivElement>) {
     const mapa: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }
     if (e.key in mapa) { e.preventDefault(); moverFoco(somarDias(foco, mapa[e.key])) }
@@ -141,7 +152,7 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
       const x = deIso(foco)!
       const dt = new Date(x.a, x.m + (e.key === 'PageDown' ? 1 : -1), 1)
       moverFoco(paraIso(dt.getFullYear(), dt.getMonth(), Math.min(x.d, diasNoMes(dt.getFullYear(), dt.getMonth()))))
-    } else if (e.key === 'Escape') { e.preventDefault(); fechar(); campo.current?.focus() }
+    } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fechar(); if (returnToButton.current) calendarButton.current?.focus(); else campo.current?.focus() }
     else if (e.key === 'Tab') fechar()
   }
 
@@ -176,7 +187,7 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
           value={texto}
           onClick={abrir}
           onBlur={() => setTouched(true)}
-          onFocus={abrir}
+          onFocus={() => { returnToButton.current = false; abrir() }}
           onKeyDown={e => {
             if (e.key === 'ArrowDown' && aberto) { e.preventDefault(); painel.current?.querySelector<HTMLButtonElement>(`[data-dia="${foco}"]`)?.focus() }
             if (e.key === 'Escape') fechar()
@@ -195,7 +206,13 @@ export default function SeletorData({ value, onChange, ariaLabel, id, disabled =
           }}
           className={`${className} pr-8`}
         />
-        <CalendarDays aria-hidden="true" className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 transition-colors ${aberto ? 'text-blue-500' : 'text-slate-400'}`} />
+        <GlassButton ref={calendarButton} variant="custom" type="button" disabled={disabled}
+          aria-label={`Abrir calendário${ariaLabel ? ` — ${ariaLabel}` : ''}`}
+          aria-haspopup="dialog" aria-expanded={aberto} aria-controls={aberto ? `${uid}-cal` : undefined}
+          onClick={() => { returnToButton.current = true; focusCalendar.current = true; abrir(); if (aberto) { painel.current?.querySelector<HTMLButtonElement>(`[data-dia="${foco}"]`)?.focus(); focusCalendar.current = false } }}
+          className="date-calendar-trigger absolute right-1 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-slate-400 hover:text-blue-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500">
+          <CalendarDays aria-hidden="true" className={`h-3.5 w-3.5 ${aberto ? 'text-blue-500' : ''}`} />
+        </GlassButton>
       </span>
       {(showError || error) && <span id={`${uid}-error`} className="date-validation-hint mt-1 block text-xs leading-relaxed">{error || 'Informe uma data válida (dd/mm/aaaa).'}</span>}
 

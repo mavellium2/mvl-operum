@@ -45,6 +45,7 @@ export const WbsNodePropertiesSchema = z.object({
   materiais: z.number().min(0).max(MOEDA_MAXIMO).optional(),
   dataPrevista: z.string().max(10).nullable().optional(),
   tempoRealMinutos: z.number().int().min(0).optional(),
+  tempoRealAjusteMinutos: z.number().finite().optional(),
   materiaisReal: z.number().min(0).max(MOEDA_MAXIMO).optional(),
   dataRealizacao: z.string().max(10).nullable().optional(),
   elaboradoPor: z.string().max(200).optional(),

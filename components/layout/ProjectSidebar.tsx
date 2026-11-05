@@ -21,8 +21,9 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const isAta = pathname === `/projetos/${projetoId}/atas` || pathname.startsWith(`/projetos/${projetoId}/atas/`)
   const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + '/')
+    pathname === href || pathname.startsWith(href + '/') || (href === `/projetos/${projetoId}/documentacao` && isAta)
 
   const navItems = [
     { href: `/projetos/${projetoId}/dashboard`, label: 'Dashboard', Icon: LayoutDashboard },
@@ -80,7 +81,7 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
               <SidebarNavLink href={href} label={label} active={isActive(href)}><Icon /></SidebarNavLink>
               {/* Documentos logo abaixo do item Documentação, quando ele está aberto. */}
               {documentacao && permissions.has('documentos:ver') && isActive(href) && (
-                <DocumentSidebar embedded projetoId={projetoId} activeDoc={searchParams.get('doc') ?? 'stakeholder'} onSelect={doc => router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)} />
+                <DocumentSidebar embedded projetoId={projetoId} activeDoc={isAta ? 'atas' : searchParams.get('doc') ?? 'stakeholder'} onSelect={doc => router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)} />
               )}
             </Fragment>
           )

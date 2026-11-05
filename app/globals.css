@@ -373,3 +373,7 @@ textarea:disabled {
 /* Cor resolvida antes da hidratação: nenhuma tela nasce com um fundo noturno imposto. */
 html[data-appearance-initial] body { background-color: var(--operum-initial-bg); }
 .project-appearance:not([data-period]) { min-height: 100vh; background: var(--operum-initial-bg, #f1f6fc); color: var(--operum-initial-text, #202c40); }
+
+/* O acionador do calendário preserva apenas o ícone e o foco por teclado. */
+button.date-calendar-trigger { background: transparent; border: 0; box-shadow: none; }
+button.date-calendar-trigger:hover, button.date-calendar-trigger:focus, button.date-calendar-trigger:active { background: transparent; box-shadow: none; }

@@ -56,9 +56,9 @@ describe('ProjectCharterDocument — modelo "02_Project Charter" do professor', 
 
   it('principais envolvidos agrupados, com os integrantes depois do professor', () => {
     const { container } = render(<ProjectCharterDocument {...base} />)
-    const rotulos = [...container.querySelectorAll('p[style*="bold"]')].map(e => e.textContent)
-    expect(rotulos).toEqual(['Instituição de Ensino', 'Professor(es)', 'Integrantes do Grupo', 'Patrocinador'])
-    expect(screen.getByText('Ana – Redatora')).toBeInTheDocument()
+    const rotulos = [...container.querySelectorAll('strong')].map(e => e.textContent).filter(text => ['Instituição de Ensino:', 'Professor(es):', 'Integrantes do Grupo:', 'Patrocinador:'].includes(text ?? ''))
+    expect(rotulos).toEqual(['Instituição de Ensino:', 'Professor(es):', 'Integrantes do Grupo:', 'Patrocinador:'])
+    expect(screen.getByText('- Ana – Redatora')).toBeInTheDocument()
   })
 
   it('metodologia só sai no PDF se preenchida', () => {
