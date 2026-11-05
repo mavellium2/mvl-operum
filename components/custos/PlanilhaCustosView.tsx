@@ -835,7 +835,7 @@ export default function PlanilhaCustosView({
             <QuadroElaborador planilha={planilhaResumo} />
           </div>
           </SobDemandaPlanilha>
-          <SobDemandaPlanilha label="gráficos"><GraficosPlanilha3D planilha={planilhaResumo} /></SobDemandaPlanilha>
+          <SobDemandaPlanilha preloadDistance={1000} label="gráficos"><GraficosPlanilha3D planilha={planilhaResumo} /></SobDemandaPlanilha>
         </>
       )}
 

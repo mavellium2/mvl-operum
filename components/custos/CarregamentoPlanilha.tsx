@@ -15,18 +15,37 @@ export function SkeletonGraficoPlanilha({ label = 'gráfico' }: { label?: string
 }
 
 /** Mount once near the viewport; keep edits and chart interaction state afterward. */
-export function SobDemandaPlanilha({ children, label, whenVisible = false }: { children: ReactNode; label: string; whenVisible?: boolean }) {
+export function SobDemandaPlanilha({ children, label, preloadDistance = 200 }: { children: ReactNode; label: string; preloadDistance?: number }) {
   const ref = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
   useEffect(() => {
     if (!ref.current || ready || typeof IntersectionObserver === 'undefined') return
     const observer = new IntersectionObserver(entries => {
-      if (entries.some(entry => entry.isIntersecting && (!whenVisible || entry.intersectionRatio >= 0.5))) { setReady(true); observer.disconnect() }
-    }, { rootMargin: whenVisible ? '0px' : '200px', threshold: whenVisible ? 0.5 : 0 })
+      if (entries.some(entry => entry.isIntersecting)) { setReady(true); observer.disconnect() }
+    }, { rootMargin: `${preloadDistance}px`, threshold: 0 })
     observer.observe(ref.current)
     return () => observer.disconnect()
-  }, [ready, whenVisible])
+  }, [ready, preloadDistance])
   return <div ref={ref} className="planilha-demand-section" style={!ready && label.startsWith('gráfico') ? { minHeight: 380 } : undefined}>{ready ? children : label.startsWith('gráfico') ? <div className="planilha-chart-placeholder"><SkeletonGraficoPlanilha label={label} /><GlassButton className="planilha-chart-load" variant="ghost" onClick={() => setReady(true)}>Carregar {label}</GlassButton></div> : <GlassButton variant="ghost" onClick={() => setReady(true)}>Carregar {label}</GlassButton>}</div>
+}
+
+/** Loading is anticipated; only the entrance animation waits for real visibility. */
+export function useAnimacaoGraficoVisivel() {
+  const ref = useRef<SVGSVGElement>(null)
+  const [entered, setEntered] = useState(false)
+  useEffect(() => {
+    if (!ref.current) return
+    if (typeof IntersectionObserver === 'undefined') {
+      const frame = requestAnimationFrame(() => setEntered(true))
+      return () => cancelAnimationFrame(frame)
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) { setEntered(true); observer.disconnect() }
+    }, { threshold: 0, rootMargin: '0px' })
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+  return { ref, entered }
 }
 
 /** A table sentinel also provides an explicit keyboard path to the next batch. */

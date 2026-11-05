@@ -1,7 +1,7 @@
 'use client'
 
 import { memo, useState, useEffect, useRef, useId } from 'react'
-import { SobDemandaPlanilha } from './CarregamentoPlanilha'
+import { SobDemandaPlanilha, useAnimacaoGraficoVisivel } from './CarregamentoPlanilha'
 import GlassButton from '@/components/ui/GlassButton'
 import GlassCard from '@/components/ui/GlassCard'
 import type { PlanilhaDeCustos } from '@/lib/planilhaCustos'
@@ -27,6 +27,7 @@ function useChartNumber(target: number, initial = target) {
   useEffect(() => {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     const from = current.current
+    if (from === target) return
     let frame = 0
     let started: number | undefined
     const tick = (time: number) => {
@@ -43,6 +44,7 @@ function useChartNumber(target: number, initial = target) {
 }
 
 function Colunas3D({ title, rows, currency = false }: { title: string; rows: Linha[]; currency?: boolean }) {
+  const entrance = useAnimacaoGraficoVisivel()
   const [visible, setVisible] = useState([true, true])
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
@@ -65,7 +67,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
     <div className="planilha-chart-heading"><div><h3>{title}</h3><p>{currency ? 'Comparativo de custos por macrofase' : 'Comparativo de tempo por macrofase'}</p></div><span>{rows.length} {rows.length === 1 ? 'fase' : 'fases'}</span></div>
     <div className="planilha-chart-legend">{['Orçado', 'Real'].map((name, index) => <GlassButton key={name} variant="custom" className="planilha-chart-toggle" aria-pressed={visible[index]} onClick={() => { setVisible(current => current.map((value, i) => i === index ? !value : value)); setHovered(null) }}><i style={{ background: CORES_EXCEL[index] }} />{name}</GlassButton>)}</div>
     <div className="planilha-3d-scroll" role="region" aria-label={`Visualização de ${title}`} tabIndex={0}>
-    <svg viewBox={`0 0 ${width} 325`} role="group" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: Math.min(width, 720), fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
+    <svg ref={entrance.ref} data-entered={entrance.entered} viewBox={`0 0 ${width} 325`} role="group" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: Math.min(width, 720), fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>{title}</title><desc>{rows.map(row => `${row.fase}: Orçado ${valueText(row.orcado, currency)}, Real ${valueText(row.real, currency)}`).join('; ')}</desc>
       <path d={`M${left} ${top} l${dx * 2} ${dy * 2} V${bottom + dy * 2} L${left} ${bottom} Z M${left} ${bottom} H${right} l${dx * 2} ${dy * 2} H${left + dx * 2} M${right + dx * 2} ${bottom + dy * 2} V${top + dy * 2}`} fill="none" stroke="var(--ap-border)" strokeWidth={0.6} />
       {ticks.map(value => <text key={value} x={left - 3} y={bottom - value / scaleMax * (bottom - top) + 3} textAnchor="end" fontSize={11}>{valueText(Number(value.toPrecision(8)), currency)}</text>)}
@@ -117,6 +119,7 @@ function sector(cx: number, cy: number, rx: number, ry: number, start: number, e
   return `M${cx} ${cy} L${point(start)} A${rx} ${ry} 0 ${end - start > Math.PI ? 1 : 0} 1 ${point(end)} Z`
 }
 function Pizza3D({ rows, total }: { rows: { elaborador: string; qtdeAtividades: number; percentual: number }[]; total: number }) {
+  const entrance = useAnimacaoGraficoVisivel()
   const [selected, setSelected] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
   const active = hovered
@@ -126,13 +129,13 @@ function Pizza3D({ rows, total }: { rows: { elaborador: string; qtdeAtividades: 
     const end = start + row.percentual / 100 * Math.PI * 2
     return { ...row, start, end, color: CORES_EXCEL[index % CORES_EXCEL.length] }
   })
-  const reveal = useChartNumber(1, 0)
+  const reveal = useChartNumber(entrance.entered ? 1 : 0, 0)
   const revealId = useId()
   const cx = 330, cy = 250, rx = 285, ry = rx * Math.sin(50 * Math.PI / 180), depth = 28
   return <GlassCard as="section" className="planilha-chart-card planilha-3d-card planilha-3d-pie-card rounded-xl border">
     <div className="planilha-chart-heading"><div><h3>Elaboração das Atividades (%)</h3><p>Distribuição das atividades entre os elaboradores</p></div><span>{total} atividades</span></div>
     <div className="planilha-3d-pie-layout">
-    <svg viewBox="0 0 660 520" role="group" aria-label="Elaboração das Atividades (%)" data-chart-type="pie-3d" data-rotation-x="50" style={{ display: 'block', width: '100%', minWidth: 0, maxWidth: 600, fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
+    <svg ref={entrance.ref} data-entered={entrance.entered} viewBox="0 0 660 520" role="group" aria-label="Elaboração das Atividades (%)" data-chart-type="pie-3d" data-rotation-x="50" style={{ display: 'block', width: '100%', minWidth: 0, maxWidth: 600, fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>Elaboração das Atividades (%)</title><desc>{slices.map(row => `${row.elaborador}: ${row.percentual.toFixed(2)}%`).join('; ')}</desc>
       <defs><clipPath id={revealId}><path d={sector(cx, cy, 900, 900, -Math.PI / 2, -Math.PI / 2 + reveal * Math.PI * 2)} /></clipPath></defs>
       <g clipPath={`url(#${revealId})`}>
@@ -157,8 +160,8 @@ export default memo(function GraficosPlanilha3D({ planilha }: { planilha: Planil
   const total = planilha.quadros.elaboradores.reduce((sum, row) => sum + Math.max(0, row.qtdeAtividades), 0)
   const rows = planilha.quadros.elaboradores.map(row => ({ ...row, percentual: total ? Math.max(0, row.qtdeAtividades) / total * 100 : 0 }))
   return <div className="planilha-charts planilha-3d-grid mt-4" data-planilha-charts="excel-3d" style={{ minWidth: 0 }}>
-    <SobDemandaPlanilha whenVisible label="gráfico de valores"><Colunas3D title="Valores: Orçado e Real (R$)" currency rows={planilha.quadros.valor.map(row => ({ fase: row.fase, orcado: row.orcado, real: row.realizado }))} /></SobDemandaPlanilha>
-    <SobDemandaPlanilha whenVisible label="gráfico de tempo"><Colunas3D title="Tempo: Orçado e Real (Minutos)" rows={planilha.quadros.tempo.map(row => ({ fase: row.fase, orcado: row.minOrcado, real: row.minReal }))} /></SobDemandaPlanilha>
-    <SobDemandaPlanilha whenVisible label="gráfico de elaboradores"><Pizza3D rows={rows} total={planilha.qtdeAtividades} /></SobDemandaPlanilha>
+    <SobDemandaPlanilha preloadDistance={600} label="gráfico de valores"><Colunas3D title="Valores: Orçado e Real (R$)" currency rows={planilha.quadros.valor.map(row => ({ fase: row.fase, orcado: row.orcado, real: row.realizado }))} /></SobDemandaPlanilha>
+    <SobDemandaPlanilha preloadDistance={600} label="gráfico de tempo"><Colunas3D title="Tempo: Orçado e Real (Minutos)" rows={planilha.quadros.tempo.map(row => ({ fase: row.fase, orcado: row.minOrcado, real: row.minReal }))} /></SobDemandaPlanilha>
+    <SobDemandaPlanilha preloadDistance={600} label="gráfico de elaboradores"><Pizza3D rows={rows} total={planilha.qtdeAtividades} /></SobDemandaPlanilha>
   </div>
 })
