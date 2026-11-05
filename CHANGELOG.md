@@ -9,6 +9,18 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.54.0] — 2026-11-05
 
+- **Atividades pela pizza:** clique no elaborador divide a pizza em uma fatia por atividade, proporcional ao tempo planejado (fatias iguais quando nenhuma tem tempo), com código e percentual em cada fatia. Abaixo, uma tabela com a estrutura da planilha: macrofases em faixa de seção, atividades, elaborada por, valor orçado e realizado (min, horas, dias, R$/min, materiais, total e datas), situação, sub-total por macrofase e total da pessoa. Realizado acima do orçado fica em vermelho. Troca direta entre elaboradores, fechamento ao clicar fora/Esc e distinção de homônimos por ID.
+
+- **Hover da pizza:** a fatia em destaque levanta, com animação só da altura e respeitando as fatias da frente; as demais mantêm a cor. O nome do elaborador é destacado na legenda e a atividade na tabela. Laterais 3D desenhadas pela borda, com emendas verticais.
+
+- **Cores e legenda da pizza:** cores sem repetição entre pessoas ou atividades (paleta Excel, cores extras e matizes espaçados), texto da fatia legível em fundos escuros, percentuais com "%" na visão geral e legenda em até 3 colunas quando há muitos elaboradores. Com uma pessoa aberta, a pizza encolhe para gráfico e tabela caberem na mesma tela.
+
+- **Muitas macrofases:** colunas de Valores e Tempo em tamanho real com rolagem horizontal, nomes das fases na diagonal (cortados com reticências e completos no hover) e valores fora da coluna na cor do texto.
+
+- **Quadros-resumo:** altura limitada com rolagem interna, cabeçalho e total fixos, nome da fase em uma linha com dica do nome completo (`QuadroResumo` compartilhado pelos três quadros).
+
+- **Total do projeto fixo:** na planilha editável, a linha de total fica visível no rodapé enquanto as atividades rolam.
+
 - **Fluidez da pizza 3D:** preenchimento elíptico com recortes separados para topo e profundidade, aceleração/desaceleração suave em 700ms e percentuais com fade sem cortes.
 
 - **Carregamento e produção:** skeleton nos gráficos, com carregamento antecipado e animação independente ao entrar na tela, sem esperar 50% de visibilidade. Histórico compatível com produção sem a tabela legada `public.Attachment`, corrigindo o erro P2021 ao abrir a planilha e restaurar versões.
@@ -19,7 +31,7 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Interação nos gráficos:** legenda clicável para mostrar/ocultar Orçado e Real, detalhes de valores e diferenças ao passar o mouse ou focar, seleção de macrofases e elaboradores, navegação por Tab e seleção por Enter/Espaço; Esc limpa o destaque. Ao sair do hover ou foco, todas as colunas e fatias recuperam a visibilidade normal.
 
-- **Apresentação dos gráficos 3D:** cards, tipografia e textos adaptados à aparência do Operum; legenda de elaboradores responsiva com nomes completos. Valores financeiros em reais, com valores menores dentro de colunas mais largas e com maior profundidade 3D, próximos ao topo, sem balões ou conectores; valores zerados mantêm o mesmo texto branco para preservar o contraste. Gráficos aproveitam a largura disponível, com mais área de comparação e nomes das fases em linhas horizontais.
+- **Apresentação dos gráficos 3D:** cards, tipografia e textos adaptados à aparência do Operum; legenda de elaboradores responsiva com nomes completos. Valores financeiros em reais, com valores menores dentro de colunas mais largas e com maior profundidade 3D, próximos ao topo, sem balões ou conectores; valores que não cabem na coluna aparecem acima dela na cor do texto. Gráficos aproveitam a largura disponível.
 
 - **Hidratação dos gráficos:** títulos SVG gerados como texto único, evitando diferenças entre servidor e navegador e a recriação da página no cliente.
 

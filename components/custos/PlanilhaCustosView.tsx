@@ -33,6 +33,8 @@ import { useToast } from '@/components/ui/Toast'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
 import { useGuardaSaida } from '@/components/documentos/editor/GuardaSaida'
 import SeletorData from '@/components/ui/SeletorData'
+import QuadroResumo from './QuadroResumo'
+import SeloSituacao from './SeloSituacao'
 import './planilha-custos.css'
 import { updateNodePropertiesAction, insertChildAction, insertSiblingAction, renameNodeAction, deleteNodeAction, moveNodeAction } from '@/app/actions/wbs'
 import { fmtDataBR, maiorData, situacaoDe, valorPorMinutoDoElaborador, type PlanilhaDeCustos, type SituacaoAtividade, type Elaborador } from '@/lib/planilhaCustos'
@@ -148,12 +150,6 @@ const lista = (csv: string): string[] => csv.split(',').map(v => v.trim()).filte
 const idsDaLinha = (a: { elaboradoPorUserIds?: string[]; elaboradoPorUserId: string | null }): string[] =>
   a.elaboradoPorUserIds ?? (a.elaboradoPorUserId ? [a.elaboradoPorUserId] : [])
 
-const SITUACAO_CLASS: Record<SituacaoAtividade, string> = {
-  Antecipada: 'bg-emerald-100 text-emerald-800',
-  'No prazo': 'bg-blue-100 text-blue-800',
-  Atrasada: 'bg-red-100 text-red-800',
-  Pendente: 'bg-gray-100 text-gray-700',
-}
 
 
 const num = (v: string | undefined, fallback: number): number => {
@@ -460,7 +456,7 @@ export default function PlanilhaCustosView({
       for (const id of ids) contagem.set(id, (contagem.get(id) ?? 0) + 1)
     }
     const qtdeAtividades = fasesAtuais.reduce((total, fase) => total + fase.atividades.length, 0)
-    return { ...planilha, macrofases: fasesAtuais, qtdeAtividades,
+    return { ...planilha, macrofases: fasesAtuais.map(fase => ({ ...fase, titulo: nameDrafts[fase.nodeId] ?? fase.titulo, atividades: fase.atividades.map(a => ({ ...a, titulo: nameDrafts[a.nodeId] ?? a.titulo, elaboradoPorUserIds: idsAtuais(a, rascunho), elaboradoPorUserId: idsAtuais(a, rascunho)[0] ?? null })) })), qtdeAtividades,
       totalOrcado: round2(valor.reduce((total, fase) => total + fase.orcado, 0)),
       totalReal: round2(valor.reduce((total, fase) => total + fase.realizado, 0)),
       tempoOrcadoTotal: valor.reduce((total, fase) => total + fase.minOrcado, 0),
@@ -468,7 +464,7 @@ export default function PlanilhaCustosView({
       quadros: {
         valor: valor.map(({ fase, orcado, realizado }) => ({ fase, orcado, realizado })),
         tempo: valor.map(({ fase, minOrcado, minReal }) => ({ fase, minOrcado, minReal })),
-        elaboradores: [...contagem].map(([userId, quantidade]) => ({ elaborador: elaboradores.find(e => e.userId === userId)?.name ?? 'Elaborador', qtdeAtividades: quantidade, percentual: qtdeAtividades ? quantidade / qtdeAtividades * 100 : 0 })),
+        elaboradores: [...contagem].map(([userId, quantidade]) => ({ userId, elaborador: elaboradores.find(e => e.userId === userId)?.name ?? 'Elaborador', qtdeAtividades: quantidade, percentual: qtdeAtividades ? quantidade / qtdeAtividades * 100 : 0 })),
       },
     }
   }, [planilha, fasesAtuais, rascunho, elaboradores, nameDrafts])
@@ -1256,9 +1252,7 @@ const FaseFragment = memo(function FaseFragment({
               {canReal ? campoInput(a.nodeId, 'dataRealizacao', a.dataRealizacao) : texto(fmtDataBR(a.dataRealizacao))}
             </td>
             <td className="border border-gray-100 px-1 py-1 text-center">
-              <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${SITUACAO_CLASS[situacaoAtual(a.nodeId, a.dataPrevista, a.dataRealizacao)]}`}>
-                {situacaoAtual(a.nodeId, a.dataPrevista, a.dataRealizacao)}
-              </span>
+              <SeloSituacao situacao={situacaoAtual(a.nodeId, a.dataPrevista, a.dataRealizacao)} />
             </td>
           </tr>
           {saveErrors[a.nodeId] && <tr className="planilha-save-error-row"><td colSpan={18} role="alert"><strong>{nome}</strong> · {Object.keys(rascunho[a.nodeId] ?? {}).map(campo => ({ minReal: 'tempo realizado manual', minOrcado: 'tempo orçado', materiaisOrcado: 'materiais orçados', dataPrevista: 'data prevista', materiaisReal: 'materiais realizados', dataRealizacao: 'data de realização', elaboradoPorUserIds: 'elaboradores' }[campo] ?? campo)).join(', ')}: {saveErrors[a.nodeId]} Corrija os dados e clique em Salvar novamente.</td></tr>}
@@ -1306,96 +1300,21 @@ function LinhaSoma({ rotulo, orcado, real, dataFim, destaque = false }: { rotulo
 }
 
 const QuadroValor = memo(function QuadroValor({ planilha }: { planilha: PlanilhaDeCustos }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-bold text-gray-800">Resumo — Valor por Fase do Projeto</h3>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-blue-600 text-white">
-            <th className="px-3 py-2 text-left text-xs font-semibold">Fases do Projeto</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Valor Orçado</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Valor Real</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {planilha.quadros.valor.map(v => (
-            <tr key={v.fase}>
-              <td className="px-3 py-1.5 text-gray-800">{v.fase}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{brl(v.orcado)}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{brl(v.realizado)}</td>
-            </tr>
-          ))}
-          <tr className="bg-gray-100 font-bold">
-            <td className="px-3 py-2">Total</td>
-            <td className="px-3 py-2 text-right tabular-nums">{brl(planilha.totalOrcado)}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{brl(planilha.totalReal)}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  )
+  return <QuadroResumo titulo="Resumo — Valor por Fase do Projeto" colunas={['Fases do Projeto', 'Valor Orçado', 'Valor Real']}
+    linhas={planilha.quadros.valor.map((v, index) => ({ key: `${index}:${v.fase}`, nome: v.fase, valores: [brl(v.orcado), brl(v.realizado)] }))}
+    total={[brl(planilha.totalOrcado), brl(planilha.totalReal)]} />
 })
 
 const QuadroTempo = memo(function QuadroTempo({ planilha }: { planilha: PlanilhaDeCustos }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-bold text-gray-800">Resumo — Tempo por Fase do Projeto</h3>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-blue-600 text-white">
-            <th className="px-3 py-2 text-left text-xs font-semibold">Fases do Projeto</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Tempo Orçado (Min.)</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Tempo Real (Min.)</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {planilha.quadros.tempo.map(t => (
-            <tr key={t.fase}>
-              <td className="px-3 py-1.5 text-gray-800">{t.fase}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{formatarMinutos(t.minOrcado)}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{formatarMinutos(t.minReal)}</td>
-            </tr>
-          ))}
-          <tr className="bg-gray-100 font-bold">
-            <td className="px-3 py-2">Total</td>
-            <td className="px-3 py-2 text-right tabular-nums">{formatarMinutos(planilha.tempoOrcadoTotal)}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{formatarMinutos(planilha.tempoRealTotal)}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  )
+  return <QuadroResumo titulo="Resumo — Tempo por Fase do Projeto" colunas={['Fases do Projeto', 'Tempo Orçado (Min.)', 'Tempo Real (Min.)']}
+    linhas={planilha.quadros.tempo.map((t, index) => ({ key: `${index}:${t.fase}`, nome: t.fase, valores: [formatarMinutos(t.minOrcado), formatarMinutos(t.minReal)] }))}
+    total={[formatarMinutos(planilha.tempoOrcadoTotal), formatarMinutos(planilha.tempoRealTotal)]} />
 })
 
 const QuadroElaborador = memo(function QuadroElaborador({ planilha }: { planilha: PlanilhaDeCustos }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-bold text-gray-800">Resumo — Distribuição por Elaborador</h3>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-blue-600 text-white">
-            <th className="px-3 py-2 text-left text-xs font-semibold">Elaborador por</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Qtde. Atividades</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Percentual</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {planilha.quadros.elaboradores.map(e => (
-            <tr key={e.elaborador}>
-              <td className="px-3 py-1.5 text-gray-800">{e.elaborador}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{e.qtdeAtividades}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{e.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</td>
-            </tr>
-          ))}
-          <tr className="bg-gray-100 font-bold">
-            <td className="px-3 py-2">Total</td>
-            <td className="px-3 py-2 text-right tabular-nums">{planilha.qtdeAtividades}</td>
-            <td className="px-3 py-2 text-right tabular-nums">100%</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  )
+  return <QuadroResumo titulo="Resumo — Distribuição por Elaborador" colunas={['Elaborador por', 'Qtde. Atividades', 'Percentual']}
+    linhas={planilha.quadros.elaboradores.map(e => ({ key: e.userId ?? e.elaborador, nome: e.elaborador, valores: [e.qtdeAtividades, `${e.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`] }))}
+    total={[planilha.qtdeAtividades, '100%']} />
 })
 
 /** Gráficos dos três quadros-resumo. A área das fases rola quando a lista cresce. */

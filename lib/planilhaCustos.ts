@@ -27,6 +27,7 @@ export type SituacaoAtividade = 'Antecipada' | 'No prazo' | 'Atrasada' | 'Penden
 export interface CardDaAtividade {
   id: string
   sprintId: string | null
+  sprintNome?: string | null
   /** Nome da coluna em que o card está ("A Fazer", "Em andamento"...). */
   etapa: string | null
   priority?: string | null
@@ -36,6 +37,7 @@ export interface CardDaAtividade {
 export interface DadosDoCard {
   description: string
   sprintId: string | null
+  sprintNome?: string | null
   etapa: string | null
   priority?: string | null
 }
@@ -110,6 +112,7 @@ export interface QuadroTempo {
 }
 
 export interface QuadroElaborador {
+  userId?: string
   elaborador: string
   qtdeAtividades: number
   percentual: number
@@ -339,7 +342,7 @@ export function aplicarCardsDasAtividades(
         const cardId = nodes[a.nodeId]?.properties.cardId
         const card = cardId ? cards.get(cardId) : undefined
         if (!cardId || !card) return a
-        return { ...a, descricao: card.description.trim(), card: { id: cardId, sprintId: card.sprintId, etapa: card.etapa, ...(card.priority && { priority: card.priority }) } }
+        return { ...a, descricao: card.description.trim(), card: { id: cardId, sprintId: card.sprintId, ...(card.sprintNome !== undefined && { sprintNome: card.sprintNome }), etapa: card.etapa, ...(card.priority && { priority: card.priority }) } }
       }),
     })),
   }

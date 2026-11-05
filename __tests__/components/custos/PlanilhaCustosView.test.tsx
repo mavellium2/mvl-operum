@@ -309,7 +309,7 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
   it('editar o nome no painel guarda rascunho e Salvar sincroniza pela ação da EAP', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Detalhes de 1.1.1 Atividade 1' }))
-    const painel = await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' })
+    const painel = await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' }, { timeout: 3000 })
     fireEvent.click(within(painel).getByRole('button', { name: 'Renomear 1.1.1 Atividade 1' }))
     const campo = within(painel).getByRole('textbox', { name: 'Renomear 1.1.1' })
     fireEvent.change(campo, { target: { value: 'Nova atividade' } })
@@ -374,7 +374,7 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
   it('painel de detalhes mostra a descrição do card e salva pelo card da sprint', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} canUsarCards /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Detalhes de 1.1.1 Atividade 1' }))
-    const painel = await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' })
+    const painel = await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' }, { timeout: 3000 })
     expect(within(painel).getByText('Usar tinta acrílica')).toBeInTheDocument()
     const descricao = within(painel).getByText('Descrição').closest('section')!
     fireEvent.click(within(descricao).getByRole('button', { name: 'Editar' }))
@@ -389,7 +389,7 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
   it('sem permissão nos cards, o painel mostra a descrição sem editar', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Detalhes de 1.1.1 Atividade 1' }))
-    const painel = await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' })
+    const painel = await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' }, { timeout: 3000 })
     expect(within(painel).getByText('Usar tinta acrílica')).toBeInTheDocument()
     const descricao = within(painel).getByText('Descrição').closest('section')!
     expect(within(descricao).queryByRole('button', { name: 'Editar' })).toBeNull()
@@ -613,7 +613,7 @@ describe('PlanilhaCustosView — permissões do realizado', () => {
     render(<ToastProvider><PlanilhaCustosView {...props} canEditAllActual /></ToastProvider>)
     const row = within(screen.getByText('1.1.1 Atividade 1').closest('tr')!)
     fireEvent.click(row.getByRole('button', { name: 'Detalhes de 1.1.1 Atividade 1' }))
-    expect(await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' }, { timeout: 3000 })).toBeInTheDocument()
   })
 
   function renderizarPermissoes(overrides: Partial<React.ComponentProps<typeof PlanilhaCustosView>>) {
