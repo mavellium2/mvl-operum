@@ -7,6 +7,10 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.54.0] — 2026-11-05
+
+- **Gráficos da planilha:** preservados os quadros-resumo e substituídos os gráficos Valores por macrofase, Tempo por macrofase e Atividades por elaborador por colunas agrupadas 3D para Valores e Tempo e pizza 3D para Elaboração das Atividades, conforme referência Excel fornecida. Preserva títulos, paleta Office 2007, valores sobre as colunas, rótulos inclinados e legenda lateral da pizza. Renderização SVG com dados vivos, descrição acessível e sem animações de recálculo.
+
 ## [1.53.0] — 2026-11-05
 
 - **Cards legíveis:** descrições e comentários passam a mostrar Markdown, com títulos, listas, negrito, tabelas, checklists e links. HTML digitado não é executado, links externos abrem em outra aba e tabelas largas rolam dentro do próprio bloco. Comentários longos deixam de virar uma linha só; durante a busca de comentários, o texto aparece simples com os termos realçados. Incorpora a 1.51.0, que não chegou a ser publicada.

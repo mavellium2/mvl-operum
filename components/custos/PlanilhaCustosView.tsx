@@ -34,7 +34,7 @@ import { updateNodePropertiesAction, insertChildAction, insertSiblingAction, ren
 import { fmtDataBR, maiorData, situacaoDe, valorPorMinutoDoElaborador, type PlanilhaDeCustos, type SituacaoAtividade, type Elaborador } from '@/lib/planilhaCustos'
 import { minutosDeHoras, minutosDeDias, round2 } from '@/lib/custosCalc'
 import { formatarMinutos } from '@/lib/tempoRealizado'
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
+import GraficosPlanilha3D from './GraficosPlanilha3D'
 
 interface Props {
   initialVersion?: number
@@ -151,7 +151,6 @@ const SITUACAO_CLASS: Record<SituacaoAtividade, string> = {
   Pendente: 'bg-gray-100 text-gray-700',
 }
 
-const CORES_PIE = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#dc2626', '#0d9488', '#ca8a04', '#4f46e5']
 
 const num = (v: string | undefined, fallback: number): number => {
   if (v === undefined) return fallback
@@ -830,7 +829,7 @@ export default function PlanilhaCustosView({
             <QuadroTempo planilha={planilhaAtual} />
             <QuadroElaborador planilha={planilhaAtual} />
           </div>
-          <Graficos planilha={planilhaAtual} />
+          <GraficosPlanilha3D planilha={planilhaAtual} />
         </>
       )}
 
@@ -1388,73 +1387,3 @@ const QuadroElaborador = memo(function QuadroElaborador({ planilha }: { planilha
 })
 
 /** Gráficos dos três quadros-resumo. A área das fases rola quando a lista cresce. */
-const Graficos = memo(function Graficos({ planilha }: { planilha: PlanilhaDeCustos }) {
-  if (planilha.quadros.valor.length === 0) return null
-  const valor = planilha.quadros.valor.map(v => ({
-    fase: v.fase,
-    'Valor Orçado': round2(v.orcado),
-    'Valor Real': round2(v.realizado),
-  }))
-  const tempo = planilha.quadros.tempo.map(t => ({ fase: t.fase, 'Tempo Orçado (Min.)': t.minOrcado, 'Tempo Real (Min.)': t.minReal }))
-  const pieData = planilha.quadros.elaboradores.filter(e => e.qtdeAtividades > 0).map(e => ({ name: e.elaborador, value: e.qtdeAtividades }))
-  const barHeight = Math.max(210, valor.length * 42 + 36)
-  const faseTick = (name: string) => name.length > 22 ? `${name.slice(0, 21)}…` : name
-  const axisTick = { fontSize: 11, fill: 'var(--ap-muted)' }
-  const gridColor = 'var(--ap-border)'
-  return (
-    <div className="planilha-charts mt-4 grid gap-3 xl:grid-cols-2">
-      <section className="planilha-chart-card rounded-xl border">
-        <div className="planilha-chart-heading"><div><h3>Valores por macrofase</h3><p>Orçado e realizado em reais</p></div><span>{valor.length} {valor.length === 1 ? 'fase' : 'fases'}</span></div>
-        <div className="planilha-chart-legend"><span><i className="planilha-legend-budget" /> Orçado</span><span><i className="planilha-legend-actual" /> Realizado</span></div>
-        <div className="planilha-chart-scroll" role="region" aria-label="Gráfico de valores por macrofase" tabIndex={0}>
-          <div style={{ height: barHeight, minWidth: 420 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart layout="vertical" data={valor} margin={{ top: 6, right: 20, left: 0, bottom: 2 }} barGap={2}>
-                <CartesianGrid stroke={gridColor} strokeDasharray="3 5" horizontal={false} />
-                <XAxis type="number" tick={axisTick} tickFormatter={(v: number) => v.toLocaleString('pt-BR')} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="fase" width={160} tick={axisTick} tickFormatter={faseTick} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v: unknown) => typeof v === 'number' ? brl(v) : String(v)} cursor={{ fill: 'var(--ap-glow)' }} />
-                <Bar dataKey="Valor Orçado" fill="var(--chart-budget)" radius={[0, 5, 5, 0]} maxBarSize={13} />
-                <Bar dataKey="Valor Real" fill="var(--chart-actual)" radius={[0, 5, 5, 0]} maxBarSize={13} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </section>
-      <section className="planilha-chart-card rounded-xl border">
-        <div className="planilha-chart-heading"><div><h3>Tempo por macrofase</h3><p>Minutos planejados e registrados</p></div><span>{tempo.length} {tempo.length === 1 ? 'fase' : 'fases'}</span></div>
-        <div className="planilha-chart-legend"><span><i className="planilha-legend-budget" /> Orçado</span><span><i className="planilha-legend-actual" /> Realizado</span></div>
-        <div className="planilha-chart-scroll" role="region" aria-label="Gráfico de tempo por macrofase" tabIndex={0}>
-          <div style={{ height: barHeight, minWidth: 420 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart layout="vertical" data={tempo} margin={{ top: 6, right: 20, left: 0, bottom: 2 }} barGap={2}>
-                <CartesianGrid stroke={gridColor} strokeDasharray="3 5" horizontal={false} />
-                <XAxis type="number" tick={axisTick} tickFormatter={(v: number) => v.toLocaleString('pt-BR')} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="fase" width={160} tick={axisTick} tickFormatter={faseTick} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v: unknown) => typeof v === 'number' ? `${formatarMinutos(v)} min` : String(v)} cursor={{ fill: 'var(--ap-glow)' }} />
-                <Bar dataKey="Tempo Orçado (Min.)" fill="var(--chart-budget)" radius={[0, 5, 5, 0]} maxBarSize={13} />
-                <Bar dataKey="Tempo Real (Min.)" fill="var(--chart-actual)" radius={[0, 5, 5, 0]} maxBarSize={13} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </section>
-      {pieData.length > 0 && (
-        <section className="planilha-chart-card rounded-xl border xl:col-span-2">
-          <div className="planilha-chart-heading"><div><h3>Atividades por elaborador</h3><p>Participação no total de atividades</p></div><span>{planilha.qtdeAtividades} atividades</span></div>
-          <div className="planilha-donut-layout">
-            <div className="planilha-donut-figure"><ResponsiveContainer width="100%" height={225}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={62} outerRadius={94} paddingAngle={2} stroke="none">
-                  {pieData.map((_, i) => <Cell key={i} fill={CORES_PIE[i % CORES_PIE.length]} />)}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer><div className="planilha-donut-center"><strong>{planilha.qtdeAtividades}</strong><span>atividades</span></div></div>
-            <div className="planilha-donut-list">{pieData.map((item, index) => <div key={item.name} className="planilha-donut-item"><i style={{ backgroundColor: CORES_PIE[index % CORES_PIE.length] }} /><span title={item.name}>{item.name}</span><strong>{item.value}</strong><small>{((item.value / planilha.qtdeAtividades) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</small></div>)}</div>
-          </div>
-        </section>
-      )}
-    </div>
-  )
-})
