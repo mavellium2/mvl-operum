@@ -382,3 +382,14 @@ button.planilha-prioridade:focus-visible { outline: 2px solid var(--sheet-accent
 .planilha-3d-legend .planilha-donut-item span { white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 1000px) { .planilha-3d-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .planilha-3d-card { padding: 12px; } .planilha-3d-pie-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; } }
+
+.planilha-chart-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; color: inherit; text-align: left; cursor: pointer; }
+.planilha-chart-toggle[aria-pressed="false"] { opacity: .55; }
+.planilha-chart-toggle:hover, .planilha-chart-toggle[aria-pressed="true"] { background: color-mix(in srgb, var(--ap-text) 8%, transparent); }
+.planilha-chart-mark { cursor: pointer; transition: opacity 150ms ease; }
+.planilha-chart-mark:hover { filter: brightness(1.08); }
+.planilha-chart-mark:focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 3px; }
+.planilha-chart-detail { min-height: 44px; margin-top: 8px; font-size: 12px; color: var(--ap-muted); }
+.planilha-chart-detail strong, .planilha-chart-detail span { display: block; }
+.planilha-chart-detail strong { color: var(--ap-text); }
+@media (prefers-reduced-motion: reduce) { .planilha-chart-mark { transition: none; } }

@@ -1,6 +1,7 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useState } from 'react'
+import GlassButton from '@/components/ui/GlassButton'
 import GlassCard from '@/components/ui/GlassCard'
 import type { PlanilhaDeCustos } from '@/lib/planilhaCustos'
 
@@ -19,6 +20,12 @@ const numeros = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 })
 const valueText = (value: number, currency: boolean) => currency ? reais.format(value) : numeros.format(value)
 
 function Colunas3D({ title, rows, currency = false }: { title: string; rows: Linha[]; currency?: boolean }) {
+  const [visible, setVisible] = useState([true, true])
+  const [selected, setSelected] = useState<number | null>(null)
+  const [hovered, setHovered] = useState<number | null>(null)
+  const active = hovered ?? selected
+  const detail = active === null ? undefined : rows[active]
+  const select = (index: number) => setSelected(current => current === index ? null : index)
   const scale = escalaExcel(rows.flatMap(row => [row.orcado, row.real]))
   const labelWidth = Math.max(42, ...rows.flatMap(row => [row.orcado, row.real]).map(value => valueText(value, currency).length * 5.5 + 12))
   const left = currency ? 110 : 60
@@ -29,9 +36,9 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
   const ticks = Array.from({ length: Math.round(scale.max / scale.step) + 1 }, (_, index) => index * scale.step)
   return <GlassCard as="section" className="planilha-chart-card planilha-3d-card rounded-xl border">
     <div className="planilha-chart-heading"><div><h3>{title}</h3><p>{currency ? 'Comparativo de custos por macrofase' : 'Comparativo de tempo por macrofase'}</p></div><span>{rows.length} {rows.length === 1 ? 'fase' : 'fases'}</span></div>
-    <div className="planilha-chart-legend"><span><i style={{ background: CORES_EXCEL[0] }} />Orçado</span><span><i style={{ background: CORES_EXCEL[1] }} />Real</span></div>
+    <div className="planilha-chart-legend">{['Orçado', 'Real'].map((name, index) => <GlassButton key={name} variant="custom" className="planilha-chart-toggle" aria-pressed={visible[index]} onClick={() => { setVisible(current => current.map((value, i) => i === index ? !value : value)); setHovered(null) }}><i style={{ background: CORES_EXCEL[index] }} />{name}</GlassButton>)}</div>
     <div className="planilha-3d-scroll" role="region" aria-label={`Visualização de ${title}`} tabIndex={0}>
-    <svg viewBox={`0 0 ${width} 325`} role="img" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: Math.min(width, 720), fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
+    <svg viewBox={`0 0 ${width} 325`} role="group" aria-label={title} data-chart-type="clustered-column-3d" data-rotation-x="15" data-rotation-y="20" style={{ display: 'block', width: '100%', minWidth: Math.min(width, 720), fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>{title}</title><desc>{rows.map(row => `${row.fase}: Orçado ${valueText(row.orcado, currency)}, Real ${valueText(row.real, currency)}`).join('; ')}</desc>
       <path d={`M${left} ${top} l${dx * 2} ${dy * 2} V${bottom + dy * 2} L${left} ${bottom} Z M${left} ${bottom} H${right} l${dx * 2} ${dy * 2} H${left + dx * 2} M${right + dx * 2} ${bottom + dy * 2} V${top + dy * 2}`} fill="none" stroke="var(--ap-border)" strokeWidth={0.6} />
       {ticks.map(value => <text key={value} x={left - 3} y={bottom - value / scale.max * (bottom - top) + 3} textAnchor="end" fontSize={11}>{valueText(Number(value.toPrecision(8)), currency)}</text>)}
@@ -44,7 +51,8 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
             const x = center + (series - 1) * barWidth
             const y = bottom - height
             const color = CORES_EXCEL[series]
-            return <g key={series} data-series={series === 0 ? 'Orçado' : 'Real'}>
+            // SVG geometry needs an SVG control; an HTML GlassButton cannot wrap these paths.
+            return <g key={series} role="button" tabIndex={visible[series] ? 0 : -1} aria-label={`${row.fase} · ${series === 0 ? 'Orçado' : 'Real'}: ${valueText(value, currency)}`} aria-pressed={selected === index} className="planilha-chart-mark" style={{ display: visible[series] ? undefined : 'none', opacity: active !== null && active !== index ? 0.35 : 1 }} onMouseEnter={() => setHovered(index)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(index)} onBlur={() => setHovered(null)} onClick={() => select(index)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(index) } if (event.key === 'Escape') { setSelected(null); setHovered(null) } }} data-series={series === 0 ? 'Orçado' : 'Real'}>
               <title>{`${row.fase} · ${series === 0 ? 'Orçado' : 'Real'}: ${valueText(value, currency)}`}</title>
               <path d={`M${x} ${y} h${barWidth} v${height} h${-barWidth} Z`} fill={color} />
               <path d={`M${x} ${y} l${dx} ${dy} h${barWidth} l${-dx} ${-dy} Z`} fill={shade(color, 1.12)} />
@@ -63,7 +71,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
           const center = left + groupWidth * (index + 0.5)
           return [row.orcado, row.real].map((raw, series) => {
             const value = Math.max(0, Number.isFinite(raw) ? raw : 0)
-            return <g key={`${index}:${series}`} data-value-label={series === 0 ? 'Orçado' : 'Real'}>
+            return <g key={`${index}:${series}`} data-value-label={series === 0 ? 'Orçado' : 'Real'} style={{ pointerEvents: 'none', display: visible[series] ? undefined : 'none', opacity: active !== null && active !== index ? 0.35 : 1 }}>
               <text x={center + (series - 0.5) * barWidth} y={bottom - value / scale.max * (bottom - top) + (value / scale.max * (bottom - top) >= 14 ? 11 : -2)} textAnchor="middle" fontSize={9} fontWeight="600" fill="#fff">{valueText(value, currency)}</text>
             </g>
           })
@@ -71,6 +79,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
       </g>
     </svg>
     </div>
+    <div className="planilha-chart-detail" role="status">{detail ? <><strong>{detail.fase}</strong><span>Orçado: {valueText(detail.orcado, currency)} · Real: {valueText(detail.real, currency)} · Diferença (Real − Orçado): {valueText(detail.real - detail.orcado, currency)}</span></> : <span>Passe sobre uma coluna ou use Tab para ver os detalhes. Clique para manter o destaque.</span>}</div>
   </GlassCard>
 }
 function sector(cx: number, cy: number, rx: number, ry: number, start: number, end: number) {
@@ -79,6 +88,10 @@ function sector(cx: number, cy: number, rx: number, ry: number, start: number, e
   return `M${cx} ${cy} L${point(start)} A${rx} ${ry} 0 ${end - start > Math.PI ? 1 : 0} 1 ${point(end)} Z`
 }
 function Pizza3D({ rows, total }: { rows: { elaborador: string; qtdeAtividades: number; percentual: number }[]; total: number }) {
+  const [selected, setSelected] = useState<string | null>(null)
+  const [hovered, setHovered] = useState<string | null>(null)
+  const active = hovered ?? selected
+  const select = (name: string) => setSelected(current => current === name ? null : name)
   const slices = rows.filter(row => row.qtdeAtividades > 0).map((row, index, data) => {
     const start = -Math.PI / 2 + data.slice(0, index).reduce((sum, item) => sum + item.percentual / 100 * Math.PI * 2, 0)
     const end = start + row.percentual / 100 * Math.PI * 2
@@ -88,18 +101,20 @@ function Pizza3D({ rows, total }: { rows: { elaborador: string; qtdeAtividades: 
   return <GlassCard as="section" className="planilha-chart-card planilha-3d-card planilha-3d-pie-card rounded-xl border">
     <div className="planilha-chart-heading"><div><h3>Elaboração das Atividades (%)</h3><p>Distribuição das atividades entre os elaboradores</p></div><span>{total} atividades</span></div>
     <div className="planilha-3d-pie-layout">
-    <svg viewBox="0 0 660 520" role="img" aria-label="Elaboração das Atividades (%)" data-chart-type="pie-3d" data-rotation-x="50" style={{ display: 'block', width: '100%', minWidth: 0, maxWidth: 600, fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
+    <svg viewBox="0 0 660 520" role="group" aria-label="Elaboração das Atividades (%)" data-chart-type="pie-3d" data-rotation-x="50" style={{ display: 'block', width: '100%', minWidth: 0, maxWidth: 600, fontFamily: 'inherit', color: 'var(--ap-text)', fill: 'currentColor' }}>
       <title>Elaboração das Atividades (%)</title><desc>{slices.map(row => `${row.elaborador}: ${row.percentual.toFixed(2)}%`).join('; ')}</desc>
-      {slices.map((slice, index) => <path key={`depth:${index}`} d={sector(cx, cy + depth, rx, ry, slice.start, slice.end)} fill={shade(slice.color, 0.72)} />)}
-      {slices.map((slice, index) => <g key={index}>
+      {slices.map((slice, index) => <path key={`depth:${index}`} d={sector(cx, cy + depth, rx, ry, slice.start, slice.end)} fill={shade(slice.color, 0.72)} opacity={active && active !== slice.elaborador ? 0.35 : 1} />)}
+      {/* SVG controls retain native geometry; matching HTML actions use GlassButton below. */}
+      {slices.map((slice, index) => <g key={index} role="button" tabIndex={0} aria-label={`${slice.elaborador}: ${numeros.format(slice.percentual)}% · ${slice.qtdeAtividades} atividades`} aria-pressed={selected === slice.elaborador} className="planilha-chart-mark" opacity={active && active !== slice.elaborador ? 0.35 : 1} onMouseEnter={() => setHovered(slice.elaborador)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(slice.elaborador)} onBlur={() => setHovered(null)} onClick={() => select(slice.elaborador)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(slice.elaborador) } if (event.key === 'Escape') { setSelected(null); setHovered(null) } }}>
         <title>{`${slice.elaborador}: ${slice.percentual.toFixed(2)}% · ${slice.qtdeAtividades} atividades`}</title>
         <path d={sector(cx, cy, rx, ry, slice.start, slice.end)} fill={slice.color} />
         <text x={cx + Math.cos((slice.start + slice.end) / 2) * rx * 0.82} y={cy + Math.sin((slice.start + slice.end) / 2) * ry * 0.82} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight="600" fill="#102334">{slice.percentual.toFixed(2)}</text>
       </g>)}
       {!slices.length && <text x={330} y={250} textAnchor="middle" fontSize={14} fill="var(--ap-muted)">{total ? 'Nenhuma atividade com elaborador.' : 'Nenhuma atividade cadastrada.'}</text>}
     </svg>
-    <div className="planilha-3d-legend" aria-label="Elaboradores">{slices.map(slice => <div key={slice.elaborador} className="planilha-donut-item"><i style={{ backgroundColor: slice.color }} /><span title={slice.elaborador}>{slice.elaborador}</span><strong>{slice.qtdeAtividades}</strong><small>{slice.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%</small></div>)}</div>
+    <div className="planilha-3d-legend" aria-label="Elaboradores">{slices.map(slice => <GlassButton key={slice.elaborador} variant="custom" className="planilha-donut-item planilha-chart-toggle" aria-pressed={selected === slice.elaborador} onClick={() => select(slice.elaborador)} onMouseEnter={() => setHovered(slice.elaborador)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(slice.elaborador)} onBlur={() => setHovered(null)}><i style={{ backgroundColor: slice.color }} /><span title={slice.elaborador}>{slice.elaborador}</span><strong>{slice.qtdeAtividades}</strong><small>{slice.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%</small></GlassButton>)}</div>
     </div>
+    <div className="planilha-chart-detail" role="status">{active ? (() => { const row = slices.find(item => item.elaborador === active); return row ? `${row.elaborador}: ${row.qtdeAtividades} atividades · ${numeros.format(row.percentual)}%` : 'Selecione um elaborador.' })() : 'Passe sobre uma fatia ou selecione um elaborador para destacar sua participação.'}</div>
   </GlassCard>
 }
 export default memo(function GraficosPlanilha3D({ planilha }: { planilha: PlanilhaDeCustos }) {

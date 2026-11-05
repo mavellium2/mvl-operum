@@ -1,5 +1,5 @@
 import { hydrateRoot } from 'react-dom/client'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import { renderToStaticMarkup, renderToString } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { writeFileSync } from 'node:fs'
@@ -32,9 +32,9 @@ describe('gráficos 3D da referência Excel', () => {
 
   it('usa os três tipos, títulos, cores e perspectivas da referência', () => {
     const { container } = render(<Graficos planilha={planilha} />)
-    expect(screen.getByRole('img', { name: 'Valores: Orçado e Real (R$)' })).toHaveAttribute('data-rotation-y', '20')
-    expect(screen.getByRole('img', { name: 'Tempo: Orçado e Real (Minutos)' })).toHaveAttribute('data-chart-type', 'clustered-column-3d')
-    expect(screen.getByRole('img', { name: 'Elaboração das Atividades (%)' })).toHaveAttribute('data-rotation-x', '50')
+    expect(screen.getByRole('group', { name: 'Valores: Orçado e Real (R$)' })).toHaveAttribute('data-rotation-y', '20')
+    expect(screen.getByRole('group', { name: 'Tempo: Orçado e Real (Minutos)' })).toHaveAttribute('data-chart-type', 'clustered-column-3d')
+    expect(screen.getByRole('group', { name: 'Elaboração das Atividades (%)' })).toHaveAttribute('data-rotation-x', '50')
     expect(container.querySelectorAll('svg')).toHaveLength(3)
     expect(container.querySelectorAll('svg')[0].lastElementChild).toHaveAttribute('data-chart-labels', 'foreground')
     expect(container.querySelectorAll('[data-value-label]')).toHaveLength(24)
@@ -52,12 +52,30 @@ describe('gráficos 3D da referência Excel', () => {
       svgs.forEach((svg, index) => writeFileSync(`/tmp/operum-chart-reference/app-chart-${index + 1}.svg`, svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')))
     }
   })
+  it('permite ocultar séries, selecionar colunas e destacar elaboradores pelo teclado', () => {
+    const { container } = render(<Graficos planilha={planilha} />)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Orçado', exact: true })[0])
+    expect(container.querySelector('[data-series="Orçado"]')).toHaveStyle({ display: 'none' })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Orçado', exact: true })[0])
+    const bar = screen.getByRole('button', { name: /1.1 Planejamento.*Orçado: R/ })
+    fireEvent.focus(bar)
+    expect(screen.getAllByRole('status')[0]).toHaveTextContent('Diferença (Real − Orçado)')
+    fireEvent.keyDown(bar, { key: 'Enter' })
+    fireEvent.blur(bar)
+    expect(bar).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.keyDown(bar, { key: 'Escape' })
+    expect(bar).toHaveAttribute('aria-pressed', 'false')
+    const slice = screen.getByRole('button', { name: /Maria Júlia:.*atividades/ })
+    fireEvent.keyDown(slice, { key: ' ' })
+    expect(slice).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getAllByRole('status')[2]).toHaveTextContent('Maria Júlia: 5 atividades')
+  })
   it('atualiza os valores com a planilha e não exibe NaN em dados vazios', () => {
     const { rerender, container } = render(<Graficos planilha={planilha} />)
     const changed = structuredClone(planilha)
     changed.quadros.valor[0].realizado = 20
     rerender(<Graficos planilha={changed} />)
-    expect(screen.getByRole('img', { name: 'Valores: Orçado e Real (R$)' }).textContent).toMatch(/Real R\$\s20,00/)
+    expect(screen.getByRole('group', { name: 'Valores: Orçado e Real (R$)' }).textContent).toMatch(/Real R\$\s20,00/)
     rerender(<Graficos planilha={{ ...planilha, quadros: { valor: [], tempo: [], elaboradores: [] } }} />)
     expect(container.innerHTML).not.toMatch(/NaN|Infinity/)
     expect(escalaExcel([28.44]).max).toBe(30)
