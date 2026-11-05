@@ -38,6 +38,8 @@ describe('gráficos 3D da referência Excel', () => {
     expect(container.querySelectorAll('svg')).toHaveLength(3)
     expect(container.querySelectorAll('svg')[0].lastElementChild).toHaveAttribute('data-chart-labels', 'foreground')
     expect(container.querySelectorAll('[data-value-label]')).toHaveLength(24)
+    const zeroLabel = Array.from(container.querySelectorAll('[data-value-label] text')).find(label => label.textContent === 'R$ 0,00')
+    expect(zeroLabel).toHaveAttribute('fill', '#fff')
     expect(container.querySelectorAll('[data-value-label] rect, [data-value-label] path')).toHaveLength(0)
     expect(container.querySelectorAll('svg')[0].style.minWidth).toBe('720px')
     expect(container.querySelectorAll('path[fill="#4F81BD"]').length).toBeGreaterThan(0)

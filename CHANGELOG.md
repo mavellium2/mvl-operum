@@ -9,7 +9,7 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.54.0] — 2026-11-05
 
-- **Apresentação dos gráficos 3D:** cards, tipografia e textos adaptados à aparência do Operum; legenda de elaboradores responsiva com nomes completos. Valores financeiros em reais, com valores menores dentro de colunas mais largas, próximos ao topo, sem balões ou conectores. Gráficos aproveitam a largura disponível, com mais área de comparação e nomes das fases em linhas horizontais.
+- **Apresentação dos gráficos 3D:** cards, tipografia e textos adaptados à aparência do Operum; legenda de elaboradores responsiva com nomes completos. Valores financeiros em reais, com valores menores dentro de colunas mais largas, próximos ao topo, sem balões ou conectores; valores zerados mantêm o mesmo texto branco para preservar o contraste. Gráficos aproveitam a largura disponível, com mais área de comparação e nomes das fases em linhas horizontais.
 
 - **Hidratação dos gráficos:** títulos SVG gerados como texto único, evitando diferenças entre servidor e navegador e a recriação da página no cliente.
 

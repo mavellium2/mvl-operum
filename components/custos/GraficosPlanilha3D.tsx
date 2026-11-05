@@ -64,7 +64,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
           return [row.orcado, row.real].map((raw, series) => {
             const value = Math.max(0, Number.isFinite(raw) ? raw : 0)
             return <g key={`${index}:${series}`} data-value-label={series === 0 ? 'Orçado' : 'Real'}>
-              <text x={center + (series - 0.5) * barWidth} y={bottom - value / scale.max * (bottom - top) + (value / scale.max * (bottom - top) >= 14 ? 11 : -2)} textAnchor="middle" fontSize={9} fontWeight="600" fill={value > 0 ? '#fff' : 'var(--ap-muted)'}>{valueText(value, currency)}</text>
+              <text x={center + (series - 0.5) * barWidth} y={bottom - value / scale.max * (bottom - top) + (value / scale.max * (bottom - top) >= 14 ? 11 : -2)} textAnchor="middle" fontSize={9} fontWeight="600" fill="#fff">{valueText(value, currency)}</text>
             </g>
           })
         })}
