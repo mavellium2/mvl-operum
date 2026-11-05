@@ -1,10 +1,13 @@
 'use client'
 
 import { usePlanilhaAutosave } from '@/hooks/usePlanilhaAutosave'
-import HistoricoPlanilha from './HistoricoPlanilha'
+import dynamic from 'next/dynamic'
+import { SobDemandaPlanilha, MaisAtividadesPlanilha, SkeletonGraficoPlanilha } from './CarregamentoPlanilha'
+const HistoricoPlanilha = dynamic(() => import('./HistoricoPlanilha'))
 import { salvarHistoricoPlanilhaAction } from '@/app/actions/planilhaHistorico'
 import { rotuloVersaoPlanilha } from '@/lib/planilhaVersion'
-import AtividadeRascunho, { type ArquivoRascunho } from './AtividadeRascunho'
+import type { ArquivoRascunho } from './AtividadeRascunho'
+const AtividadeRascunho = dynamic(() => import('./AtividadeRascunho'))
 import { fetchWithSession } from '@/lib/clientFetch'
 import { getActivityCardAction, patchActivityDescriptionAction, patchActivityPriorityAction } from '@/app/actions/sprintBoard'
 import { repetirSincronizacaoAction } from '@/app/actions/sincronizacao'
@@ -18,23 +21,26 @@ import Dica from '@/components/ui/Tooltip'
 import ElaboradoresSelect from './ElaboradoresSelect'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ExcluirFaseDialog from '@/components/projetos/ExcluirFaseDialog'
-import AtividadeDetalhesPainel, { type AtividadeDetalhe } from '@/components/custos/AtividadeDetalhesPainel'
+import type { AtividadeDetalhe } from '@/components/custos/AtividadeDetalhesPainel'
+const AtividadeDetalhesPainel = dynamic(() => import('./AtividadeDetalhesPainel'))
 import PrioridadeAtividade from './PrioridadeAtividade'
 import { menorJornada, somaValoresPorMinuto } from '@/lib/elaboradores'
 
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, startTransition, type DragEvent } from 'react'
+import { Fragment, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, startTransition, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Download, History, Undo2, Plus, CircleHelp, Trash2, Save, ListChecks, GripVertical, PanelRightOpen } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
 import { useGuardaSaida } from '@/components/documentos/editor/GuardaSaida'
 import SeletorData from '@/components/ui/SeletorData'
+import QuadroResumo from './QuadroResumo'
+import SeloSituacao from './SeloSituacao'
 import './planilha-custos.css'
 import { updateNodePropertiesAction, insertChildAction, insertSiblingAction, renameNodeAction, deleteNodeAction, moveNodeAction } from '@/app/actions/wbs'
 import { fmtDataBR, maiorData, situacaoDe, valorPorMinutoDoElaborador, type PlanilhaDeCustos, type SituacaoAtividade, type Elaborador } from '@/lib/planilhaCustos'
 import { minutosDeHoras, minutosDeDias, round2 } from '@/lib/custosCalc'
 import { formatarMinutos } from '@/lib/tempoRealizado'
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
+const GraficosPlanilha3D = dynamic(() => import('./GraficosPlanilha3D'), { loading: () => <SkeletonGraficoPlanilha label="gráficos" /> })
 
 interface Props {
   initialVersion?: number
@@ -144,14 +150,7 @@ const lista = (csv: string): string[] => csv.split(',').map(v => v.trim()).filte
 const idsDaLinha = (a: { elaboradoPorUserIds?: string[]; elaboradoPorUserId: string | null }): string[] =>
   a.elaboradoPorUserIds ?? (a.elaboradoPorUserId ? [a.elaboradoPorUserId] : [])
 
-const SITUACAO_CLASS: Record<SituacaoAtividade, string> = {
-  Antecipada: 'bg-emerald-100 text-emerald-800',
-  'No prazo': 'bg-blue-100 text-blue-800',
-  Atrasada: 'bg-red-100 text-red-800',
-  Pendente: 'bg-gray-100 text-gray-700',
-}
 
-const CORES_PIE = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#dc2626', '#0d9488', '#ca8a04', '#4f46e5']
 
 const num = (v: string | undefined, fallback: number): number => {
   if (v === undefined) return fallback
@@ -457,7 +456,7 @@ export default function PlanilhaCustosView({
       for (const id of ids) contagem.set(id, (contagem.get(id) ?? 0) + 1)
     }
     const qtdeAtividades = fasesAtuais.reduce((total, fase) => total + fase.atividades.length, 0)
-    return { ...planilha, macrofases: fasesAtuais, qtdeAtividades,
+    return { ...planilha, macrofases: fasesAtuais.map(fase => ({ ...fase, titulo: nameDrafts[fase.nodeId] ?? fase.titulo, atividades: fase.atividades.map(a => ({ ...a, titulo: nameDrafts[a.nodeId] ?? a.titulo, elaboradoPorUserIds: idsAtuais(a, rascunho), elaboradoPorUserId: idsAtuais(a, rascunho)[0] ?? null })) })), qtdeAtividades,
       totalOrcado: round2(valor.reduce((total, fase) => total + fase.orcado, 0)),
       totalReal: round2(valor.reduce((total, fase) => total + fase.realizado, 0)),
       tempoOrcadoTotal: valor.reduce((total, fase) => total + fase.minOrcado, 0),
@@ -465,10 +464,11 @@ export default function PlanilhaCustosView({
       quadros: {
         valor: valor.map(({ fase, orcado, realizado }) => ({ fase, orcado, realizado })),
         tempo: valor.map(({ fase, minOrcado, minReal }) => ({ fase, minOrcado, minReal })),
-        elaboradores: [...contagem].map(([userId, quantidade]) => ({ elaborador: elaboradores.find(e => e.userId === userId)?.name ?? 'Elaborador', qtdeAtividades: quantidade, percentual: qtdeAtividades ? quantidade / qtdeAtividades * 100 : 0 })),
+        elaboradores: [...contagem].map(([userId, quantidade]) => ({ userId, elaborador: elaboradores.find(e => e.userId === userId)?.name ?? 'Elaborador', qtdeAtividades: quantidade, percentual: qtdeAtividades ? quantidade / qtdeAtividades * 100 : 0 })),
       },
     }
   }, [planilha, fasesAtuais, rascunho, elaboradores, nameDrafts])
+  const planilhaResumo = useDeferredValue(planilhaAtual)
   const fieldLabels: Record<string, string> = { minOrcado: 'Tempo orçado', materiaisOrcado: 'Materiais orçados', dataPrevista: 'Data prevista', materiaisReal: 'Materiais realizados', dataRealizacao: 'Data de realização', elaboradoPorUserIds: 'Elaboradores' }
   const reviewChanges: ReviewChange[] = [
     ...nameChanges.map(change => ({ ...change, chave: `name:${change.chave}` })),
@@ -825,12 +825,13 @@ export default function PlanilhaCustosView({
       {/* ── Quadros-resumo (F.4) e gráficos, maiores e um embaixo do outro ── */}
       {!semAtividades && (
         <>
-          <div className="planilha-summary-grid mt-4 grid grid-cols-1 gap-3 xl:grid-cols-3">
-            <QuadroValor planilha={planilhaAtual} />
-            <QuadroTempo planilha={planilhaAtual} />
-            <QuadroElaborador planilha={planilhaAtual} />
+          <SobDemandaPlanilha label="quadros-resumo"><div className="planilha-summary-grid mt-4 grid grid-cols-1 gap-3 xl:grid-cols-3">
+            <QuadroValor planilha={planilhaResumo} />
+            <QuadroTempo planilha={planilhaResumo} />
+            <QuadroElaborador planilha={planilhaResumo} />
           </div>
-          <Graficos planilha={planilhaAtual} />
+          </SobDemandaPlanilha>
+          <SobDemandaPlanilha preloadDistance={1000} label="gráficos"><GraficosPlanilha3D planilha={planilhaResumo} /></SobDemandaPlanilha>
         </>
       )}
 
@@ -996,6 +997,11 @@ const FaseFragment = memo(function FaseFragment({
   onConfirmarNovaLinha: (titulo: string) => Promise<void>
   onCancelarNovaLinha: () => void
 }) {
+  const [rowLimit, setRowLimit] = useState(30)
+  const loadMoreRows = useCallback(() => setRowLimit(limit => limit + 30), [])
+  // Reveal new rows immediately so insertion can focus the inline title.
+  const lastNewRow = fase.atividades.findLastIndex(a => a.nodeId.startsWith('novo-'))
+  const visibleRows = Math.max(rowLimit, lastNewRow + 1, fase.atividades.findIndex(a => a.nodeId === detalheId) + 1)
   const [choosingPosition, setChoosingPosition] = useState(false)
   // Draft local de digitação para Horas/Dias/Materiais: enquanto o usuário edita, o campo
   // mostra o texto bruto (em vez de reformatar cada tecla, o que "cortava" a digitação,
@@ -1154,7 +1160,7 @@ const FaseFragment = memo(function FaseFragment({
         </td>
       </tr>
       {saveErrors[fase.nodeId] && <tr className="planilha-save-error-row"><td colSpan={18} role="alert"><strong>{fase.codigo} {fase.titulo}</strong>: {saveErrors[fase.nodeId]} Ajuste a macrofase e clique em Salvar novamente.</td></tr>}
-      {fase.atividades.map(a => {
+      {fase.atividades.slice(0, visibleRows).map(a => {
         const canReal = canEditAllActual || (canEditOwnActual && !!currentUserId && idsDaLinha(a).includes(currentUserId))
         const minO = num(rascunho[a.nodeId]?.minOrcado, a.minOrcado)
         const matO = num(rascunho[a.nodeId]?.materiaisOrcado, a.materiaisOrcado)
@@ -1246,9 +1252,7 @@ const FaseFragment = memo(function FaseFragment({
               {canReal ? campoInput(a.nodeId, 'dataRealizacao', a.dataRealizacao) : texto(fmtDataBR(a.dataRealizacao))}
             </td>
             <td className="border border-gray-100 px-1 py-1 text-center">
-              <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${SITUACAO_CLASS[situacaoAtual(a.nodeId, a.dataPrevista, a.dataRealizacao)]}`}>
-                {situacaoAtual(a.nodeId, a.dataPrevista, a.dataRealizacao)}
-              </span>
+              <SeloSituacao situacao={situacaoAtual(a.nodeId, a.dataPrevista, a.dataRealizacao)} />
             </td>
           </tr>
           {saveErrors[a.nodeId] && <tr className="planilha-save-error-row"><td colSpan={18} role="alert"><strong>{nome}</strong> · {Object.keys(rascunho[a.nodeId] ?? {}).map(campo => ({ minReal: 'tempo realizado manual', minOrcado: 'tempo orçado', materiaisOrcado: 'materiais orçados', dataPrevista: 'data prevista', materiaisReal: 'materiais realizados', dataRealizacao: 'data de realização', elaboradoPorUserIds: 'elaboradores' }[campo] ?? campo)).join(', ')}: {saveErrors[a.nodeId]} Corrija os dados e clique em Salvar novamente.</td></tr>}
@@ -1258,6 +1262,7 @@ const FaseFragment = memo(function FaseFragment({
         )
       })}
       {novaLinha?.tipo === 'filho' && novaLinha.refId === fase.nodeId && linhaNova}
+      {visibleRows < fase.atividades.length && <MaisAtividadesPlanilha remaining={fase.atividades.length - visibleRows} onLoad={loadMoreRows} />}
       <LinhaSoma
         rotulo="Sub-total"
         orcado={subO}
@@ -1295,166 +1300,21 @@ function LinhaSoma({ rotulo, orcado, real, dataFim, destaque = false }: { rotulo
 }
 
 const QuadroValor = memo(function QuadroValor({ planilha }: { planilha: PlanilhaDeCustos }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-bold text-gray-800">Resumo — Valor por Fase do Projeto</h3>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-blue-600 text-white">
-            <th className="px-3 py-2 text-left text-xs font-semibold">Fases do Projeto</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Valor Orçado</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Valor Real</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {planilha.quadros.valor.map(v => (
-            <tr key={v.fase}>
-              <td className="px-3 py-1.5 text-gray-800">{v.fase}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{brl(v.orcado)}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{brl(v.realizado)}</td>
-            </tr>
-          ))}
-          <tr className="bg-gray-100 font-bold">
-            <td className="px-3 py-2">Total</td>
-            <td className="px-3 py-2 text-right tabular-nums">{brl(planilha.totalOrcado)}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{brl(planilha.totalReal)}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  )
+  return <QuadroResumo titulo="Resumo — Valor por Fase do Projeto" colunas={['Fases do Projeto', 'Valor Orçado', 'Valor Real']}
+    linhas={planilha.quadros.valor.map((v, index) => ({ key: `${index}:${v.fase}`, nome: v.fase, valores: [brl(v.orcado), brl(v.realizado)] }))}
+    total={[brl(planilha.totalOrcado), brl(planilha.totalReal)]} />
 })
 
 const QuadroTempo = memo(function QuadroTempo({ planilha }: { planilha: PlanilhaDeCustos }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-bold text-gray-800">Resumo — Tempo por Fase do Projeto</h3>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-blue-600 text-white">
-            <th className="px-3 py-2 text-left text-xs font-semibold">Fases do Projeto</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Tempo Orçado (Min.)</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Tempo Real (Min.)</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {planilha.quadros.tempo.map(t => (
-            <tr key={t.fase}>
-              <td className="px-3 py-1.5 text-gray-800">{t.fase}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{formatarMinutos(t.minOrcado)}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{formatarMinutos(t.minReal)}</td>
-            </tr>
-          ))}
-          <tr className="bg-gray-100 font-bold">
-            <td className="px-3 py-2">Total</td>
-            <td className="px-3 py-2 text-right tabular-nums">{formatarMinutos(planilha.tempoOrcadoTotal)}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{formatarMinutos(planilha.tempoRealTotal)}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  )
+  return <QuadroResumo titulo="Resumo — Tempo por Fase do Projeto" colunas={['Fases do Projeto', 'Tempo Orçado (Min.)', 'Tempo Real (Min.)']}
+    linhas={planilha.quadros.tempo.map((t, index) => ({ key: `${index}:${t.fase}`, nome: t.fase, valores: [formatarMinutos(t.minOrcado), formatarMinutos(t.minReal)] }))}
+    total={[formatarMinutos(planilha.tempoOrcadoTotal), formatarMinutos(planilha.tempoRealTotal)]} />
 })
 
 const QuadroElaborador = memo(function QuadroElaborador({ planilha }: { planilha: PlanilhaDeCustos }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-bold text-gray-800">Resumo — Distribuição por Elaborador</h3>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-blue-600 text-white">
-            <th className="px-3 py-2 text-left text-xs font-semibold">Elaborador por</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Qtde. Atividades</th>
-            <th className="px-3 py-2 text-right text-xs font-semibold">Percentual</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {planilha.quadros.elaboradores.map(e => (
-            <tr key={e.elaborador}>
-              <td className="px-3 py-1.5 text-gray-800">{e.elaborador}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{e.qtdeAtividades}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{e.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</td>
-            </tr>
-          ))}
-          <tr className="bg-gray-100 font-bold">
-            <td className="px-3 py-2">Total</td>
-            <td className="px-3 py-2 text-right tabular-nums">{planilha.qtdeAtividades}</td>
-            <td className="px-3 py-2 text-right tabular-nums">100%</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  )
+  return <QuadroResumo titulo="Resumo — Distribuição por Elaborador" colunas={['Elaborador por', 'Qtde. Atividades', 'Percentual']}
+    linhas={planilha.quadros.elaboradores.map(e => ({ key: e.userId ?? e.elaborador, nome: e.elaborador, valores: [e.qtdeAtividades, `${e.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`] }))}
+    total={[planilha.qtdeAtividades, '100%']} />
 })
 
 /** Gráficos dos três quadros-resumo. A área das fases rola quando a lista cresce. */
-const Graficos = memo(function Graficos({ planilha }: { planilha: PlanilhaDeCustos }) {
-  if (planilha.quadros.valor.length === 0) return null
-  const valor = planilha.quadros.valor.map(v => ({
-    fase: v.fase,
-    'Valor Orçado': round2(v.orcado),
-    'Valor Real': round2(v.realizado),
-  }))
-  const tempo = planilha.quadros.tempo.map(t => ({ fase: t.fase, 'Tempo Orçado (Min.)': t.minOrcado, 'Tempo Real (Min.)': t.minReal }))
-  const pieData = planilha.quadros.elaboradores.filter(e => e.qtdeAtividades > 0).map(e => ({ name: e.elaborador, value: e.qtdeAtividades }))
-  const barHeight = Math.max(210, valor.length * 42 + 36)
-  const faseTick = (name: string) => name.length > 22 ? `${name.slice(0, 21)}…` : name
-  const axisTick = { fontSize: 11, fill: 'var(--ap-muted)' }
-  const gridColor = 'var(--ap-border)'
-  return (
-    <div className="planilha-charts mt-4 grid gap-3 xl:grid-cols-2">
-      <section className="planilha-chart-card rounded-xl border">
-        <div className="planilha-chart-heading"><div><h3>Valores por macrofase</h3><p>Orçado e realizado em reais</p></div><span>{valor.length} {valor.length === 1 ? 'fase' : 'fases'}</span></div>
-        <div className="planilha-chart-legend"><span><i className="planilha-legend-budget" /> Orçado</span><span><i className="planilha-legend-actual" /> Realizado</span></div>
-        <div className="planilha-chart-scroll" role="region" aria-label="Gráfico de valores por macrofase" tabIndex={0}>
-          <div style={{ height: barHeight, minWidth: 420 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart layout="vertical" data={valor} margin={{ top: 6, right: 20, left: 0, bottom: 2 }} barGap={2}>
-                <CartesianGrid stroke={gridColor} strokeDasharray="3 5" horizontal={false} />
-                <XAxis type="number" tick={axisTick} tickFormatter={(v: number) => v.toLocaleString('pt-BR')} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="fase" width={160} tick={axisTick} tickFormatter={faseTick} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v: unknown) => typeof v === 'number' ? brl(v) : String(v)} cursor={{ fill: 'var(--ap-glow)' }} />
-                <Bar dataKey="Valor Orçado" fill="var(--chart-budget)" radius={[0, 5, 5, 0]} maxBarSize={13} />
-                <Bar dataKey="Valor Real" fill="var(--chart-actual)" radius={[0, 5, 5, 0]} maxBarSize={13} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </section>
-      <section className="planilha-chart-card rounded-xl border">
-        <div className="planilha-chart-heading"><div><h3>Tempo por macrofase</h3><p>Minutos planejados e registrados</p></div><span>{tempo.length} {tempo.length === 1 ? 'fase' : 'fases'}</span></div>
-        <div className="planilha-chart-legend"><span><i className="planilha-legend-budget" /> Orçado</span><span><i className="planilha-legend-actual" /> Realizado</span></div>
-        <div className="planilha-chart-scroll" role="region" aria-label="Gráfico de tempo por macrofase" tabIndex={0}>
-          <div style={{ height: barHeight, minWidth: 420 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart layout="vertical" data={tempo} margin={{ top: 6, right: 20, left: 0, bottom: 2 }} barGap={2}>
-                <CartesianGrid stroke={gridColor} strokeDasharray="3 5" horizontal={false} />
-                <XAxis type="number" tick={axisTick} tickFormatter={(v: number) => v.toLocaleString('pt-BR')} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="fase" width={160} tick={axisTick} tickFormatter={faseTick} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v: unknown) => typeof v === 'number' ? `${formatarMinutos(v)} min` : String(v)} cursor={{ fill: 'var(--ap-glow)' }} />
-                <Bar dataKey="Tempo Orçado (Min.)" fill="var(--chart-budget)" radius={[0, 5, 5, 0]} maxBarSize={13} />
-                <Bar dataKey="Tempo Real (Min.)" fill="var(--chart-actual)" radius={[0, 5, 5, 0]} maxBarSize={13} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </section>
-      {pieData.length > 0 && (
-        <section className="planilha-chart-card rounded-xl border xl:col-span-2">
-          <div className="planilha-chart-heading"><div><h3>Atividades por elaborador</h3><p>Participação no total de atividades</p></div><span>{planilha.qtdeAtividades} atividades</span></div>
-          <div className="planilha-donut-layout">
-            <div className="planilha-donut-figure"><ResponsiveContainer width="100%" height={225}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={62} outerRadius={94} paddingAngle={2} stroke="none">
-                  {pieData.map((_, i) => <Cell key={i} fill={CORES_PIE[i % CORES_PIE.length]} />)}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer><div className="planilha-donut-center"><strong>{planilha.qtdeAtividades}</strong><span>atividades</span></div></div>
-            <div className="planilha-donut-list">{pieData.map((item, index) => <div key={item.name} className="planilha-donut-item"><i style={{ backgroundColor: CORES_PIE[index % CORES_PIE.length] }} /><span title={item.name}>{item.name}</span><strong>{item.value}</strong><small>{((item.value / planilha.qtdeAtividades) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</small></div>)}</div>
-          </div>
-        </section>
-      )}
-    </div>
-  )
-})

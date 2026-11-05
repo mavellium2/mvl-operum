@@ -7,6 +7,36 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.54.0] — 2026-11-05
+
+- **Atividades pela pizza:** clique no elaborador divide a pizza em uma fatia por atividade, proporcional ao tempo planejado (fatias iguais quando nenhuma tem tempo), com código e percentual em cada fatia. Abaixo, uma tabela com a estrutura da planilha: macrofases em faixa de seção, atividades, elaborada por, valor orçado e realizado (min, horas, dias, R$/min, materiais, total e datas), situação, sub-total por macrofase e total da pessoa. Realizado acima do orçado fica em vermelho. Troca direta entre elaboradores, fechamento ao clicar fora/Esc e distinção de homônimos por ID.
+
+- **Hover da pizza:** a fatia em destaque levanta, com animação só da altura e respeitando as fatias da frente; as demais mantêm a cor. O nome do elaborador é destacado na legenda e a atividade na tabela. Laterais 3D desenhadas pela borda, com emendas verticais.
+
+- **Cores e legenda da pizza:** cores sem repetição entre pessoas ou atividades (paleta Excel, cores extras e matizes espaçados), texto da fatia legível em fundos escuros, percentuais com "%" na visão geral e legenda em até 3 colunas quando há muitos elaboradores. Com uma pessoa aberta, a pizza encolhe para gráfico e tabela caberem na mesma tela.
+
+- **Muitas macrofases:** colunas de Valores e Tempo em tamanho real com rolagem horizontal, nomes das fases na diagonal (cortados com reticências e completos no hover) e valores fora da coluna na cor do texto.
+
+- **Quadros-resumo:** altura limitada com rolagem interna, cabeçalho e total fixos, nome da fase em uma linha com dica do nome completo (`QuadroResumo` compartilhado pelos três quadros).
+
+- **Total do projeto fixo:** na planilha editável, a linha de total fica visível no rodapé enquanto as atividades rolam.
+
+- **Fluidez da pizza 3D:** preenchimento elíptico com recortes separados para topo e profundidade, aceleração/desaceleração suave em 700ms e percentuais com fade sem cortes.
+
+- **Carregamento e produção:** skeleton nos gráficos, com carregamento antecipado e animação independente ao entrar na tela, sem esperar 50% de visibilidade. Histórico compatível com produção sem a tabela legada `public.Attachment`, corrigindo o erro P2021 ao abrir a planilha e restaurar versões.
+
+- **Desempenho da planilha:** atividades montadas em blocos de 30 conforme a rolagem, resumos e gráficos próximos à tela, painéis carregados ao abrir e atualização de resumos sem bloquear a digitação. Preserva rascunhos, foco de atividades novas e totais completos.
+
+- **Animação dos gráficos:** colunas crescem na entrada e a pizza é preenchida progressivamente. Ocultar ou mostrar séries anima a centralização, largura e escala das colunas, com cancelamento no descarte e respeito a movimento reduzido.
+
+- **Interação nos gráficos:** legenda clicável para mostrar/ocultar Orçado e Real, detalhes de valores e diferenças ao passar o mouse ou focar, seleção de macrofases e elaboradores, navegação por Tab e seleção por Enter/Espaço; Esc limpa o destaque. Ao sair do hover ou foco, todas as colunas e fatias recuperam a visibilidade normal.
+
+- **Apresentação dos gráficos 3D:** cards, tipografia e textos adaptados à aparência do Operum; legenda de elaboradores responsiva com nomes completos. Valores financeiros em reais, com valores menores dentro de colunas mais largas e com maior profundidade 3D, próximos ao topo, sem balões ou conectores; valores que não cabem na coluna aparecem acima dela na cor do texto. Gráficos aproveitam a largura disponível.
+
+- **Hidratação dos gráficos:** títulos SVG gerados como texto único, evitando diferenças entre servidor e navegador e a recriação da página no cliente.
+
+- **Gráficos da planilha:** preservados os quadros-resumo e substituídos os gráficos Valores por macrofase, Tempo por macrofase e Atividades por elaborador por colunas agrupadas 3D para Valores e Tempo e pizza 3D para Elaboração das Atividades, conforme referência Excel fornecida. Preserva títulos, paleta Office 2007, valores sobre as colunas, rótulos inclinados e legenda lateral da pizza. Renderização SVG com dados vivos, descrição acessível e sem animações de recálculo.
+
 ## [1.53.0] — 2026-11-05
 
 - **Cards legíveis:** descrições e comentários passam a mostrar Markdown, com títulos, listas, negrito, tabelas, checklists e links. HTML digitado não é executado, links externos abrem em outra aba e tabelas largas rolam dentro do próprio bloco. Comentários longos deixam de virar uma linha só; durante a busca de comentários, o texto aparece simples com os termos realçados. Incorpora a 1.51.0, que não chegou a ser publicada.

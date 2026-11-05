@@ -16,6 +16,11 @@ async function transaction<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
 }
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 
+async function temAnexosLegados(tx: Tx): Promise<boolean> {
+  const [table] = await tx.$queryRaw<{ present: boolean }[]>`SELECT to_regclass('public."Attachment"') IS NOT NULL AS present`
+  return table.present
+}
+
 async function snapshot(tx: Tx, tenantId: string, projectId: string) {
   const nodes = await tx.wbsNode.findMany({ where: { tenantId, projectId }, orderBy: { id: 'asc' }, select: {
     id: true, parentId: true, order: true, code: true, title: true, layout: true, collapsed: true, style: true, properties: true,
@@ -26,7 +31,6 @@ async function snapshot(tx: Tx, tenantId: string, projectId: string) {
   const cards = await tx.card.findMany({ where: { id: { in: ids }, deletedAt: null, OR: [{ projectId }, { sprint: { projectId } }] }, orderBy: { id: 'asc' }, select: {
     id: true, title: true, description: true, priority: true, startDate: true, endDate: true, sprintId: true, sprintColumnId: true, sprintPosition: true,
     responsibles: { orderBy: { userId: 'asc' }, select: { userId: true } },
-    attachments: { where: { deletedAt: null }, orderBy: { id: 'asc' }, select: { id: true, fileName: true, isCover: true } },
     comments: { where: { deletedAt: null }, orderBy: { id: 'asc' }, select: { id: true, content: true } },
     timeEntries: { where: { deletedAt: null, isRunning: false }, orderBy: { id: 'asc' }, select: { id: true, startedAt: true, endedAt: true, duration: true, description: true } },
   } })
@@ -36,7 +40,14 @@ async function snapshot(tx: Tx, tenantId: string, projectId: string) {
     SELECT "id", "cardId", "fileName", "isCover" FROM files."Attachment"
     WHERE "cardId" IN (${Prisma.join(validCardIds)}) AND "deletedAt" IS NULL ORDER BY "id"
   ` : []
-  return { nodes, cards, sprints, fileAttachments }
+  // Older installations retain public.Attachment; production uploads live in files.
+  // Check existence before querying: catching a missing table would abort this transaction.
+  const legacyAttachments = validCardIds.length && await temAnexosLegados(tx)
+    ? await tx.$queryRaw<{ id: string; cardId: string; fileName: string; isCover: boolean }[]>`
+      SELECT "id", "cardId", "fileName", "isCover" FROM public."Attachment"
+      WHERE "cardId" IN (${Prisma.join(validCardIds)}) AND "deletedAt" IS NULL ORDER BY "id"
+    ` : []
+  return { nodes, cards: cards.map(card => ({ ...card, attachments: legacyAttachments.filter(file => file.cardId === card.id).map(({ id, fileName, isCover }) => ({ id, fileName, isCover })) })), sprints, fileAttachments }
 }
 type Snapshot = Awaited<ReturnType<typeof snapshot>>
 
@@ -93,14 +104,17 @@ export async function restaurarVersaoPlanilha(ctx: { tenantId: string; projectId
     await tx.card.updateMany({ where: { id: { in: current.cards.map(c => c.id).filter(id => !target.cards.some(c => c.id === id)) } }, data: { deletedAt: now } })
     await tx.sprint.updateMany({ where: { id: { in: current.sprints.map(s => s.id).filter(id => !target.sprints.some(s => s.id === id)) }, projectId }, data: { deletedAt: now } })
     for (const sprint of target.sprints) await tx.sprint.update({ where: { id: sprint.id, projectId }, data: { name: sprint.name, startDate: date(sprint.startDate), endDate: date(sprint.endDate), deletedAt: null } })
+    const legacyAvailable = await temAnexosLegados(tx)
     for (const card of target.cards) {
       const owned = await tx.card.findFirst({ where: { id: card.id, OR: [{ projectId }, { sprint: { projectId } }] }, select: { id: true } })
       if (!owned) throw new Error('Uma atividade desta versão não está mais disponível neste projeto.')
       await tx.card.update({ where: { id: card.id }, data: { title: card.title, description: card.description, priority: card.priority, startDate: date(card.startDate), endDate: date(card.endDate), sprintId: card.sprintId, sprintColumnId: card.sprintColumnId, sprintPosition: card.sprintPosition, deletedAt: null } })
       await tx.cardResponsible.deleteMany({ where: { cardId: card.id } })
       if (card.responsibles.length) await tx.cardResponsible.createMany({ data: card.responsibles.map(r => ({ cardId: card.id, userId: r.userId })) })
-      await tx.attachment.updateMany({ where: { cardId: card.id }, data: { deletedAt: now } })
-      for (const attachment of card.attachments) await tx.attachment.update({ where: { id: attachment.id, cardId: card.id }, data: { fileName: attachment.fileName, isCover: attachment.isCover, deletedAt: null } })
+      if (legacyAvailable) {
+        await tx.attachment.updateMany({ where: { cardId: card.id }, data: { deletedAt: now } })
+        for (const attachment of card.attachments) await tx.attachment.update({ where: { id: attachment.id, cardId: card.id }, data: { fileName: attachment.fileName, isCover: attachment.isCover, deletedAt: null } })
+      }
       await tx.comment.updateMany({ where: { cardId: card.id }, data: { deletedAt: now } })
       for (const comment of card.comments) await tx.comment.update({ where: { id: comment.id, cardId: card.id }, data: { content: comment.content, deletedAt: null } })
       await tx.timeEntry.updateMany({ where: { cardId: card.id, isRunning: false }, data: { deletedAt: now } })

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react'
 import { updateNodePropertiesAction, renameNodeAction, moveNodeAction, insertChildAction, insertSiblingAction, deleteNodeAction } from '@/app/actions/wbs'
@@ -308,7 +309,7 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
   it('editar o nome no painel guarda rascunho e Salvar sincroniza pela ação da EAP', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} canEditLinhas /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Detalhes de 1.1.1 Atividade 1' }))
-    const painel = screen.getByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' })
+    const painel = await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' }, { timeout: 3000 })
     fireEvent.click(within(painel).getByRole('button', { name: 'Renomear 1.1.1 Atividade 1' }))
     const campo = within(painel).getByRole('textbox', { name: 'Renomear 1.1.1' })
     fireEvent.change(campo, { target: { value: 'Nova atividade' } })
@@ -373,7 +374,7 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
   it('painel de detalhes mostra a descrição do card e salva pelo card da sprint', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} canUsarCards /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Detalhes de 1.1.1 Atividade 1' }))
-    const painel = screen.getByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' })
+    const painel = await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' }, { timeout: 3000 })
     expect(within(painel).getByText('Usar tinta acrílica')).toBeInTheDocument()
     const descricao = within(painel).getByText('Descrição').closest('section')!
     fireEvent.click(within(descricao).getByRole('button', { name: 'Editar' }))
@@ -385,10 +386,10 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     expect(screen.queryByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' })).toBeNull()
   })
 
-  it('sem permissão nos cards, o painel mostra a descrição sem editar', () => {
+  it('sem permissão nos cards, o painel mostra a descrição sem editar', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} planilha={comCard()} /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Detalhes de 1.1.1 Atividade 1' }))
-    const painel = screen.getByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' })
+    const painel = await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' }, { timeout: 3000 })
     expect(within(painel).getByText('Usar tinta acrílica')).toBeInTheDocument()
     const descricao = within(painel).getByText('Descrição').closest('section')!
     expect(within(descricao).queryByRole('button', { name: 'Editar' })).toBeNull()
@@ -426,7 +427,7 @@ describe('PlanilhaCustosView — ajustes de 19/10', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salvar agora' }))
     await waitFor(() => expect(insertChildAction).toHaveBeenCalledWith('p1', 'raiz'))
     await waitFor(() => expect(renameNodeAction).toHaveBeenCalledWith('p1', 'mf-criada', 'Nova fase'))
-    expect(screen.getByRole('button', { name: /Renomear .*Nova fase/ })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByDisplayValue('Nova fase') ?? screen.queryByRole('button', { name: /Renomear .*Nova fase/ })).not.toBeNull())
   })
 
   it('movimento que falha mantém o rascunho para tentar salvar outra vez', async () => {
@@ -608,11 +609,11 @@ describe('PlanilhaCustosView — permissões do realizado', () => {
     expect(document.body.textContent).not.toContain('1640.18333')
   })
 
-  it('ícone da atividade abre o painel de detalhes', () => {
+  it('ícone da atividade abre o painel de detalhes', async () => {
     render(<ToastProvider><PlanilhaCustosView {...props} canEditAllActual /></ToastProvider>)
     const row = within(screen.getByText('1.1.1 Atividade 1').closest('tr')!)
     fireEvent.click(row.getByRole('button', { name: 'Detalhes de 1.1.1 Atividade 1' }))
-    expect(screen.getByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Detalhes de 1.1.1 Atividade 1' }, { timeout: 3000 })).toBeInTheDocument()
   })
 
   function renderizarPermissoes(overrides: Partial<React.ComponentProps<typeof PlanilhaCustosView>>) {
@@ -711,4 +712,20 @@ describe('Elaborado por com várias pessoas (= responsáveis do card)', () => {
       await waitFor(() => expect(updateNodePropertiesAction).toHaveBeenCalled())
       expect(updateNodePropertiesAction).toHaveBeenCalledWith('p1', 'a1', { elaboradoPorUserIds: [] }, { background: true })
   })
+})
+
+vi.mock('@/components/custos/CarregamentoPlanilha', async importOriginal => { const original = await importOriginal<typeof import('@/components/custos/CarregamentoPlanilha')>(); return { ...original, SobDemandaPlanilha: ({ children }: { children: ReactNode }) => children } })
+
+it('monta atividades em blocos sem perder rascunhos ao carregar mais', () => {
+  const large = structuredClone(planilha)
+  const base = large.macrofases[0].atividades[0]
+  large.macrofases[0].atividades = Array.from({ length: 65 }, (_, index) => ({ ...base, nodeId: `linha-${index}`, codigo: `1.1.${index + 1}`, titulo: `Tarefa ${index + 1}` }))
+  render(<ToastProvider><PlanilhaCustosView {...props} planilha={large} /></ToastProvider>)
+  expect(screen.queryByText('1.1.31 Tarefa 31')).not.toBeInTheDocument()
+  const first = within(screen.getByText('1.1.1 Tarefa 1').closest('tr')!)
+  fireEvent.change(first.getByDisplayValue('90'), { target: { value: '91' } })
+  fireEvent.click(screen.getByRole('button', { name: /Carregar mais atividades/ }))
+  expect(screen.getByText('1.1.31 Tarefa 31')).toBeInTheDocument()
+  expect(first.getByDisplayValue('91')).toBeInTheDocument()
+  expect(screen.queryByText('1.1.61 Tarefa 61')).not.toBeInTheDocument()
 })
