@@ -23,7 +23,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
   const [visible, setVisible] = useState([true, true])
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
-  const active = hovered ?? selected
+  const active = hovered
   const detail = active === null ? undefined : rows[active]
   const select = (index: number) => setSelected(current => current === index ? null : index)
   const scale = escalaExcel(rows.flatMap(row => [row.orcado, row.real]))
@@ -79,7 +79,7 @@ function Colunas3D({ title, rows, currency = false }: { title: string; rows: Lin
       </g>
     </svg>
     </div>
-    <div className="planilha-chart-detail" role="status">{detail ? <><strong>{detail.fase}</strong><span>Orçado: {valueText(detail.orcado, currency)} · Real: {valueText(detail.real, currency)} · Diferença (Real − Orçado): {valueText(detail.real - detail.orcado, currency)}</span></> : <span>Passe sobre uma coluna ou use Tab para ver os detalhes. Clique para manter o destaque.</span>}</div>
+    <div className="planilha-chart-detail" role="status">{detail ? <><strong>{detail.fase}</strong><span>Orçado: {valueText(detail.orcado, currency)} · Real: {valueText(detail.real, currency)} · Diferença (Real − Orçado): {valueText(detail.real - detail.orcado, currency)}</span></> : <span>Passe sobre uma coluna ou use Tab para ver os detalhes.</span>}</div>
   </GlassCard>
 }
 function sector(cx: number, cy: number, rx: number, ry: number, start: number, end: number) {
@@ -90,7 +90,7 @@ function sector(cx: number, cy: number, rx: number, ry: number, start: number, e
 function Pizza3D({ rows, total }: { rows: { elaborador: string; qtdeAtividades: number; percentual: number }[]; total: number }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
-  const active = hovered ?? selected
+  const active = hovered
   const select = (name: string) => setSelected(current => current === name ? null : name)
   const slices = rows.filter(row => row.qtdeAtividades > 0).map((row, index, data) => {
     const start = -Math.PI / 2 + data.slice(0, index).reduce((sum, item) => sum + item.percentual / 100 * Math.PI * 2, 0)

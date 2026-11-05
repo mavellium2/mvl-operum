@@ -9,7 +9,7 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.54.0] — 2026-11-05
 
-- **Interação nos gráficos:** legenda clicável para mostrar/ocultar Orçado e Real, detalhes de valores e diferenças ao passar o mouse ou focar, seleção de macrofases e elaboradores, navegação por Tab e seleção por Enter/Espaço; Esc limpa o destaque.
+- **Interação nos gráficos:** legenda clicável para mostrar/ocultar Orçado e Real, detalhes de valores e diferenças ao passar o mouse ou focar, seleção de macrofases e elaboradores, navegação por Tab e seleção por Enter/Espaço; Esc limpa o destaque. Ao sair do hover ou foco, todas as colunas e fatias recuperam a visibilidade normal.
 
 - **Apresentação dos gráficos 3D:** cards, tipografia e textos adaptados à aparência do Operum; legenda de elaboradores responsiva com nomes completos. Valores financeiros em reais, com valores menores dentro de colunas mais largas e com maior profundidade 3D, próximos ao topo, sem balões ou conectores; valores zerados mantêm o mesmo texto branco para preservar o contraste. Gráficos aproveitam a largura disponível, com mais área de comparação e nomes das fases em linhas horizontais.
 
