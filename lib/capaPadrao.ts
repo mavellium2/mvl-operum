@@ -18,7 +18,7 @@ export interface DadosCapaProjeto {
 
 /** Textos do modelo "01 - CAPA" que vêm preenchidos (o usuário pode trocar). */
 export const INSTITUICAO_PADRAO = 'Faculdade de Tecnologia de Garça Deputado Júlio Julinho Marcondes de Moura”'
-export const CURSO_PADRAO = 'CURSO SUPERIOR DE TECNOLOGIA EM ANÁLISE E DESENVOLVIMENTO DE SISTEMAS - ADS'
+export const CURSO_PADRAO = 'CURSO SUPERIOR DE...'
 export const ENDERECO_PADRAO = 'Av. Presidente Vargas, 2331 – 17404-500 – Garça/SP – Tel.: (14) 3588-1800'
 
 /** "2026 / 2" no semestral; só o ano no período anual. Sem ano no projeto, usa o ano atual. */

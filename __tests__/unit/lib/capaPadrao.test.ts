@@ -14,7 +14,7 @@ describe('valores da Capa vindos do sistema', () => {
       professor: 'Prof. Esp. Fábio Rodrigues Gonçalves', endereco: ENDERECO_PADRAO, email: '', periodo: '2026 / 2',
     })
     expect(padrao.instituicao).toBe('Faculdade de Tecnologia de Garça Deputado Júlio Julinho Marcondes de Moura”')
-    expect(padrao.curso.startsWith('CURSO SUPERIOR DE TECNOLOGIA EM')).toBe(true)
+    expect(padrao.curso).toBe('CURSO SUPERIOR DE...')
     expect(padrao.endereco).toBe('Av. Presidente Vargas, 2331 – 17404-500 – Garça/SP – Tel.: (14) 3588-1800')
   })
   it('período anual mostra só o ano; sem ano no projeto usa o ano atual', () => {
