@@ -32,12 +32,27 @@ export interface CapaFolhaProps {
 }
 
 /** Linha da capa: na edição, campo de texto da folha; fora dela, só o texto com o mesmo estilo. */
-function Linha({ id, rotulo, ajuda, valor, onCampo, campo, estilo, max = 300 }: {
+function Linha({ id, rotulo, ajuda, valor, onCampo, campo, estilo, max = 300, prefixo }: {
   id: string; rotulo: string; ajuda: string; valor: string; campo: CampoCapa; max?: number
   onCampo?: (campo: CampoCapa, valor: string) => void; estilo: React.CSSProperties
+  /** Texto fixo antes do campo, na mesma linha e sem o estilo do valor (ex.: "E-mails:"). */
+  prefixo?: string
 }) {
   const { editavel } = useEditorFolha()
   if (!editavel && !valor.trim()) return null
+  if (prefixo) {
+    // Prefixo e valor centralizados juntos: o campo ocupa só a largura do texto.
+    const { color, textDecoration, ...base } = estilo
+    return (
+      <div data-capa-campo={campo} style={{ ...base, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'baseline' }}>
+        <span style={{ whiteSpace: 'nowrap', paddingRight: '0.2em' }}>{prefixo}</span>
+        <div style={{ color, textDecoration, width: `min(100%, ${Math.max(valor.length + 3, 16)}ch)`, minWidth: 0 }}>
+          <CampoTexto id={id} rotulo={rotulo} ajuda={ajuda} pergunta={rotulo.toLowerCase()} valor={valor} linha max={max}
+            alinhamento="left" preencher={false} onChange={v => onCampo?.(campo, v)} />
+        </div>
+      </div>
+    )
+  }
   return (
     <div data-capa-campo={campo} style={{ ...estilo, width: '100%' }}>
       <CampoTexto id={id} rotulo={rotulo} ajuda={ajuda} pergunta={rotulo.toLowerCase()} valor={valor} linha={campo !== 'curso'} max={max}
@@ -55,8 +70,8 @@ export const CapaFolha = forwardRef<HTMLDivElement, CapaFolhaProps>(function Cap
   const logo = safeAvatarUrl(logoUrl ?? null)
   const centro: React.CSSProperties = { textAlign: 'center' }
   const negrito: React.CSSProperties = { ...centro, fontWeight: 'bold' }
-  const linha = (campo: CampoCapa, rotulo: string, ajuda: string, estilo: React.CSSProperties, max?: number) => (
-    <Linha id={`capa-${campo}`} campo={campo} rotulo={rotulo} ajuda={ajuda} valor={capa[campo]} onCampo={onCampo} estilo={estilo} max={max} />
+  const linha = (campo: CampoCapa, rotulo: string, ajuda: string, estilo: React.CSSProperties, max?: number, prefixo?: string) => (
+    <Linha id={`capa-${campo}`} campo={campo} rotulo={rotulo} ajuda={ajuda} valor={capa[campo]} onCampo={onCampo} estilo={estilo} max={max} prefixo={prefixo} />
   )
   return (
     <Folha ref={ref} fixa data-testid="capa-folha" margemMm={{ top: 12, x: 25 }} numerar={false}
@@ -92,7 +107,7 @@ export const CapaFolha = forwardRef<HTMLDivElement, CapaFolhaProps>(function Cap
 
       <div style={{ fontSize: '11pt' }}>
         {linha('endereco', 'Endereço e telefone', 'Endereço e telefone da instituição.', centro)}
-        {linha('email', 'E-mails', 'E-mail de contato do projeto.', { ...centro, color: '#1155cc', textDecoration: 'underline' })}
+        {linha('email', 'E-mails', 'E-mail de contato do projeto.', { ...centro, color: '#1155cc', textDecoration: 'underline' }, undefined, 'E-mails:')}
         <div style={{ height: '6mm' }} />
         {linha('periodo', 'Ano / semestre', 'Ano e semestre do trabalho (ex.: 2026 / 2).', { ...negrito, fontSize: '12pt' }, 50)}
       </div>
