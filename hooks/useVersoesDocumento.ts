@@ -17,7 +17,7 @@ export interface VersaoDocumento {
  * Versões de um documento (seletor "Versão" e contador de propostas pendentes
  * da barra do editor). Recarrega quando uma versão é salva ou revisada.
  */
-export function useVersoesDocumento(projetoId: string | undefined, tipo: 'CHARTER' | 'STAKEHOLDER' | 'EAP' | 'ATA', resourceId = '') {
+export function useVersoesDocumento(projetoId: string | undefined, tipo: 'CHARTER' | 'STAKEHOLDER' | 'EAP' | 'ATA' | 'CAPA', resourceId = '') {
   const [versoes, setVersoes] = useState<VersaoDocumento[]>([])
   const carregar = useCallback(async () => {
     if (!projetoId) return
