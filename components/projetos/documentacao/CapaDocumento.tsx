@@ -17,7 +17,7 @@ import { useAutosave } from '@/hooks/useAutosave'
 import { fetchWithSession } from '@/lib/clientFetch'
 import { printFolhasStyle } from '@/lib/printPageStyle'
 import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
-import { conteudoCapa, type CampoCapa } from '@/lib/capaPadrao'
+import { alteracoesCapa, conteudoCapa, type CampoCapa } from '@/lib/capaPadrao'
 import type { CapaConteudo } from '@/lib/validation/documentRevisionSchemas'
 
 type Capa = Required<CapaConteudo>
@@ -134,7 +134,10 @@ export default function CapaDocumento() {
 
   const payload = JSON.stringify(capa)
   const autosave = useAutosave(payload, async valor => {
-    if (!await rascunho.guardar(JSON.parse(valor))) throw new Error('Não foi possível salvar o rascunho')
+    // Só o que foi trocado: os campos não editados continuam acompanhando o sistema.
+    const inicial: Capa | null = base ? JSON.parse(base) : null
+    const draft = inicial ? alteracoesCapa(JSON.parse(valor), inicial) : JSON.parse(valor)
+    if (!await rascunho.guardar(draft)) throw new Error('Não foi possível salvar o rascunho')
   }, { delay: 1200, enabled: canEdit && pronto && !versaoAberta })
   const autosaveReset = useRef<((v: string) => void) | null>(null)
   useEffect(() => { autosaveReset.current = autosave.reset }, [autosave.reset])

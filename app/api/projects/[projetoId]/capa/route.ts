@@ -3,7 +3,6 @@ import { verifySession } from '@/lib/dal'
 import prisma from '@/lib/prisma'
 import { canProjectPermission as can } from '@/services/projectAccess'
 import { documentoVigente } from '@/services/documentRevisionService'
-import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
 import { capaPadrao } from '@/lib/capaPadrao'
 
 /**
@@ -18,11 +17,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ projetoId:
     if (!await can(sessao, projetoId, 'documentos:ver')) return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
     const projeto = await prisma.project.findFirst({
       where: { id: projetoId, tenantId, deletedAt: null },
-      select: { name: true, logoUrl: true, location: true, departamentos: true, semestre: true, ano: true, tenant: { select: { name: true } } },
+      select: { name: true, logoUrl: true, semestre: true, ano: true },
     })
     if (!projeto) return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
-    const [departamentos, membros, termo] = await Promise.all([
-      departamentosDoProjeto(projetoId, tenantId, projeto.departamentos),
+    const [membros, termo] = await Promise.all([
       prisma.userProject.findMany({
         where: { projectId: projetoId, active: true, user: { tenantId, deletedAt: null, isActive: true } },
         select: { user: { select: { name: true } } },
@@ -36,8 +34,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ projetoId:
       logoUrl: projeto.logoUrl,
       integrantes: membros.map(m => m.user.name).filter(Boolean),
       padrao: capaPadrao({
-        instituicao: projeto.location || projeto.tenant?.name,
-        departamentos, semestre: projeto.semestre, ano: projeto.ano, principaisEnvolvidos: envolvidos,
+        semestre: projeto.semestre, ano: projeto.ano, principaisEnvolvidos: envolvidos,
       }),
     })
   } catch (err) {

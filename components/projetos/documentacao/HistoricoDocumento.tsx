@@ -39,7 +39,6 @@ const labels: Record<string, string> = {
   curso: 'Curso',
   disciplina: 'Disciplina',
   professor: 'Professor',
-  endereco: 'Endereço e telefone',
   email: 'E-mails',
   periodo: 'Ano / semestre',
   PENDING: 'Pendente de aprovação',
