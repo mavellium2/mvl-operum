@@ -1,6 +1,7 @@
 import 'server-only'
 import type { Prisma } from '@/lib/generated/prisma'
 import prisma from '@/lib/prisma'
+import { separarFuncoes } from '@/lib/funcoes'
 
 /**
  * Uma pessoa, um cadastro: a conta do sistema (User) e o contato (Stakeholder)
@@ -23,7 +24,8 @@ export interface DadosNoProjeto {
   departamentos?: string[]
 }
 
-const nomes = (lista?: string[]) => [...new Set((lista ?? []).map(n => n.trim()).filter(Boolean))].slice(0, 30).map(n => n.slice(0, 120))
+// Mesma regra das funções do membro: "A | B" são duas, sem repetidas.
+const nomes = (lista?: string[]) => separarFuncoes(lista ?? []).slice(0, 30)
 
 /** Contato da conta (cria a partir dos dados da conta na primeira vez). */
 export async function garantirContatoDoUsuario(tx: Tx, tenantId: string, userId: string) {

@@ -5,6 +5,7 @@ import { z } from 'zod'
 import type { Prisma, ProjectStatus } from '../../lib/generated/prisma'
 import { isTransactionConflict } from '../common/transaction-conflict'
 import { motivoParaNaoExcluir, tarefasNoProjeto } from '../common/tarefas-no-projeto'
+import { textoDeFuncoes } from '../common/funcoes'
 
 export const MacroFasesSchema = z.array(z.object({
   fase: z.string().trim().max(500),
@@ -203,7 +204,8 @@ export class ProjectService {
       throw new ConflictException('Esta pessoa é externa neste projeto. Use "Mudar para interno".')
     }
     const data = {
-      ...(input.role !== undefined ? { role: input.role } : {}),
+      // "Tech Lead | Full-stack" são duas funções: grava "Tech Lead, Full-stack" (API/MCP).
+      ...(input.role !== undefined ? { role: textoDeFuncoes(input.role) } : {}),
       ...(input.departmentId !== undefined ? { departmentId: input.departmentId } : {}),
       ...(input.hourlyRate !== undefined ? { hourlyRate: input.hourlyRate } : {}),
     }

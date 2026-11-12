@@ -56,6 +56,8 @@ import { erroEmail, erroTelefone } from '@/lib/contato'
 import { updateProjetoMemberAction, setMembroAtivoAction } from '@/app/actions/projetos'
 import { adminCreateUserAction } from '@/app/actions/admin'
 import { parseHoras, formatHoras } from '@/lib/validation/horas'
+import { separarFuncoes } from '@/lib/funcoes'
+import { funcaoKey } from '@/lib/utils/normalize'
 import PasswordInput from '@/components/ui/PasswordInput'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
@@ -307,7 +309,12 @@ function MultiCreatableSelect({
 
   function handleSelect(val: string) {
     if (disabled) return
-    if (!values.includes(val)) onChange([...values, val])
+    // "Front-End | Redatora" vira duas etiquetas; nome equivalente a uma opção existente
+    // (acento, caixa, plural) usa a existente, para não criar outra função igual.
+    const novos = separarFuncoes(val).map(nome => options.find(o => funcaoKey(o) === funcaoKey(nome)) ?? nome)
+    const lista = [...values]
+    for (const nome of novos) if (!lista.some(v => funcaoKey(v) === funcaoKey(nome))) lista.push(nome)
+    if (lista.length !== values.length) onChange(lista)
     setSearch('')
     setIsOpen(false)
     inputRef.current?.focus()

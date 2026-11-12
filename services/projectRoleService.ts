@@ -2,12 +2,12 @@ import prisma from '@/lib/prisma'
 import type { Prisma } from '@/lib/generated/prisma'
 
 export async function getOrCreateGerenteProjetoRole(tenantId: string, db: Prisma.TransactionClient = prisma) {
-  const existing = await db.role.findFirst({
-    where: { tenantId, nameKey: 'gerente', scope: 'PROJETO' },
-  })
-  if (existing) return existing
-  return db.role.create({
-    data: { tenantId, name: 'Gerente de Projeto', nameKey: 'gerente', scope: 'PROJETO' },
+  // Upsert pela chave única (nameKey, tenant, escopo): duas gravações ao mesmo tempo não
+  // criam dois papéis de gerente, e um papel excluído volta em vez de nascer outro.
+  return db.role.upsert({
+    where: { nameKey_tenantId_scope: { nameKey: 'gerente', tenantId, scope: 'PROJETO' } },
+    create: { tenantId, name: 'Gerente de Projeto', nameKey: 'gerente', scope: 'PROJETO' },
+    update: { deletedAt: null },
   })
 }
 

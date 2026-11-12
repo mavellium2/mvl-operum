@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common'
+import { erroNomeDeFuncao } from '../common/funcoes'
 import { prisma } from '../prisma'
 import { assertProjectInTenant, assertUserInTenant } from '../common/tenant-scope'
 import { z } from 'zod'
@@ -44,6 +45,8 @@ export class RoleService {
   }
 
   async createRole(dto: CreateRoleDto) {
+    const erro = erroNomeDeFuncao(dto.name)
+    if (erro) throw new BadRequestException(erro)
     const existing = await prisma.role.findFirst({
       where: { nameKey: dto.nameKey, tenantId: dto.tenantId, scope: dto.scope, deletedAt: null },
     })
@@ -52,6 +55,8 @@ export class RoleService {
   }
 
   async updateRole(id: string, tenantId: string, dto: UpdateRoleDto) {
+    const erro = erroNomeDeFuncao(dto.name)
+    if (erro) throw new BadRequestException(erro)
     await this.findRole(id, tenantId)
     return prisma.role.update({ where: { id }, data: dto })
   }

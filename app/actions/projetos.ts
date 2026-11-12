@@ -10,6 +10,8 @@ import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { projectsApi } from '@/lib/api-client'
 import prisma from '@/lib/prisma'
+import { separarFuncoes } from '@/lib/funcoes'
+import { garantirFuncao } from '@/services/funcoesCatalogo'
 import { setProjectManagerRole, removeProjectRole, isProjectManager } from '@/services/projectRoleService'
 import { notificarPendenciasDoMembroInativo } from '@/services/membroInativo'
 import { getTree } from '@/services/wbsService'
@@ -488,7 +490,9 @@ export async function updateProjetoMemberAction(
       delete data.isGerente
     }
 
-    const { isGerente: makeGerente, cargos, departamento, remuneracao: rawRemuneracao, horasDiarias: rawHorasDiarias, hourlyRate: rawHourlyRate, name, email, ...profileData } = data
+    const { isGerente: makeGerente, cargos: cargosInformados, departamento, remuneracao: rawRemuneracao, horasDiarias: rawHorasDiarias, hourlyRate: rawHourlyRate, name, email, ...profileData } = data
+    // "Front-End | Redatora" são duas funções: separa e tira equivalentes repetidas.
+    const cargos = cargosInformados === undefined ? undefined : separarFuncoes(cargosInformados)
 
     // Remuneração inválida é recusada; antes "abc" era descartado em silêncio.
     let remuneracao: number | undefined
@@ -548,28 +552,10 @@ export async function updateProjetoMemberAction(
       data: userUpdateData,
     })
 
-    // 2a. Upsert cargos — sequential to avoid race conditions; upsert handles soft-deleted records
+    // 2a. Funções do catálogo: reaproveita a equivalente (acento, caixa, plural; "Gerente de
+    // Projeto" é o papel de gerente) e só cria quando não há. Sequencial, sem duplicar.
     if (cargos !== undefined && cargos.length > 0) {
-      for (const cargoName of cargos) {
-        const name = cargoName.trim()
-        if (!name) continue
-        const byName = await prisma.role.findFirst({
-          where: { tenantId, name: { equals: name, mode: 'insensitive' } },
-          select: { id: true, deletedAt: true },
-        })
-        if (byName) {
-          if (byName.deletedAt !== null) {
-            await prisma.role.update({ where: { id: byName.id }, data: { deletedAt: null } })
-          }
-        } else {
-          const nameKey = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-          await prisma.role.upsert({
-            where: { nameKey_tenantId_scope: { nameKey, tenantId, scope: 'TENANT' } },
-            create: { tenantId, name, nameKey, scope: 'TENANT' },
-            update: { name, deletedAt: null },
-          })
-        }
-      }
+      for (const nome of cargos) await garantirFuncao(tenantId, nome)
     }
 
     // 2b. Upsert department — case-insensitive name search, resolve id
