@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma'
+import { textoDeFuncoes } from '@/lib/funcoes'
 import { CreateProjectSchema, UpdateProjectSchema } from '@/lib/validation/projectSchemas'
 import type { CreateProjectInput, UpdateProjectInput, MacroFaseInput } from '@/lib/validation/projectSchemas'
 import {
@@ -229,13 +230,14 @@ export async function updateUserProject(
   })
   if (!existing) throw new NotFoundError('Member not found')
 
+  // Mesma regra das funções: grava "A, B", nunca "A | B".
   const roleStr =
     data.roles !== undefined
       ? data.roles.length > 0
-        ? data.roles.join(', ')
+        ? textoDeFuncoes(data.roles) || null
         : null
       : data.role !== undefined
-        ? data.role || null
+        ? textoDeFuncoes(data.role) || null
         : undefined
 
   const result = await prisma.userProject.update({

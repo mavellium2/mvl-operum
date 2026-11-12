@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma'
 import type { Prisma } from '@/lib/generated/prisma'
+import { separarFuncoes } from '@/lib/funcoes'
 
 export async function getOrCreateGerenteProjetoRole(tenantId: string, db: Prisma.TransactionClient = prisma) {
   // Upsert pela chave única (nameKey, tenant, escopo): duas gravações ao mesmo tempo não
@@ -13,11 +14,9 @@ export async function getOrCreateGerenteProjetoRole(tenantId: string, db: Prisma
 
 const GERENTE_LABEL = 'Gerente de Projeto'
 
+/** Cargos do membro com a regra das funções: "A | B" são duas (nunca regrava composto). */
 function normalizeCargos(role: string | null | undefined): string[] {
-  return (role ?? '')
-    .split(',')
-    .map((s: string) => s.trim())
-    .filter(Boolean)
+  return separarFuncoes(role)
 }
 
 export async function setProjectManagerRole(userId: string, projectId: string, tenantId: string, db: Prisma.TransactionClient = prisma) {

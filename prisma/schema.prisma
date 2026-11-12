@@ -218,6 +218,7 @@ model UserProject {
   active       Boolean     @default(true)
   inactiveReason String?   @db.Text // Motivo da inativação do membro no projeto (com active = false)
   inactivatedAt  DateTime? // Quando foi inativado
+  /// Funções separadas por vírgula (\"A, B\"). O banco recusa \"|\" e \";\" (CHECK UserProject_role_sem_separador).
   role         String?
   departmentId String?
   hourlyRate   Float?
@@ -716,6 +717,7 @@ model ProjectStakeholder {
   // Dados do externo neste projeto (os mesmos do membro da equipe em UserProject).
   remuneracao   Float?
   horasDiarias  Float?
+  /// Uma função por item; o banco recusa "|", ";" e "," (CHECK ProjectStakeholder_funcoes_uma_por_item).
   funcoes       String[] @default([])
   departamentos String[] @default([])
   project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)

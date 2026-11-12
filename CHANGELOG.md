@@ -33,7 +33,7 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Excluir usuário e excluir do projeto:** em Usuários, "Excluir" apaga a conta de vez só quando ela não tem nenhum vínculo (projeto, tarefa, horas, comentário, documento, ata); com vínculos, mostra quais são e orienta a inativar. Em Stakeholders, "Excluir do projeto" (no lugar de "Desvincular") só funciona sem tarefas naquele projeto; vale também para a API e o MCP.
 
-- **Funções sem combinações nem duplicatas:** dar a alguém "Front-End" e "Redatora" grava duas funções, nunca "Front-End | Redatora". Texto com `|`, `;` ou `,` é separado na tela, na API e no MCP; o cadastro de funções recusa nome composto. Nome equivalente (acento, maiúsculas, plural) reaproveita a função existente, e "Gerente de Projeto" usa sempre o papel de gerente do sistema, sem criar outro. O script `scripts/dedupe-funcoes.ts` separa as compostas e funde as duplicadas que já existem (rodar em produção).
+- **Funções sem combinações nem duplicatas:** dar a alguém "Front-End" e "Redatora" grava duas funções, nunca "Front-End | Redatora". Texto com `|`, `;` ou `,` é separado na tela, na API e no MCP; o cadastro de funções recusa nome composto. Nome equivalente (acento, maiúsculas, plural) reaproveita a função existente, e "Gerente de Projeto" usa sempre o papel de gerente do sistema, sem criar outro. O script `scripts/dedupe-funcoes.ts` separa as compostas e funde as duplicadas que já existem (rodar em produção). O cargo do membro nunca fica gravado como "A | B": a migration `20261112160000_cargo_sem_separador` corrige os cargos existentes e o banco passa a recusar esse formato.
 
 - Sai o gerador antigo do Word do Termo e o módulo `documentModel.ts`, sem uso.
 
