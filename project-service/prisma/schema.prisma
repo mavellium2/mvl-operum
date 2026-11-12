@@ -44,6 +44,7 @@ model User {
   userProjectRoles UserProjectRole[]
 
   @@unique([email, tenantId])
+  contato          Stakeholder? @relation("ContatoDoUsuario")
 }
 
 // ── Projects ──────────────────────────────────────────────
@@ -151,7 +152,6 @@ model UserProject {
   active       Boolean     @default(true)
   inactiveReason String?   @db.Text // Motivo da inativação do membro no projeto (com active = false)
   inactivatedAt  DateTime? // Quando foi inativado
-  role         String?
   departmentId String?
   hourlyRate   Float?
   remuneracao  Float?
@@ -162,6 +162,7 @@ model UserProject {
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  funcoes      UserProjectFuncao[]
 
   @@unique([userId, projectId])
 }
@@ -187,6 +188,8 @@ model Role {
 
   permissions      RolePermission[]
   userProjectRoles UserProjectRole[]
+  funcoesDeMembros UserProjectFuncao[]
+  funcoesDeExternos ProjectStakeholderFuncao[]
 
   @@unique([nameKey, tenantId, scope])
 }
@@ -256,6 +259,10 @@ model Stakeholder {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  /** Conta do sistema da mesma pessoa: um cadastro só, usado como interno ou externo em cada projeto. */
+  userId      String?  @unique
+  user        User?    @relation("ContatoDoUsuario", fields: [userId], references: [id], onDelete: SetNull)
+
   projects ProjectStakeholder[]
   tenant   Tenant               @relation(fields: [tenantId], references: [id])
 }
@@ -266,9 +273,41 @@ model ProjectStakeholder {
   stakeholderId String
   createdAt     DateTime @default(now())
   order         Int      @default(0)
+  // Dados do externo neste projeto (os mesmos do membro da equipe em UserProject).
+  remuneracao   Float?
+  horasDiarias  Float?
+  departamentos String[] @default([])
 
   project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   stakeholder Stakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+  funcoes     ProjectStakeholderFuncao[]
 
   @@unique([projectId, stakeholderId])
+}
+
+/// Funções de um membro da equipe no projeto: cada item é uma função do cadastro
+/// (nada de texto "A, B" ou "A | B"). A ordem é a escolhida na tela.
+model UserProjectFuncao {
+  id            String      @id @default(cuid())
+  userProjectId String
+  roleId        String
+  ordem         Int         @default(0)
+  userProject   UserProject @relation(fields: [userProjectId], references: [id], onDelete: Cascade)
+  role          Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userProjectId, roleId])
+  @@index([roleId])
+}
+
+/// Funções de um externo no projeto: as mesmas funções do cadastro que o interno usa.
+model ProjectStakeholderFuncao {
+  id                   String             @id @default(cuid())
+  projectStakeholderId String
+  roleId               String
+  ordem                Int                @default(0)
+  projectStakeholder   ProjectStakeholder @relation(fields: [projectStakeholderId], references: [id], onDelete: Cascade)
+  role                 Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([projectStakeholderId, roleId])
+  @@index([roleId])
 }

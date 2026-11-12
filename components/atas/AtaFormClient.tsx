@@ -126,8 +126,16 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
     acoes: acoes.map(a => ({ ...a, prazo: a.prazo ? new Date(`${a.prazo}T12:00:00`) : null })), anexos,
   }
   async function baixarWord() {
-    try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadAtaDocx(dadosDocumento) }
-    catch { setError('Não foi possível gerar o Word. Verifique a logo do projeto.') }
+    if (!documentRef.current) return
+    // O Word sai da própria folha (cópia de impressão): igual à tela.
+    try {
+      const { downloadFolhaDocx, arquivoDaAta } = await import('@/lib/exports/projectDocumentsDocx')
+      await downloadFolhaDocx(documentRef.current, `Ata de Reunião Nº ${String(dadosExibidos.numero || 0).padStart(2, '0')}`, arquivoDaAta(dadosExibidos.numero, dadosExibidos.nomeProjeto))
+    } catch (e) {
+      setError(e instanceof Error && e.message.startsWith('Imagem indisponível')
+        ? 'Não foi possível gerar o Word: a logo ou uma assinatura não carregou. Tente novamente.'
+        : 'Não foi possível gerar o Word. Tente novamente.')
+    }
   }
 
   function pickElaborador(member: MemberOption | null) {

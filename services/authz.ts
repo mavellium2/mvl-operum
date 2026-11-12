@@ -6,7 +6,6 @@ import {
   BASE_MEMBRO_KEY,
   PERMISSOES,
   TODAS,
-  cargosDoTexto,
   isPermissao,
   resolverPermissoes,
   type Ajuste,
@@ -18,8 +17,8 @@ import {
  * Autorização por permissão (SDD 5.1). Substitui aos poucos o
  * `role === 'admin' || isProjectManager(...)` espalhado pelo app.
  *
- * As funções da pessoa no projeto são os cargos dela (UserProject.role),
- * casados com o cadastro de funções do tenant pela funcaoKey, mais o papel de
+ * As funções da pessoa no projeto são os vínculos dela com o cadastro de funções
+ * (UserProjectFuncao, por id), mais o papel de
  * gerente (UserProjectRole), mais a função-base "Membro do projeto".
  */
 
@@ -53,7 +52,7 @@ export const entradaDoUsuario = cache(
       prisma.project.findFirst({ where: { id: projectId, tenantId, deletedAt: null }, select: { id: true } }),
       prisma.userProject.findUnique({
         where: { userId_projectId: { userId, projectId } },
-        select: { role: true, active: true },
+        select: { active: true, funcoes: { select: { roleId: true } } },
       }),
       prisma.userProjectRole.findFirst({ where: { userId, projectId, deletedAt: null }, select: { roleId: true } }),
       prisma.role.findMany({
@@ -74,9 +73,11 @@ export const entradaDoUsuario = cache(
     ])
 
     const base = funcoes.find(f => f.nameKey === BASE_MEMBRO_KEY && f.scope === 'PROJETO')
-    const cargos = new Set(cargosDoTexto(vinculo?.role).map(funcaoKey))
+    // Funções da pessoa: os vínculos com o cadastro (por id) e o papel de gerente.
+    // Com várias, as permissões são somadas (resolverPermissoes).
+    const ids = new Set(vinculo?.funcoes.map(f => f.roleId) ?? [])
     const minhas = funcoes.filter(
-      f => f !== base && (cargos.has(funcaoKey(f.name)) || f.id === papelGerente?.roleId),
+      f => f !== base && (ids.has(f.id) || f.id === papelGerente?.roleId),
     )
 
     return {

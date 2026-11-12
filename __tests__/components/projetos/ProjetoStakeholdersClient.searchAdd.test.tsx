@@ -2,7 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ToastProvider } from '@/components/ui/Toast'
 
+vi.mock('@/app/actions/cadastroStakeholders', () => ({ carregarCadastroStakeholdersAction: vi.fn().mockResolvedValue({ error: 'sem servidor no teste' }) }))
 vi.mock('@/app/actions/stakeholders', () => ({
+  salvarDadosDoExternoAction: vi.fn().mockResolvedValue({ success: true }),
+  salvarEmpresaDoMembroAction: vi.fn().mockResolvedValue({ success: true }),
+  adicionarUsuarioComoExternoAction: vi.fn(),
+  tornarExternoAction: vi.fn(),
+  tornarInternoAction: vi.fn(),
   createStakeholderAction: vi.fn(),
   updateStakeholderAction: vi.fn(),
   bindStakeholderAction: vi.fn().mockResolvedValue({ success: true }),

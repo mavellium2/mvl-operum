@@ -18,6 +18,11 @@ export default function EnvolvidosEditor({ value, membros, onChange }: { value: 
     setNewIndex(null)
     onChange(gravarEnvolvidos(next))
   }
+  const removeBlock = (index: number) => {
+    setNewIndex(null)
+    setPersonFocus(null)
+    onChange(gravarEnvolvidos(blocks.filter((_, i) => i !== index)))
+  }
   const removePerson = (index: number, personIndex: number) => {
     const people = blocks[index].texto.split('\n')
     people.splice(personIndex, 1)
@@ -36,6 +41,9 @@ export default function EnvolvidosEditor({ value, membros, onChange }: { value: 
       </>} controles={<span className="inline-flex print:hidden">
         <GlassButton variant="custom" type="button" disabled={index === 0} aria-label={`Mover ${block.titulo || 'título'} para cima`} onClick={() => move(index, -1)} className="rounded p-1 disabled:opacity-30"><ArrowUp size={14} /></GlassButton>
         <GlassButton variant="custom" type="button" disabled={index === blocks.length - 1} aria-label={`Mover ${block.titulo || 'título'} para baixo`} onClick={() => move(index, 1)} className="rounded p-1 disabled:opacity-30"><ArrowDown size={14} /></GlassButton>
+        {/* "Integrantes do Grupo" vem da equipe do projeto e não sai; os títulos criados podem ser excluídos (com as pessoas deles). */}
+        {!block.equipe && <GlassButton variant="custom" type="button" aria-label={`Excluir o título ${block.titulo || 'sem nome'} e as pessoas dele`} title="Excluir título"
+          onClick={() => removeBlock(index)} className="rounded p-1 text-[var(--ap-muted)]"><Trash2 size={14} aria-hidden="true" /></GlassButton>}
       </span>}>
       <div className="min-w-0">
         {block.equipe ? membros.map((member, i) => <p key={i} className="flex gap-1" style={{ margin: 0 }}><span aria-hidden="true">-</span><span>{member}</span></p>) :
@@ -54,6 +62,6 @@ export default function EnvolvidosEditor({ value, membros, onChange }: { value: 
       </div>
 
     </GrupoEnvolvidos>)}
-    <GlassButton variant="ghost" type="button" onClick={() => { setNewIndex(blocks.length); onChange(gravarEnvolvidos([...blocks, { titulo: '', texto: '' }])) }} className="glass-button--small print:hidden"><Plus size={14} strokeWidth={1.75} aria-hidden="true" />Adicionar título</GlassButton>
+    <GlassButton variant="ghost" type="button" onClick={() => { setNewIndex(blocks.length); onChange(gravarEnvolvidos([...blocks, { titulo: '', texto: '' }])) }} className="glass-button--small self-start print:hidden"><Plus size={14} strokeWidth={1.75} aria-hidden="true" />Adicionar título</GlassButton>
   </EnvolvidosLayout>
 }

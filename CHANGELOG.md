@@ -7,6 +7,36 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.56.0] — 2026-11-12
+
+- **Word do Termo idêntico à tela:** o Termo de Abertura passa a exportar o `.docx` a partir das folhas desenhadas, como Partes interessadas: mesmas páginas, bordas dos campos, fundos, fontes, logo, assinatura e rodapé. Os títulos viram estilos de título do Word (o do documento como Título 1 e os de seção como Título 2), aparecendo no painel de navegação sem mudar a aparência. Texto justificado continua justificado, e blocos lado a lado (número e nome da macro fase) ficam na mesma linha.
+
+- **Word da EAP:** a EAP ganha exportação para Word, idêntica à tela: folha da EAP gráfica (a árvore entra como desenho vetorial SVG na mesma posição e tamanho, com cópia PNG de reserva para Word sem suporte a SVG) e folhas da EAP em texto, com o mesmo quadro, recuos, negritos e rodapé "Página X de Y".
+
+- **Word da Ata idêntico à tela:** no editor e na lista de Atas, o `.docx` passa a sair da folha da ata (antes, um modelo separado com espaçamentos e caixas diferentes, que podia ir para uma 2ª página). As seções coladas viram uma tabela só, as caixas com borda (Documentos anexos, Enviar cópias) viram tabelas de uma célula, as colunas de cópias e de assinaturas ficam alinhadas por tabulação e as linhas de assinatura e os fundos saem como desenho vetorial na mesma posição. O botão da lista mostra o progresso enquanto gera.
+
+- **Macro fases:** a Data limite fica centralizada na coluna, na leitura e na edição.
+
+- **Campos do Termo sem espaço sobrando:** Justificativa, Objetivos, Metodologia, Descrição do produto, Premissas/restrições, Principais envolvidos e Limites de autoridade deixam de ter altura mínima fixa e acompanham o texto (vazios mantêm uma linha para digitar), na tela, no PDF e no Word. Principais envolvidos tem o mesmo recuo em cima e embaixo, e a Data de aprovação fica no meio da linha, alinhada com a assinatura (também em Partes interessadas).
+
+- **Principais envolvidos:** os títulos criados podem ser excluídos junto com as pessoas deles. "Integrantes do Grupo" vem da equipe e continua fixo.
+
+- **Linha do cabeçalho em todos os documentos:** a faixa cinza (instituição, curso, termo e período) sempre aparece. Sem nenhum desses dados no projeto, mostra "Preencha instituição, curso, termo e período em Editar projeto"; sem o termo, "Termo a definir em Editar projeto (ex.: 5° termo Noturno)". Partes interessadas passa a usar a mesma linha do Termo, da EAP e da Ata (antes ficava em branco e não trazia o termo).
+
+- **Projetos em ordem de abertura:** a lista de projetos segue a ordem em que cada usuário abriu os projetos, do mais recente para o mais antigo (antes só o último aberto subia; os demais voltavam à ordem de criação). Ex.: com Janus, Operum e Fechai, abrir Fechai, Janus e Operum deixa a lista em Operum, Janus, Fechai. A ordem é de cada usuário em cada instituição; concluídos, arquivados e inativos continuam depois dos ativos.
+
+- **Stakeholders: uma pessoa, um cadastro:** quem é cadastrado pode ser usado como interno ou como externo, em cada projeto. A lista de "adicionar externo" mostra também os usuários do sistema, e a de "adicionar interno" também os contatos externos (sem login, o administrador cria o login já preenchido). No cadastro de cada pessoa, "Mudar para externo" (sai da equipe e perde o acesso àquele projeto) e "Mudar para interno" (entra na equipe), com confirmação. O gerente não pode virar externo sem passar a gerência. Migration `20261112140000_pessoa_interna_externa`.
+
+- **Mesmos campos para interno e externo:** empresa, competência, remuneração mensal, horas por dia, valor por dia/hora/minuto, funções e departamentos aparecem para os dois. Gerente e assinatura continuam só do interno.
+
+- **Inativar a conta não some mais com a pessoa do projeto:** quem tem a conta desativada continua em Stakeholders e no documento de Partes interessadas, em vermelho e com o motivo. Ao desativar a conta (motivo obrigatório), a pessoa é inativada em todos os projetos com esse motivo, perde o acesso, os cards abertos dela passam a pedir outro responsável e o gerente de cada projeto é avisado. Reativar a conta devolve os projetos que a desativação tirou. Vínculos antigos de contas já desativadas foram corrigidos (migration `20261112150000_membros_de_contas_inativas`).
+
+- **Excluir usuário e excluir do projeto:** em Usuários, "Excluir" apaga a conta de vez só quando ela não tem nenhum vínculo (projeto, tarefa, horas, comentário, documento, ata); com vínculos, mostra quais são e orienta a inativar. Em Stakeholders, "Excluir do projeto" (no lugar de "Desvincular") só funciona sem tarefas naquele projeto; vale também para a API e o MCP.
+
+- **Funções sem combinações nem duplicatas:** dar a alguém "Front-End" e "Redatora" grava duas funções, nunca "Front-End | Redatora". Texto com `|`, `;` ou `,` é separado na tela, na API e no MCP; o cadastro de funções recusa nome composto. Nome equivalente (acento, maiúsculas, plural) reaproveita a função existente, e "Gerente de Projeto" usa sempre o papel de gerente do sistema, sem criar outro. O script `scripts/dedupe-funcoes.ts` separa as compostas e funde as duplicadas que já existem (rodar em produção). Nada é gravado como texto com separador: as funções de cada pessoa no projeto são uma lista de vínculos com o cadastro (uma linha por função), tanto do interno quanto do externo. A migration `20261112170000_funcoes_como_lista` cria as tabelas `UserProjectFuncao` e `ProjectStakeholderFuncao`, converte os cargos e as funções existentes (separando os antigos "A | B" e reaproveitando as funções do cadastro) e remove `UserProject.role` e `ProjectStakeholder.funcoes`. No MCP, `operum_add_project_member` recebe `funcoes` como lista (o `role` em texto fica só por compatibilidade) e os membros retornam `funcoes: string[]`.
+
+- Sai o gerador antigo do Word do Termo e o módulo `documentModel.ts`, sem uso.
+
 ## [1.55.0] — 2026-11-11
 
 - **Capa na Documentação:** novo documento Capa no modelo "01 - CAPA" (Fatec Garça), com rascunho automático, versões, aprovação, impressão e PDF como os demais. Banner institucional, logo do projeto e integrantes (membros ativos) vêm do sistema; instituição, curso, disciplina, professor, endereço, e-mail e ano/semestre são editáveis na folha. Já vêm preenchidos o nome da faculdade, "CURSO SUPERIOR DE...", o endereço com telefone, disciplina e professor do Termo, e o período de Editar projeto (sem ano, usa o ano atual). O rascunho guarda só os campos alterados. Migration `20261111120000_documento_capa` adiciona `CAPA` ao `DocumentType`.

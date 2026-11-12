@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { linhaInstitucional, periodoDoProjeto, periodoEhSemestral, termoTurno, TERMO_A_DEFINIR } from '@/lib/linhaInstitucional'
+import { linhaDoCabecalho, linhaInstitucional, linhaOuAviso, LINHA_A_DEFINIR, periodoDoProjeto, periodoEhSemestral, termoTurno, TERMO_A_DEFINIR } from '@/lib/linhaInstitucional'
 import { ataCopias } from '@/lib/exports/ataDocx'
 
 describe('linha institucional dos documentos', () => {
@@ -11,6 +11,23 @@ describe('linha institucional dos documentos', () => {
     expect(linhaInstitucional({ departamentos: ['ADS', 'AMS'], ano: 2026 })).toBe(`ADS / AMS - ${TERMO_A_DEFINIR} - 2026`)
     expect(periodoDoProjeto('2', 2026)).toBe('2° Semestre 2026')
     expect(periodoDoProjeto('ano', 2026)).toBe('2026')
+  })
+})
+
+describe('linha do cabeçalho dos documentos', () => {
+  it('sem nenhum dado do projeto, pede para preencher em Editar projeto', () => {
+    expect(linhaDoCabecalho({})).toBe(LINHA_A_DEFINIR)
+    expect(linhaDoCabecalho({ location: ' ', departamentos: [' '], semestre: '' })).toBe(LINHA_A_DEFINIR)
+    expect(LINHA_A_DEFINIR).toMatch(/Editar projeto/)
+  })
+  it('com algum dado, mostra a linha e avisa só o termo que falta', () => {
+    expect(linhaDoCabecalho({ location: 'Fatec Garça', semestre: '2', ano: 2026 })).toBe(`Fatec Garça - ${TERMO_A_DEFINIR} - 2° Semestre 2026`)
+    expect(TERMO_A_DEFINIR).toMatch(/Editar projeto/)
+  })
+  it('valor salvo vazio vira o aviso: a faixa nunca fica em branco', () => {
+    expect(linhaOuAviso('')).toBe(LINHA_A_DEFINIR)
+    expect(linhaOuAviso(null)).toBe(LINHA_A_DEFINIR)
+    expect(linhaOuAviso('Fatec')).toBe('Fatec')
   })
 })
 

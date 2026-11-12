@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   PADRAO_MEMBRO,
   TODAS,
-  cargosDoTexto,
   isPermissao,
   resolverPermissoes,
   type EntradaResolucao,
+  type Permissao,
 } from '@/lib/permissoes'
 
 const base: EntradaResolucao = {
@@ -111,13 +111,37 @@ describe('resolverPermissoes (SDD 5.1)', () => {
 })
 
 describe('auxiliares', () => {
-  it('cargosDoTexto', () => {
-    expect(cargosDoTexto(' Dev, Gerente de Projeto ,, ')).toEqual(['Dev', 'Gerente de Projeto'])
-    expect(cargosDoTexto(null)).toEqual([])
-  })
 
   it('isPermissao', () => {
     expect(isPermissao('documentos:aprovar')).toBe(true)
     expect(isPermissao('documentos:tudo')).toBe(false)
   })
+})
+
+describe('pessoa com mais de uma função', () => {
+  const entrada = (funcoes: { chave: string; definidas: Permissao[] | null }[], ajustesProjeto: { permissao: Permissao; efeito: 'GRANT' | 'DENY' }[] = []) =>
+    resolverPermissoes({ admin: false, membro: true, base: ['projeto:ver'], funcoes, ajustesGlobais: [], ajustesProjeto })
+
+  it('fica com tudo que estiver ativo em qualquer uma das funções (soma)', () => {
+    const p = entrada([
+      { chave: 'desenvolvedora front-end', definidas: ['quadro:cards', 'quadro:mover'] },
+      { chave: 'redatora', definidas: ['documentos:editar', 'documentos:aprovar'] },
+    ])
+    expect([...p].sort()).toEqual(['documentos:aprovar', 'documentos:editar', 'projeto:ver', 'quadro:cards', 'quadro:mover'])
+  })
+
+  it('uma função sem nada marcado não tira o que a outra dá', () => {
+    const p = entrada([
+      { chave: 'redatora', definidas: [] },
+      { chave: 'tech lead', definidas: ['quadro:sprints'] },
+    ])
+    expect(p.has('quadro:sprints')).toBe(true)
+    expect(p.has('projeto:ver')).toBe(true)
+  })
+
+  it('só o ajuste individual "negar" retira', () => {
+    const p = entrada([{ chave: 'redatora', definidas: ['documentos:aprovar'] }], [{ permissao: 'documentos:aprovar', efeito: 'DENY' }])
+    expect(p.has('documentos:aprovar')).toBe(false)
+  })
+
 })

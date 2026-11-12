@@ -268,6 +268,16 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
     pageStyle: printFolhasStyle({ landscape: true }),
   })
 
+  // ── Word: sai da própria folha (cópia de impressão), igual à tela ─────────
+  async function exportarWord() {
+    if (!printRef.current) return
+    try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadFolhaDocx(printRef.current, 'EAP - Estrutura Analítica do Projeto', 'eap.docx') }
+    catch (e) {
+      const imagem = e instanceof Error && e.message.startsWith('Imagem indisponível')
+      toast(imagem ? 'Não foi possível gerar o Word: a logo, a assinatura ou o desenho da EAP não carregou. Tente novamente.' : 'Não foi possível gerar o Word. Tente novamente.', 'error')
+    }
+  }
+
   // ── Salvar (PUT) ──────────────────────────────────────────────────────────
 
   async function handleSave() {
@@ -392,7 +402,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
         pendentes={{ total: pendentes, onRevisar: () => abrirPropostas(projetoId) }}
         onImprimir={() => handlePrint()}
         onPdf={() => handlePrint()}
-        onWord={() => toast('A EAP ainda não tem exportação em Word. Use o PDF.', 'warning')}
+        onWord={() => void exportarWord()}
         desfazer={{ desfazer: undo, refazer: redo, podeDesfazer: past.length > 0, podeRefazer: future.length > 0 }}
         onAdicionarLinha={!origemWbs ? handleAddItem : undefined}
         paginas={{ total: totalPaginas, seletor: '[data-folha]' }}

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { rolesApi } from '@/lib/api-client'
 import prisma from '@/lib/prisma'
 import { funcaoKey } from '@/lib/utils/normalize'
+import { erroNomeDeFuncao } from '@/lib/funcoes'
 
 export async function createRoleAction(
   _prevState: unknown,
@@ -12,6 +13,8 @@ export async function createRoleAction(
 ) {
   try {
     await verifySession()
+    const erro = erroNomeDeFuncao(input.name)
+    if (erro) return { error: erro }
     const role = await rolesApi.create(input as Record<string, unknown>)
     return { role }
   } catch (err) {
@@ -63,6 +66,8 @@ export async function removePermissionAction(roleId: string, permissionId: strin
 export async function getOrCreateRoleAction(name: string) {
   try {
     await verifySession()
+    const erro = erroNomeDeFuncao(name)
+    if (erro) return { error: erro }
     const roles = await rolesApi.list() as Array<{ id: string; name: string }>
     // Equivalência por funcaoKey (acento, caixa e plural), em qualquer escopo:
     // evita "Gerente de Projetos" ao lado do papel "Gerente de Projeto".
@@ -80,6 +85,8 @@ export async function getOrCreateRoleAction(name: string) {
 export async function updateRoleNameAction(id: string, name: string) {
   try {
     await verifySession()
+    const erro = erroNomeDeFuncao(name)
+    if (erro) return { error: erro }
     const roles = await rolesApi.list() as Array<{ id: string; name: string }>
     const key = funcaoKey(name)
     const conflito = roles.find(r => r.id !== id && funcaoKey(r.name) === key)

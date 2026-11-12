@@ -2,6 +2,7 @@ import {
   AlignmentType, BorderStyle, Document, HeightRule, ImageRun, Paragraph, ShadingType,
   Table, TableCell, TableRow, TextRun, VerticalAlign, WidthType,
 } from 'docx'
+import { linhaOuAviso } from '@/lib/linhaInstitucional'
 
 /** assinaturaUrl: assinatura cadastrada no perfil do presente (membro), quando houver. */
 type Presente = { nome: string; setorEmpresa: string | null; assinaturaUrl?: string | null }
@@ -157,7 +158,7 @@ export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinatur
   })
 
   const quadro = tabela([W1, W2], [
-    { cells: [celula(titulo(d.instituicao ?? ''), LARGURA, { span: 2, cinza: CINZA })] },
+    { cells: [celula(titulo(linhaOuAviso(d.instituicao)), LARGURA, { span: 2, cinza: CINZA })] },
     { cells: [celula(rotulo('Nome do projeto:', d.nomeProjeto), LARGURA, { span: 2 })] },
     { cells: [celula(rotulo('Local:', d.local), W1), celula(titulo(`Data: ${ataData(d.data)}`), W2)] },
     { cells: [celula(rotulo('Elaborado por:', ataPessoa(d.elaboradoPor, d.elaboradoPorFuncao)), LARGURA, { span: 2 })] },

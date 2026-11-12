@@ -1,77 +1,10 @@
-import { exibirEnvolvidos } from '@/lib/charterEnvolvidos'
-import { AlignmentType, TabStopType, ImageRun, Packer, Paragraph, TextRun } from 'docx'
-import type { CharterDocumentProps } from '@/components/projetos/documentacao/ProjectCharterDocument'
+import { Packer } from 'docx'
 import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
-import { heading, modelDocument, modelTable, paragraphs } from './documentModel'
-import { parseDocumentCost } from '@/lib/documentCost'
 export { parseDocumentCost } from '@/lib/documentCost'
-async function imageRun(url: string | null | undefined, box = { width: 100, height: 75 }): Promise<ImageRun | undefined> {
-  if (!url) return undefined
-  if (typeof window === 'undefined') throw new Error('Images are loaded only by the browser')
-  const safe = safeAvatarUrl(url); if (!safe) throw new Error('Invalid image URL')
-  const response = await fetch(safe, { signal: AbortSignal.timeout(5000), credentials: 'same-origin' })
-  if (!response.ok || Number(response.headers.get('content-length')) > 5e6) throw new Error('Image unavailable')
-  const mime = response.headers.get('content-type')?.split(';')[0], type = mime === 'image/png' ? 'png' : mime === 'image/jpeg' ? 'jpg' : mime === 'image/gif' ? 'gif' : null
-  if (!type) throw new Error('Unsupported image')
-  const reader = response.body?.getReader(); if (!reader) throw new Error('Image unavailable')
-  const chunks: Uint8Array[] = []; let size = 0
-  try { while (true) { const { done, value } = await reader.read(); if (done) break; size += value.length; if (size > 5e6) throw new Error('Image too large'); chunks.push(value) } } finally { await reader.cancel() }
-  const bytes = new Uint8Array(size); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length }
-  const bitmap = await createImageBitmap(new Blob([bytes], { type: mime })), ratio = bitmap.width / bitmap.height
-  bitmap.close()
-  return new ImageRun({ type, data: bytes, transformation: { width: Math.min(box.width, box.height * ratio), height: Math.min(box.height, box.width / ratio) } })
-}
-async function image(url?: string | null): Promise<Paragraph[]> {
-  const run = await imageRun(url)
-  return run ? [new Paragraph({ children: [run] })] : []
-}
-async function signature(url?: string | null): Promise<Paragraph[]> {
-  const run = await imageRun(url, { width: 170, height: 30 })
-  return [new Paragraph({ spacing: { after: 60 }, children: [new TextRun({ text: 'Assinatura: ', size: 18 }), ...(run ? [run] : [])] })]
-}
-const money = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const date = (raw?: string | null) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw ?? ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : raw || '—' }
-const title = (text: string) => new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text, bold: true, size: 26 })] })
 async function save(doc: Parameters<typeof Packer.toBlob>[0], name: string) {
   const url = URL.createObjectURL(await Packer.toBlob(doc)), link = document.createElement('a')
   link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-export async function buildCharterDocx(p: CharterDocumentProps) {
-  const total = p.fases.reduce((sum,f) => sum+parseDocumentCost(f.custo),0)
-  return modelDocument('Termo de Abertura de Projeto - project charter', [ ...await image(p.logoUrl), title('Termo de Abertura de Projeto - project charter'),
-    modelTable([7144,3062], [[p.categoria ?? '',''],[`Nome do projeto: ${p.nomeProjeto}`,''],[`Elaborado por: ${p.elaboradoPor}`,`Versão: ${p.versao}`],[`Aprovado por: ${p.aprovadoPor}`,''],[await signature(p.gerenteSignatureUrl),`Data de aprovação: ${p.dataAprovacao}`]], false, true),
-    heading('Justificativa do projeto'), ...paragraphs(p.justificativa), heading('Objetivo(s) do projeto'), ...paragraphs(p.objetivos),
-    heading('Descrição do produto do projeto'), ...p.descricaoProduto.split('\n').filter(Boolean).map(text => new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text, size: 18 })] })),
-    heading('Premissas (hipóteses) e restrições para o projeto'), modelTable([5103,5103],[['Premissas (hipóteses)','Restrições'],[p.premissas,p.restricoes]],true),
-    heading('Macro fases, prazos e custo'), modelTable([6124,2041,2041],[['Macro fase','Data limite','Custo'],...p.fases.map((f,i) => [`1.${i+1} ${f.fase}`,date(f.dataLimite),money(parseDocumentCost(f.custo))]),['Custo total','',money(total)]],true),
-    heading('Principais envolvidos'), ...exibirEnvolvidos(p.principaisEnvolvidos, p.membros.map(m => m.papel?.trim() ? `${m.name} – ${m.papel.trim()}` : m.name)).flatMap(block => (block.valores.length ? block.valores : ['']).map((value, index) => new Paragraph({ spacing: { after: index === block.valores.length - 1 ? 180 : 0 }, tabStops: [{ type: TabStopType.LEFT, position: 1300 }], ...(index > 0 ? { indent: { left: 1300 } } : {}), children: [...(index === 0 && block.rotulo ? [new TextRun({ text: `${block.rotulo.replace(/:\s*$/, '')}:`, bold: true }), new TextRun({ text: '\t', break: 1 })] : []), new TextRun(value ? `- ${value.replace(/^\s*-\s?/, '')}` : '')] }))),
-    heading('Designação de gerente'), modelTable([3062,7144],[['Gerente do projeto',p.gerenteProjeto],['Limites de autoridade',p.limitesAutoridade]]),
-    ...(p.metodologia ? [heading('Metodologia do projeto'),...paragraphs(p.metodologia)] : [])
-  ], '© 02_Project Charter')
-}
-export async function downloadCharterDocx(p: CharterDocumentProps) { await save(await buildCharterDocx(p), 'termo-de-abertura.docx') }
-/** Imagem para o Word gerado no navegador; indisponível vira "sem imagem" (não impede o download). */
-async function imagemNoNavegador(url: string | null | undefined, caixa: { maxW: number; maxH: number; centro?: boolean }): Promise<Paragraph[]> {
-  const safe = safeAvatarUrl(url)
-  if (!safe) return []
-  const { baixarImagem, paragrafoDaImagem } = await import('./imagemDocx')
-  const bytes = await baixarImagem(safe, { credentials: 'same-origin' })
-  return bytes ? paragrafoDaImagem(bytes, caixa) : []
-}
-
-/** Ata no layout do modelo, gerada no navegador com a logo do projeto e as assinaturas dos presentes. */
-export async function downloadAtaDocx(d: import('./ataDocx').AtaExportData) {
-  const { buildAtaDocx, ataNumero, ataAssinantes } = await import('./ataDocx')
-  const { CAIXA_LOGO_ATA, CAIXA_ASSINATURA, CAIXA_ASSINATURA_GERENTE, baixarImagem, runDaImagem } = await import('./imagemDocx')
-  const gerenteUrl = safeAvatarUrl(d.assinaturaGerenteUrl)
-  const [assinaturaGerente, logo, ...assinaturas] = await Promise.all([
-    gerenteUrl ? baixarImagem(gerenteUrl, { credentials: 'same-origin' }).then(bytes => bytes ? runDaImagem(bytes, CAIXA_ASSINATURA_GERENTE) : undefined) : undefined,
-    imagemNoNavegador(d.logoUrl, CAIXA_LOGO_ATA),
-    ...ataAssinantes(d.presentes).map(p => imagemNoNavegador(p.assinaturaUrl, CAIXA_ASSINATURA)),
-  ])
-  await save(buildAtaDocx(d, logo, assinaturas, assinaturaGerente), `ata-${ataNumero(d.numero)}.docx`)
-}
-
 /**
  * Capa no Word, idêntica à folha do sistema. A logo é obrigatória quando o projeto
  * tem uma: sem ela o Word sairia diferente da tela, então a falha é avisada.
@@ -95,6 +28,13 @@ export async function downloadCapaDocx(d: import('./capaDocx').CapaExportData & 
  * `raiz` é o elemento do <Folha> (a cópia de impressão do documento).
  */
 export async function downloadFolhaDocx(raiz: HTMLElement, titulo: string, arquivo: string) {
-  const { folhaParaDocx } = await import('./folhaDocx')
+  const { esperarFolhaPronta, folhaParaDocx } = await import('./folhaDocx')
+  await esperarFolhaPronta(raiz)
   await save(await folhaParaDocx(raiz, titulo), arquivo)
+}
+
+/** Nome do arquivo da Ata: "ata-03-app-horta-comunitaria.docx". */
+export function arquivoDaAta(numero: number, nomeProjeto: string): string {
+  const nome = nomeProjeto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
+  return `ata-${String(numero || 0).padStart(2, '0')}${nome ? `-${nome}` : ''}.docx`
 }

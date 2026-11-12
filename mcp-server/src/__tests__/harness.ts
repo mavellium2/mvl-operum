@@ -68,9 +68,9 @@ export async function seedSourceProject(h: Harness) {
     startDate: '2026-01-05T00:00:00.000Z',
     justificativa: 'Porque sim',
   })
-  await gw.post(`/projects/${project.id}/members`, { userId: 'u-vini-mav', role: 'gerente' })
-  await gw.post(`/projects/${project.id}/members`, { userId: 'u-ana-mav', role: 'dev', hourlyRate: 80 })
-  await gw.post(`/projects/${project.id}/members`, { userId: 'u-bruno-mav', role: 'qa' })
+  await gw.post(`/projects/${project.id}/members`, { userId: 'u-vini-mav', funcoes: ['gerente'] })
+  await gw.post(`/projects/${project.id}/members`, { userId: 'u-ana-mav', funcoes: ['dev'], hourlyRate: 80 })
+  await gw.post(`/projects/${project.id}/members`, { userId: 'u-bruno-mav', funcoes: ['qa'] })
   await gw.post(`/projects/${project.id}/macro-fases`, { fases: [{ fase: 'Descoberta', dataLimite: '2026-02-01', custo: '1000' }] })
   const sh = await gw.post<Record<string, string>>('/stakeholders', { name: 'Cliente X', company: 'X S.A.' })
   await gw.post(`/stakeholders/${sh.id}/projects/${project.id}`)

@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma'
-import { linhaInstitucional, type ProjetoInstitucional } from '@/lib/linhaInstitucional'
+import { linhaDoCabecalho, type ProjetoInstitucional } from '@/lib/linhaInstitucional'
 import type { Prisma } from '@/lib/generated/prisma'
 import type { InputJsonValue } from '@/lib/generated/prisma/runtime/client'
 import type { EapDocument, EapNode } from '@/types/eap'
@@ -188,5 +188,5 @@ export async function resetDocument(projectId: string, tenantId: string, prefill
 
 /** Linha institucional do cabeçalho — mesma regra da Ata (`lib/linhaInstitucional.ts`). */
 export function formatInstitucionalInfo(project: ProjetoInstitucional): string {
-  return linhaInstitucional(project)
+  return linhaDoCabecalho(project)
 }

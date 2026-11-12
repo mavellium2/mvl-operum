@@ -5,6 +5,20 @@ import EnvolvidosEditor from '@/components/projetos/documentacao/EnvolvidosEdito
 import { exibirEnvolvidos } from '@/lib/charterEnvolvidos'
 vi.mock('@/components/documentos/editor/folha', () => ({ CampoTexto: ({ valor, rotulo, onChange }: { valor: string; rotulo: string; onChange: (value: string) => void }) => <textarea aria-label={rotulo} value={valor} onChange={event => onChange(event.target.value)} /> }))
 describe('editor dos principais envolvidos', () => {
+  it('exclui um título criado com as pessoas dele; Integrantes do Grupo não tem excluir', () => {
+    let stored = '## Professor\nAna\n## Integrantes do Grupo\n\n## Patrocinador\nPrefeitura'
+    function Form() {
+      const [value, setValue] = useState(stored)
+      return <EnvolvidosEditor value={value} membros={['Luan']} onChange={next => { stored = next; setValue(next) }} />
+    }
+    render(<Form />)
+    expect(screen.queryByRole('button', { name: /Excluir o título Integrantes do Grupo/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir o título Professor e as pessoas dele' }))
+    expect(exibirEnvolvidos(stored, ['Luan'])).toEqual([{ rotulo: 'Integrantes do Grupo', valores: ['Luan'] }, { rotulo: 'Patrocinador', valores: ['Prefeitura'] }])
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir o título Patrocinador e as pessoas dele' }))
+    expect(exibirEnvolvidos(stored, ['Luan'])).toEqual([{ rotulo: 'Integrantes do Grupo', valores: ['Luan'] }])
+  })
+
   it('adiciona título, mantém pessoas em linhas e move conteúdo com o título', () => {
     let stored = ''
     function Form() {

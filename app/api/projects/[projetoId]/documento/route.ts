@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server'
 import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 import { verifySession } from '@/lib/dal'
 import prisma from '@/lib/prisma'
+import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
+import { CONTA_INATIVADA } from '@/lib/contaInativada'
 import { canProjectPermission as can } from '@/services/projectAccess'
 import { documentoVigente } from '@/services/documentRevisionService'
 import type { ProjetoHeader, Stakeholder } from '@/components/projetos/StakeholderDocument'
 import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
-import { linhaInstitucional } from '@/lib/linhaInstitucional'
-import { acrescentarPartesDoCadastro, identificarPartesDoCadastro } from '@/lib/partesInteressadas'
+import { linhaDoCabecalho } from '@/lib/linhaInstitucional'
+import { acrescentarPartesDoCadastro, identificarPartesDoCadastro, semAlternativos } from '@/lib/partesInteressadas'
 
 function buildAddress(e: {
   logradouro?: string | null
@@ -67,9 +69,11 @@ export async function GET(
               notes: true,
               deletedAt: true,
               isActive: true,
+              contato: { select: { id: true } },
             },
           },
           department: { select: { name: true } },
+          funcoes: FUNCOES_ORDENADAS,
         },
         orderBy: { order: 'asc' },
       }),
@@ -88,15 +92,9 @@ export async function GET(
     const gerenteProjeto = gerente.nome
     const signatureUrl = gerente.signatureUrl
 
-    const dept = (await departamentosDoProjeto(projetoId, tenantId, project.departamentos))[0] ?? ''
-    const semestreLabel =
-      project.semestre === '1' ? '1º Semestre' :
-      project.semestre === '2' ? '2º Semestre' :
-      (project.semestre ?? '')
-    const semestreAno = [semestreLabel, project.ano].filter(Boolean).join(' ')
-    const categoria = project.semestre === 'ano'
-      ? linhaInstitucional({ ...project, departamentos: dept ? [dept] : [] })
-      : [project.location ?? 'Stakeholder externo', dept, semestreAno].filter(Boolean).join(' - ')
+    // Mesma linha do cabeçalho dos outros documentos (Termo, EAP, Ata); sem dados, o aviso para preencher.
+    const departamentos = await departamentosDoProjeto(projetoId, tenantId, project.departamentos)
+    const categoria = linhaDoCabecalho({ ...project, departamentos })
 
     const header: ProjetoHeader = {
       categoria,
@@ -112,23 +110,28 @@ export async function GET(
     }
 
     const membros: Stakeholder[] = userProjects
-      .filter(up => up.user.deletedAt === null && up.user.isActive)
+      // Conta desativada no sistema continua no documento, marcada como inativa.
+      .filter(up => up.user.deletedAt === null)
       .map((up, i) => ({
         ref: String(i + 1).padStart(2, '0'),
         cadastroId: `interno:${up.userId}`,
+        // Mesma pessoa como externa (antes de uma troca): não pode entrar duplicada.
+        ...(up.user.contato ? { cadastroAlternativos: [`externo:${up.user.contato.id}`] } : {}),
         nome: up.user.name,
         empresaEquipe: up.department?.name ?? project.name,
-        cargoCompetencia: up.role ?? '',
+        // Exibição no documento: as funções do cadastro, uma após a outra.
+        cargoCompetencia: nomesDasFuncoes(up.funcoes).join(', '),
         email: up.user.email ?? '',
         telefoneFax: up.user.phone ?? '',
         endereco: buildAddress(up.user),
         observacoes: up.user.notes ?? '',
-        ...(up.active === false ? { inativo: true, motivoInativo: up.inactiveReason ?? '' } : {}),
+        ...(up.active === false || !up.user.isActive ? { inativo: true, motivoInativo: (up.active ? CONTA_INATIVADA : up.inactiveReason) ?? '' } : {}),
       }))
 
     const externos: Stakeholder[] = projectStakeholders.map((ps, i) => ({
       ref: String(membros.length + i + 1).padStart(2, '0'),
       cadastroId: `externo:${ps.stakeholder.id}`,
+      ...(ps.stakeholder.userId ? { cadastroAlternativos: [`interno:${ps.stakeholder.userId}`] } : {}),
       nome: ps.stakeholder.name,
       empresaEquipe: ps.stakeholder.company ?? '',
       cargoCompetencia: ps.stakeholder.competence ?? '',
@@ -143,7 +146,7 @@ export async function GET(
 
     // Após adicionar ao projeto, a tabela precisa do cadastro atual, não da versão aprovada antiga.
     if (new URL(request.url).searchParams.get('origem') === 'cadastro') {
-      return NextResponse.json({ header, stakeholders: [...membros, ...externos] })
+      return NextResponse.json({ header, stakeholders: semAlternativos([...membros, ...externos]) })
     }
 
     // Snapshots antigos não têm a marca de inativo: cruza pelo nome com os inativos atuais.
@@ -172,7 +175,7 @@ export async function GET(
     const atuais = acrescentarPartesDoCadastro(identificarPartesDoCadastro(linhasSalvas, cadastro), cadastro, payload?.cadastrosExcluidos)
     return NextResponse.json(payload
       ? { ...payload, header: { ...payload.header, nomeProjeto: header.nomeProjeto, gerenteProjeto: header.gerenteProjeto, logoUrl: header.logoUrl, categoria: header.categoria, signatureUrl: header.signatureUrl }, stakeholders: atuais, cadastroAtualizado: atuais.length > linhasSalvas.length }
-      : { header, stakeholders: cadastro })
+      : { header, stakeholders: semAlternativos(cadastro) })
   } catch (err) {
     console.error('[documento/route]', err)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })

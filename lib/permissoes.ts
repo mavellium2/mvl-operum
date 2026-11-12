@@ -3,14 +3,18 @@
  * - o admin dá a qualquer função as permissões que quiser (matriz de funções);
  * - por usuário, pode conceder ou negar a mais ou a menos, no global ou num
  *   projeto (o ajuste do projeto vence o global);
- * - as funções de uma pessoa no projeto são os cargos dela (UserProject.role),
- *   casados com o cadastro de funções pela funcaoKey.
+ * - as funções de uma pessoa no projeto são os vínculos dela com o cadastro de
+ *   funções (UserProjectFuncao), uma por item.
  *
  * Enquanto o admin não definir as permissões de uma função, valem os padrões
  * abaixo, que reproduzem o comportamento anterior (gerente pode tudo; membro vê
  * tudo, mexe nos cards, edita documentos com versão pendente e lança o realizado
  * das próprias linhas). Tech Lead e PO não têm padrão: por decisão do usuário,
  * começam iguais ao usuário comum.
+ *
+ * Com várias funções, a pessoa fica com tudo que estiver ativo em qualquer uma
+ * delas (soma): uma função nunca tira permissão de outra. Só o ajuste individual
+ * "negar" retira.
  *
  * Sem dependências de servidor: é usado também pela interface.
  */
@@ -121,7 +125,3 @@ export function resolverPermissoes(e: EntradaResolucao): Set<Permissao> {
   return permissoes
 }
 
-/** Cargos em texto (UserProject.role) → lista limpa. */
-export function cargosDoTexto(role: string | null | undefined): string[] {
-  return (role ?? '').split(',').map(c => c.trim()).filter(Boolean)
-}

@@ -12,6 +12,11 @@ vi.mock('next/dynamic', async () => {
 })
 vi.mock('@/app/actions/cadastroStakeholders', () => ({ carregarCadastroStakeholdersAction: vi.fn() }))
 vi.mock('@/app/actions/stakeholders', () => ({
+  salvarDadosDoExternoAction: vi.fn().mockResolvedValue({ success: true }),
+  salvarEmpresaDoMembroAction: vi.fn().mockResolvedValue({ success: true }),
+  adicionarUsuarioComoExternoAction: vi.fn(),
+  tornarExternoAction: vi.fn(),
+  tornarInternoAction: vi.fn(),
   createStakeholderAction: vi.fn(),
   updateStakeholderAction: vi.fn(),
   bindStakeholderAction: vi.fn(),

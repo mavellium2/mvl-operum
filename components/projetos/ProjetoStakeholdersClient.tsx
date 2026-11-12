@@ -17,7 +17,7 @@ import { Fragment, useState, useTransition, useEffect, useRef } from 'react'
 import {
   Plus,
   Pencil,
-  UserMinus,
+  Trash2,
   UserPlus,
   Building2,
   Mail,
@@ -42,13 +42,22 @@ import {
   reorderMembersAction,
   uploadMemberSignatureAction,
   setStakeholderAtivoAction,
+  adicionarUsuarioComoExternoAction,
+  tornarExternoAction,
+  tornarInternoAction,
+  salvarDadosDoExternoAction,
+  salvarEmpresaDoMembroAction,
 } from '@/app/actions/stakeholders'
+import { carregarCadastroStakeholdersAction } from '@/app/actions/cadastroStakeholders'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { addMemberAction, removeMemberAction } from '@/app/actions/projects'
 import { EmailInput, TelefoneInput } from '@/components/ui/ContatoInputs'
 import { erroEmail, erroTelefone } from '@/lib/contato'
 import { updateProjetoMemberAction, setMembroAtivoAction } from '@/app/actions/projetos'
 import { adminCreateUserAction } from '@/app/actions/admin'
 import { parseHoras, formatHoras } from '@/lib/validation/horas'
+import { separarFuncoes } from '@/lib/funcoes'
+import { funcaoKey } from '@/lib/utils/normalize'
 import PasswordInput from '@/components/ui/PasswordInput'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
@@ -88,6 +97,8 @@ export type StakeholderUnificado = {
   tenantId?: string
   company?: string | null
   competence?: string | null
+  /** Externo com login no sistema (pode virar interno sem criar conta). */
+  contaId?: string | null
   /** Interno: inativo no projeto (sem acesso). Externo: inativo no cadastro global. */
   isActive?: boolean
   /** Motivo informado ao inativar; só existe com isActive === false. */
@@ -101,6 +112,9 @@ export type UsuarioDisponivel = {
   email: string
   avatarUrl: string | null
   role: string
+  /** Contato (sem login) oferecido na lista de internos: `id` é "contato:<stakeholderId>". */
+  stakeholderId?: string
+  semConta?: boolean
 }
 
 export type StakeholderExterno = {
@@ -121,6 +135,8 @@ export type StakeholderExterno = {
   estado: string | null
   notes: string | null
   isActive: boolean
+  /** Conta do sistema da mesma pessoa; em contas sem contato, `id` é "usuario:<userId>". */
+  userId?: string | null
 }
 
 interface Props {
@@ -293,7 +309,12 @@ function MultiCreatableSelect({
 
   function handleSelect(val: string) {
     if (disabled) return
-    if (!values.includes(val)) onChange([...values, val])
+    // "Front-End | Redatora" vira duas etiquetas; nome equivalente a uma opção existente
+    // (acento, caixa, plural) usa a existente, para não criar outra função igual.
+    const novos = separarFuncoes(val).map(nome => options.find(o => funcaoKey(o) === funcaoKey(nome)) ?? nome)
+    const lista = [...values]
+    for (const nome of novos) if (!lista.some(v => funcaoKey(v) === funcaoKey(nome))) lista.push(nome)
+    if (lista.length !== values.length) onChange(lista)
     setSearch('')
     setIsOpen(false)
     inputRef.current?.focus()
@@ -487,6 +508,24 @@ export default function ProjetoStakeholdersClient({
   const [quickLoading, setQuickLoading] = useState<null | 'col1' | 'dir'>(null)
 
   const [, startTransition] = useTransition()
+  /** Contato que está ganhando login para virar interno (criação de membro a partir dele). */
+  const [contatoOrigem, setContatoOrigem] = useState<string | null>(null)
+  /** Pessoa aguardando a confirmação de "Mudar para externo/interno". */
+  const [trocando, setTrocando] = useState<StakeholderUnificado | null>(null)
+
+  /** Listas do cadastro vindas do servidor (depois de cada operação que mexe nas duas). */
+  type Cadastro = { stakeholders: StakeholderUnificado[]; stakeholdersDisponiveis: StakeholderExterno[]; usuariosDisponiveis: UsuarioDisponivel[] }
+  function aplicarCadastro(c: Cadastro | null | undefined) {
+    if (!c) return
+    setProjeto(c.stakeholders)
+    setDispExterno(c.stakeholdersDisponiveis)
+    setDispInterno(c.usuariosDisponiveis)
+  }
+  /** Interno e externo usam o mesmo cadastro: quem entra ou sai de uma lista muda a outra. */
+  async function recarregar() {
+    const r = await carregarCadastroStakeholdersAction(projetoId)
+    if ('dados' in r && r.dados) aplicarCadastro(r.dados)
+  }
   const addMenuRef = useRef<HTMLDivElement>(null)
 
   // Drag and drop state
@@ -595,11 +634,15 @@ export default function ProjetoStakeholdersClient({
         estado: s.estado ?? '',
       },
       notes: s.notes ?? '',
-      cargos: [],
-      departamento: [],
+      // Mesmos dados do membro da equipe, guardados no vínculo do externo com o projeto.
+      cargos: s.cargos ?? [],
+      departamento: s.departamento ?? [],
       isGerente: false,
-      remuneracao: '',
-      horasDiarias: '',
+      remuneracao:
+        s.remuneracao != null
+          ? s.remuneracao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          : '',
+      horasDiarias: s.horasDiarias != null ? formatHoras(s.horasDiarias) : '',
       password: '',
       forcePasswordChange: false,
     })
@@ -609,8 +652,8 @@ export default function ProjetoStakeholdersClient({
     setFormState({
       avatarUrl: s.avatarUrl ?? '',
       name: s.name,
-      company: '',
-      competence: '',
+      company: s.company ?? '',
+      competence: s.competence ?? '',
       email: s.email ?? '',
       phone: s.phone ?? '',
       address: {
@@ -640,6 +683,7 @@ export default function ProjetoStakeholdersClient({
     setSelected(null)
     setIsCreating(false)
     setFormError(null)
+    setContatoOrigem(null)
   }
 
   function handleOpenEdit(s: StakeholderUnificado) {
@@ -663,6 +707,7 @@ export default function ProjetoStakeholdersClient({
     setSelected(null)
     setIsCreating(true)
     setFormError(null)
+    setContatoOrigem(null)
     setFormState({ ...emptyForm, forcePasswordChange: true })
   }
 
@@ -793,6 +838,22 @@ export default function ProjetoStakeholdersClient({
   // ── Bind external stakeholder
   function handleBindExterno(s: StakeholderExterno) {
     if (!canManage) return
+    // Conta do sistema sem contato: cria o contato da mesma pessoa e vincula como externa.
+    if (s.id.startsWith('usuario:') && s.userId) {
+      const userId = s.userId
+      startTransition(async () => {
+        setLoadingId(s.id)
+        const result = await adicionarUsuarioComoExternoAction(projetoId, userId)
+        setLoadingId(null)
+        if ('error' in result) { toast(result.error ?? 'Erro ao adicionar como externo.', 'error'); return }
+        aplicarCadastro(result.cadastro)
+        const nova = result.cadastro?.stakeholders.find(x => x.tipo === 'externo' && x.contaId === userId)
+        if (nova) handleOpenEdit(nova)
+        toast(`"${s.name}" adicionado como externo neste projeto.`, 'success')
+        avisarAlteracao()
+      })
+      return
+    }
     const unified: StakeholderUnificado = {
       id: s.id,
       tipo: 'externo',
@@ -830,43 +891,7 @@ export default function ProjetoStakeholdersClient({
       } else {
         toast(`Stakeholder "${s.name}" vinculado ao projeto!`, 'success')
         avisarAlteracao()
-      }
-    })
-  }
-
-  // ── Unbind external stakeholder
-  function handleUnbindExterno(s: StakeholderUnificado) {
-    if (!canManage || !s.stakeholderId) return
-    const externo: StakeholderExterno = {
-      id: s.stakeholderId,
-      tenantId: s.tenantId!,
-      name: s.name,
-      logoUrl: s.avatarUrl,
-      company: s.company ?? null,
-      competence: s.competence ?? null,
-      email: s.email,
-      phone: s.phone,
-      cep: s.cep,
-      logradouro: s.logradouro,
-      numero: s.numero,
-      complemento: s.complemento,
-      bairro: s.bairro,
-      cidade: s.cidade,
-      estado: s.estado,
-      notes: s.notes,
-      isActive: s.isActive ?? true,
-    }
-    setProjeto(prev => prev.filter(x => x.id !== s.id))
-    setDispExterno(prev => [...prev, externo])
-    if (selected?.id === s.id) handleClearSelection()
-
-    startTransition(async () => {
-      setLoadingId(s.id)
-      const result = await unbindStakeholderAction(projetoId, s.stakeholderId!)
-      setLoadingId(null)
-      if ('error' in result) {
-        setProjeto(prev => [...prev, s])
-        setDispExterno(prev => prev.filter(x => x.id !== externo.id))
+        void recarregar()
       }
     })
   }
@@ -874,6 +899,13 @@ export default function ProjetoStakeholdersClient({
   // ── Add internal member
   function handleAddInterno(u: UsuarioDisponivel) {
     if (!canManage) return
+    // Contato sem login: interno precisa de conta. O administrador cria o login já
+    // preenchido com os dados do contato; para os demais, explica o que fazer.
+    if (u.semConta && u.stakeholderId) {
+      if (!isAdmin) { toast(`Para usar "${u.name}" como interno, um administrador precisa criar o login dessa pessoa.`, 'error'); return }
+      abrirCriacaoDeLogin(u.stakeholderId)
+      return
+    }
     const unified: StakeholderUnificado = {
       id: u.id,
       tipo: 'interno',
@@ -911,32 +943,56 @@ export default function ProjetoStakeholdersClient({
         handleClearSelection()
       } else {
         avisarAlteracao()
+        void recarregar()
       }
     })
   }
 
-  // ── Remove internal member
-  function handleRemoveInterno(s: StakeholderUnificado) {
-    if (!canManage || !s.userId) return
-    const usuario: UsuarioDisponivel = {
-      id: s.userId,
-      name: s.name,
-      email: s.email ?? '',
-      avatarUrl: s.avatarUrl,
-      role: s.userRole ?? 'member',
-    }
-    setProjeto(prev => prev.filter(x => x.id !== s.id))
-    setDispInterno(prev => [...prev, usuario])
-    if (selected?.id === s.id) handleClearSelection()
+  /** Abre "Novo membro" preenchido com os dados do contato; ao salvar, a conta fica ligada a ele. */
+  function abrirCriacaoDeLogin(stakeholderId: string) {
+    const contato = dispExterno.find(x => x.id === stakeholderId) ?? null
+    const doProjeto = projeto.find(x => x.tipo === 'externo' && x.stakeholderId === stakeholderId) ?? null
+    handleOpenAddMode('interno')
+    handleOpenCreateInterno()
+    setContatoOrigem(stakeholderId)
+    const base = doProjeto ?? (contato ? {
+      name: contato.name, email: contato.email, avatarUrl: contato.logoUrl, phone: contato.phone, company: contato.company, competence: contato.competence,
+      cep: contato.cep, logradouro: contato.logradouro, numero: contato.numero, complemento: contato.complemento, bairro: contato.bairro, cidade: contato.cidade, estado: contato.estado, notes: contato.notes,
+    } : null)
+    if (base) setFormState(f => ({
+      ...f, name: base.name, email: base.email ?? '', avatarUrl: base.avatarUrl ?? '', phone: base.phone ?? '',
+      company: base.company ?? '', competence: base.competence ?? '', notes: base.notes ?? '',
+      address: { cep: base.cep ?? '', logradouro: base.logradouro ?? '', numero: base.numero ?? '', complemento: base.complemento ?? '', bairro: base.bairro ?? '', cidade: base.cidade ?? '', estado: base.estado ?? '' },
+      ...(doProjeto ? {
+        cargos: doProjeto.cargos ?? [], departamento: doProjeto.departamento ?? [],
+        remuneracao: doProjeto.remuneracao != null ? doProjeto.remuneracao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
+        horasDiarias: doProjeto.horasDiarias != null ? formatHoras(doProjeto.horasDiarias) : '',
+      } : {}),
+    }))
+  }
 
+  /** Muda a pessoa de lado neste projeto (depois da confirmação). */
+  function confirmarTroca(s: StakeholderUnificado) {
+    setTrocando(null)
     startTransition(async () => {
       setLoadingId(s.id)
-      const result = await removeMemberAction(projetoId, s.userId!)
+      const result = s.tipo === 'interno'
+        ? await tornarExternoAction(projetoId, s.userId!)
+        : await tornarInternoAction(projetoId, s.stakeholderId!)
       setLoadingId(null)
-      if ('error' in result) {
-        setProjeto(prev => [...prev, s])
-        setDispInterno(prev => prev.filter(x => x.id !== usuario.id))
+      if ('semConta' in result && result.semConta) {
+        if (isAdmin) abrirCriacaoDeLogin(s.stakeholderId!)
+        else toast(`Para mudar "${s.name}" para interno, um administrador precisa criar o login dessa pessoa.`, 'error')
+        return
       }
+      if ('error' in result) { toast(result.error ?? 'Não foi possível mudar.', 'error'); return }
+      aplicarCadastro(result.cadastro)
+      const nova = s.tipo === 'interno'
+        ? result.cadastro?.stakeholders.find(x => x.tipo === 'externo' && x.contaId === s.userId)
+        : result.cadastro?.stakeholders.find(x => x.tipo === 'interno' && x.userId === (s.contaId ?? undefined))
+      if (nova) handleOpenEdit(nova); else handleClearSelection()
+      toast(s.tipo === 'interno' ? `"${s.name}" agora é externo neste projeto.` : `"${s.name}" agora é interno neste projeto.`, 'success')
+      avisarAlteracao()
     })
   }
 
@@ -1011,9 +1067,29 @@ export default function ProjetoStakeholdersClient({
     })
   }
 
+  // Excluir do projeto: só sem tarefas no projeto (o servidor confere). Com tarefas, inativar.
+  const [excluindo, setExcluindo] = useState<StakeholderUnificado | null>(null)
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null)
   function handleUnlink(s: StakeholderUnificado) {
-    if (s.tipo === 'interno') handleRemoveInterno(s)
-    else handleUnbindExterno(s)
+    setErroExclusao(null)
+    setExcluindo(s)
+  }
+  function confirmarExclusao(s: StakeholderUnificado) {
+    startTransition(async () => {
+      setLoadingId(s.id)
+      const result = s.tipo === 'interno'
+        ? await removeMemberAction(projetoId, s.userId!)
+        : await unbindStakeholderAction(projetoId, s.stakeholderId!)
+      setLoadingId(null)
+      // O diálogo fecha ao confirmar: reabre com o motivo da recusa.
+      if ('error' in result) { setErroExclusao(result.error ?? 'Não foi possível excluir do projeto.'); setExcluindo(s); return }
+      setExcluindo(null)
+      if (selected?.id === s.id) handleClearSelection()
+      setProjeto(prev => prev.filter(x => x.id !== s.id))
+      toast(`"${s.name}" foi excluído deste projeto.`, 'success')
+      avisarAlteracao()
+      void recarregar()
+    })
   }
 
   // A ordem é independente por vínculo. Filtros não podem salvar uma ordem parcial.
@@ -1066,9 +1142,16 @@ export default function ProjetoStakeholdersClient({
   async function handleSave() {
     setFormError(null)
 
-    // Horas por dia inválidas nunca são descartadas em silêncio (SDD 4.5).
-    const ehMembro = (isCreating && !selected && addMode === 'interno') || selected?.tipo === 'interno'
-    if (ehMembro && horasCheck.erro) { setFormError(horasCheck.erro); return }
+    // Horas por dia inválidas nunca são descartadas em silêncio (SDD 4.5). Interno e
+    // externo têm os mesmos dados do projeto (remuneração, horas, funções, departamentos).
+    const ehMembro = true
+    if (horasCheck.erro) { setFormError(horasCheck.erro); return }
+    const dadosDoExterno = () => ({
+      remuneracao: isAdmin ? (formState.remuneracao.trim() ? formState.remuneracao : null) : undefined,
+      horasDiarias: isAdmin ? (formState.horasDiarias.trim() ? formState.horasDiarias : null) : undefined,
+      funcoes: formState.cargos,
+      departamentos: formState.departamento,
+    })
 
     // E-mail e telefone só são editáveis pelo admin; o servidor ignora o que não mudou.
     if (isAdmin) {
@@ -1113,14 +1196,21 @@ export default function ProjetoStakeholdersClient({
       }
       setDispInterno(prev => [novoUsuario, ...prev])
       
-      // Auto-vincular ao projeto
+      // Auto-vincular ao projeto. Login criado para um contato: a conta fica ligada a ele
+      // (uma pessoa, um cadastro) e, se ele era externo aqui, passa a interno.
       setLoadingId('form')
-      const addResult = await addMemberAction(projetoId, novoUsuario.id)
+      const addResult = contatoOrigem
+        ? await tornarInternoAction(projetoId, contatoOrigem, novoUsuario.id)
+        : await addMemberAction(projetoId, novoUsuario.id)
       setLoadingId(null)
       if ('error' in addResult) {
         toast(addResult.error ?? 'Erro ao vincular usuário ao projeto', 'error')
         handleClearSelection()
         return
+      }
+      if (formState.company.trim() || formState.competence.trim()) {
+        const emp = await salvarEmpresaDoMembroAction(projetoId, novoUsuario.id, { company: formState.company, competence: formState.competence })
+        if ('error' in emp) toast(`Membro criado, mas empresa/competência não foram salvas: ${emp.error}`, 'error')
       }
 
       // Dados do projeto preenchidos no formulário (cargos, departamento,
@@ -1174,6 +1264,7 @@ export default function ProjetoStakeholdersClient({
         forcePasswordChange: formState.forcePasswordChange,
       }
       setProjeto(prev => [...prev, unified])
+      if (contatoOrigem) { setContatoOrigem(null); void recarregar() }
       toast('Usuário criado e vinculado ao projeto!', 'success')
       if (concluirNoPainel(undefined, unified)) return
       // Já abre o cadastro do membro, com o que foi salvo, em vez de fechar o formulário.
@@ -1211,6 +1302,9 @@ export default function ProjetoStakeholdersClient({
 
       if ('error' in result) { setFormError(result.error ?? 'Erro ao criar stakeholder'); return }
       const raw = result.stakeholder as { id: string; tenantId: string }
+      const dadosNovos = dadosDoExterno()
+      const salvouDados = await salvarDadosDoExternoAction(projetoId, raw.id, dadosNovos)
+      if ('error' in salvouDados) toast(`Stakeholder criado, mas os dados do projeto não foram salvos: ${salvouDados.error}`, 'error')
       const unified: StakeholderUnificado = {
         id: raw.id,
         tipo: 'externo',
@@ -1231,6 +1325,10 @@ export default function ProjetoStakeholdersClient({
         estado: formState.address.estado || null,
         notes: formState.notes || null,
         isActive: true,
+        cargos: formState.cargos,
+        departamento: formState.departamento,
+        remuneracao: parseBRLFloat(formState.remuneracao),
+        horasDiarias: parseHoras(formState.horasDiarias).valor,
       }
       setProjeto(prev => (prev.some(x => x.id === unified.id) ? prev : [...prev, unified]))
       toast(`Stakeholder "${unified.name}" criado e adicionado ao projeto!`, 'success')
@@ -1284,6 +1382,16 @@ export default function ProjetoStakeholdersClient({
       setLoadingId(null)
 
       if ('error' in result) { setFormError(result.error ?? 'Erro ao atualizar stakeholder'); return }
+      setLoadingId('form')
+      const dados = await salvarDadosDoExternoAction(projetoId, selected.stakeholderId!, dadosDoExterno())
+      setLoadingId(null)
+      if ('error' in dados) { setFormError(dados.error ?? 'Erro ao salvar os dados do projeto'); return }
+      updated.cargos = formState.cargos
+      updated.departamento = formState.departamento
+      if (isAdmin) {
+        updated.remuneracao = parseBRLFloat(formState.remuneracao)
+        updated.horasDiarias = parseHoras(formState.horasDiarias).valor
+      }
       setProjeto(prev => prev.map(x => x.id === updated.id ? updated : x))
       if (concluirNoPainel(`Dados de "${updated.name}" salvos!`)) return
       handleClearSelection()
@@ -1315,11 +1423,19 @@ export default function ProjetoStakeholdersClient({
       setLoadingId(null)
 
       if ('error' in result) { setFormError(result.error ?? 'Erro ao salvar'); return }
+      if ((formState.company || '') !== (selected.company ?? '') || (formState.competence || '') !== (selected.competence ?? '')) {
+        setLoadingId('form')
+        const emp = await salvarEmpresaDoMembroAction(projetoId, selected.userId, { company: formState.company, competence: formState.competence })
+        setLoadingId(null)
+        if ('error' in emp) { setFormError(emp.error ?? 'Erro ao salvar empresa e competência'); return }
+      }
       setProjeto(prev =>
         prev.map(x =>
           x.id === selected.id
             ? {
                 ...x,
+                company: formState.company || null,
+                competence: formState.competence || null,
                 ...(isAdmin && formState.name.trim() && { name: formState.name.trim() }),
                 ...(isAdmin && formState.email.trim() && { email: formState.email.trim() }),
                 avatarUrl: formState.avatarUrl || x.avatarUrl,
@@ -1445,6 +1561,7 @@ export default function ProjetoStakeholdersClient({
                     <Avatar name={s.name} url={s.logoUrl} size="sm" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
+                      {s.userId && <p className="text-[11px] text-blue-700 mt-0.5">Tem login no sistema · entra como externo, sem acesso a este projeto</p>}
                       {s.company && (
                         <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5">
                           <Building2 className="w-3 h-3 shrink-0" />{s.company}
@@ -1460,7 +1577,7 @@ export default function ProjetoStakeholdersClient({
                       >
                         {loadingId === s.id ? <Spinner /> : <UserPlus className="w-4 h-4" />}
                       </OperumButton>
-                      <OperumButton variant="custom" type="button"
+                      {!s.id.startsWith('usuario:') && <OperumButton variant="custom" type="button"
                         onClick={() => handleOpenEdit({
                           id: s.id, tipo: 'externo', stakeholderId: s.id, tenantId: s.tenantId,
                           name: s.name, email: s.email, avatarUrl: s.logoUrl, phone: s.phone,
@@ -1473,7 +1590,7 @@ export default function ProjetoStakeholdersClient({
                         className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                       >
                         <Pencil className="w-4 h-4" />
-                      </OperumButton>
+                      </OperumButton>}
                     </div>
                   </li>
                 ))}
@@ -1491,9 +1608,10 @@ export default function ProjetoStakeholdersClient({
                       <Avatar name={u.name} url={u.avatarUrl} size="sm" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{u.name}</p>
-                        <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5">
+                        {u.email && <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5">
                           <Mail className="w-3 h-3 shrink-0" />{u.email}
-                        </p>
+                        </p>}
+                        {u.semConta && <p className="text-[11px] text-amber-700 mt-0.5">{isAdmin ? 'Sem login · ao adicionar, você cria o login dessa pessoa' : 'Sem login · um administrador precisa criar o login'}</p>}
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
                         <OperumButton variant="default" type="button"
@@ -1620,8 +1738,8 @@ export default function ProjetoStakeholdersClient({
               </>
             )}
 
-            {/* Campos específicos de Externo */}
-            {((isCreating && addMode === 'externo') || selected?.tipo === 'externo') && (
+            {/* Empresa e competência: para interno e externo (uma pessoa, um cadastro). */}
+            {(
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Empresa / Instituição</label>
@@ -1648,10 +1766,10 @@ export default function ProjetoStakeholdersClient({
               </div>
             )}
 
-            {/* Campos específicos de Interno */}
-            {/* Dados do projeto também na criação de membro (SDD 4.4): antes só apareciam
-                em "Editar", e era preciso abrir o cadastro de novo para preencher. */}
-            {(selected?.tipo === 'interno' || (isCreating && !selected && addMode === 'interno')) && (
+            {/* Dados do projeto: os mesmos para interno e externo (remuneração, horas, valores,
+                funções e departamentos). Também na criação (SDD 4.4). Gerente e assinatura
+                são só do interno, porque dependem de acesso ao sistema. */}
+            {(
               <>
                 {/* Remuneração + Horas por dia */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1725,7 +1843,7 @@ export default function ProjetoStakeholdersClient({
                   )
                 })()}
 
-                <div className="flex items-center justify-between py-1">
+                {(selected?.tipo === 'interno' || (isCreating && !selected && addMode === 'interno')) && <div className="flex items-center justify-between py-1">
                     <div>
                       <span className="text-xs font-medium text-gray-600">Gerente do Projeto</span>
                       <p className="text-[10px] text-gray-400">Concede acesso de gerência</p>
@@ -1748,7 +1866,7 @@ export default function ProjetoStakeholdersClient({
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${formState.isGerente ? 'translate-x-6' : 'translate-x-1'}`} />
                     </OperumButton>
-                </div>
+                </div>}
 
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Cargos / Funções</label>
@@ -1868,6 +1986,20 @@ export default function ProjetoStakeholdersClient({
               </div>
             )}
 
+            {selected && !isCreating && canManage && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs text-gray-600 min-w-0">
+                  {selected.tipo === 'interno' ? 'Interno neste projeto (equipe, com acesso)' : 'Externo neste projeto (sem acesso)'}
+                </p>
+                <OperumButton variant="default" type="button" disabled={loadingId === selected.id}
+                  onClick={() => setTrocando(selected)}
+                  className="shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700">
+                  {loadingId === selected.id ? <Spinner /> : null}
+                  {selected.tipo === 'interno' ? 'Mudar para externo' : 'Mudar para interno'}
+                </OperumButton>
+              </div>
+            )}
+
             <FormActions className="flex gap-2">
               <OperumButton variant="default"
                 type="button"
@@ -1894,10 +2026,44 @@ export default function ProjetoStakeholdersClient({
     </>
   )
 
+  const dialogoExclusao = (
+    <ConfirmDialog
+      isOpen={excluindo !== null}
+      onClose={() => { if (loadingId === null) setExcluindo(null) }}
+      onConfirm={() => { if (excluindo) confirmarExclusao(excluindo) }}
+      title="Excluir do projeto"
+      confirmLabel={excluindo && loadingId === excluindo.id ? 'Excluindo…' : 'Excluir do projeto'}
+      confirmDisabled={loadingId !== null}
+      message={`${excluindo?.name ?? ''} sai deste projeto de vez. Só é possível sem tarefas aqui (responsável, horas ou comentários em cards). Com tarefas, use Inativar: tira o acesso e mantém o histórico.${excluindo?.tipo === 'interno' ? ' A conta continua no sistema.' : ' O contato continua no cadastro.'}`}
+    >
+      {erroExclusao && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erroExclusao}</p>}
+    </ConfirmDialog>
+  )
+  const semLoginParaInterno = trocando?.tipo === 'externo' && !trocando.contaId
+  const dialogoTroca = (
+    <ConfirmDialog
+      isOpen={trocando !== null}
+      onClose={() => setTrocando(null)}
+      onConfirm={() => { if (trocando) confirmarTroca(trocando) }}
+      title={trocando?.tipo === 'interno' ? 'Mudar para externo' : 'Mudar para interno'}
+      confirmLabel={trocando?.tipo === 'interno' ? 'Mudar para externo' : semLoginParaInterno ? (isAdmin ? 'Criar login e mudar' : 'Entendi') : 'Mudar para interno'}
+      confirmDisabled={semLoginParaInterno && !isAdmin}
+      message={trocando?.tipo === 'interno'
+        ? `${trocando.name} sai da equipe deste projeto e perde o acesso a ele. Continua nas partes interessadas como externo, com remuneração, horas, funções e departamento. Os cards em que é responsável continuam com essa pessoa.`
+        : semLoginParaInterno
+          ? (isAdmin
+            ? `${trocando?.name ?? ''} ainda não tem login. Você vai criar o login (e-mail e senha) e a pessoa entra na equipe deste projeto.`
+            : `${trocando?.name ?? ''} ainda não tem login no sistema. Peça a um administrador para criar o login e mudar para interno.`)
+          : `${trocando?.name ?? ''} entra na equipe deste projeto e passa a ter acesso a ele, com a remuneração e as horas que já estavam no cadastro.`}
+    />
+  )
+
   if (painel) {
     return (
       <DetailPanel floating label={painel.modo === 'interno' ? 'Adicionar membro da equipe' : 'Adicionar stakeholder externo'} className="gap-3 [&>*]:!w-full">
         {inativando === null && (showCol3 ? coluna3 : coluna2)}
+        {dialogoTroca}
+        {dialogoExclusao}
       </DetailPanel>
     )
   }
@@ -2060,9 +2226,9 @@ export default function ProjetoStakeholdersClient({
                     {s.isActive === false && <><p className="text-sm font-medium text-red-700 mt-1">Inativo</p>{s.inactiveReason && <p className="text-sm text-red-700 break-words mt-1">Motivo: {s.inactiveReason}</p>}</>}
                   </div>
                 </div>
-                <div className="min-w-0"><span className={styles.fieldLabel}>Função</span><p className="text-sm text-gray-700 break-words">{s.tipo === 'interno' ? s.cargos?.join(', ') || 'Não informada' : s.competence || 'Não informada'}</p></div>
-                <div className="min-w-0"><span className={styles.fieldLabel}>Área / empresa</span><p className="text-sm text-gray-600 break-words">{s.tipo === 'interno' ? s.departamento?.join(', ') || 'Não informada' : s.company || 'Não informada'}</p></div>
-                <div className="text-sm text-gray-700 tabular-nums"><span className={styles.fieldLabel}>Remuneração</span>{s.tipo === 'interno' && (s.remuneracao ?? s.hourlyRate) != null ? <>{(s.remuneracao ?? s.hourlyRate)!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<span className="block text-sm text-gray-600">{s.remuneracao != null ? 'por mês' : 'por hora'}</span></> : <span aria-label="Não informada">—</span>}</div>
+                <div className="min-w-0"><span className={styles.fieldLabel}>Função</span><p className="text-sm text-gray-700 break-words">{s.cargos?.join(', ') || s.competence || 'Não informada'}</p></div>
+                <div className="min-w-0"><span className={styles.fieldLabel}>Área / empresa</span><p className="text-sm text-gray-600 break-words">{[s.departamento?.join(', '), s.company].filter(Boolean).join(' · ') || 'Não informada'}</p></div>
+                <div className="text-sm text-gray-700 tabular-nums"><span className={styles.fieldLabel}>Remuneração</span>{(s.remuneracao ?? s.hourlyRate) != null ? <>{(s.remuneracao ?? s.hourlyRate)!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<span className="block text-sm text-gray-600">{s.remuneracao != null ? 'por mês' : 'por hora'}</span></> : <span aria-label="Não informada">—</span>}</div>
                 <div className={`${styles.rowActions} flex flex-wrap items-center gap-1`}>
                   {reorderMode ? <>
                     <OperumButton variant="custom" type="button" disabled={!canReorder || posicao === 0 || exibidos[posicao - 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao - 1]))} aria-label={`Mover ${s.name} para cima`} className={styles.actionButton}><ArrowUp className="w-4 h-4" aria-hidden="true" /></OperumButton>
@@ -2070,7 +2236,7 @@ export default function ProjetoStakeholdersClient({
                   </> : <>
                     <OperumButton variant="custom" type="button" onClick={() => handleOpenEdit(s)} title="Editar" aria-label={`Editar ${s.name}`} className={`${styles.actionButton} text-blue-700`}><Pencil className="w-4 h-4" aria-hidden="true" /><span>Editar</span></OperumButton>
                     {podeAlterarSituacao(s) && <SituacaoButton ativo={s.isActive !== false} nome={s.name} disabled={loadingId === s.id} onClick={() => (s.isActive === false ? reativar(s) : abrirInativacao(s))} />}
-                    {canManage && <OperumButton variant="danger" type="button" onClick={() => handleUnlink(s)} disabled={loadingId === s.id} title="Desvincular do projeto" aria-label={`Desvincular ${s.name} do projeto`} className={`${styles.actionButton} text-gray-600 hover:text-red-700`}>{loadingId === s.id ? <Spinner /> : <UserMinus className="w-4 h-4" aria-hidden="true" />}</OperumButton>}
+                    {canManage && <OperumButton variant="danger" type="button" onClick={() => handleUnlink(s)} disabled={loadingId === s.id} title="Excluir do projeto" aria-label={`Excluir ${s.name} do projeto`} className={`${styles.actionButton} text-gray-600 hover:text-red-700`}>{loadingId === s.id ? <Spinner /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}</OperumButton>}
                   </>}
                 </div>
               </li>
@@ -2163,6 +2329,8 @@ export default function ProjetoStakeholdersClient({
 
       {coluna2}
       {coluna3}
+      {dialogoTroca}
+      {dialogoExclusao}
     </div>
   )
 }

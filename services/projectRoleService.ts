@@ -2,23 +2,16 @@ import prisma from '@/lib/prisma'
 import type { Prisma } from '@/lib/generated/prisma'
 
 export async function getOrCreateGerenteProjetoRole(tenantId: string, db: Prisma.TransactionClient = prisma) {
-  const existing = await db.role.findFirst({
-    where: { tenantId, nameKey: 'gerente', scope: 'PROJETO' },
-  })
-  if (existing) return existing
-  return db.role.create({
-    data: { tenantId, name: 'Gerente de Projeto', nameKey: 'gerente', scope: 'PROJETO' },
+  // Upsert pela chave única (nameKey, tenant, escopo): duas gravações ao mesmo tempo não
+  // criam dois papéis de gerente, e um papel excluído volta em vez de nascer outro.
+  return db.role.upsert({
+    where: { nameKey_tenantId_scope: { nameKey: 'gerente', tenantId, scope: 'PROJETO' } },
+    create: { tenantId, name: 'Gerente de Projeto', nameKey: 'gerente', scope: 'PROJETO' },
+    update: { deletedAt: null },
   })
 }
 
-const GERENTE_LABEL = 'Gerente de Projeto'
 
-function normalizeCargos(role: string | null | undefined): string[] {
-  return (role ?? '')
-    .split(',')
-    .map((s: string) => s.trim())
-    .filter(Boolean)
-}
 
 export async function setProjectManagerRole(userId: string, projectId: string, tenantId: string, db: Prisma.TransactionClient = prisma) {
   const role = await getOrCreateGerenteProjetoRole(tenantId, db)
@@ -36,19 +29,14 @@ export async function setProjectManagerRole(userId: string, projectId: string, t
     })
   }
 
-  // Mantém em sincronia o cargo string (UserProject.role) que alimenta a lista
-  // de "cargos/funções" em Stakeholders — senão o gerente não aparece com a
-  // função "Gerente de Projeto", embora o papel (UserProjectRole) exista.
-  const cargos = normalizeCargos(
-    (await db.userProject.findUnique({
-      where: { userId_projectId: { userId, projectId } },
-      select: { role: true },
-    }))?.role,
-  )
-  if (!cargos.some(c => c.toLowerCase() === GERENTE_LABEL.toLowerCase())) {
-    await db.userProject.update({
-      where: { userId_projectId: { userId, projectId } },
-      data: { role: [...cargos, GERENTE_LABEL].join(', ') },
+  // A função "Gerente de Projeto" entra na lista de funções do membro (Stakeholders),
+  // junto do papel (UserProjectRole). É um vínculo com o mesmo papel do cadastro.
+  const vinculo = await db.userProject.findUnique({ where: { userId_projectId: { userId, projectId } }, select: { id: true, funcoes: { select: { ordem: true } } } })
+  if (vinculo) {
+    await db.userProjectFuncao.upsert({
+      where: { userProjectId_roleId: { userProjectId: vinculo.id, roleId: role.id } },
+      create: { userProjectId: vinculo.id, roleId: role.id, ordem: Math.max(-1, ...vinculo.funcoes.map(f => f.ordem)) + 1 },
+      update: {},
     })
   }
 }
@@ -64,20 +52,10 @@ export async function removeProjectRole(userId: string, projectId: string, db: P
     })
   }
 
-  // Remove o "Gerente de Projeto" da lista de cargos do membro, para a
-  // listagem de Stakeholders não ficar com a função órfã quando o papel cai.
-  const cargos = normalizeCargos(
-    (await db.userProject.findUnique({
-      where: { userId_projectId: { userId, projectId } },
-      select: { role: true },
-    }))?.role,
-  )
-  const restantes = cargos.filter(c => c.toLowerCase() !== GERENTE_LABEL.toLowerCase())
-  if (restantes.length !== cargos.length) {
-    await db.userProject.update({
-      where: { userId_projectId: { userId, projectId } },
-      data: { role: restantes.join(', ') },
-    })
+  // Tira a função de gerente da lista do membro, para não ficar órfã quando o papel cai.
+  const gerente = await db.role.findFirst({ where: { nameKey: 'gerente', scope: 'PROJETO', funcoesDeMembros: { some: { userProject: { userId, projectId } } } }, select: { id: true } })
+  if (gerente) {
+    await db.userProjectFuncao.deleteMany({ where: { roleId: gerente.id, userProject: { userId, projectId } } })
   }
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { forwardRef } from 'react'
+import { linhaOuAviso } from '@/lib/linhaInstitucional'
 import type { MembroEquipeOption } from './documentacao/MembroEquipeSelect'
 import { formatTelefone } from '@/lib/contato'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
@@ -127,7 +128,7 @@ const StakeholderDocument = forwardRef<HTMLDivElement, Props>(
         <table data-testid="quadro-identificacao" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <colgroup><col style={{ width: '77%' }} /><col style={{ width: '23%' }} /></colgroup>
           <tbody>
-            <tr><td colSpan={2} style={{ ...celCampo, background: '#bfbfbf', fontWeight: 'bold' }}><CampoAutomatico padding="0 4px">{header.categoria}</CampoAutomatico></td></tr>
+            <tr><td colSpan={2} style={{ ...celCampo, background: '#bfbfbf', fontWeight: 'bold' }}><CampoAutomatico padding="0 4px">{linhaOuAviso(header.categoria)}</CampoAutomatico></td></tr>
             <tr><td colSpan={2} style={celCampo}><CampoAutomatico padding="0 4px"><B>Nome do projeto:</B> {header.nomeProjeto}</CampoAutomatico></td></tr>
             <tr><td colSpan={2} style={celCampo}><CampoAutomatico padding="0 4px" origem="Automático: vem do gerente do projeto"><B>Gerente do projeto:</B> {header.gerenteProjeto}</CampoAutomatico></td></tr>
             <tr>
@@ -152,7 +153,8 @@ const StakeholderDocument = forwardRef<HTMLDivElement, Props>(
               <td style={{ ...cel, whiteSpace: 'nowrap' }}>
                 <AssinaturaEmLinha url={header.signatureUrl} rotulo={<B>Assinatura:</B>} vazio={editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined} />
               </td>
-              <td style={{ ...cel, whiteSpace: 'nowrap' }}>
+              {/* No meio da linha, alinhada com "Assinatura:" (a imagem deixa a linha mais alta). */}
+              <td style={{ ...cel, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                 <B>Data de aprovação:</B>{' '}
                 {editavel
                   ? <CampoData id="ds-data-aprovacao" rotulo="Data de aprovação" ajuda="Dia em que o gerente aprovou esta versão." valor={ed?.dataAprovacaoRaw ?? ''} onChange={ed?.onDataAprovacao ?? nada} />

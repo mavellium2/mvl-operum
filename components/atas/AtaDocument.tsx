@@ -1,6 +1,7 @@
 'use client'
 
 import OperumButton from '@/components/ui/GlassButton'
+import { linhaOuAviso } from '@/lib/linhaInstitucional'
 import { forwardRef, type ReactNode } from 'react'
 import { Users } from 'lucide-react'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
@@ -104,7 +105,7 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
 
       <div style={{ paddingTop: '4mm' }}>
       <Quadro testId="quadro-identificacao" colunas={['74%', '26%']}>
-        <tr><td colSpan={2} style={{ ...faixa, padding: 0 }}><CampoAutomatico>{d.instituicao}</CampoAutomatico></td></tr>
+        <tr><td colSpan={2} style={{ ...faixa, padding: 0 }}><CampoAutomatico>{linhaOuAviso(d.instituicao)}</CampoAutomatico></td></tr>
         <tr><td colSpan={2} style={celulaCampo}><CampoAutomatico><R>Nome do projeto:</R> {d.nomeProjeto}</CampoAutomatico></td></tr>
         <tr>
           <td style={celulaCampo}>

@@ -241,16 +241,17 @@ export function registerProjectTools(server: McpServer, registry: TenantRegistry
       inputSchema: {
         project_id: idSchema,
         user_id: idSchema,
-        role: z.string().optional().describe('Papel/função do membro no projeto (texto livre).'),
+        funcoes: z.array(z.string().min(1).max(120)).max(30).optional().describe('Funções do membro no projeto, uma por item, com o nome de uma função do cadastro (ex.: ["Tech Lead", "Desenvolvedora Front-End"]). Nunca junte duas num item. Nome que não existe no cadastro é criado.'),
+        role: z.string().optional().describe('Obsoleto: use funcoes. Texto antigo é separado em funções.'),
         hourly_rate: z.number().nonnegative().optional(),
       },
       entity: 'Projeto ou usuário',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
-    async ({ project_id, user_id, role, hourly_rate }, ctx) => {
+    async ({ project_id, user_id, funcoes, role, hourly_rate }, ctx) => {
       const member = await ctx.gw.post<Record<string, unknown>>(`/projects/${project_id}/members`, {
         userId: user_id,
-        ...(role !== undefined ? { role } : {}),
+        ...(funcoes !== undefined ? { funcoes } : role !== undefined ? { role } : {}),
         ...(hourly_rate !== undefined ? { hourlyRate: hourly_rate } : {}),
       })
       await audit(ctx, 'operum_add_project_member', 'ADD_MEMBER', 'project', project_id, { userId: user_id })

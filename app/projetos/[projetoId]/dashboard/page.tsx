@@ -5,6 +5,7 @@ import { findById } from '@/services/projectAccess'
 import { findAllByProjeto } from '@/services/sprintService'
 import { getSprintMetrics } from '@/services/dashboardService'
 import prisma from '@/lib/prisma'
+import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
 import KPICard from '@/components/dashboard/KPICard'
 import SprintCostChart from '@/components/dashboard/SprintCostChart'
 import UserHoursChart from '@/components/dashboard/UserHoursChart'
@@ -54,7 +55,7 @@ async function getProjetoDashboardData(projetoId: string) {
   // User metrics for this project
   const membros = await prisma.userProject.findMany({
     where: { projectId: projetoId, active: true },
-    include: { user: { select: { id: true, name: true, cargo: true, avatarUrl: true, hourlyRate: true } } },
+    include: { user: { select: { id: true, name: true, cargo: true, avatarUrl: true, hourlyRate: true } }, funcoes: FUNCOES_ORDENADAS },
   })
 
   const userMetrics = await Promise.all(
@@ -74,7 +75,7 @@ async function getProjetoDashboardData(projetoId: string) {
         name: m.user.name,
         // Função no projeto (a mesma de Stakeholders); o cargo global do
         // usuário quase nunca é preenchido e fica só como fallback.
-        cargo: cargoNoProjeto(m.role, m.user.cargo),
+        cargo: cargoNoProjeto(nomesDasFuncoes(m.funcoes), m.user.cargo),
         avatarUrl: m.user.avatarUrl,
         horasTotais,
         custoTotal,

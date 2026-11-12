@@ -6,7 +6,7 @@ import GlassCard from '@/components/ui/GlassCard'
 import GlassPopover from '@/components/ui/GlassPopover'
 import FormActions from '@/components/ui/FormActions'
 import AnimatedEditButton from '@/components/ui/AnimatedEditButton'
-import { Plus, SlidersHorizontal, ShieldCheck, Power } from 'lucide-react'
+import { Plus, SlidersHorizontal, ShieldCheck, Power, Trash2 } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { matchesSearch } from '@/lib/search'
 import Select from '@/components/ui/Select'
@@ -18,7 +18,10 @@ import { useMemo, useRef, useState } from 'react'
 import UserAvatar from '@/components/user/UserAvatar'
 import AdminCreateUserModal, { type AdminUser } from './AdminCreateUserModal'
 import AdminEditUserModal from './AdminEditUserModal'
-import { toggleUserActiveAction } from '@/app/actions/admin'
+import { excluirUsuarioAction, toggleUserActiveAction } from '@/app/actions/admin'
+import Modal from '@/components/ui/Modal'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { Textarea } from '@/components/ui/Field'
 
 
 interface Props {
@@ -68,15 +71,42 @@ export default function AdminUsersClient({ initialUsers }: Props) {
     setEditUser(null)
   }
 
-  async function handleToggleActive(user: AdminUser) {
+  // Inativar pede o motivo: ele fica registrado em todos os projetos da pessoa.
+  const [inativando, setInativando] = useState<AdminUser | null>(null)
+  const [motivo, setMotivo] = useState('')
+  const [excluindo, setExcluindo] = useState<AdminUser | null>(null)
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null)
+
+  function handleToggleActive(user: AdminUser) {
     if (loading) return
+    if (user.isActive) { setMotivo(''); setInativando(user); return }
+    void alterarSituacao(user, true)
+  }
+
+  async function alterarSituacao(user: AdminUser, ativo: boolean, motivoInformado?: string) {
     setLoading(user.id + '-active')
     try {
-      const result = await toggleUserActiveAction(user.id, !user.isActive)
+      const result = await toggleUserActiveAction(user.id, ativo, motivoInformado)
       if ('error' in result) { toast(result.error || 'Não foi possível alterar o usuário', 'error'); return }
-      setUsers(prev => prev.map(u => (u.id === user.id ? { ...u, isActive: !u.isActive } : u)))
-      toast(user.isActive ? 'Usuário inativado' : 'Usuário ativado', 'success')
+      setUsers(prev => prev.map(u => (u.id === user.id ? { ...u, isActive: ativo } : u)))
+      setInativando(null)
+      toast(ativo
+        ? 'Usuário ativado. Os projetos de onde a inativação o tirou foram devolvidos.'
+        : `Usuário inativado${result.projetos ? ` em ${result.projetos} projeto(s)` : ''}. Os cards abertos dele pedem outro responsável.`, 'success')
     } catch { toast('Não foi possível alterar o usuário. Tente novamente.', 'error') }
+    finally { setLoading(null) }
+  }
+
+  async function excluir(user: AdminUser) {
+    setLoading(user.id + '-excluir')
+    try {
+      const result = await excluirUsuarioAction(user.id)
+      // O diálogo fecha ao confirmar: reabre com os vínculos que impedem a exclusão.
+      if ('error' in result) { setErroExclusao(result.error ?? 'Não foi possível excluir.'); setExcluindo(user); return }
+      setUsers(prev => prev.filter(u => u.id !== user.id))
+      setExcluindo(null)
+      toast(`"${user.name}" foi excluído.`, 'success')
+    } catch { setErroExclusao('Não foi possível excluir. Tente novamente.'); setExcluindo(user) }
     finally { setLoading(null) }
   }
 
@@ -147,6 +177,7 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                       <OperumButton variant="icon" title="Permissões" aria-label={`Permissões de ${user.name}`} onClick={() => { setEditUser(null); setPermissoesUser(user) }}><ShieldCheck size={16} aria-hidden="true" /></OperumButton>
                       <AnimatedEditButton label={`Editar ${user.name}`} onClick={() => { setPermissoesUser(null); setEditUser(user) }} />
                       <OperumButton variant={user.isActive ? 'ghost' : 'primary'} aria-label={`${user.isActive ? 'Inativar' : 'Ativar'} ${user.name}`} title={user.isActive ? 'Inativar usuário' : 'Ativar usuário'} onClick={() => handleToggleActive(user)} disabled={loading !== null} className="admin-user-toggle"><Power size={15} aria-hidden="true" /><span>{loading === user.id + '-active' ? 'Aguarde…' : user.isActive ? 'Inativar' : 'Ativar'}</span></OperumButton>
+                      <OperumButton variant="icon" title="Excluir usuário" aria-label={`Excluir ${user.name}`} onClick={() => { setErroExclusao(null); setExcluindo(user) }} disabled={loading !== null}><Trash2 size={15} aria-hidden="true" /></OperumButton>
                     </div>
                   </td>
                 </tr>
@@ -161,6 +192,30 @@ export default function AdminUsersClient({ initialUsers }: Props) {
       </DetailPanel>}
       </div>
       {showCreate && <AdminCreateUserModal onClose={() => setShowCreate(false)} onCreated={handleCreated} />}
+      <Modal isOpen={inativando !== null} onClose={() => { if (!loading) setInativando(null) }} title="Inativar usuário">
+        <form onSubmit={event => { event.preventDefault(); if (inativando) void alterarSituacao(inativando, false, motivo) }} className="space-y-3">
+          <p className="text-sm text-gray-600">
+            <strong>{inativando?.name}</strong> perde o acesso ao sistema e é inativado em todos os projetos com este motivo. Continua aparecendo nos projetos e documentos (em vermelho) e os dados dele ficam. Os cards abertos em que é responsável passam a pedir outro responsável, e o gerente de cada projeto é avisado.
+          </p>
+          <label htmlFor="motivo-inativar-usuario" className="block text-xs font-medium text-gray-600">Motivo da inativação</label>
+          <Textarea id="motivo-inativar-usuario" value={motivo} onChange={event => setMotivo(event.target.value)} rows={3} maxLength={400} required autoFocus placeholder="Ex.: saiu da equipe em 12/11/2026" />
+          <FormActions surface="none" className="flex justify-end gap-2">
+            <OperumButton type="button" onClick={() => setInativando(null)} disabled={loading !== null}>Cancelar</OperumButton>
+            <OperumButton variant="danger" type="submit" disabled={loading !== null || motivo.trim().length < 3}>{loading ? 'Inativando…' : 'Inativar'}</OperumButton>
+          </FormActions>
+        </form>
+      </Modal>
+      <ConfirmDialog
+        isOpen={excluindo !== null}
+        onClose={() => { if (!loading) setExcluindo(null) }}
+        onConfirm={() => { if (excluindo) void excluir(excluindo) }}
+        title="Excluir usuário"
+        confirmLabel={loading ? 'Excluindo…' : 'Excluir'}
+        confirmDisabled={loading !== null}
+        message={`${excluindo?.name ?? ''} será excluído de vez. Só é possível quando a conta não tem nenhum vínculo: projeto, tarefa, horas, comentário, documento ou ata. Com vínculos, use Inativar.`}
+      >
+        {erroExclusao && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erroExclusao}</p>}
+      </ConfirmDialog>
     </>
   )
 }

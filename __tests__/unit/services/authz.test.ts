@@ -37,14 +37,15 @@ const lista = (s: Set<string>) => [...s].sort()
 
 function cenario(o: {
   projeto?: boolean
-  cargos?: string | null
+  /** Ids das funções ligadas ao membro (UserProjectFuncao); undefined = não é membro. */
+  ligadas?: string[]
   ativo?: boolean
   gerenteRoleId?: string | null
   funcoes?: ReturnType<typeof funcao>[]
   ajustes?: { projectId: string | null; effect: 'GRANT' | 'DENY'; k: string }[]
 }) {
   db.project.findFirst.mockResolvedValue(o.projeto === false ? null : { id: 'p1' })
-  db.userProject.findUnique.mockResolvedValue(o.cargos === undefined ? null : { role: o.cargos, active: o.ativo ?? true })
+  db.userProject.findUnique.mockResolvedValue(o.ligadas === undefined ? null : { active: o.ativo ?? true, funcoes: o.ligadas.map(roleId => ({ roleId })) })
   db.userProjectRole.findFirst.mockResolvedValue(o.gerenteRoleId ? { roleId: o.gerenteRoleId } : null)
   db.role.findMany.mockResolvedValue(o.funcoes ?? [])
   db.userPermission.findMany.mockResolvedValue((o.ajustes ?? []).map(a => ({ projectId: a.projectId, effect: a.effect, ...perm(a.k) })))
@@ -67,35 +68,41 @@ describe('permissoesNoProjeto (SDD 5.1)', () => {
   })
 
   it('não é membro do projeto: nada', async () => {
-    cenario({ cargos: undefined })
+    cenario({ ligadas: undefined })
     expect((await permissoesNoProjeto('u1', 't1', 'member', 'p1')).size).toBe(0)
   })
 
   it('membro inativo ou projeto de outro tenant: nada', async () => {
-    cenario({ cargos: 'Dev', ativo: false })
+    cenario({ ligadas: ['r-dev'], ativo: false })
     expect((await permissoesNoProjeto('u1', 't1', 'member', 'p1')).size).toBe(0)
-    cenario({ cargos: 'Dev', projeto: false })
+    cenario({ ligadas: ['r-dev'], projeto: false })
     expect((await permissoesNoProjeto('u1', 't1', 'member', 'p1')).size).toBe(0)
   })
 
   it('membro sem função configurada: padrão do membro', async () => {
-    cenario({ cargos: 'Dev', funcoes: [funcao('r-dev', 'Dev', null)] })
+    cenario({ ligadas: ['r-dev'], funcoes: [funcao('r-dev', 'Dev', null)] })
     expect(lista(await permissoesNoProjeto('u1', 't1', 'member', 'p1'))).toEqual([...PADRAO_MEMBRO].sort())
   })
 
-  it('cargo casa com a função pela funcaoKey (plural, acento, maiúsculas)', async () => {
+  it('funções ligadas por id: com duas, soma tudo que estiver ativo em cada uma', async () => {
     cenario({
-      cargos: 'TECH LEADS',
-      funcoes: [funcao('r-tl', 'Tech Lead', ['quadro:sprints', 'planilha:realizado-todos'])],
+      ligadas: ['r-tl', 'r-fe'],
+      funcoes: [
+        funcao('r-tl', 'Tech Lead', ['quadro:sprints']),
+        funcao('r-fe', 'Front-End', ['planilha:realizado-todos']),
+        funcao('r-outra', 'Tech Leads', ['documentos:aprovar']),
+      ],
     })
     const r = await permissoesNoProjeto('u1', 't1', 'member', 'p1')
     expect(r.has('quadro:sprints')).toBe(true)
     expect(r.has('planilha:realizado-todos')).toBe(true)
+    // Só o que está ligado conta: nome parecido não dá permissão.
+    expect(r.has('documentos:aprovar')).toBe(false)
   })
 
   it('gerente pelo papel (UserProjectRole), sem configuração: tudo', async () => {
     cenario({
-      cargos: 'Dev',
+      ligadas: ['r-dev'],
       gerenteRoleId: 'r-ger',
       funcoes: [funcao('r-ger', 'Gerente de Projeto', null, { nameKey: 'gerente', scope: 'PROJETO' })],
     })
@@ -104,15 +111,15 @@ describe('permissoesNoProjeto (SDD 5.1)', () => {
 
   it('a função-base "Membro do projeto" configurada substitui o padrão do membro', async () => {
     cenario({
-      cargos: '',
+      ligadas: [],
       funcoes: [funcao('r-base', 'Membro do projeto', ['projeto:ver'], { nameKey: 'membro-base', scope: 'PROJETO' })],
     })
     expect(lista(await permissoesNoProjeto('u1', 't1', 'member', 'p1'))).toEqual(['projeto:ver'])
   })
 
-  it('a base não é tratada como cargo, mesmo com o nome igual', async () => {
+  it('a base não é tratada como função do membro, mesmo ligada', async () => {
     cenario({
-      cargos: 'Membro do projeto',
+      ligadas: ['r-base'],
       funcoes: [funcao('r-base', 'Membro do projeto', [], { nameKey: 'membro-base', scope: 'PROJETO' })],
     })
     expect((await permissoesNoProjeto('u1', 't1', 'member', 'p1')).size).toBe(0)
@@ -120,7 +127,7 @@ describe('permissoesNoProjeto (SDD 5.1)', () => {
 
   it('ajustes do usuário: global e do projeto, o do projeto vence', async () => {
     cenario({
-      cargos: 'Dev',
+      ligadas: ['r-dev'],
       ajustes: [
         { projectId: null, effect: 'GRANT', k: 'planilha:orcado' },
         { projectId: null, effect: 'DENY', k: 'quadro:mover' },
@@ -135,20 +142,20 @@ describe('permissoesNoProjeto (SDD 5.1)', () => {
   })
 
   it('permissão desconhecida vinda do banco é ignorada', async () => {
-    cenario({ cargos: 'X', funcoes: [funcao('r-x', 'X', ['projeto:ver', 'foo:bar'])] })
+    cenario({ ligadas: ['r-x'], funcoes: [funcao('r-x', 'X', ['projeto:ver', 'foo:bar'])] })
     expect((await permissoesNoProjeto('u1', 't1', 'member', 'p1')).has('foo:bar' as never)).toBe(false)
   })
 })
 
 describe('can / exigirPermissao', () => {
   it('can responde pela permissão pedida', async () => {
-    cenario({ cargos: 'Dev' })
+    cenario({ ligadas: ['r-dev'] })
     expect(await can(sessao, 'p1', 'documentos:editar')).toBe(true)
     expect(await can(sessao, 'p1', 'documentos:aprovar')).toBe(false)
   })
 
   it('exigirPermissao lança com mensagem legível', async () => {
-    cenario({ cargos: 'Dev' })
+    cenario({ ligadas: ['r-dev'] })
     await expect(exigirPermissao(sessao, 'p1', 'documentos:aprovar')).rejects.toThrow(SemPermissaoError)
     await expect(exigirPermissao(sessao, 'p1', 'documentos:aprovar')).rejects.toThrow('Sem permissão: aprovar ou rejeitar versões.')
   })

@@ -7,6 +7,7 @@ import { canProjectPermission } from '@/services/projectAccess'
 import { listarAtasPorProjeto } from '@/services/ataService'
 import { resumoDaAta } from '@/lib/atasLista'
 import prisma from '@/lib/prisma'
+import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
 import { carregarStakeholdersDoProjeto } from '@/services/stakeholdersDoProjeto'
 
 export const dynamic = 'force-dynamic'
@@ -55,15 +56,14 @@ export default async function DocumentacaoPage({ params, searchParams }: { param
           },
         },
         department: { select: { name: true } },
+        funcoes: FUNCOES_ORDENADAS,
       },
       orderBy: { order: 'asc' },
     })
   )
     .filter(up => up.user.deletedAt === null && up.user.isActive)
     .map(up => {
-      const cargos = up.role
-        ? up.role.split(',').map((s: string) => s.trim()).filter(Boolean)
-        : []
+      const cargos = nomesDasFuncoes(up.funcoes)
       const setor = cargos[0] ?? up.department?.name ?? null
       return {
         id: up.userId,

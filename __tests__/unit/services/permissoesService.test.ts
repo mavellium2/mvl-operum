@@ -108,7 +108,7 @@ describe('ajustes por usuário', () => {
         { projectId: null, effect: 'GRANT', ...perm('planilha:orcado') },
         { projectId: 'p1', effect: 'DENY', ...perm('quadro:mover') },
       ])
-    db.userProject.findUnique.mockResolvedValue({ role: 'Dev', active: true })
+    db.userProject.findUnique.mockResolvedValue({ active: true, funcoes: [] })
     db.userProjectRole.findFirst.mockResolvedValue(null)
     db.role.findMany.mockResolvedValue([])
     const r = await listarAjustesDoUsuario('t1', 'u1', 'p1')

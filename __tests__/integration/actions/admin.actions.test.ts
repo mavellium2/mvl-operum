@@ -18,12 +18,23 @@ vi.mock('@/lib/api-client', () => ({
   authApi: { provisionTenantAdmin: vi.fn(), joinTenant: vi.fn() },
 }))
 
-const db = vi.hoisted(() => ({
-  user: { findFirst: vi.fn() },
-  tenant: { findUnique: vi.fn() },
-  auditLog: { create: vi.fn() },
-}))
+const db = vi.hoisted(() => {
+  const contagem = () => ({ count: vi.fn().mockResolvedValue(0) })
+  const m = {
+    user: { findFirst: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    tenant: { findUnique: vi.fn() },
+    auditLog: { create: vi.fn() },
+    userProject: { findMany: vi.fn(), updateMany: vi.fn(), count: vi.fn().mockResolvedValue(0) },
+    userPermission: { deleteMany: vi.fn() },
+    userProjectRole: contagem(), cardResponsible: contagem(), timeEntry: contagem(), comment: contagem(), cardMovement: contagem(),
+    sprint: contagem(), tag: contagem(), documentVersion: contagem(), ata: contagem(), ataPresente: contagem(), ataAcao: contagem(),
+    projectStakeholder: contagem(), projetoVersao: contagem(), planilhaVersao: contagem(), projectDraft: contagem(), projetoOperacao: contagem(),
+    $transaction: vi.fn(),
+  }
+  return m
+})
 vi.mock('@/lib/prisma', () => ({ default: db }))
+vi.mock('@/services/membroInativo', () => ({ notificarPendenciasDoMembroInativo: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/platformOperator', () => ({ exigirOperadorDaPlataforma: vi.fn() }))
 vi.mock('@/services/tenantService', () => ({
   createTenant: vi.fn(), updateTenant: vi.fn(), ConflictError: class extends Error {},
@@ -36,6 +47,7 @@ import {
   adminCreateUserAction,
   adminUpdateUserAction,
   toggleUserActiveAction,
+  excluirUsuarioAction,
   setUserRoleAction,
   createTenantAction,
   joinAsTenantAdminAction,
@@ -54,6 +66,13 @@ beforeEach(() => {
   vi.clearAllMocks()
   db.auditLog.create.mockResolvedValue({})
   db.user.findFirst.mockResolvedValue(null)
+  db.$transaction.mockImplementation((arg: unknown) => typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(db) : Promise.all(arg as unknown[]))
+  db.userProject.findMany.mockResolvedValue([])
+  // Sem vínculos por padrão: cada teste liga só o que precisa.
+  for (const modelo of Object.values(db) as Record<string, unknown>[]) {
+    const count = (modelo as { count?: ReturnType<typeof vi.fn> }).count
+    count?.mockResolvedValue(0)
+  }
 })
 
 /** Registro gravado em AuditLog na chamada `n` (0 = primeira). */
@@ -85,12 +104,68 @@ describe('listUsersAction', () => {
 })
 
 describe('toggleUserActiveAction', () => {
-  it('calls service with correct userId and active flag', async () => {
+  it('inativar exige motivo', async () => {
     mockVerify.mockResolvedValue(ADMIN_SESSION)
-    vi.mocked(adminApi.toggleActive).mockResolvedValue({ id: 'u2', name: 'Bob', email: 'bob@x.com', role: 'member', isActive: false })
-    const result = await toggleUserActiveAction('u2', false)
-    expect(adminApi.toggleActive).toHaveBeenCalledWith('u2', false)
-    expect(result).toMatchObject({ user: { isActive: false } })
+    expect(await toggleUserActiveAction('u2', false)).toEqual({ error: 'Informe o motivo da inativação.' })
+    expect(db.user.update).not.toHaveBeenCalled()
+  })
+
+  it('inativar a conta inativa a pessoa em todos os projetos com o motivo e derruba as sessões', async () => {
+    mockVerify.mockResolvedValue(ADMIN_SESSION)
+    db.user.findFirst.mockResolvedValue({ id: 'u2', isActive: true })
+    db.userProject.findMany.mockResolvedValue([{ projectId: 'p1' }, { projectId: 'p2' }])
+    db.user.update.mockResolvedValue({ id: 'u2', name: 'Bob', isActive: false })
+    const result = await toggleUserActiveAction('u2', false, 'Saiu da empresa')
+    expect(result).toMatchObject({ user: { isActive: false }, projetos: 2 })
+    expect(db.userProject.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ userId: 'u2', active: true }),
+      data: expect.objectContaining({ active: false, inactiveReason: 'Conta inativada no sistema: Saiu da empresa' }),
+    }))
+    expect(db.user.update).toHaveBeenCalledWith(expect.objectContaining({ data: { isActive: false, tokenVersion: { increment: 1 } } }))
+    const { notificarPendenciasDoMembroInativo } = await import('@/services/membroInativo')
+    expect(notificarPendenciasDoMembroInativo).toHaveBeenCalledTimes(2)
+  })
+
+  it('reativar devolve só os projetos que a inativação da conta tirou', async () => {
+    mockVerify.mockResolvedValue(ADMIN_SESSION)
+    db.user.findFirst.mockResolvedValue({ id: 'u2', isActive: false })
+    db.user.update.mockResolvedValue({ id: 'u2', name: 'Bob', isActive: true })
+    await toggleUserActiveAction('u2', true)
+    expect(db.userProject.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ userId: 'u2', active: false, inactiveReason: { startsWith: 'Conta inativada no sistema' } }),
+      data: { active: true, endDate: null, inactiveReason: null, inactivatedAt: null },
+    }))
+  })
+
+  it('não inativa a própria conta', async () => {
+    mockVerify.mockResolvedValue(ADMIN_SESSION)
+    expect(await toggleUserActiveAction('u1', false, 'teste')).toEqual({ error: 'Você não pode inativar a própria conta.' })
+  })
+})
+
+describe('excluirUsuarioAction', () => {
+  it('com vínculos não exclui e diz quais são', async () => {
+    mockVerify.mockResolvedValue(ADMIN_SESSION)
+    db.user.findFirst.mockResolvedValue({ id: 'u2', platformOperator: false })
+    db.userProject.count.mockResolvedValue(2)
+    db.cardResponsible.count.mockResolvedValue(3)
+    const result = await excluirUsuarioAction('u2')
+    expect(result.error).toContain('2 projeto(s)')
+    expect(result.error).toContain('3 card(s) como responsável')
+    expect(db.user.delete).not.toHaveBeenCalled()
+  })
+
+  it('sem nenhum vínculo exclui e registra na auditoria', async () => {
+    mockVerify.mockResolvedValue(ADMIN_SESSION)
+    db.user.findFirst.mockResolvedValue({ id: 'u2', platformOperator: false })
+    expect(await excluirUsuarioAction('u2')).toEqual({ success: true })
+    expect(db.user.delete).toHaveBeenCalledWith({ where: { id: 'u2' } })
+    expect(auditado()).toMatchObject({ action: 'USUARIO_EXCLUIR', entityId: 'u2' })
+  })
+
+  it('não exclui a própria conta', async () => {
+    mockVerify.mockResolvedValue(ADMIN_SESSION)
+    expect(await excluirUsuarioAction('u1')).toEqual({ error: 'Você não pode excluir a própria conta.' })
   })
 })
 
@@ -165,10 +240,12 @@ describe('auditoria das ações de admin sobre usuários', () => {
   })
 
   it('desativar e ativar ficam registrados', async () => {
-    db.user.findFirst.mockResolvedValueOnce({ isActive: true }).mockResolvedValueOnce({ isActive: false })
-    vi.mocked(adminApi.toggleActive).mockResolvedValue({ id: 'u2' })
-    await toggleUserActiveAction('u2', false)
+    // dadosDoUsuario (antes), conta na transação, dadosDoUsuario (depois)
+    db.user.findFirst.mockResolvedValueOnce({ isActive: true }).mockResolvedValueOnce({ id: 'u2', isActive: true }).mockResolvedValueOnce({ isActive: false })
+    db.user.update.mockResolvedValue({ id: 'u2', name: 'Bob', isActive: false })
+    await toggleUserActiveAction('u2', false, 'Saiu da equipe')
     expect(auditado()).toMatchObject({ action: 'USUARIO_DESATIVAR', details: { alteracoes: { isActive: { de: true, para: false } } } })
+    db.user.findFirst.mockResolvedValue({ id: 'u2', isActive: false })
     await toggleUserActiveAction('u2', true)
     expect(auditado(1)).toMatchObject({ action: 'USUARIO_ATIVAR' })
   })

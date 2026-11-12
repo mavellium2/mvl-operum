@@ -45,7 +45,8 @@ export interface ProjectBundle {
   }
   project: NonNullable<ReturnType<typeof serializeProject>>
   macro_fases: { fase: string; data_limite: string | null; custo: string | null }[]
-  members: (BundlePerson & { role: string | null; hourly_rate: number | null; order: number | null })[]
+  /** funcoes: nomes das funções do cadastro, uma por item. role: só em pacotes antigos (texto). */
+  members: (BundlePerson & { funcoes?: string[]; role?: string | null; hourly_rate: number | null; order: number | null })[]
   stakeholders: Record<string, string | null>[]
   tags: { source_id: string; name: string; color: string | null }[]
   sprints: {
@@ -150,7 +151,11 @@ export async function exportProject(
 
   const members = (project.members ?? [])
     .filter(m => m.active !== false)
-    .map(m => ({ ...person(m.userId), role: s(m.role), hourly_rate: n(m.hourlyRate), order: n(m.order) }))
+    .map(m => ({
+      ...person(m.userId),
+      funcoes: Array.isArray(m.funcoes) ? (m.funcoes as Raw[]).map(f => s((f?.role as Raw)?.name)).filter((x): x is string => !!x) : [],
+      hourly_rate: n(m.hourlyRate), order: n(m.order),
+    }))
 
   const bundle: ProjectBundle = {
     format: BUNDLE_FORMAT,

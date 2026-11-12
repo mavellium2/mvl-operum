@@ -195,7 +195,10 @@ export class FakeOperum {
       case 'POST /projects/:id/members': {
         this.project(t, seg[1])
         if (!this.users.some(u => u.id === body.userId && u.tenantId === t)) throw httpError(404, 'Usuário não encontrado')
-        const m = { id: newId('up'), projectId: seg[1], active: true, ...body }
+        // Como o project-service: funções viram vínculos com o cadastro (lista), nunca texto.
+        const { funcoes, role, ...resto } = body as { funcoes?: string[]; role?: string } & Row
+        const nomes = funcoes ?? (role ? String(role).split(/\s*[|;,]\s*/).filter(Boolean) : [])
+        const m = { id: newId('up'), projectId: seg[1], active: true, ...resto, funcoes: nomes.map((name, ordem) => ({ ordem, role: { name } })) }
         this.members.push(m)
         return m
       }

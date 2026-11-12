@@ -4,6 +4,8 @@ import { assertUserInTenant } from '../common/tenant-scope'
 import { z } from 'zod'
 import type { Prisma, ProjectStatus } from '../../lib/generated/prisma'
 import { isTransactionConflict } from '../common/transaction-conflict'
+import { motivoParaNaoExcluir, tarefasNoProjeto } from '../common/tarefas-no-projeto'
+import { definirFuncoesDoMembro, FUNCOES_ORDENADAS } from '../common/funcoes'
 
 export const MacroFasesSchema = z.array(z.object({
   fase: z.string().trim().max(500),
@@ -54,6 +56,9 @@ export const CreateProjectSchema = z.object({
  */
 export const AddMemberSchema = z.object({
   userId: z.string().trim().min(1).max(128),
+  /** Funções do cadastro, uma por item. */
+  funcoes: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
+  /** Legado (texto livre): separado em funções; nunca é gravado como texto. */
   role: z.string().trim().max(500).nullable().optional(),
   departmentId: z.string().trim().min(1).max(128).nullable().optional(),
   hourlyRate: z.number().min(0).max(1_000_000).nullable().optional(),
@@ -75,28 +80,38 @@ export class ProjectService {
     return result
   }
 
-  async list(tenantId: string, page = 1, limit = 20, authorized?: string[], preferred?: string, query = '', status?: string) {
+  /**
+   * Lista paginada. Entre os ativos, os projetos abertos recentemente pelo usuário vêm
+   * primeiro, na ordem em que foram abertos (`recentes`: o mais recente primeiro); os
+   * demais seguem por criação. Concluídos, arquivados e inativos ficam depois.
+   */
+  async list(tenantId: string, page = 1, limit = 20, authorized?: string[], recentes: string[] = [], query = '', status?: string) {
     const base = { tenantId, deletedAt: null, ...(authorized ? { id: { in: authorized } } : {}),
       ...(query ? { OR: [{ name: { contains: query, mode: 'insensitive' as const } }, { slogan: { contains: query, mode: 'insensitive' as const } }] } : {}) }
     const include = { _count: { select: { members: { where: { active: true } }, macroFases: true } } }
-    // Ordenação por grupos antes da paginação. O último aberto só tem prioridade entre os ativos.
     const groups: ProjectStatus[] = status ? [status as ProjectStatus] : ['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE']
     const scopes = groups.map(value => ({ ...base, status: value }))
     const counts = await Promise.all(scopes.map(where => prisma.project.count({ where })))
-    const recent = preferred && groups.includes('ACTIVE') ? await prisma.project.findFirst({ where: { AND: [{ ...base, status: 'ACTIVE' }, { id: preferred }] }, include }) : null
+    // Recentes que continuam ativos e acessíveis, na ordem em que o usuário os abriu.
+    const encontrados = recentes.length && groups.includes('ACTIVE')
+      ? await prisma.project.findMany({ where: { AND: [{ ...base, status: 'ACTIVE' }, { id: { in: recentes } }] }, include })
+      : []
+    const fixados = recentes.map(id => encontrados.find(p => p.id === id)).filter((p): p is (typeof encontrados)[number] => !!p)
     let offset = (page - 1) * limit
     let remaining = limit
     const items: Awaited<ReturnType<typeof prisma.project.findMany>> = []
     for (let index = 0; index < groups.length && remaining > 0; index++) {
       const count = counts[index]
       if (offset >= count) { offset -= count; continue }
-      const pinned = groups[index] === 'ACTIVE' ? recent : null
-      if (pinned && offset === 0) { items.push(pinned); remaining-- }
-      const take = Math.min(remaining, count - Math.max(offset, pinned ? 1 : 0))
+      const pinned = groups[index] === 'ACTIVE' ? fixados : []
+      // Primeiro os recentes desta página, depois o resto do grupo (sem repetir os recentes).
+      const dosFixados = pinned.slice(offset, offset + remaining)
+      items.push(...dosFixados); remaining -= dosFixados.length
+      const take = Math.min(remaining, count - Math.max(offset, pinned.length))
       if (take > 0) {
         const found = await prisma.project.findMany({
-          where: pinned ? { AND: [scopes[index], { id: { not: pinned.id } }] } : scopes[index],
-          skip: pinned ? Math.max(0, offset - 1) : offset, take,
+          where: pinned.length ? { AND: [scopes[index], { id: { notIn: pinned.map(p => p.id) } }] } : scopes[index],
+          skip: Math.max(0, offset - pinned.length), take,
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], include,
         })
         items.push(...found); remaining -= found.length
@@ -110,7 +125,7 @@ export class ProjectService {
     const project = await prisma.project.findFirst({
       where: { id, tenantId, deletedAt: null },
       include: {
-        members: true,
+        members: { include: { funcoes: FUNCOES_ORDENADAS } },
         macroFases: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }] },
         stakeholders: { include: { stakeholder: true } },
       },
@@ -187,8 +202,11 @@ export class ProjectService {
   async addMember(projectId: string, tenantId: string, userId: string, input: Omit<AddMemberInput, 'userId'>) {
     await this.findOne(projectId, tenantId)
     await assertUserInTenant(userId, tenantId)
+    // Uma pessoa é interna OU externa em cada projeto: quem é externo aqui muda pela troca.
+    if (await prisma.projectStakeholder.findFirst({ where: { projectId, stakeholder: { userId } }, select: { id: true } })) {
+      throw new ConflictException('Esta pessoa é externa neste projeto. Use "Mudar para interno".')
+    }
     const data = {
-      ...(input.role !== undefined ? { role: input.role } : {}),
       ...(input.departmentId !== undefined ? { departmentId: input.departmentId } : {}),
       ...(input.hourlyRate !== undefined ? { hourlyRate: input.hourlyRate } : {}),
     }
@@ -196,20 +214,37 @@ export class ProjectService {
       const dept = await prisma.department.findFirst({ where: { id: data.departmentId, tenantId }, select: { id: true } })
       if (!dept) throw new BadRequestException('Departamento inválido')
     }
-    return prisma.userProject.upsert({
-      where: { userId_projectId: { userId, projectId } },
-      create: { ...data, userId, projectId },
-      update: { ...data, active: true, inactiveReason: null, inactivatedAt: null },
+    const funcoes = input.funcoes ?? (input.role !== undefined ? input.role : undefined)
+    return prisma.$transaction(async tx => {
+      const membro = await tx.userProject.upsert({
+        where: { userId_projectId: { userId, projectId } },
+        create: { ...data, userId, projectId },
+        update: { ...data, active: true, inactiveReason: null, inactivatedAt: null },
+      })
+      // Cada função é um vínculo com o cadastro ("Tech Lead | Full-stack" são duas).
+      if (funcoes !== undefined) await definirFuncoesDoMembro(tx, tenantId, membro.id, funcoes)
+      return tx.userProject.findUniqueOrThrow({ where: { id: membro.id }, include: { funcoes: FUNCOES_ORDENADAS } })
     })
   }
 
+  /**
+   * Exclui a pessoa da equipe do projeto. Só vale para quem não tem tarefa no projeto
+   * (responsável, horas ou comentários em cards); com tarefas, o caminho é inativar com
+   * motivo. O gerente precisa passar a gerência antes.
+   */
   async removeMember(projectId: string, tenantId: string, userId: string) {
     await this.findOne(projectId, tenantId)
-    // Desvincular não é inativar: sem motivo, o membro sai também de Stakeholders.
-    await prisma.userProject.update({
-      where: { userId_projectId: { userId, projectId } },
-      data: { active: false, inactiveReason: null, inactivatedAt: null },
-    })
+    const membro = await prisma.userProject.findUnique({ where: { userId_projectId: { userId, projectId } } })
+    if (!membro) throw new NotFoundException('Membro não encontrado neste projeto')
+    const gerente = await prisma.userProjectRole.findFirst({ where: { userId, projectId, deletedAt: null, role: { is: { nameKey: 'gerente', scope: 'PROJETO' } } }, select: { id: true } })
+    if (gerente) throw new ConflictException('O gerente do projeto não pode ser excluído. Passe a gerência para outra pessoa antes.')
+    const bloqueio = motivoParaNaoExcluir(await tarefasNoProjeto(userId, projectId))
+    if (bloqueio) throw new ConflictException(bloqueio)
+    await prisma.$transaction([
+      prisma.userProjectRole.deleteMany({ where: { userId, projectId } }),
+      prisma.$executeRaw`DELETE FROM "UserPermission" WHERE "userId" = ${userId} AND "projectId" = ${projectId}`,
+      prisma.userProject.delete({ where: { id: membro.id } }),
+    ])
   }
 
   /**

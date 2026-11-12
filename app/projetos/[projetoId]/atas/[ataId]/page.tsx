@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/dal'
 import { buscarAta, cabecalhoDaAta, emailsParaCopia } from '@/services/ataService'
 import prisma from '@/lib/prisma'
+import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
 import AtaFormClient from '@/components/atas/AtaFormClient'
 import AtaWorkspace from '@/components/atas/AtaWorkspace'
 import type { MemberOption } from '@/components/atas/MemberSelect'
@@ -33,15 +34,14 @@ export default async function EditarAtaPage({
       include: {
         user: { select: { id: true, name: true, signatureUrl: true, deletedAt: true, isActive: true } },
         department: { select: { name: true } },
+        funcoes: FUNCOES_ORDENADAS,
       },
       orderBy: { order: 'asc' },
     })
   )
     .filter(up => up.user.deletedAt === null && up.user.isActive)
     .map(up => {
-      const cargos = up.role
-        ? up.role.split(',').map((s: string) => s.trim()).filter(Boolean)
-        : []
+      const cargos = nomesDasFuncoes(up.funcoes)
       const setor = cargos[0] ?? up.department?.name ?? null
       return { id: up.userId, name: up.user.name, setor, signatureUrl: up.user.signatureUrl }
     })

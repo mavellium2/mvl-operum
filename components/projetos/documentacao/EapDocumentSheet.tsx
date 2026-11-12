@@ -1,6 +1,7 @@
 'use client'
 
 import { forwardRef, useEffect, useMemo, useState } from 'react'
+import { linhaOuAviso } from '@/lib/linhaInstitucional'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import type { EapNode, EapDocumentMetadata } from '@/types/eap'
 import { computeEapColumnLayout, eapColunasParaLargura, eapBoxLabel, eapWrapLines, fitScale, EAP_COL_LINE_H, EAP_COL_PAD_Y } from '@/lib/eapLayout'
@@ -121,7 +122,7 @@ function QuadroEap({ metadata, instituicao, assinaturaUrl, edicao, testId }: { m
     <table data-testid={testId} style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
       <colgroup><col style={{ width: '62%' }} /><col style={{ width: '15%' }} /><col style={{ width: '23%' }} /></colgroup>
       <tbody>
-        <tr><td colSpan={3} style={{ ...celEapCampo, background: '#bfbfbf' }}><CampoAutomatico padding="1px 5px">{instituicao}</CampoAutomatico></td></tr>
+        <tr><td colSpan={3} style={{ ...celEapCampo, background: '#bfbfbf' }}><CampoAutomatico padding="1px 5px">{linhaOuAviso(instituicao)}</CampoAutomatico></td></tr>
         <tr><td colSpan={3} style={celEapCampo}><CampoAutomatico padding="1px 5px">Nome do projeto: {metadata.projectName}</CampoAutomatico></td></tr>
         <tr><td colSpan={3} style={celEapCampo}><CampoAutomatico padding="1px 5px">Gerente do projeto: {metadata.projectManager}</CampoAutomatico></td></tr>
         <tr>

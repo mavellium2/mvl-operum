@@ -30,7 +30,8 @@ describe('Documentação > Atas de Reunião', () => {
     expect(await screen.findByText('1 ata aguardando aprovação.')).toBeInTheDocument()
     expect(screen.getAllByText('Sem versão enviada')).toHaveLength(1)
     expect(screen.getByRole('link', { name: /Abrir ata 02/ })).toHaveAttribute('href', '/projetos/p1/atas/a2')
-    expect(screen.getByRole('link', { name: 'Baixar Word da ata 02' })).toHaveAttribute('href', '/api/atas/a2/export')
+    // Word gerado pela folha da ata (BaixarWordAta), não mais um link direto para o servidor.
+    expect(screen.getByRole('button', { name: 'Baixar Word da ata 02' })).toBeInTheDocument()
   })
 
   it('"Revisar" e o histórico de uma ata abrem o painel de propostas (só da ata, quando é de uma)', async () => {
