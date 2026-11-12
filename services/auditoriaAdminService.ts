@@ -41,7 +41,8 @@ export async function auditarAdmin(p: {
     await registrarAcao({ tenantId: p.tenantId, userId: p.autorId, action: p.action, entity: p.entity, entityId: p.entityId, details: p.details })
   } catch (error) {
     // A alteração já foi feita no auth-service; a falha fica no log do servidor.
-    console.error(`[auditoria] falha ao registrar ${p.action} ${p.entity} ${p.entityId ?? ''}`, error)
+    // Formato fixo: os valores vão como argumentos, nunca dentro do texto de formato.
+    console.error('[auditoria] falha ao registrar %s %s %s', p.action, p.entity, p.entityId ?? '', error)
   }
 }
 
