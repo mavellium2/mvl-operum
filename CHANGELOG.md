@@ -23,6 +23,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Linha do cabeçalho em todos os documentos:** a faixa cinza (instituição, curso, termo e período) sempre aparece. Sem nenhum desses dados no projeto, mostra "Preencha instituição, curso, termo e período em Editar projeto"; sem o termo, "Termo a definir em Editar projeto (ex.: 5° termo Noturno)". Partes interessadas passa a usar a mesma linha do Termo, da EAP e da Ata (antes ficava em branco e não trazia o termo).
 
+- **Projetos em ordem de abertura:** a lista de projetos segue a ordem em que cada usuário abriu os projetos, do mais recente para o mais antigo (antes só o último aberto subia; os demais voltavam à ordem de criação). Ex.: com Janus, Operum e Fechai, abrir Fechai, Janus e Operum deixa a lista em Operum, Janus, Fechai. A ordem é de cada usuário em cada instituição; concluídos, arquivados e inativos continuam depois dos ativos.
+
 - Sai o gerador antigo do Word do Termo e o módulo `documentModel.ts`, sem uso.
 
 ## [1.55.0] — 2026-11-11

@@ -75,28 +75,38 @@ export class ProjectService {
     return result
   }
 
-  async list(tenantId: string, page = 1, limit = 20, authorized?: string[], preferred?: string, query = '', status?: string) {
+  /**
+   * Lista paginada. Entre os ativos, os projetos abertos recentemente pelo usuário vêm
+   * primeiro, na ordem em que foram abertos (`recentes`: o mais recente primeiro); os
+   * demais seguem por criação. Concluídos, arquivados e inativos ficam depois.
+   */
+  async list(tenantId: string, page = 1, limit = 20, authorized?: string[], recentes: string[] = [], query = '', status?: string) {
     const base = { tenantId, deletedAt: null, ...(authorized ? { id: { in: authorized } } : {}),
       ...(query ? { OR: [{ name: { contains: query, mode: 'insensitive' as const } }, { slogan: { contains: query, mode: 'insensitive' as const } }] } : {}) }
     const include = { _count: { select: { members: { where: { active: true } }, macroFases: true } } }
-    // Ordenação por grupos antes da paginação. O último aberto só tem prioridade entre os ativos.
     const groups: ProjectStatus[] = status ? [status as ProjectStatus] : ['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE']
     const scopes = groups.map(value => ({ ...base, status: value }))
     const counts = await Promise.all(scopes.map(where => prisma.project.count({ where })))
-    const recent = preferred && groups.includes('ACTIVE') ? await prisma.project.findFirst({ where: { AND: [{ ...base, status: 'ACTIVE' }, { id: preferred }] }, include }) : null
+    // Recentes que continuam ativos e acessíveis, na ordem em que o usuário os abriu.
+    const encontrados = recentes.length && groups.includes('ACTIVE')
+      ? await prisma.project.findMany({ where: { AND: [{ ...base, status: 'ACTIVE' }, { id: { in: recentes } }] }, include })
+      : []
+    const fixados = recentes.map(id => encontrados.find(p => p.id === id)).filter((p): p is (typeof encontrados)[number] => !!p)
     let offset = (page - 1) * limit
     let remaining = limit
     const items: Awaited<ReturnType<typeof prisma.project.findMany>> = []
     for (let index = 0; index < groups.length && remaining > 0; index++) {
       const count = counts[index]
       if (offset >= count) { offset -= count; continue }
-      const pinned = groups[index] === 'ACTIVE' ? recent : null
-      if (pinned && offset === 0) { items.push(pinned); remaining-- }
-      const take = Math.min(remaining, count - Math.max(offset, pinned ? 1 : 0))
+      const pinned = groups[index] === 'ACTIVE' ? fixados : []
+      // Primeiro os recentes desta página, depois o resto do grupo (sem repetir os recentes).
+      const dosFixados = pinned.slice(offset, offset + remaining)
+      items.push(...dosFixados); remaining -= dosFixados.length
+      const take = Math.min(remaining, count - Math.max(offset, pinned.length))
       if (take > 0) {
         const found = await prisma.project.findMany({
-          where: pinned ? { AND: [scopes[index], { id: { not: pinned.id } }] } : scopes[index],
-          skip: pinned ? Math.max(0, offset - 1) : offset, take,
+          where: pinned.length ? { AND: [scopes[index], { id: { notIn: pinned.map(p => p.id) } }] } : scopes[index],
+          skip: Math.max(0, offset - pinned.length), take,
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], include,
         })
         items.push(...found); remaining -= found.length

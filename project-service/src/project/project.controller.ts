@@ -15,6 +15,18 @@ import {
 } from '@nestjs/common'
 import { ProjectService, CreateProjectSchema, UpdateProjectSchema, AddMemberSchema } from './project.service'
 
+
+/** "id1,id2,…": projetos abertos recentemente pelo usuário, o mais recente primeiro (até 50). */
+export function recentesDoParametro(valor: string): string[] {
+  const ids: string[] = []
+  for (const parte of valor.split(',')) {
+    const id = parte.trim()
+    if (/^[A-Za-z0-9_-]{1,64}$/.test(id) && !ids.includes(id)) ids.push(id)
+    if (ids.length >= 50) break
+  }
+  return ids
+}
+
 @Controller('projects')
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
@@ -37,7 +49,7 @@ export class ProjectController {
     if (typeof status === 'string' && status && !['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE'].includes(status)) throw new BadRequestException('Situação de projeto inválida')
     const pageNumber = Number(page ?? 1), pageSize = Number(limit ?? 20)
     if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new BadRequestException('Paginação inválida')
-    return this.projectService.list(tenantId, pageNumber, pageSize, authorized?.split(','), typeof preferred === 'string' ? preferred.slice(0, 128) : undefined, typeof query === 'string' ? query.trim().slice(0, 200) : undefined, typeof status === 'string' ? status || undefined : undefined)
+    return this.projectService.list(tenantId, pageNumber, pageSize, authorized?.split(','), typeof preferred === 'string' ? recentesDoParametro(preferred) : undefined, typeof query === 'string' ? query.trim().slice(0, 200) : undefined, typeof status === 'string' ? status || undefined : undefined)
   }
 
   @Get('user/:userId')

@@ -46,7 +46,8 @@ describe('ProjectController.list', () => {
   })
 
   it('normaliza parâmetros de texto válidos antes de consultar o serviço', () => {
-    controller.list('tenant-a', undefined, '2', '9', 'p1', '  teste  ', 'ACTIVE')
-    expect(service.list).toHaveBeenCalledWith('tenant-a', 2, 9, undefined, 'p1', 'teste', 'ACTIVE')
+    controller.list('tenant-a', undefined, '2', '9', 'p3,p1, p2,p1,<x>', '  teste  ', 'ACTIVE')
+    // Recentes do usuário em ordem, sem repetidos nem IDs inválidos.
+    expect(service.list).toHaveBeenCalledWith('tenant-a', 2, 9, undefined, ['p3', 'p1', 'p2'], 'teste', 'ACTIVE')
   })
 })

@@ -1060,7 +1060,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-084 — Último projeto aberto como preferência local
 
 - **Data:** 2026-11-02.
-- **Status:** implementada.
+- **Status:** substituída pela [ADR-096](#adr-096--projetos-recentes-em-ordem-de-abertura-por-usuário) em 2026-11-12.
 - **Contexto:** a lista deve começar pelo último projeto aberto pelo usuário, preservando isolamento e paginação.
 - **Escolha:** guardar um único identificador em cookie funcional separado por conta/instituição e aplicar `preferred` no project-service antes da paginação, dentro do filtro de acesso vigente e do grupo de projetos ativos. Concluídos, arquivados e inativos ficam depois, inclusive quando são os últimos abertos.
 - **Justificativa:** evita gravar no banco a cada navegação e mantém o projeto anterior disponível ao retornar à lista.
@@ -1202,3 +1202,16 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Ampliação em 2026-11-12 (Ata):** tabelas encostadas viram uma tabela só (antes cada separador acumulava deslocamento); elementos com borda nos quatro lados viram tabela de uma célula (borda real do Word); demais fundos e bordas viram retângulos SVG posicionados (PNG de reserva), porque a imagem PNG esticada saía mais grossa; blocos de uma linha na mesma linha de base viram uma linha com tabulações. A lista de Atas gera pela folha (`BaixarWordAta` + `?formato=dados`). A rota `/api/atas/:id/export` sem parâmetro mantém o modelo antigo apenas por compatibilidade. Conferido: 1 folha, mesmas palavras, máx. 0,29 mm / 0,25 mm; Termo, Partes Interessadas e EAP sem regressão.
 - **Condições de revisão:** se o `.docx` precisar ser gerado sem navegador (ex.: MCP), avaliar renderização no servidor; revisar, migrar para este gerador; revisar a calibração se o Microsoft Word divergir do LibreOffice.
 - **Referências:** `lib/exports/folhaDocx.ts`, `components/projetos/DocumentoStakeholders.tsx`, `components/projetos/StakeholderDocument.tsx`, `__tests__/unit/lib/folhaDocx.test.ts`.
+
+## ADR-096 — Projetos recentes em ordem de abertura, por usuário
+
+- **Data:** 2026-11-12.
+- **Status:** implementada. Substitui a [ADR-084](#adr-084--último-projeto-aberto-como-preferência-local).
+- **Contexto:** a ADR-084 guardava só o último projeto aberto; os demais voltavam à ordem de criação. O usuário pediu que a lista siga a ordem de abertura: com Janus, Operum e Fechai, abrir Fechai, depois Janus e depois Operum deve resultar em Operum, Janus, Fechai. A ordem é de cada usuário, não da instituição.
+- **Escolha:** o mesmo cookie funcional por usuário/instituição passa a guardar a lista dos projetos abertos, o mais recente primeiro (até 50, sem repetidos). O project-service recebe a lista em `preferred` (`id1,id2,…`) e ordena os ativos por ela antes da paginação; os nunca abertos seguem por criação.
+- **Justificativa:** mantém as garantias da ADR-084 (sem escrita no banco a cada navegação, filtros de tenant e permissão aplicados no servidor, concluídos/arquivados/inativos depois dos ativos) e passa a lembrar a ordem completa.
+- **Alternativas consideradas:** guardar os acessos no servidor (sincroniza dispositivos, mas exige modelo novo e escrita a cada abertura); manter um único ID (não atende ao pedido).
+- **Consequências:** compatível com o cookie antigo (um ID vira lista de um item). O parâmetro `preferred` cresce até 50 IDs (limite de 3.300 caracteres na action de paginação). Preferência local ao navegador; outro dispositivo começa sem histórico. Nenhuma migration.
+- **Condições de revisão:** sincronizar entre dispositivos exige persistir os acessos no servidor.
+- **Referências:** `lib/recentProject.ts`, `components/layout/RecentProjectRecorder.tsx`, `services/projectList.ts`, `app/actions/projectList.ts`, `project-service/src/project/project.controller.ts`, `project-service/src/project/project.service.ts`.
+
