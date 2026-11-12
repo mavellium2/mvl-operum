@@ -892,7 +892,10 @@ export function CampoPessoa({ id, rotulo, ajuda, projetoId, membros, valorId, no
 }
 
 /** 4. DATA — abre calendário; formato dd/mm/aaaa sempre igual no PDF. */
-export function CampoData({ id, rotulo, ajuda, valor, onChange }: CampoBase & { valor: string; onChange: (valor: string) => void }) {
+export function CampoData({ id, rotulo, ajuda, valor, onChange, alinhamento = 'left' }: CampoBase & { valor: string; onChange: (valor: string) => void
+  /** Centralizada: a data fica no meio da célula, também na edição (espaço igual ao do botão do calendário dos dois lados). */
+  alinhamento?: 'left' | 'center'
+}) {
   const { editavel, focar } = useEditorFolha()
   useRegistrarLimpar(id, editavel ? () => onChange('') : null)
   if (!editavel) return <>{formatDateBR(valor, '—')}</>
@@ -903,7 +906,7 @@ export function CampoData({ id, rotulo, ajuda, valor, onChange }: CampoBase & { 
         onChange={onChange}
         ariaLabel={rotulo}
         placeholder="—"
-        className="w-full border-0 bg-transparent p-0 pr-5! outline-none placeholder:text-slate-400 focus:bg-[#f5f8ff] focus:outline focus:outline-2 focus:outline-blue-500 [&+button]:px-0.5!"
+        className={`w-full border-0 bg-transparent p-0 pr-5! ${alinhamento === 'center' ? 'pl-5! text-center' : ''} outline-none placeholder:text-slate-400 focus:bg-[#f5f8ff] focus:outline focus:outline-2 focus:outline-blue-500 [&+button]:px-0.5!`}
       />
     </span>
   )

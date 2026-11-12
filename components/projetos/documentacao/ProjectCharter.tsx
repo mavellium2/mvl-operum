@@ -492,8 +492,13 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     principaisEnvolvidos: content?.principaisEnvolvidos ?? '',
   }
   async function exportWord() {
-    try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadCharterDocx(documentProps) }
-    catch { toast('Não foi possível gerar o Word. Verifique as imagens do documento.', 'error') }
+    if (!printRef.current) return
+    // O Word sai da própria folha (cópia de impressão): mesmas páginas, estilos, títulos e bordas.
+    try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadFolhaDocx(printRef.current, 'Termo de Abertura de Projeto', 'termo-de-abertura.docx') }
+    catch (e) {
+      const imagem = e instanceof Error && e.message.startsWith('Imagem indisponível')
+      toast(imagem ? 'Não foi possível gerar o Word: a logo ou a assinatura não carregou. Tente novamente.' : 'Não foi possível gerar o Word. Tente novamente.', 'error')
+    }
   }
 
   const editavel = canEdit && draftReady && !selectedVersion && !savingVersion

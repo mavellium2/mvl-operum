@@ -7,6 +7,16 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.56.0] — 2026-11-12
+
+- **Word do Termo idêntico à tela:** o Termo de Abertura passa a exportar o `.docx` a partir das folhas desenhadas, como Partes interessadas: mesmas páginas, bordas dos campos, fundos, fontes, logo, assinatura e rodapé. Os títulos viram estilos de título do Word (o do documento como Título 1 e os de seção como Título 2), aparecendo no painel de navegação sem mudar a aparência. Texto justificado continua justificado, e blocos lado a lado (número e nome da macro fase) ficam na mesma linha.
+
+- **Macro fases:** a Data limite fica centralizada na coluna, na leitura e na edição.
+
+- **Principais envolvidos:** os títulos criados podem ser excluídos junto com as pessoas deles. "Integrantes do Grupo" vem da equipe e continua fixo.
+
+- Sai o gerador antigo do Word do Termo e o módulo `documentModel.ts`, sem uso.
+
 ## [1.55.0] — 2026-11-11
 
 - **Capa na Documentação:** novo documento Capa no modelo "01 - CAPA" (Fatec Garça), com rascunho automático, versões, aprovação, impressão e PDF como os demais. Banner institucional, logo do projeto e integrantes (membros ativos) vêm do sistema; instituição, curso, disciplina, professor, endereço, e-mail e ano/semestre são editáveis na folha. Já vêm preenchidos o nome da faculdade, "CURSO SUPERIOR DE...", o endereço com telefone, disciplina e professor do Termo, e o período de Editar projeto (sem ano, usa o ano atual). O rascunho guarda só os campos alterados. Migration `20261111120000_documento_capa` adiciona `CAPA` ao `DocumentType`.

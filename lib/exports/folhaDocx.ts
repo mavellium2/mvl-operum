@@ -1,5 +1,5 @@
 import {
-  AlignmentType, BorderStyle, Document, Footer, HeightRule, HorizontalPositionRelativeFrom, ImageRun,
+  AlignmentType, BorderStyle, Document, Footer, HeadingLevel, HeightRule, HorizontalPositionRelativeFrom, ImageRun,
   LineRuleType, PageNumber, PageOrientation, Paragraph, ShadingType, Table, TableCell, TableLayoutType,
   TableRow, TabStopType, TextRun, TextWrappingType, VerticalPositionRelativeFrom, WidthType,
   type IBorderOptions,
@@ -27,10 +27,11 @@ const MINIMO_PX = 4 / 3
 type Alinhamento = (typeof AlignmentType)[keyof typeof AlignmentType]
 type Filho = Paragraph | Table
 
-interface Token { texto: string; espacoAntes: boolean; rect: DOMRect; estilo: EstiloRun; bloco: HTMLElement; ascendente: number }
+/** `quebraAntes`: o texto tinha uma quebra de linha digitada (Enter) antes desta palavra. */
+interface Token { texto: string; espacoAntes: boolean; quebraAntes?: boolean; rect: DOMRect; estilo: EstiloRun; bloco: HTMLElement; ascendente: number }
 interface EstiloRun { fonte: string; tamanho: number; negrito: boolean; italico: boolean; sublinhado: boolean; cor: string }
 /** `base`: linha de base do texto na tela. */
-interface Linha { tokens: Token[]; bloco: HTMLElement; centro: number; base: number }
+interface Linha { tokens: Token[]; bloco: HTMLElement; centro: number; base: number; quebraAntes: boolean }
 interface Caixa { left: number; right: number }
 interface Flutuante { el: HTMLImageElement; x: number; y: number; w: number; h: number }
 
@@ -110,11 +111,14 @@ function tokensDe(raiz: HTMLElement, pular: (el: Element) => boolean): Token[] {
   })
   const range = document.createRange()
   let espacoPendente = false
+  let quebraPendente = false
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const texto = n.textContent ?? ''
-    // Só espaço (ex.: entre "<b>Rótulo:</b>" e o valor): vale como separador.
-    if (!texto.trim()) { espacoPendente = true; continue }
     const pai = n.parentElement!
+    // Quebras digitadas só contam onde a tela as mostra (white-space pre/pre-wrap/pre-line).
+    const preserva = /^pre|break-spaces/.test(getComputedStyle(pai).whiteSpace)
+    // Só espaço (ex.: entre "<b>Rótulo:</b>" e o valor): vale como separador.
+    if (!texto.trim()) { espacoPendente = true; if (preserva && texto.includes('\n')) quebraPendente = true; continue }
     const bloco = blocoDe(n, raiz)
     const estilo = estiloDe(pai, bloco)
     const asc = ascendente(pai)
@@ -123,12 +127,13 @@ function tokensDe(raiz: HTMLElement, pular: (el: Element) => boolean): Token[] {
     let fim = 0
     while ((m = re.exec(texto))) {
       const espacoAntes = espacoPendente || m.index > fim || (tokens.length > 0 && /\s/.test(texto[m.index - 1] ?? ''))
-      espacoPendente = false
+      const quebraAntes = quebraPendente || (preserva && texto.slice(fim, m.index).includes('\n'))
+      espacoPendente = false; quebraPendente = false
       range.setStart(n, m.index); range.setEnd(n, m.index + m[0].length)
       const rects = [...range.getClientRects()].filter(r => r.width > 0 && r.height > 0)
       if (rects.length <= 1) {
         const rect = rects[0] ?? range.getBoundingClientRect()
-        tokens.push({ texto: m[0], espacoAntes: espacoAntes && tokens.length > 0, rect, estilo, bloco, ascendente: asc })
+        tokens.push({ texto: m[0], espacoAntes: espacoAntes && tokens.length > 0, quebraAntes, rect, estilo, bloco, ascendente: asc })
       } else {
         // Palavra quebrada no meio (ex.: e-mail longo): divide por linha, letra a letra.
         let atual = '', rectAtual: DOMRect | null = null, primeiro = true
@@ -136,17 +141,18 @@ function tokensDe(raiz: HTMLElement, pular: (el: Element) => boolean): Token[] {
           range.setStart(n, m.index + k); range.setEnd(n, m.index + k + 1)
           const r = range.getBoundingClientRect()
           if (rectAtual && Math.abs(r.top - rectAtual.top) > r.height / 2) {
-            tokens.push({ texto: atual, espacoAntes: primeiro ? espacoAntes && tokens.length > 0 : false, rect: rectAtual, estilo, bloco, ascendente: asc })
+            tokens.push({ texto: atual, espacoAntes: primeiro ? espacoAntes && tokens.length > 0 : false, quebraAntes: primeiro && quebraAntes, rect: rectAtual, estilo, bloco, ascendente: asc })
             atual = ''; rectAtual = null; primeiro = false
           }
           atual += m[0][k]
           rectAtual = rectAtual ? new DOMRect(rectAtual.left, Math.min(rectAtual.top, r.top), r.right - rectAtual.left, Math.max(rectAtual.bottom, r.bottom) - Math.min(rectAtual.top, r.top)) : r
         }
-        if (atual && rectAtual) tokens.push({ texto: atual, espacoAntes: primeiro ? espacoAntes && tokens.length > 0 : false, rect: rectAtual, estilo, bloco, ascendente: asc })
+        if (atual && rectAtual) tokens.push({ texto: atual, espacoAntes: primeiro ? espacoAntes && tokens.length > 0 : false, quebraAntes: primeiro && quebraAntes, rect: rectAtual, estilo, bloco, ascendente: asc })
       }
       fim = m.index + m[0].length
     }
     if (fim < texto.length && /\s/.test(texto.slice(fim))) espacoPendente = true
+    if (preserva && texto.slice(fim).includes('\n')) quebraPendente = true
   }
   range.detach?.()
   return tokens
@@ -178,10 +184,10 @@ function linhasDe(tokens: Token[]): Linha[] {
     const base = t.rect.top + t.ascendente
     const ultima = linhas[linhas.length - 1]
     const ultimo = ultima?.tokens[ultima.tokens.length - 1]
-    const mesma = ultima && ultima.bloco === t.bloco && ultimo && t.rect.left >= ultimo.rect.left - 0.5
+    const mesma = ultima && !t.quebraAntes && ultima.bloco === t.bloco && ultimo && t.rect.left >= ultimo.rect.left - 0.5
       && centro > Math.min(...ultima.tokens.map(x => x.rect.top)) && centro < Math.max(...ultima.tokens.map(x => x.rect.bottom))
     if (mesma) { ultima.tokens.push(t); ultima.base = Math.max(ultima.base, base) }
-    else linhas.push({ tokens: [t], bloco: t.bloco, centro, base })
+    else linhas.push({ tokens: [t], bloco: t.bloco, centro, base, quebraAntes: !!t.quebraAntes })
   }
   return linhas
 }
@@ -189,6 +195,8 @@ function linhasDe(tokens: Token[]): Linha[] {
 function alinhamento(bloco: HTMLElement): Alinhamento {
   const a = getComputedStyle(bloco).textAlign
   if (a === 'center' || a === '-webkit-center') return AlignmentType.CENTER
+  // Justificado: as linhas com quebra automática (w:br) também esticam no Word, como na tela.
+  if (a === 'justify') return AlignmentType.JUSTIFIED
   if (a === 'right' || a === 'end' || a === '-webkit-right') return AlignmentType.RIGHT
   return AlignmentType.LEFT
 }
@@ -197,6 +205,26 @@ function alturaLinha(bloco: HTMLElement): number {
   const cs = getComputedStyle(bloco)
   return cs.lineHeight === 'normal' ? px(cs.fontSize) * 1.2 : px(cs.lineHeight)
 }
+
+/**
+ * Nível do título no Word: o título do documento (h1…h6) e os títulos de seção
+ * ([data-secao-titulo], faixa da tabela) viram "Título 1/2", para o Word mostrar a
+ * hierarquia (painel de navegação, sumário) sem mudar a aparência.
+ */
+const NIVEIS = [HeadingLevel.HEADING_1, HeadingLevel.HEADING_2, HeadingLevel.HEADING_3, HeadingLevel.HEADING_4, HeadingLevel.HEADING_5, HeadingLevel.HEADING_6]
+function nivelTitulo(bloco: HTMLElement) {
+  const h = bloco.closest('h1,h2,h3,h4,h5,h6')
+  if (h) return NIVEIS[Number(h.tagName[1]) - 1]
+  if (bloco.closest('[data-secao-titulo],tr[data-faixa]')) return HeadingLevel.HEADING_2
+  return undefined
+}
+
+/** Estilos de título neutros: só a hierarquia; fonte, cor e espaços vêm de cada parágrafo. */
+const estilosTitulo = [1, 2, 3, 4, 5, 6].map(n => ({
+  id: `Heading${n}`, name: `heading ${n}`, basedOn: 'Normal', next: 'Normal', quickFormat: true,
+  run: { bold: false, italics: false, color: '000000' },
+  paragraph: { spacing: { before: 0, after: 0 }, outlineLevel: n - 1 },
+}))
 
 /** Caixa de conteúdo (sem borda e padding) do bloco. */
 function conteudo(el: HTMLElement): Caixa {
@@ -215,28 +243,45 @@ function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
   const grupos: Linha[][] = []
   for (const l of linhas) {
     const g = grupos[grupos.length - 1]
-    if (g && g[0].bloco === l.bloco) g.push(l)
+    // Enter digitado começa outro parágrafo: no texto justificado, a última linha não estica.
+    if (g && g[0].bloco === l.bloco && !l.quebraAntes) g.push(l)
     else grupos.push([l])
+  }
+  // Blocos lado a lado (ex.: "1.1" e o nome da fase numa linha flex): uma linha do Word,
+  // com tabulação no ponto exato onde o segundo começa na tela.
+  const lado = new Map<Linha[], Linha[]>()
+  for (let i = 0; i + 1 < grupos.length; i++) {
+    const [a, b] = [grupos[i], grupos[i + 1]]
+    const la = a[0], lb = b[0]
+    const ultimoA = la.tokens[la.tokens.length - 1].rect
+    if (a.length === 1 && b.length === 1 && Math.abs(la.base - lb.base) < 2 && lb.tokens[0].rect.left > ultimoA.right) {
+      lado.set(a, b); grupos.splice(i + 1, 1)
+    }
   }
   const folga = 96 / 25.4
   grupos.forEach(g => {
     const bloco = g[0].bloco
-    const lh = alturaLinha(bloco)
+    const vizinho = lado.get(g)
+    const lh = Math.max(alturaLinha(bloco), vizinho ? alturaLinha(vizinho[0].bloco) : 0)
     const passo = g.length > 1 ? (g[g.length - 1].base - g[0].base) / (g.length - 1) : lh
     // Com altura exata, o Word põe a linha de base a 80% da linha (o navegador centraliza
     // pela fonte): a linha do Word começa onde a base da tela fica a 80% dela.
-    const desejado = g[0].base - 0.8 * passo
+    const desejado = Math.max(g[0].base, vizinho?.[0].base ?? 0) - 0.8 * passo
     const topo = Math.max(desejado, cursor)
     // Acima do recipiente (célula/página) não há espaço negativo: eleva o texto na linha.
     const elevar = (topo - desejado) * 0.75
-    const al = alinhamento(bloco)
+    const al = vizinho ? AlignmentType.LEFT : alinhamento(bloco)
     const cb = conteudo(bloco)
-    const esq = Math.max(0, cb.left - caixa.left - (al === AlignmentType.LEFT ? 0 : folga))
-    const dir = Math.max(0, caixa.right - cb.right - (al === AlignmentType.RIGHT ? 0 : folga))
+    // Folga só do lado livre; justificado usa a largura exata (as linhas vão de ponta a ponta).
+    const livreEsq = al === AlignmentType.CENTER || al === AlignmentType.RIGHT
+    const livreDir = al === AlignmentType.CENTER || al === AlignmentType.LEFT
+    const esq = vizinho ? Math.max(0, g[0].tokens[0].rect.left - caixa.left) : Math.max(0, cb.left - caixa.left - (livreEsq ? folga : 0))
+    const dir = vizinho ? 0 : Math.max(0, caixa.right - cb.right - (livreDir ? folga : 0))
     const filhos: TextRun[] = []
     // Palavras seguidas com o mesmo estilo formam um só trecho (fica fácil editar no Word).
     const posicao = Math.round(elevar * 2)
-    g.forEach((l, i) => {
+    const linhasDoParagrafo = vizinho ? [...g, { ...vizinho[0], tab: true }] : g
+    linhasDoParagrafo.forEach((l, i) => {
       let atual: { texto: string; e: EstiloRun; quebra: boolean } | null = null
       const fechar = () => {
         if (!atual) return
@@ -249,17 +294,19 @@ function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
         }))
         atual = null
       }
+      const tab = 'tab' in l
       l.tokens.forEach((t, k) => {
-        const texto = (k > 0 && t.espacoAntes ? ' ' : '') + t.texto
+        const texto = (tab && k === 0 ? '\t' : '') + (k > 0 && t.espacoAntes ? ' ' : '') + t.texto
         if (atual && JSON.stringify(atual.e) === JSON.stringify(t.estilo)) atual.texto += texto
-        else { fechar(); atual = { texto, e: t.estilo, quebra: i > 0 && k === 0 } }
+        else { fechar(); atual = { texto, e: t.estilo, quebra: !tab && i > 0 && k === 0 } }
       })
       fechar()
     })
     saida.push({
       topo, fim: topo + passo * g.length,
       p: new Paragraph({
-        alignment: al, indent: { left: tw(esq), right: tw(dir) }, keepLines: true,
+        heading: nivelTitulo(bloco), alignment: al, indent: { left: tw(esq), right: tw(dir) }, keepLines: true,
+        ...(vizinho ? { tabStops: [{ type: TabStopType.LEFT, position: tw(vizinho[0].tokens[0].rect.left - caixa.left) }] } : {}),
         spacing: { before: tw(topo - cursor), after: 0, line: tw(passo), lineRule: LineRuleType.EXACT },
         children: filhos,
       }),
@@ -307,8 +354,8 @@ function tabela(el: HTMLTableElement, caixaPagina: Caixa, imagens: Flutuante[]):
         const span = Math.max(1, indice(rc.right) - indice(rc.left))
         c.querySelectorAll('img').forEach(img => { if (visivel(img)) imagens.push(posicaoImagem(img as HTMLImageElement)) })
         const fundo = corHex(cs.backgroundColor) ?? corHex(getComputedStyle(r).backgroundColor)
-        // Na 1ª linha da tabela o Word começa o texto abaixo da borda de cima.
-        const inicio = i === 0 ? topo + px(cs.borderTopWidth) : topo
+        // O Word começa o texto da célula abaixo da borda de cima dela.
+        const inicio = topo + px(cs.borderTopWidth)
         const ps = paragrafos(linhasDe(tokensDe(c, () => false)), { left: rc.left, right: rc.right }, inicio).map(x => x.p)
         return new TableCell({
           columnSpan: span > 1 ? span : undefined,
@@ -445,7 +492,7 @@ export async function folhaParaDocx(raiz: HTMLElement, titulo: string): Promise<
     creator: 'Operum', title: titulo,
     // Kerning ligado, como no navegador.
     // Fonte padrão = a do rodapé: os números de página (campos) usam a fonte padrão.
-    styles: { default: { document: { run: { kern: 2, ...(rodape ? { font: rodape.estilo.fonte, size: meioPt(rodape.estilo.tamanho), color: rodape.estilo.cor } : {}) } } } },
+    styles: { paragraphStyles: estilosTitulo, default: { document: { run: { kern: 2, ...(rodape ? { font: rodape.estilo.fonte, size: meioPt(rodape.estilo.tamanho), color: rodape.estilo.cor } : {}) } } } },
     sections: [{
       properties: {
         page: {

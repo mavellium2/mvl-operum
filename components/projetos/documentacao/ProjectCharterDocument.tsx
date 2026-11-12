@@ -249,7 +249,7 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
                   <div style={{ flex: 1 }}><CampoTexto id={`fase-${f.id}`} rotulo="Macro fase" ajuda="Grande etapa do projeto." pergunta="nome da fase" valor={f.fase} onChange={v => ed?.onFase(f.id, 'fase', v)} max={200} linha compacto /></div>
                 </div>
               </td>
-              <td style={celulaModelo}>{editavel ? <CampoData id={`fase-data-${f.id}`} rotulo="Data limite" ajuda="Até quando a fase precisa terminar." valor={f.dataLimite ?? ''} onChange={v => ed?.onFase(f.id, 'dataLimite', v)} /> : formatDateBR(f.dataLimite)}</td>
+              <td style={{ ...celulaModelo, textAlign: 'center' }}>{editavel ? <CampoData id={`fase-data-${f.id}`} rotulo="Data limite" ajuda="Até quando a fase precisa terminar." valor={f.dataLimite ?? ''} onChange={v => ed?.onFase(f.id, 'dataLimite', v)} alinhamento="center" /> : formatDateBR(f.dataLimite)}</td>
               <td style={{ ...celulaModeloCampo, textAlign: 'right' }}>
                 {editavel ? <>
                   <MoedaInput comSimbolo value={f.custo} aria-label={`Custo da macrofase ${f.fase || i + 1}`} rotulo="Custo"
