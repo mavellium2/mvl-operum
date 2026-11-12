@@ -237,6 +237,14 @@ function conteudo(el: HTMLElement): Caixa {
  * linha no Word (quebra explícita), alinhada na mesma caixa do bloco; a caixa
  * ganha 1 mm de folga do lado livre para o Word não quebrar de novo.
  */
+/** Alinhamento do segmento numa linha de colunas: tabulação do mesmo tipo, no ponto da tela. */
+function tabDoSegmento(l: Linha, caixa: Caixa) {
+  const al = alinhamento(l.bloco), cb = conteudo(l.bloco)
+  if (al === AlignmentType.CENTER) return { type: TabStopType.CENTER, position: tw((cb.left + cb.right) / 2 - caixa.left) }
+  if (al === AlignmentType.RIGHT) return { type: TabStopType.RIGHT, position: tw(cb.right - caixa.left) }
+  return { type: TabStopType.LEFT, position: tw(l.tokens[0].rect.left - caixa.left) }
+}
+
 function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
   const saida: { p: Paragraph; topo: number; fim: number }[] = []
   let cursor = topoInicial
@@ -247,41 +255,49 @@ function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
     if (g && g[0].bloco === l.bloco && !l.quebraAntes) g.push(l)
     else grupos.push([l])
   }
-  // Blocos lado a lado (ex.: "1.1" e o nome da fase numa linha flex): uma linha do Word,
-  // com tabulação no ponto exato onde o segundo começa na tela.
-  const lado = new Map<Linha[], Linha[]>()
-  for (let i = 0; i + 1 < grupos.length; i++) {
-    const [a, b] = [grupos[i], grupos[i + 1]]
-    const la = a[0], lb = b[0]
-    const ultimoA = la.tokens[la.tokens.length - 1].rect
-    if (a.length === 1 && b.length === 1 && Math.abs(la.base - lb.base) < 2 && lb.tokens[0].rect.left > ultimoA.right) {
-      lado.set(a, b); grupos.splice(i + 1, 1)
+  // Blocos lado a lado (colunas: "1.1" e o nome da fase, nomes nas assinaturas, grade de
+  // cópias): blocos de uma linha na mesma linha de base viram uma linha do Word, com uma
+  // tabulação por bloco (esquerda, centro ou direita, como o bloco na tela).
+  const colunas = new Map<Linha[], Linha[]>()
+  const usados = new Set<Linha[]>()
+  const simples = grupos.filter(g => g.length === 1)
+  for (const g of simples) {
+    if (usados.has(g)) continue
+    const mesmos = simples.filter(o => !usados.has(o) && Math.abs(o[0].base - g[0].base) < 2)
+      .sort((x, y) => x[0].tokens[0].rect.left - y[0].tokens[0].rect.left)
+    const disjuntos = mesmos.every((o, i) => i === 0 || o[0].tokens[0].rect.left > mesmos[i - 1][0].tokens[mesmos[i - 1][0].tokens.length - 1].rect.right)
+    if (mesmos.length > 1 && disjuntos) {
+      colunas.set(mesmos[0], mesmos.map(o => o[0]))
+      mesmos.forEach(o => usados.add(o))
     }
   }
+  const ordem = grupos.filter(g => !usados.has(g) || colunas.has(g)).sort((x, y) => x[0].base - y[0].base)
   const folga = 96 / 25.4
-  grupos.forEach(g => {
+  ordem.forEach(g => {
+    const linha = colunas.get(g)
     const bloco = g[0].bloco
-    const vizinho = lado.get(g)
-    const lh = Math.max(alturaLinha(bloco), vizinho ? alturaLinha(vizinho[0].bloco) : 0)
+    const lh = linha ? Math.max(...linha.map(l => alturaLinha(l.bloco))) : alturaLinha(bloco)
     const passo = g.length > 1 ? (g[g.length - 1].base - g[0].base) / (g.length - 1) : lh
     // Com altura exata, o Word põe a linha de base a 80% da linha (o navegador centraliza
     // pela fonte): a linha do Word começa onde a base da tela fica a 80% dela.
-    const desejado = Math.max(g[0].base, vizinho?.[0].base ?? 0) - 0.8 * passo
+    const desejado = (linha ? Math.max(...linha.map(l => l.base)) : g[0].base) - 0.8 * passo
     const topo = Math.max(desejado, cursor)
     // Acima do recipiente (célula/página) não há espaço negativo: eleva o texto na linha.
     const elevar = (topo - desejado) * 0.75
-    const al = vizinho ? AlignmentType.LEFT : alinhamento(bloco)
+    const al = linha ? AlignmentType.LEFT : alinhamento(bloco)
     const cb = conteudo(bloco)
     // Folga só do lado livre; justificado usa a largura exata (as linhas vão de ponta a ponta).
     const livreEsq = al === AlignmentType.CENTER || al === AlignmentType.RIGHT
     const livreDir = al === AlignmentType.CENTER || al === AlignmentType.LEFT
-    const esq = vizinho ? Math.max(0, g[0].tokens[0].rect.left - caixa.left) : Math.max(0, cb.left - caixa.left - (livreEsq ? folga : 0))
-    const dir = vizinho ? 0 : Math.max(0, caixa.right - cb.right - (livreDir ? folga : 0))
+    const esq = linha ? 0 : Math.max(0, cb.left - caixa.left - (livreEsq ? folga : 0))
+    const dir = linha ? 0 : Math.max(0, caixa.right - cb.right - (livreDir ? folga : 0))
     const filhos: TextRun[] = []
     // Palavras seguidas com o mesmo estilo formam um só trecho (fica fácil editar no Word).
     const posicao = Math.round(elevar * 2)
-    const linhasDoParagrafo = vizinho ? [...g, { ...vizinho[0], tab: true }] : g
-    linhasDoParagrafo.forEach((l, i) => {
+    const sequencia: { l: Linha; tab: boolean; quebra: boolean }[] = linha
+      ? linha.map(l => ({ l, tab: true, quebra: false }))
+      : g.map((l, i) => ({ l, tab: false, quebra: i > 0 }))
+    sequencia.forEach(({ l, tab, quebra }) => {
       let atual: { texto: string; e: EstiloRun; quebra: boolean } | null = null
       const fechar = () => {
         if (!atual) return
@@ -294,11 +310,10 @@ function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
         }))
         atual = null
       }
-      const tab = 'tab' in l
       l.tokens.forEach((t, k) => {
         const texto = (tab && k === 0 ? '\t' : '') + (k > 0 && t.espacoAntes ? ' ' : '') + t.texto
         if (atual && JSON.stringify(atual.e) === JSON.stringify(t.estilo)) atual.texto += texto
-        else { fechar(); atual = { texto, e: t.estilo, quebra: !tab && i > 0 && k === 0 } }
+        else { fechar(); atual = { texto, e: t.estilo, quebra: quebra && k === 0 } }
       })
       fechar()
     })
@@ -306,7 +321,7 @@ function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
       topo, fim: topo + passo * g.length,
       p: new Paragraph({
         heading: nivelTitulo(bloco), alignment: al, indent: { left: tw(esq), right: tw(dir) }, keepLines: true,
-        ...(vizinho ? { tabStops: [{ type: TabStopType.LEFT, position: tw(vizinho[0].tokens[0].rect.left - caixa.left) }] } : {}),
+        ...(linha ? { tabStops: linha.map(l => tabDoSegmento(l, caixa)) } : {}),
         spacing: { before: tw(topo - cursor), after: 0, line: tw(passo), lineRule: LineRuleType.EXACT },
         children: filhos,
       }),
@@ -331,8 +346,10 @@ function borda(cs: CSSStyleDeclaration, lado: 'Top' | 'Right' | 'Bottom' | 'Left
 }
 
 /** Tabela com as mesmas colunas e alturas de linha da tela. */
-function tabela(el: HTMLTableElement, caixaPagina: Caixa, imagens: Flutuante[]): Table {
-  const linhas = [...el.rows].filter(visivel)
+/** Tabelas encostadas na tela (seções "coladas") viram uma tabela só, com a grade unida. */
+function tabela(els: HTMLTableElement[], caixaPagina: Caixa, imagens: Flutuante[]): Table {
+  const el = els[els.length - 1]
+  const linhas = els.flatMap(t => [...t.rows].filter(visivel))
   const celulas = linhas.map(r => [...r.cells].filter(visivel))
   // Grade de colunas: todas as bordas verticais das células.
   const xs: number[] = []
@@ -374,6 +391,35 @@ function tabela(el: HTMLTableElement, caixaPagina: Caixa, imagens: Flutuante[]):
     indent: { size: tw(xs[0] - caixaPagina.left), type: WidthType.DXA },
     margins: { top: 0, bottom: 0, left: 0, right: 0 },
     borders: { top: { style: BorderStyle.NONE, size: 0, color: 'auto' }, bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' }, left: { style: BorderStyle.NONE, size: 0, color: 'auto' }, right: { style: BorderStyle.NONE, size: 0, color: 'auto' }, insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'auto' }, insideVertical: { style: BorderStyle.NONE, size: 0, color: 'auto' } },
+  })
+}
+
+/** Elemento com borda nos quatro lados (fora de tabela): no Word vira uma tabela de uma célula. */
+function ehCaixa(el: HTMLElement): boolean {
+  const tag = el.tagName.toLowerCase()
+  if (['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'img', 'svg'].includes(tag) || el.closest('table,svg') || !visivel(el)) return false
+  const cs = getComputedStyle(el)
+  return (['top', 'right', 'bottom', 'left'] as const).every(l => px(cs.getPropertyValue(`border-${l}-width`)) > 0 && !['none', 'hidden'].includes(cs.getPropertyValue(`border-${l}-style`)))
+}
+
+function caixaComoTabela(el: HTMLElement, caixaPagina: Caixa, imagens: Flutuante[]): Table {
+  const r = el.getBoundingClientRect(), cs = getComputedStyle(el)
+  el.querySelectorAll('img').forEach(img => { if (visivel(img)) imagens.push(posicaoImagem(img as HTMLImageElement)) })
+  const fundo = corHex(cs.backgroundColor)
+  const ps = paragrafos(linhasDe(tokensDe(el, () => false)), { left: r.left, right: r.right }, r.top + px(cs.borderTopWidth)).map(x => x.p)
+  const largura = tw(r.width)
+  return new Table({
+    columnWidths: [largura], layout: TableLayoutType.FIXED, width: { size: largura, type: WidthType.DXA },
+    indent: { size: tw(r.left - caixaPagina.left), type: WidthType.DXA }, margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    rows: [new TableRow({
+      height: { value: tw(r.height), rule: HeightRule.EXACT }, cantSplit: true,
+      children: [new TableCell({
+        width: { size: largura, type: WidthType.DXA }, margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        shading: fundo ? { type: ShadingType.CLEAR, fill: fundo, color: 'auto' } : undefined,
+        borders: { top: borda(cs, 'Top'), right: borda(cs, 'Right'), bottom: borda(cs, 'Bottom'), left: borda(cs, 'Left') },
+        children: ps.length ? ps : [minimo()],
+      })],
+    })],
   })
 }
 
@@ -453,6 +499,75 @@ async function imagemFlutuante(f: Flutuante, pagina: DOMRect): Promise<ImageRun>
   })
 }
 
+interface Decoracao { x: number; y: number; w: number; h: number; cor: string; atras: boolean }
+
+/**
+ * Fundos e bordas de elementos que não são células de tabela (caixas cinza, linha de
+ * assinatura): retângulos na mesma posição da tela. Fundos ficam atrás do texto; linhas,
+ * na frente (para aparecerem também sobre células com fundo).
+ */
+function decoracoes(pagina: HTMLElement, caixas: HTMLElement[]): Decoracao[] {
+  const saida: Decoracao[] = []
+  pagina.querySelectorAll<HTMLElement>('*').forEach(el => {
+    const tag = el.tagName.toLowerCase()
+    if (['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'colgroup', 'col', 'img'].includes(tag) || el.closest('svg') || !visivel(el)) return
+    // Caixas com borda nos 4 lados viram tabela de uma célula (borda e fundo de verdade no Word).
+    if (caixas.includes(el)) return
+    const r = el.getBoundingClientRect()
+    if (r.width <= 0 || r.height <= 0) return
+    const cs = getComputedStyle(el)
+    const fundo = corHex(cs.backgroundColor)
+    if (fundo && fundo !== 'FFFFFF') saida.push({ x: r.left, y: r.top, w: r.width, h: r.height, cor: fundo, atras: true })
+    const lados = [
+      ['top', r.left, r.top, r.width, null], ['bottom', r.left, null, r.width, null],
+      ['left', r.left, r.top, null, r.height], ['right', null, r.top, null, r.height],
+    ] as const
+    for (const [lado, x, y, w, h] of lados) {
+      const largura = px(cs.getPropertyValue(`border-${lado}-width`))
+      const estilo = cs.getPropertyValue(`border-${lado}-style`)
+      const cor = corHex(cs.getPropertyValue(`border-${lado}-color`))
+      if (!largura || estilo === 'none' || estilo === 'hidden' || !cor) continue
+      saida.push({
+        x: x ?? r.right - largura, y: y ?? r.bottom - largura,
+        w: w ?? largura, h: h ?? largura, cor, atras: false,
+      })
+    }
+  })
+  return saida
+}
+
+const pngs = new Map<string, Promise<Uint8Array>>()
+/** PNG de 1 × 1 na cor pedida (esticado no Word até o tamanho do retângulo). */
+function pngDaCor(cor: string): Promise<Uint8Array> {
+  if (!pngs.has(cor)) {
+    pngs.set(cor, (async () => {
+      const canvas = document.createElement('canvas'); canvas.width = 1; canvas.height = 1
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Imagem indisponível: fundo')
+      ctx.fillStyle = `#${cor}`; ctx.fillRect(0, 0, 1, 1)
+      const blob = await new Promise<Blob | null>(ok => canvas.toBlob(ok, 'image/png'))
+      if (!blob) throw new Error('Imagem indisponível: fundo')
+      return new Uint8Array(await blob.arrayBuffer())
+    })())
+  }
+  return pngs.get(cor)!
+}
+
+/** Retângulo vetorial (nítido em qualquer zoom, como a borda da tela), com PNG de reserva. */
+async function retangulo(d: Decoracao, pagina: DOMRect): Promise<ImageRun> {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${d.w}" height="${d.h}" viewBox="0 0 ${d.w} ${d.h}" preserveAspectRatio="none"><rect width="${d.w}" height="${d.h}" fill="#${d.cor}" shape-rendering="crispEdges"/></svg>`
+  return new ImageRun({
+    type: 'svg', data: new TextEncoder().encode(svg), fallback: { type: 'png', data: await pngDaCor(d.cor) },
+    altText: { name: 'Fundo', description: 'Fundo', title: 'Fundo' },
+    transformation: { width: d.w, height: d.h },
+    floating: {
+      horizontalPosition: { relative: HorizontalPositionRelativeFrom.PAGE, offset: emu(d.x - pagina.left) },
+      verticalPosition: { relative: VerticalPositionRelativeFrom.PAGE, offset: emu(d.y - pagina.top) },
+      wrap: { type: TextWrappingType.NONE }, allowOverlap: true, lockAnchor: true, behindDocument: d.atras,
+    },
+  })
+}
+
 function rodapeDe(pagina: HTMLElement, caixa: Caixa): { footer: Footer; distancia: number; estilo: EstiloRun } | null {
   const rod = pagina.querySelector<HTMLElement>('[data-rodape-pagina]')
   if (!rod) return null
@@ -478,6 +593,26 @@ function rodapeDe(pagina: HTMLElement, caixa: Caixa): { footer: Footer; distanci
   }
 }
 
+/**
+ * Espera a folha ficar pronta para medir: fontes carregadas, imagens carregadas e
+ * paginação estável (mesmo número de folhas e mesma altura por alguns quadros).
+ */
+export async function esperarFolhaPronta(raiz: HTMLElement, limiteMs = 4000): Promise<void> {
+  const inicio = performance.now()
+  await document.fonts?.ready
+  await Promise.all([...raiz.querySelectorAll('img')].filter(i => !i.complete).map(i => new Promise<void>(ok => {
+    i.addEventListener('load', () => ok(), { once: true }); i.addEventListener('error', () => ok(), { once: true })
+  })))
+  const quadro = () => new Promise<void>(ok => requestAnimationFrame(() => ok()))
+  let anterior = '', iguais = 0
+  while (iguais < 3 && performance.now() - inicio < limiteMs) {
+    await quadro()
+    const atual = `${raiz.querySelectorAll('[data-folha]').length}:${raiz.getBoundingClientRect().height}`
+    iguais = atual === anterior ? iguais + 1 : 0
+    anterior = atual
+  }
+}
+
 /** Monta o Word a partir das folhas desenhadas em `raiz` (o elemento do <Folha>). */
 export async function folhaParaDocx(raiz: HTMLElement, titulo: string): Promise<Document> {
   const paginas = [...raiz.querySelectorAll<HTMLElement>('[data-folha]')]
@@ -498,18 +633,27 @@ export async function folhaParaDocx(raiz: HTMLElement, titulo: string): Promise<
 
     // Itens de primeiro nível: tabelas, imagens soltas e linhas de texto fora das tabelas.
     const tabelas = [...pagina.querySelectorAll<HTMLTableElement>('table')].filter(t => visivel(t) && !t.parentElement?.closest('table'))
-    pagina.querySelectorAll('img').forEach(img => { if (visivel(img) && !img.closest('table')) imagens.push(posicaoImagem(img as HTMLImageElement)) })
     // Desenhos (SVG de primeiro nível) entram inteiros como imagem; o texto deles não vai para o fluxo.
     pagina.querySelectorAll<SVGSVGElement>('svg').forEach(svg => {
       if (visivel(svg) && !svg.parentElement?.closest('svg') && !svg.closest('table') && svg.getBoundingClientRect().width > 0) imagens.push(posicaoSvg(svg))
     })
-    const linhasSoltas = linhasDe(tokensDe(pagina, el => el.tagName === 'TABLE' || el.tagName.toLowerCase() === 'svg'))
-    type Item = { topo: number; tipo: 'tabela'; el: HTMLTableElement } | { topo: number; tipo: 'linhas'; linhas: Linha[] }
-    const itens: Item[] = tabelas.map(t => ({ topo: t.getBoundingClientRect().top, tipo: 'tabela' as const, el: t }))
+    const caixas = [...pagina.querySelectorAll<HTMLElement>('*')].filter(ehCaixa).filter((c, _, todas) => !todas.some(o => o !== c && o.contains(c)))
+    const linhasSoltas = linhasDe(tokensDe(pagina, el => el.tagName === 'TABLE' || el.tagName.toLowerCase() === 'svg' || caixas.includes(el as HTMLElement)))
+    type Item = { topo: number; tipo: 'tabela'; els: HTMLTableElement[] } | { topo: number; tipo: 'linhas'; linhas: Linha[] } | { topo: number; tipo: 'caixa'; el: HTMLElement }
+    // Tabelas encostadas (até 2 px entre uma e outra) formam um bloco só.
+    const blocosTabela: HTMLTableElement[][] = []
+    for (const t of [...tabelas].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)) {
+      const ultimo = blocosTabela[blocosTabela.length - 1]
+      if (ultimo && t.getBoundingClientRect().top - ultimo[ultimo.length - 1].getBoundingClientRect().bottom <= 2) ultimo.push(t)
+      else blocosTabela.push([t])
+    }
+    const itens: Item[] = blocosTabela.map(b => ({ topo: b[0].getBoundingClientRect().top, tipo: 'tabela' as const, els: b }))
+    itens.push(...caixas.map(c => ({ topo: c.getBoundingClientRect().top, tipo: 'caixa' as const, el: c })))
+    pagina.querySelectorAll('img').forEach(img => { if (visivel(img) && !img.closest('table') && !caixas.some(c => c.contains(img))) imagens.push(posicaoImagem(img as HTMLImageElement)) })
     // Linhas consecutivas entre duas tabelas formam um grupo.
     for (const l of linhasSoltas) {
       const topo = l.centro
-      const grupo = itens.find(i => i.tipo === 'linhas' && !tabelas.some(t => { const r = t.getBoundingClientRect(); return r.top > Math.min(i.topo, topo) && r.top < Math.max(i.topo, topo) }))
+      const grupo = itens.find(i => i.tipo === 'linhas' && ![...tabelas, ...caixas].some(t => { const r = t.getBoundingClientRect(); return r.top > Math.min(i.topo, topo) && r.top < Math.max(i.topo, topo) }))
       if (grupo && grupo.tipo === 'linhas') grupo.linhas.push(l)
       else itens.push({ topo, tipo: 'linhas', linhas: [l] })
     }
@@ -520,19 +664,28 @@ export async function folhaParaDocx(raiz: HTMLElement, titulo: string): Promise<
         const ps = paragrafos(item.linhas, caixa, cursor)
         ps.forEach(x => corpo.push(x.p))
         cursor = ps[ps.length - 1]?.fim ?? cursor
-      } else {
+      } else if (item.tipo === 'caixa') {
         const r = item.el.getBoundingClientRect()
+        if (r.top - cursor > 0.5 || corpo[corpo.length - 1] instanceof Table) corpo.push(espacador(r.top - cursor))
+        corpo.push(caixaComoTabela(item.el, caixa, imagens))
+        cursor = r.bottom + px(getComputedStyle(item.el).borderBottomWidth) / 2
+      } else {
+        const r = item.els[0].getBoundingClientRect()
+        const fim = item.els[item.els.length - 1].getBoundingClientRect().bottom
         // Entre dois blocos o Word precisa de um parágrafo; ele tem a altura do espaço da tela.
         if (r.top - cursor > 0.5 || corpo[corpo.length - 1] instanceof Table) corpo.push(espacador(r.top - cursor))
-        corpo.push(tabela(item.el, caixa, imagens))
+        corpo.push(tabela(item.els, caixa, imagens))
         // O Word soma metade da borda de baixo da última linha à altura da tabela.
-        const ultima = [...item.el.rows].filter(visivel).pop()
+        const ultima = [...item.els[item.els.length - 1].rows].filter(visivel).pop()
         const bordaBaixo = ultima ? Math.max(0, ...[...ultima.cells].map(c => px(getComputedStyle(c).borderBottomWidth))) : 0
-        cursor = r.bottom + bordaBaixo / 2
+        cursor = fim + bordaBaixo / 2
       }
     }
 
-    const flutuantes = await Promise.all(imagens.map(f => imagemFlutuante(f, pr)))
+    const flutuantes = [
+      ...await Promise.all(decoracoes(pagina, caixas).map(d => retangulo(d, pr))),
+      ...await Promise.all(imagens.map(f => imagemFlutuante(f, pr))),
+    ]
     // Início da página: parágrafo de 1 pt (quebra de página e âncora das imagens da folha).
     filhos.push(minimo({ pageBreakBefore: n > 0, children: flutuantes }))
     filhos.push(...corpo)

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AlertTriangle, CalendarDays, CheckCircle2, Clock, Download, FileText, History, ListChecks, MapPin, MoreHorizontal,
+  AlertTriangle, CalendarDays, CheckCircle2, Clock, FileText, History, ListChecks, MapPin, MoreHorizontal,
   Paperclip, Plus, Search, Trash2, Users, XCircle,
 } from 'lucide-react'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
@@ -17,6 +17,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import EmptyState from '@/components/ui/EmptyState'
 import Tooltip from '@/components/ui/Tooltip'
 import { useToast } from '@/components/ui/Toast'
+import BaixarWordAta from '@/components/atas/BaixarWordAta'
 
 export type { AtaListItem }
 
@@ -113,7 +114,7 @@ function CartaoAta({ ata, projetoId, status, podeExcluir, onExcluir }: { ata: At
       </div>
       <div className="relative z-10 flex shrink-0 items-center gap-1 self-center">
         <Tooltip label="Baixar Word">
-          <a href={`/api/atas/${ata.id}/export`} download aria-label={`Baixar Word da ata ${numeroAta(ata.numero)}`} className={botaoIcone}><Download className="h-4 w-4" /></a>
+          <BaixarWordAta ataId={ata.id} numero={ata.numero} className={botaoIcone} />
         </Tooltip>
         <Tooltip label="Histórico da ata">
           <OperumButton variant="custom" type="button" aria-label={`Histórico da ata ${numeroAta(ata.numero)}`} onClick={() => abrirHistorico(projetoId, ata.id)} className={botaoIcone}><History className="h-4 w-4" /></OperumButton>

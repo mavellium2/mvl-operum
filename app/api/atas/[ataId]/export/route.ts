@@ -11,7 +11,7 @@ import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 export const dynamic = 'force-dynamic'
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ ataId: string }> },
 ) {
   const { ataId } = await params
@@ -52,6 +52,9 @@ export async function GET(
       acoes: ata.acoes.map(a => ({ acao: a.acao, prazo: a.prazo, responsavel: a.responsavel })),
       anexos: ata.anexos.map(a => ({ nome: a.nome, url: a.url })),
     }
+
+    // ?formato=dados: só os dados, para a tela desenhar a folha e gerar o Word idêntico a ela.
+    if (new URL(request.url).searchParams.get('formato') === 'dados') return NextResponse.json(data)
 
     const [logo, ...assinaturas] = await Promise.all([
       imagemDoStorage(data.logoUrl, CAIXA_LOGO_ATA),

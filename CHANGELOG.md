@@ -13,6 +13,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Word da EAP:** a EAP ganha exportação para Word, idêntica à tela: folha da EAP gráfica (a árvore entra como desenho vetorial SVG na mesma posição e tamanho, com cópia PNG de reserva para Word sem suporte a SVG) e folhas da EAP em texto, com o mesmo quadro, recuos, negritos e rodapé "Página X de Y".
 
+- **Word da Ata idêntico à tela:** no editor e na lista de Atas, o `.docx` passa a sair da folha da ata (antes, um modelo separado com espaçamentos e caixas diferentes, que podia ir para uma 2ª página). As seções coladas viram uma tabela só, as caixas com borda (Documentos anexos, Enviar cópias) viram tabelas de uma célula, as colunas de cópias e de assinaturas ficam alinhadas por tabulação e as linhas de assinatura e os fundos saem como desenho vetorial na mesma posição. O botão da lista mostra o progresso enquanto gera.
+
 - **Macro fases:** a Data limite fica centralizada na coluna, na leitura e na edição.
 
 - **Campos do Termo sem espaço sobrando:** Justificativa, Objetivos, Metodologia, Descrição do produto, Premissas/restrições, Principais envolvidos e Limites de autoridade deixam de ter altura mínima fixa e acompanham o texto (vazios mantêm uma linha para digitar), na tela, no PDF e no Word. Principais envolvidos tem o mesmo recuo em cima e embaixo, e a Data de aprovação fica no meio da linha, alinhada com a assinatura (também em Partes interessadas).

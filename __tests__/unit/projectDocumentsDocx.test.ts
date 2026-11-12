@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { Packer } from 'docx'
 import { writeFile, mkdir } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 const testRequire = createRequire(import.meta.url)
 const JSZip = createRequire(testRequire.resolve('docx'))('jszip')
 import { join } from 'node:path'
-import { downloadAtaDocx } from '@/lib/exports/projectDocumentsDocx'
+import { arquivoDaAta } from '@/lib/exports/projectDocumentsDocx'
 import { buildAtaDocx } from '@/lib/exports/ataDocx'
 import { parseDocumentCost } from '@/lib/documentCost'
 import { charterChanges } from '@/lib/charterChanges'
@@ -40,24 +40,9 @@ describe('modelos documentais', () => {
   })
 })
 
-
-describe('download da Ata no navegador', () => {
-  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
-  it('carrega assinatura do gerente sem depender dos presentes e mantém logo e assinaturas anteriores', async () => {
-    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64')
-    const fetchImage = vi.fn().mockImplementation(async () => new Response(png, { headers: { 'content-type': 'image/png' } }))
-    vi.stubGlobal('fetch', fetchImage)
-    const click = vi.fn()
-    vi.stubGlobal('document', { createElement: () => ({ click }) })
-    const pack = vi.spyOn(Packer, 'toBlob').mockResolvedValue(new Blob())
-    await downloadAtaDocx({ numero: 1, nomeProjeto: 'Operum', local: null, data: null, elaboradoPor: 'Ana', aprovadoPor: 'Gerente', assuntosTratados: '', decisoesTomadas: '', observacoes: '', copiasPara: [], presentes: [{ nome: 'Ana', setorEmpresa: null, assinaturaUrl: 'https://storage.operum.test/ana.png' }], acoes: [], anexos: [], logoUrl: 'https://storage.operum.test/logo.png', gerenteProjeto: 'Gerente', assinaturaGerenteUrl: 'https://storage.operum.test/gerente.png' })
-    expect(fetchImage).toHaveBeenCalledWith('https://storage.operum.test/gerente.png', expect.objectContaining({ credentials: 'same-origin', signal: expect.any(AbortSignal) }))
-    expect(fetchImage).toHaveBeenCalledTimes(3)
-    expect(click).toHaveBeenCalledOnce()
-    const xml = await inspect('ata-browser-gerente', pack.mock.calls[0][0])
-    expect(xml).toContain('Assinatura do gerente:')
-    expect((xml.match(/<pic:pic/g) || []).length).toBe(3)
-    const paragraph = (xml.match(/<w:p(?: [^>]*)?>[\s\S]*?<\/w:p>/g) || []).find((p: string) => p.includes('Assinatura do gerente:'))!
-    expect(paragraph).toContain('<wp:inline')
+describe('nome do arquivo da Ata', () => {
+  it('número com dois dígitos e o nome do projeto sem acentos', () => {
+    expect(arquivoDaAta(3, 'App Horta Comunitária')).toBe('ata-03-app-horta-comunitaria.docx')
+    expect(arquivoDaAta(12, '')).toBe('ata-12.docx')
   })
 })
