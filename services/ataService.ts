@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma'
-import { linhaInstitucional } from '@/lib/linhaInstitucional'
+import { linhaDoCabecalho } from '@/lib/linhaInstitucional'
 import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
 import { CriarAtaSchema, AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
 import type { CriarAtaInput, AtualizarAtaInput } from '@/lib/validation/ataSchemas'
@@ -175,7 +175,7 @@ export async function cabecalhoDaAta(tenantId: string, projectId: string): Promi
   })
   if (!p) return { instituicao: '', logoUrl: null }
   const departamentos = await departamentosDoProjeto(projectId, tenantId, p.departamentos)
-  return { instituicao: linhaInstitucional({ ...p, departamentos }), logoUrl: p.logoUrl ?? null, nomeProjeto: p.name }
+  return { instituicao: linhaDoCabecalho({ ...p, departamentos }), logoUrl: p.logoUrl ?? null, nomeProjeto: p.name }
 }
 
 /** Função (primeiro cargo do cadastro no projeto, ou departamento) de cada membro, para "nome e função". */

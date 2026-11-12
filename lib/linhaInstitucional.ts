@@ -6,7 +6,13 @@
  */
 
 /** Texto exibido enquanto o termo/turno de um projeto semestral não foi preenchido. */
-export const TERMO_A_DEFINIR = 'A definir no Operum (ex: 5° termo Noturno)'
+export const TERMO_A_DEFINIR = 'Termo a definir em Editar projeto (ex.: 5° termo Noturno)'
+
+/**
+ * Linha do cabeçalho dos documentos quando o projeto ainda não tem nenhum desses
+ * dados: diz onde preencher, em vez de deixar a faixa vazia ou só com o termo.
+ */
+export const LINHA_A_DEFINIR = 'Preencha instituição, curso, termo e período em Editar projeto'
 
 /** Turnos oferecidos em Editar projeto. */
 export const TURNOS = ['Matutino', 'Vespertino', 'Noturno', 'Integral'] as const
@@ -56,3 +62,18 @@ export function linhaInstitucional(p: ProjetoInstitucional): string {
   const departamentos = (p.departamentos ?? []).map(d => d.trim()).filter(Boolean).join(' / ')
   return [p.location?.trim(), departamentos, segmentoTermo(p), periodoDoProjeto(p.semestre, p.ano)].filter(Boolean).join(' - ')
 }
+
+/**
+ * Linha do cabeçalho de todos os documentos (Termo, Partes interessadas, EAP, Ata).
+ * Sem nenhum dado do projeto, devolve o aviso para preencher em Editar projeto;
+ * a faixa nunca fica vazia.
+ */
+export function linhaDoCabecalho(p: ProjetoInstitucional): string {
+  const temDados = !!p.location?.trim() || (p.departamentos ?? []).some(d => d.trim())
+    || !!periodoDoProjeto(p.semestre, p.ano) || !!termoTurno(p.termo, p.turno)
+    || (p.semestre === 'ano' && (p.anoAms === '1' || p.anoAms === '2'))
+  return temDados ? linhaInstitucional(p) : LINHA_A_DEFINIR
+}
+
+/** Valor salvo/recebido ou, vazio, o aviso: a linha do cabeçalho sempre aparece. */
+export const linhaOuAviso = (valor?: string | null) => valor?.trim() || LINHA_A_DEFINIR

@@ -6,7 +6,7 @@ import { canProjectPermission as can } from '@/services/projectAccess'
 import { documentoVigente } from '@/services/documentRevisionService'
 import type { ProjetoHeader, Stakeholder } from '@/components/projetos/StakeholderDocument'
 import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
-import { linhaInstitucional } from '@/lib/linhaInstitucional'
+import { linhaDoCabecalho } from '@/lib/linhaInstitucional'
 import { acrescentarPartesDoCadastro, identificarPartesDoCadastro } from '@/lib/partesInteressadas'
 
 function buildAddress(e: {
@@ -88,15 +88,9 @@ export async function GET(
     const gerenteProjeto = gerente.nome
     const signatureUrl = gerente.signatureUrl
 
-    const dept = (await departamentosDoProjeto(projetoId, tenantId, project.departamentos))[0] ?? ''
-    const semestreLabel =
-      project.semestre === '1' ? '1º Semestre' :
-      project.semestre === '2' ? '2º Semestre' :
-      (project.semestre ?? '')
-    const semestreAno = [semestreLabel, project.ano].filter(Boolean).join(' ')
-    const categoria = project.semestre === 'ano'
-      ? linhaInstitucional({ ...project, departamentos: dept ? [dept] : [] })
-      : [project.location ?? 'Stakeholder externo', dept, semestreAno].filter(Boolean).join(' - ')
+    // Mesma linha do cabeçalho dos outros documentos (Termo, EAP, Ata); sem dados, o aviso para preencher.
+    const departamentos = await departamentosDoProjeto(projetoId, tenantId, project.departamentos)
+    const categoria = linhaDoCabecalho({ ...project, departamentos })
 
     const header: ProjetoHeader = {
       categoria,

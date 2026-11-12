@@ -1,6 +1,7 @@
 'use client'
 
 import GrupoEnvolvidos, { EnvolvidosLayout } from './GrupoEnvolvidos'
+import { linhaOuAviso } from '@/lib/linhaInstitucional'
 import EnvolvidosEditor from './EnvolvidosEditor'
 import { exibirEnvolvidos } from '@/lib/charterEnvolvidos'
 import { forwardRef } from 'react'
@@ -155,7 +156,7 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
         <table data-testid="quadro-identificacao" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <colgroup><col style={{ width: '63%' }} /><col style={{ width: '21%' }} /><col style={{ width: '16%' }} /></colgroup>
           <tbody>
-            <tr><td colSpan={3} style={{ ...celulaModeloCampo, background: '#bfbfbf', fontWeight: 'bold' }}><CampoAutomatico padding="1px 5px">{instituicao}</CampoAutomatico></td></tr>
+            <tr><td colSpan={3} style={{ ...celulaModeloCampo, background: '#bfbfbf', fontWeight: 'bold' }}><CampoAutomatico padding="1px 5px">{linhaOuAviso(instituicao)}</CampoAutomatico></td></tr>
             <tr><td colSpan={3} style={celulaModeloCampo}><CampoAutomatico padding="1px 5px"><B>Nome do projeto:</B> {nomeProjeto}</CampoAutomatico></td></tr>
             <tr>
               <td colSpan={2} style={celulaModelo}>
