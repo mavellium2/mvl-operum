@@ -80,3 +80,21 @@ export async function downloadAtaDocx(d: import('./ataDocx').AtaExportData) {
   ])
   await save(buildAtaDocx(d, logo, assinaturas, assinaturaGerente), `ata-${ataNumero(d.numero)}.docx`)
 }
+
+/**
+ * Capa no Word, idêntica à folha do sistema. A logo é obrigatória quando o projeto
+ * tem uma: sem ela o Word sairia diferente da tela, então a falha é avisada.
+ */
+export async function downloadCapaDocx(d: import('./capaDocx').CapaExportData & { logoUrl?: string | null }) {
+  const { buildCapaDocx } = await import('./capaDocx')
+  const { baixarImagem } = await import('./imagemDocx')
+  const { CAPA } = await import('@/lib/capaLayout')
+  const logoUrl = safeAvatarUrl(d.logoUrl)
+  const [cabecalho, logo] = await Promise.all([
+    baixarImagem(CAPA.cabecalho.src, { credentials: 'same-origin' }),
+    logoUrl ? baixarImagem(logoUrl, { credentials: 'same-origin' }) : Promise.resolve(null),
+  ])
+  if (!cabecalho || (logoUrl && !logo)) throw new Error('Imagem da capa indisponível')
+  const nome = d.nomeProjeto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
+  await save(buildCapaDocx(d, { cabecalho, logo }), `capa${nome ? `-${nome}` : ''}.docx`)
+}

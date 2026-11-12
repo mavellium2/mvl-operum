@@ -18,6 +18,7 @@ import { fetchWithSession } from '@/lib/clientFetch'
 import { printFolhasStyle } from '@/lib/printPageStyle'
 import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
 import { alteracoesCapa, conteudoCapa, type CampoCapa } from '@/lib/capaPadrao'
+import { CAPA, ESTILO_CAPA, PREFIXO_EMAIL, SEM_INTEGRANTES, TITULO_INTEGRANTES, medirLinhasCapa } from '@/lib/capaLayout'
 import type { CapaConteudo } from '@/lib/validation/documentRevisionSchemas'
 
 type Capa = Required<CapaConteudo>
@@ -68,48 +69,56 @@ function Linha({ id, rotulo, ajuda, valor, onCampo, campo, estilo, max = 300, pr
  */
 export const CapaFolha = forwardRef<HTMLDivElement, CapaFolhaProps>(function CapaFolha({ capa, nomeProjeto, logoUrl, integrantes, onCampo }, ref) {
   const logo = safeAvatarUrl(logoUrl ?? null)
-  const centro: React.CSSProperties = { textAlign: 'center' }
-  const negrito: React.CSSProperties = { ...centro, fontWeight: 'bold' }
-  const linha = (campo: CampoCapa, rotulo: string, ajuda: string, estilo: React.CSSProperties, max?: number, prefixo?: string) => (
-    <Linha id={`capa-${campo}`} campo={campo} rotulo={rotulo} ajuda={ajuda} valor={capa[campo]} onCampo={onCampo} estilo={estilo} max={max} prefixo={prefixo} />
+  // Estilos e medidas vêm de lib/capaLayout, os mesmos usados no Word.
+  const estilo = (campo: CampoCapa): React.CSSProperties => {
+    const e = ESTILO_CAPA[campo]
+    return {
+      textAlign: e.alinhamento, fontSize: `${e.pt}pt`,
+      ...(e.negrito ? { fontWeight: 'bold' } : {}), ...(e.cor ? { color: e.cor } : {}),
+      ...(e.maiusculas ? { textTransform: 'uppercase' } : {}), ...(e.sublinhado ? { textDecoration: 'underline' } : {}),
+    }
+  }
+  const linha = (campo: CampoCapa, rotulo: string, ajuda: string, max?: number, prefixo?: string) => (
+    <Linha id={`capa-${campo}`} campo={campo} rotulo={rotulo} ajuda={ajuda} valor={capa[campo]} onCampo={onCampo} estilo={estilo(campo)} max={max} prefixo={prefixo} />
   )
+  const mm = (n: number) => `${n}mm`
   return (
-    <Folha ref={ref} fixa data-testid="capa-folha" margemMm={{ top: 12, x: 25 }} numerar={false}
-      style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '12pt', lineHeight: 1.25, gap: 0, alignItems: 'stretch' }}>
+    <Folha ref={ref} fixa data-testid="capa-folha" margemMm={{ top: CAPA.margem.topo, x: CAPA.margem.x }} numerar={false}
+      style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '12pt', lineHeight: CAPA.alturaLinha, gap: 0, alignItems: 'stretch' }}>
       {/* Logos Fatec, Centro Paula Souza e Governo do Estado, com a linha abaixo. */}
       <div style={{ textAlign: 'center' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/documentos/cabecalho-fatec-cps-sp.png" alt="Fatec Garça, Centro Paula Souza e Governo do Estado de São Paulo" style={{ height: '19mm', maxWidth: '100%', objectFit: 'contain' }} />
-        <div aria-hidden="true" style={{ borderBottom: '1px solid #555', margin: '3mm 0 6mm' }} />
+        <img src={CAPA.cabecalho.src} alt="Fatec Garça, Centro Paula Souza e Governo do Estado de São Paulo" style={{ height: mm(CAPA.cabecalho.altura), maxWidth: '100%', objectFit: 'contain' }} />
+        <div aria-hidden="true" style={{ borderBottom: `1px solid ${CAPA.linha.cor}`, margin: `${mm(CAPA.linha.antes)} 0 ${mm(CAPA.linha.depois)}` }} />
       </div>
-      {linha('instituicao', 'Instituição', 'Nome da faculdade, como no modelo da capa.', { ...negrito, color: '#c00000', fontSize: '11pt' })}
-      <div style={{ height: '8mm' }} />
-      {linha('curso', 'Curso', 'Curso em letras maiúsculas (ex.: CURSO SUPERIOR DE TECNOLOGIA EM …).', { ...negrito, textTransform: 'uppercase', textDecoration: 'underline' })}
-      <div style={{ height: '8mm' }} />
-      {linha('disciplina', 'Disciplina', 'Disciplina em que o trabalho é entregue.', negrito)}
-      {linha('professor', 'Professor', 'Título e nome do professor (ex.: Prof. Esp. …). Vem do Termo, em Principais envolvidos.', centro)}
+      {linha('instituicao', 'Instituição', 'Nome da faculdade, como no modelo da capa.')}
+      <div style={{ height: mm(CAPA.espacoBloco) }} />
+      {linha('curso', 'Curso', 'Curso em letras maiúsculas (ex.: CURSO SUPERIOR DE TECNOLOGIA EM …).')}
+      <div style={{ height: mm(CAPA.espacoBloco) }} />
+      {linha('disciplina', 'Disciplina', 'Disciplina em que o trabalho é entregue.')}
+      {linha('professor', 'Professor', 'Título e nome do professor (ex.: Prof. Esp. …). Vem do Termo, em Principais envolvidos.')}
 
       {/* Logo do projeto (sistema). */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60mm' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: mm(CAPA.logo.regiaoMin) }}>
         {logo
           // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={logo} alt={`Logo do projeto ${nomeProjeto}`} style={{ width: '75mm', height: '75mm', objectFit: 'contain' }} />
-          : <span style={{ fontSize: '20pt', fontWeight: 'bold' }}>{nomeProjeto}</span>}
+          ? <img src={logo} alt={`Logo do projeto ${nomeProjeto}`} style={{ width: mm(CAPA.logo.caixa), height: mm(CAPA.logo.caixa), objectFit: 'contain' }} />
+          : <span style={{ fontSize: `${CAPA.logo.nomeFonte}pt`, fontWeight: 'bold' }}>{nomeProjeto}</span>}
       </div>
 
       {/* Integrantes (sistema: membros ativos do projeto). */}
-      <div data-capa-integrantes="" style={{ textAlign: 'right', fontSize: '11pt', marginBottom: '22mm' }}>
-        <p style={{ margin: 0, fontWeight: 'bold' }}>Integrantes (Membro da Equipe)</p>
+      <div data-capa-integrantes="" style={{ textAlign: 'right', fontSize: '11pt', marginBottom: mm(CAPA.espacoIntegrantes) }}>
+        <p style={{ margin: 0, fontWeight: 'bold' }}>{TITULO_INTEGRANTES}</p>
         {integrantes.length
           ? integrantes.map((nome, i) => <p key={`${nome}-${i}`} style={{ margin: 0 }}>{nome}</p>)
-          : <p style={{ margin: 0, color: '#666' }}>Nenhum membro ativo no projeto.</p>}
+          : <p style={{ margin: 0, color: CAPA.cor.vazio }}>{SEM_INTEGRANTES}</p>}
       </div>
 
       <div style={{ fontSize: '11pt' }}>
-        {linha('endereco', 'Endereço e telefone', 'Endereço e telefone da instituição.', centro)}
-        {linha('email', 'E-mails', 'E-mail de contato do projeto.', { ...centro, color: '#1155cc', textDecoration: 'underline' }, undefined, 'E-mails:')}
-        <div style={{ height: '6mm' }} />
-        {linha('periodo', 'Ano / semestre', 'Ano e semestre do trabalho (ex.: 2026 / 2).', { ...negrito, fontSize: '12pt' }, 50)}
+        {linha('endereco', 'Endereço e telefone', 'Endereço e telefone da instituição.')}
+        {linha('email', 'E-mails', 'E-mail de contato do projeto.', undefined, PREFIXO_EMAIL)}
+        <div style={{ height: mm(CAPA.espacoPeriodo) }} />
+        {linha('periodo', 'Ano / semestre', 'Ano e semestre do trabalho (ex.: 2026 / 2).', 50)}
       </div>
     </Folha>
   )
@@ -136,6 +145,7 @@ export default function CapaDocumento() {
   const [salvarAberto, setSalvarAberto] = useState(false)
   const [titulo, setTitulo] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [exportando, setExportando] = useState(false)
 
   useEffect(() => {
     if (!projetoId) return
@@ -179,6 +189,19 @@ export default function CapaDocumento() {
   const alterarCampo = useCallback((campo: CampoCapa, valor: string) => setCapa(c => ({ ...c, [campo]: valor })), [])
 
   const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: `Capa - ${sistema?.nomeProjeto ?? 'Projeto'}`, pageStyle: printFolhasStyle() })
+
+  async function exportarWord() {
+    if (!sistema || exportando) return
+    setExportando(true)
+    try {
+      const { downloadCapaDocx } = await import('@/lib/exports/projectDocumentsDocx')
+      // Linhas medidas na própria folha: o Word quebra e posiciona igual à tela.
+      const linhas = printRef.current ? medirLinhasCapa(printRef.current) : undefined
+      await downloadCapaDocx({ capa: exibida, nomeProjeto: sistema.nomeProjeto, integrantes: sistema.integrantes, logoUrl: sistema.logoUrl, linhas })
+    } catch {
+      toast('Não foi possível gerar o Word. Verifique a logo do projeto e tente novamente.', 'error')
+    } finally { setExportando(false) }
+  }
 
   async function salvarVersao() {
     if (!canEdit || salvando || !titulo.trim()) return
@@ -235,7 +258,7 @@ export default function CapaDocumento() {
         pendentes={{ total: pendentes, onRevisar: () => abrirPropostas(projetoId) }}
         onImprimir={() => handlePrint()}
         onPdf={() => handlePrint()}
-        onWord={() => toast('A capa ainda não tem exportação em Word. Use o PDF.', 'warning')}
+        onWord={() => void exportarWord()}
         saida={{
           pendente: canEdit && !aberta && base !== null && payload !== base,
           salvar: () => setSalvarAberto(true),
