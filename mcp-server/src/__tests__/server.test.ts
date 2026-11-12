@@ -109,7 +109,7 @@ describe('leitura', () => {
     const res = await h.call('operum_get_project', { project_id: seed.project.id })
     expect(res.project).toMatchObject({ name: 'Operum', charter: { justificativa: 'Porque sim' } })
     expect(res.members).toEqual(
-      expect.arrayContaining([expect.objectContaining({ user_id: 'u-ana-mav', email: 'ana@mavellium.com', role: 'dev', hourly_rate: 80 })]),
+      expect.arrayContaining([expect.objectContaining({ user_id: 'u-ana-mav', email: 'ana@mavellium.com', funcoes: ['dev'], hourly_rate: 80 })]),
     )
     expect(res.macro_fases).toEqual([expect.objectContaining({ fase: 'Descoberta', custo: '1000' })])
     expect(res.stakeholders).toEqual([expect.objectContaining({ name: 'Cliente X', company: 'X S.A.' })])

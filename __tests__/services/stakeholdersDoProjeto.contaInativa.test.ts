@@ -6,7 +6,7 @@ vi.mock('@/services/projectRoleService', () => ({ getProjectRoleForMember: vi.fn
 vi.mock('@/services/projectAccess', () => ({ findById: vi.fn().mockResolvedValue({ id: 'p1' }) }))
 const { membro } = vi.hoisted(() => ({
   membro: (userId: string, active: boolean, contaAtiva: boolean, inactiveReason: string | null) => ({
-    userId, active, role: null, remuneracao: null, horasDiarias: null, hourlyRate: null, startDate: new Date(), inactiveReason, inactivatedAt: active ? null : new Date(), department: null,
+    userId, active, funcoes: [], remuneracao: null, horasDiarias: null, hourlyRate: null, startDate: new Date(), inactiveReason, inactivatedAt: active ? null : new Date(), department: null,
     user: { id: userId, name: userId, email: `${userId}@x.com`, avatarUrl: null, role: 'member', phone: null, cep: null, logradouro: null, numero: null, complemento: null, bairro: null, cidade: null, estado: null, notes: null, deletedAt: null, isActive: contaAtiva, signatureUrl: null, contato: null },
   }),
 }))

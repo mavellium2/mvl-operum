@@ -305,7 +305,8 @@ export async function importProject(
       continue
     }
     try {
-      await gw.post(`/projects/${projectId}/members`, compact({ userId, role: m.role, hourlyRate: m.hourly_rate }))
+      // Pacotes novos trazem a lista de funções; antigos, o texto (separado em funções no destino).
+      await gw.post(`/projects/${projectId}/members`, compact({ userId, ...(m.funcoes?.length ? { funcoes: m.funcoes } : { role: m.role }), hourlyRate: m.hourly_rate }))
       created.members++
     } catch (err) {
       fail('member', m.source_user_id, err)

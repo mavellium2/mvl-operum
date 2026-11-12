@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 import { verifySession } from '@/lib/dal'
 import prisma from '@/lib/prisma'
+import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
 import { canProjectPermission as can } from '@/services/projectAccess'
 import { documentoVigente, salvarRascunho } from '@/services/documentRevisionService'
 import { documentRevisionErrorResponse } from '@/lib/documentRevisionHttp'
@@ -71,7 +72,7 @@ export async function GET(
       gerenteDoProjeto(projetoId),
       prisma.userProject.findMany({
         where: { projectId: projetoId, active: true },
-        include: { user: { select: { name: true, signatureUrl: true } } },
+        include: { user: { select: { name: true, signatureUrl: true } }, funcoes: FUNCOES_ORDENADAS },
         orderBy: { order: 'asc' },
       }),
       // Linha institucional do cadastro (Editar projeto > Informações iniciais), igual à da Ata.
@@ -80,8 +81,8 @@ export async function GET(
 
     const membros = userProjects
       .filter(up => up.user !== null)
-      // papel: cargos do cadastro (UserProject.role), para sair "Nome – Papel" em Principais envolvidos.
-      .map(up => ({ name: up.user.name, papel: up.role ?? '' }))
+      // papel: funções do cadastro no projeto, para sair "Nome – Papel" em Principais envolvidos.
+      .map(up => ({ name: up.user.name, papel: nomesDasFuncoes(up.funcoes).join(', ') }))
 
     const vigente = await documentoVigente(sessao, projetoId, 'CHARTER')
     const snapshot = vigente?.payload as Record<string, unknown> | null

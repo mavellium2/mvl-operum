@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 import { verifySession } from '@/lib/dal'
 import prisma from '@/lib/prisma'
+import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
 import { CONTA_INATIVADA } from '@/lib/contaInativada'
 import { canProjectPermission as can } from '@/services/projectAccess'
 import { documentoVigente } from '@/services/documentRevisionService'
@@ -72,6 +73,7 @@ export async function GET(
             },
           },
           department: { select: { name: true } },
+          funcoes: FUNCOES_ORDENADAS,
         },
         orderBy: { order: 'asc' },
       }),
@@ -117,7 +119,8 @@ export async function GET(
         ...(up.user.contato ? { cadastroAlternativos: [`externo:${up.user.contato.id}`] } : {}),
         nome: up.user.name,
         empresaEquipe: up.department?.name ?? project.name,
-        cargoCompetencia: up.role ?? '',
+        // Exibição no documento: as funções do cadastro, uma após a outra.
+        cargoCompetencia: nomesDasFuncoes(up.funcoes).join(', '),
         email: up.user.email ?? '',
         telefoneFax: up.user.phone ?? '',
         endereco: buildAddress(up.user),

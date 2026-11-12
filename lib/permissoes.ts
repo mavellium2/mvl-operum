@@ -3,8 +3,8 @@
  * - o admin dá a qualquer função as permissões que quiser (matriz de funções);
  * - por usuário, pode conceder ou negar a mais ou a menos, no global ou num
  *   projeto (o ajuste do projeto vence o global);
- * - as funções de uma pessoa no projeto são os cargos dela (UserProject.role),
- *   casados com o cadastro de funções pela funcaoKey.
+ * - as funções de uma pessoa no projeto são os vínculos dela com o cadastro de
+ *   funções (UserProjectFuncao), uma por item.
  *
  * Enquanto o admin não definir as permissões de uma função, valem os padrões
  * abaixo, que reproduzem o comportamento anterior (gerente pode tudo; membro vê
@@ -18,7 +18,6 @@
  *
  * Sem dependências de servidor: é usado também pela interface.
  */
-import { separarFuncoes } from './funcoes'
 
 export const PERMISSOES = [
   { chave: 'projeto:ver', grupo: 'Projeto', rotulo: 'Ver o projeto' },
@@ -126,10 +125,3 @@ export function resolverPermissoes(e: EntradaResolucao): Set<Permissao> {
   return permissoes
 }
 
-/**
- * Cargos em texto (UserProject.role) → lista limpa. Usa a mesma separação das funções
- * ("A | B" também são duas), para cargos antigos gravados assim somarem as duas funções.
- */
-export function cargosDoTexto(role: string | null | undefined): string[] {
-  return separarFuncoes(role)
-}

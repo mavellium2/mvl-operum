@@ -206,7 +206,6 @@ exports.Prisma.UserProjectScalarFieldEnum = {
   active: 'active',
   inactiveReason: 'inactiveReason',
   inactivatedAt: 'inactivatedAt',
-  role: 'role',
   departmentId: 'departmentId',
   hourlyRate: 'hourlyRate',
   remuneracao: 'remuneracao',
@@ -288,8 +287,21 @@ exports.Prisma.ProjectStakeholderScalarFieldEnum = {
   order: 'order',
   remuneracao: 'remuneracao',
   horasDiarias: 'horasDiarias',
-  funcoes: 'funcoes',
   departamentos: 'departamentos'
+};
+
+exports.Prisma.UserProjectFuncaoScalarFieldEnum = {
+  id: 'id',
+  userProjectId: 'userProjectId',
+  roleId: 'roleId',
+  ordem: 'ordem'
+};
+
+exports.Prisma.ProjectStakeholderFuncaoScalarFieldEnum = {
+  id: 'id',
+  projectStakeholderId: 'projectStakeholderId',
+  roleId: 'roleId',
+  ordem: 'ordem'
 };
 
 exports.Prisma.SortOrder = {
@@ -338,7 +350,9 @@ exports.Prisma.ModelName = {
   RolePermission: 'RolePermission',
   UserProjectRole: 'UserProjectRole',
   Stakeholder: 'Stakeholder',
-  ProjectStakeholder: 'ProjectStakeholder'
+  ProjectStakeholder: 'ProjectStakeholder',
+  UserProjectFuncao: 'UserProjectFuncao',
+  ProjectStakeholderFuncao: 'ProjectStakeholderFuncao'
 };
 
 /**

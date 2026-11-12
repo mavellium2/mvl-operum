@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   PADRAO_MEMBRO,
   TODAS,
-  cargosDoTexto,
   isPermissao,
   resolverPermissoes,
   type EntradaResolucao,
@@ -112,10 +111,6 @@ describe('resolverPermissoes (SDD 5.1)', () => {
 })
 
 describe('auxiliares', () => {
-  it('cargosDoTexto', () => {
-    expect(cargosDoTexto(' Dev, Gerente de Projeto ,, ')).toEqual(['Dev', 'Gerente de Projeto'])
-    expect(cargosDoTexto(null)).toEqual([])
-  })
 
   it('isPermissao', () => {
     expect(isPermissao('documentos:aprovar')).toBe(true)
@@ -149,8 +144,4 @@ describe('pessoa com mais de uma função', () => {
     expect(p.has('documentos:aprovar')).toBe(false)
   })
 
-  it('cargo antigo gravado como "A | B" conta as duas funções', () => {
-    expect(cargosDoTexto('Desenvolvedora Front-End | Redatora')).toEqual(['Desenvolvedora Front-End', 'Redatora'])
-    expect(cargosDoTexto('Tech Lead, Full-stack')).toEqual(['Tech Lead', 'Full-stack'])
-  })
 })

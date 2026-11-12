@@ -2,6 +2,7 @@ import 'server-only'
 import { getProjectRoleForMember } from '@/services/projectRoleService'
 import { nomesUnicosDeFuncoes } from '@/lib/funcoesDedupe'
 import prisma from '@/lib/prisma'
+import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
 import { CONTA_INATIVADA } from '@/lib/contaInativada'
 import { findById } from '@/services/projectAccess'
 import type {
@@ -22,7 +23,7 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
       findById(projetoId),
       prisma.projectStakeholder.findMany({
         where: { projectId: projetoId },
-        include: { stakeholder: true },
+        include: { stakeholder: true, funcoes: FUNCOES_ORDENADAS },
         orderBy: { order: 'asc' },
       }),
       prisma.stakeholder.findMany({
@@ -56,6 +57,7 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
             },
           },
           department: { select: { name: true } },
+          funcoes: FUNCOES_ORDENADAS,
         },
         orderBy: { order: 'asc' },
       }),
@@ -143,9 +145,7 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
       .filter(up => up.user.deletedAt === null)
       .map(async (up): Promise<StakeholderUnificado> => {
         const projectRole = await getProjectRoleForMember(up.userId, projetoId)
-        const cargos = up.role
-          ? up.role.split(',').map((s: string) => s.trim()).filter(Boolean)
-          : []
+        const cargos = nomesDasFuncoes(up.funcoes)
 
         return {
           id: up.userId,
@@ -204,7 +204,7 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
     // Mesmos dados do membro da equipe, guardados no vínculo com este projeto.
     remuneracao: ps.remuneracao,
     horasDiarias: ps.horasDiarias,
-    cargos: ps.funcoes,
+    cargos: nomesDasFuncoes(ps.funcoes),
     departamento: ps.departamentos,
     contaId: ps.stakeholder.userId,
     isActive: ps.stakeholder.isActive,

@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma'
+import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
 import { linhaDoCabecalho } from '@/lib/linhaInstitucional'
 import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
 import { CriarAtaSchema, AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
@@ -184,10 +185,10 @@ export async function funcoesNoProjeto(projectId: string, userIds: Array<string 
   if (!ids.length) return new Map()
   const ups = await prisma.userProject.findMany({
     where: { projectId, userId: { in: ids } },
-    select: { userId: true, role: true, department: { select: { name: true } } },
+    select: { userId: true, department: { select: { name: true } }, funcoes: FUNCOES_ORDENADAS },
   })
   return new Map(ups.flatMap(up => {
-    const funcao = up.role?.split(',').map(s => s.trim()).find(Boolean) ?? up.department?.name ?? ''
+    const funcao = nomesDasFuncoes(up.funcoes)[0] ?? up.department?.name ?? ''
     return funcao ? [[up.userId, funcao] as const] : []
   }))
 }

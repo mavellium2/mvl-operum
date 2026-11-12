@@ -10,8 +10,9 @@ import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { projectsApi } from '@/lib/api-client'
 import prisma from '@/lib/prisma'
-import { separarFuncoes } from '@/lib/funcoes'
-import { garantirFuncao } from '@/services/funcoesCatalogo'
+import { ehFuncaoDeGerente, separarFuncoes } from '@/lib/funcoes'
+import { definirFuncoesDoMembro, FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
+import { funcaoKey } from '@/lib/utils/normalize'
 import { setProjectManagerRole, removeProjectRole, isProjectManager } from '@/services/projectRoleService'
 import { notificarPendenciasDoMembroInativo } from '@/services/membroInativo'
 import { getTree } from '@/services/wbsService'
@@ -473,7 +474,7 @@ export async function updateProjetoMemberAction(
     const isAdmin = role === 'admin'
     data = { ...data }
     await requireProjectPermission({ role, tenantId, userId: sessionUserId }, projetoId, 'projeto:equipe')
-    const member = await prisma.userProject.findFirst({ where: { projectId: projetoId, userId, user: { tenantId, deletedAt: null } }, select: { role: true } })
+    const member = await prisma.userProject.findFirst({ where: { projectId: projetoId, userId, user: { tenantId, deletedAt: null } }, select: { id: true, funcoes: FUNCOES_ORDENADAS } })
     if (!member) throw new Error('Membro não encontrado neste projeto')
     // E-mail só é alterado pelo administrador; para os demais nem é validado.
     if (!isAdmin) delete data.email
@@ -484,7 +485,8 @@ export async function updateProjetoMemberAction(
       data = contato.data
     }
     if (!isAdmin) {
-      if (data.cargos !== undefined && data.cargos.join(', ') !== (member.role ?? '')) throw new Error('Só o administrador atribui cargos')
+      const atuais = nomesDasFuncoes(member.funcoes).map(funcaoKey)
+      if (data.cargos !== undefined && separarFuncoes(data.cargos).map(funcaoKey).join('|') !== atuais.join('|')) throw new Error('Só o administrador atribui cargos')
       if (data.isGerente !== undefined && data.isGerente !== Boolean(await prisma.userProjectRole.findFirst({ where: { userId, projectId: projetoId, deletedAt: null, role: { is: { nameKey: 'gerente', scope: 'PROJETO' } } } }))) throw new Error('Só o administrador atribui o papel de gerente')
       delete data.cargos
       delete data.isGerente
@@ -552,10 +554,10 @@ export async function updateProjetoMemberAction(
       data: userUpdateData,
     })
 
-    // 2a. Funções do catálogo: reaproveita a equivalente (acento, caixa, plural; "Gerente de
-    // Projeto" é o papel de gerente) e só cria quando não há. Sequencial, sem duplicar.
-    if (cargos !== undefined && cargos.length > 0) {
-      for (const nome of cargos) await garantirFuncao(tenantId, nome)
+    // 2a. Funções: cada uma um vínculo com o cadastro (reaproveita a equivalente; cria só
+    // se faltar). A de gerente acompanha o papel de gerente (passo 3), não entra por aqui.
+    if (cargos !== undefined) {
+      await definirFuncoesDoMembro(tenantId, member.id, cargos.filter(c => !ehFuncaoDeGerente(c)))
     }
 
     // 2b. Upsert department — case-insensitive name search, resolve id
@@ -586,7 +588,6 @@ export async function updateProjetoMemberAction(
 
     // 2c. Update UserProject
     const userProjectData: Record<string, unknown> = {}
-    if (cargos !== undefined) userProjectData.role = cargos.join(', ')
     if (remuneracao !== undefined) userProjectData.remuneracao = remuneracao
     if (horasDiarias !== undefined) userProjectData.horasDiarias = horasDiarias
     if (hourlyRate !== undefined) userProjectData.hourlyRate = hourlyRate
@@ -604,6 +605,9 @@ export async function updateProjetoMemberAction(
       await setProjectManagerRole(userId, projetoId, tenantId)
     } else if (makeGerente === false) {
       await removeProjectRole(userId, projetoId)
+    } else if (cargos !== undefined && await isProjectManager(userId, projetoId)) {
+      // As funções foram trocadas sem mexer no gerente: a função de gerente continua na lista.
+      await setProjectManagerRole(userId, projetoId, tenantId)
     }
 
     revalidatePath(`/projetos/${projetoId}/stakeholders`)

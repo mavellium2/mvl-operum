@@ -78,6 +78,17 @@ export type Stakeholder = $Result.DefaultSelection<Prisma.$StakeholderPayload>
  * 
  */
 export type ProjectStakeholder = $Result.DefaultSelection<Prisma.$ProjectStakeholderPayload>
+/**
+ * Model UserProjectFuncao
+ * Funções de um membro da equipe no projeto: cada item é uma função do cadastro
+ * (nada de texto "A, B" ou "A | B"). A ordem é a escolhida na tela.
+ */
+export type UserProjectFuncao = $Result.DefaultSelection<Prisma.$UserProjectFuncaoPayload>
+/**
+ * Model ProjectStakeholderFuncao
+ * Funções de um externo no projeto: as mesmas funções do cadastro que o interno usa.
+ */
+export type ProjectStakeholderFuncao = $Result.DefaultSelection<Prisma.$ProjectStakeholderFuncaoPayload>
 
 /**
  * Enums
@@ -374,6 +385,26 @@ export class PrismaClient<
     * ```
     */
   get projectStakeholder(): Prisma.ProjectStakeholderDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.userProjectFuncao`: Exposes CRUD operations for the **UserProjectFuncao** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more UserProjectFuncaos
+    * const userProjectFuncaos = await prisma.userProjectFuncao.findMany()
+    * ```
+    */
+  get userProjectFuncao(): Prisma.UserProjectFuncaoDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.projectStakeholderFuncao`: Exposes CRUD operations for the **ProjectStakeholderFuncao** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ProjectStakeholderFuncaos
+    * const projectStakeholderFuncaos = await prisma.projectStakeholderFuncao.findMany()
+    * ```
+    */
+  get projectStakeholderFuncao(): Prisma.ProjectStakeholderFuncaoDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -833,7 +864,9 @@ export namespace Prisma {
     RolePermission: 'RolePermission',
     UserProjectRole: 'UserProjectRole',
     Stakeholder: 'Stakeholder',
-    ProjectStakeholder: 'ProjectStakeholder'
+    ProjectStakeholder: 'ProjectStakeholder',
+    UserProjectFuncao: 'UserProjectFuncao',
+    ProjectStakeholderFuncao: 'ProjectStakeholderFuncao'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -849,7 +882,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "tenant" | "user" | "project" | "projectMacroFase" | "department" | "userDepartment" | "userProject" | "role" | "permission" | "rolePermission" | "userProjectRole" | "stakeholder" | "projectStakeholder"
+      modelProps: "tenant" | "user" | "project" | "projectMacroFase" | "department" | "userDepartment" | "userProject" | "role" | "permission" | "rolePermission" | "userProjectRole" | "stakeholder" | "projectStakeholder" | "userProjectFuncao" | "projectStakeholderFuncao"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1815,6 +1848,154 @@ export namespace Prisma {
           }
         }
       }
+      UserProjectFuncao: {
+        payload: Prisma.$UserProjectFuncaoPayload<ExtArgs>
+        fields: Prisma.UserProjectFuncaoFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.UserProjectFuncaoFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.UserProjectFuncaoFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload>
+          }
+          findFirst: {
+            args: Prisma.UserProjectFuncaoFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.UserProjectFuncaoFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload>
+          }
+          findMany: {
+            args: Prisma.UserProjectFuncaoFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload>[]
+          }
+          create: {
+            args: Prisma.UserProjectFuncaoCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload>
+          }
+          createMany: {
+            args: Prisma.UserProjectFuncaoCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.UserProjectFuncaoCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload>[]
+          }
+          delete: {
+            args: Prisma.UserProjectFuncaoDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload>
+          }
+          update: {
+            args: Prisma.UserProjectFuncaoUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload>
+          }
+          deleteMany: {
+            args: Prisma.UserProjectFuncaoDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.UserProjectFuncaoUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.UserProjectFuncaoUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload>[]
+          }
+          upsert: {
+            args: Prisma.UserProjectFuncaoUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProjectFuncaoPayload>
+          }
+          aggregate: {
+            args: Prisma.UserProjectFuncaoAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateUserProjectFuncao>
+          }
+          groupBy: {
+            args: Prisma.UserProjectFuncaoGroupByArgs<ExtArgs>
+            result: $Utils.Optional<UserProjectFuncaoGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.UserProjectFuncaoCountArgs<ExtArgs>
+            result: $Utils.Optional<UserProjectFuncaoCountAggregateOutputType> | number
+          }
+        }
+      }
+      ProjectStakeholderFuncao: {
+        payload: Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>
+        fields: Prisma.ProjectStakeholderFuncaoFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ProjectStakeholderFuncaoFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ProjectStakeholderFuncaoFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload>
+          }
+          findFirst: {
+            args: Prisma.ProjectStakeholderFuncaoFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ProjectStakeholderFuncaoFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload>
+          }
+          findMany: {
+            args: Prisma.ProjectStakeholderFuncaoFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload>[]
+          }
+          create: {
+            args: Prisma.ProjectStakeholderFuncaoCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload>
+          }
+          createMany: {
+            args: Prisma.ProjectStakeholderFuncaoCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ProjectStakeholderFuncaoCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload>[]
+          }
+          delete: {
+            args: Prisma.ProjectStakeholderFuncaoDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload>
+          }
+          update: {
+            args: Prisma.ProjectStakeholderFuncaoUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload>
+          }
+          deleteMany: {
+            args: Prisma.ProjectStakeholderFuncaoDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ProjectStakeholderFuncaoUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.ProjectStakeholderFuncaoUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload>[]
+          }
+          upsert: {
+            args: Prisma.ProjectStakeholderFuncaoUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ProjectStakeholderFuncaoPayload>
+          }
+          aggregate: {
+            args: Prisma.ProjectStakeholderFuncaoAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateProjectStakeholderFuncao>
+          }
+          groupBy: {
+            args: Prisma.ProjectStakeholderFuncaoGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ProjectStakeholderFuncaoGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ProjectStakeholderFuncaoCountArgs<ExtArgs>
+            result: $Utils.Optional<ProjectStakeholderFuncaoCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1951,6 +2132,8 @@ export namespace Prisma {
     userProjectRole?: UserProjectRoleOmit
     stakeholder?: StakeholderOmit
     projectStakeholder?: ProjectStakeholderOmit
+    userProjectFuncao?: UserProjectFuncaoOmit
+    projectStakeholderFuncao?: ProjectStakeholderFuncaoOmit
   }
 
   /* Types for Logging */
@@ -2232,17 +2415,52 @@ export namespace Prisma {
 
 
   /**
+   * Count Type UserProjectCountOutputType
+   */
+
+  export type UserProjectCountOutputType = {
+    funcoes: number
+  }
+
+  export type UserProjectCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    funcoes?: boolean | UserProjectCountOutputTypeCountFuncoesArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * UserProjectCountOutputType without action
+   */
+  export type UserProjectCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectCountOutputType
+     */
+    select?: UserProjectCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * UserProjectCountOutputType without action
+   */
+  export type UserProjectCountOutputTypeCountFuncoesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserProjectFuncaoWhereInput
+  }
+
+
+  /**
    * Count Type RoleCountOutputType
    */
 
   export type RoleCountOutputType = {
     permissions: number
     userProjectRoles: number
+    funcoesDeMembros: number
+    funcoesDeExternos: number
   }
 
   export type RoleCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     permissions?: boolean | RoleCountOutputTypeCountPermissionsArgs
     userProjectRoles?: boolean | RoleCountOutputTypeCountUserProjectRolesArgs
+    funcoesDeMembros?: boolean | RoleCountOutputTypeCountFuncoesDeMembrosArgs
+    funcoesDeExternos?: boolean | RoleCountOutputTypeCountFuncoesDeExternosArgs
   }
 
   // Custom InputTypes
@@ -2268,6 +2486,20 @@ export namespace Prisma {
    */
   export type RoleCountOutputTypeCountUserProjectRolesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: UserProjectRoleWhereInput
+  }
+
+  /**
+   * RoleCountOutputType without action
+   */
+  export type RoleCountOutputTypeCountFuncoesDeMembrosArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserProjectFuncaoWhereInput
+  }
+
+  /**
+   * RoleCountOutputType without action
+   */
+  export type RoleCountOutputTypeCountFuncoesDeExternosArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ProjectStakeholderFuncaoWhereInput
   }
 
 
@@ -2330,6 +2562,37 @@ export namespace Prisma {
    */
   export type StakeholderCountOutputTypeCountProjectsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ProjectStakeholderWhereInput
+  }
+
+
+  /**
+   * Count Type ProjectStakeholderCountOutputType
+   */
+
+  export type ProjectStakeholderCountOutputType = {
+    funcoes: number
+  }
+
+  export type ProjectStakeholderCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    funcoes?: boolean | ProjectStakeholderCountOutputTypeCountFuncoesArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * ProjectStakeholderCountOutputType without action
+   */
+  export type ProjectStakeholderCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderCountOutputType
+     */
+    select?: ProjectStakeholderCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * ProjectStakeholderCountOutputType without action
+   */
+  export type ProjectStakeholderCountOutputTypeCountFuncoesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ProjectStakeholderFuncaoWhereInput
   }
 
 
@@ -9630,7 +9893,6 @@ export namespace Prisma {
     active: boolean | null
     inactiveReason: string | null
     inactivatedAt: Date | null
-    role: string | null
     departmentId: string | null
     hourlyRate: number | null
     remuneracao: number | null
@@ -9647,7 +9909,6 @@ export namespace Prisma {
     active: boolean | null
     inactiveReason: string | null
     inactivatedAt: Date | null
-    role: string | null
     departmentId: string | null
     hourlyRate: number | null
     remuneracao: number | null
@@ -9664,7 +9925,6 @@ export namespace Prisma {
     active: number
     inactiveReason: number
     inactivatedAt: number
-    role: number
     departmentId: number
     hourlyRate: number
     remuneracao: number
@@ -9697,7 +9957,6 @@ export namespace Prisma {
     active?: true
     inactiveReason?: true
     inactivatedAt?: true
-    role?: true
     departmentId?: true
     hourlyRate?: true
     remuneracao?: true
@@ -9714,7 +9973,6 @@ export namespace Prisma {
     active?: true
     inactiveReason?: true
     inactivatedAt?: true
-    role?: true
     departmentId?: true
     hourlyRate?: true
     remuneracao?: true
@@ -9731,7 +9989,6 @@ export namespace Prisma {
     active?: true
     inactiveReason?: true
     inactivatedAt?: true
-    role?: true
     departmentId?: true
     hourlyRate?: true
     remuneracao?: true
@@ -9835,7 +10092,6 @@ export namespace Prisma {
     active: boolean
     inactiveReason: string | null
     inactivatedAt: Date | null
-    role: string | null
     departmentId: string | null
     hourlyRate: number | null
     remuneracao: number | null
@@ -9871,7 +10127,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: boolean
     inactivatedAt?: boolean
-    role?: boolean
     departmentId?: boolean
     hourlyRate?: boolean
     remuneracao?: boolean
@@ -9882,6 +10137,8 @@ export namespace Prisma {
     user?: boolean | UserDefaultArgs<ExtArgs>
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     department?: boolean | UserProject$departmentArgs<ExtArgs>
+    funcoes?: boolean | UserProject$funcoesArgs<ExtArgs>
+    _count?: boolean | UserProjectCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["userProject"]>
 
   export type UserProjectSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -9891,7 +10148,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: boolean
     inactivatedAt?: boolean
-    role?: boolean
     departmentId?: boolean
     hourlyRate?: boolean
     remuneracao?: boolean
@@ -9911,7 +10167,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: boolean
     inactivatedAt?: boolean
-    role?: boolean
     departmentId?: boolean
     hourlyRate?: boolean
     remuneracao?: boolean
@@ -9931,7 +10186,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: boolean
     inactivatedAt?: boolean
-    role?: boolean
     departmentId?: boolean
     hourlyRate?: boolean
     remuneracao?: boolean
@@ -9941,11 +10195,13 @@ export namespace Prisma {
     order?: boolean
   }
 
-  export type UserProjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "projectId" | "active" | "inactiveReason" | "inactivatedAt" | "role" | "departmentId" | "hourlyRate" | "remuneracao" | "horasDiarias" | "startDate" | "endDate" | "order", ExtArgs["result"]["userProject"]>
+  export type UserProjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "projectId" | "active" | "inactiveReason" | "inactivatedAt" | "departmentId" | "hourlyRate" | "remuneracao" | "horasDiarias" | "startDate" | "endDate" | "order", ExtArgs["result"]["userProject"]>
   export type UserProjectInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     department?: boolean | UserProject$departmentArgs<ExtArgs>
+    funcoes?: boolean | UserProject$funcoesArgs<ExtArgs>
+    _count?: boolean | UserProjectCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserProjectIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -9964,6 +10220,7 @@ export namespace Prisma {
       user: Prisma.$UserPayload<ExtArgs>
       project: Prisma.$ProjectPayload<ExtArgs>
       department: Prisma.$DepartmentPayload<ExtArgs> | null
+      funcoes: Prisma.$UserProjectFuncaoPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -9972,7 +10229,6 @@ export namespace Prisma {
       active: boolean
       inactiveReason: string | null
       inactivatedAt: Date | null
-      role: string | null
       departmentId: string | null
       hourlyRate: number | null
       remuneracao: number | null
@@ -10377,6 +10633,7 @@ export namespace Prisma {
     user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     project<T extends ProjectDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ProjectDefaultArgs<ExtArgs>>): Prisma__ProjectClient<$Result.GetResult<Prisma.$ProjectPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     department<T extends UserProject$departmentArgs<ExtArgs> = {}>(args?: Subset<T, UserProject$departmentArgs<ExtArgs>>): Prisma__DepartmentClient<$Result.GetResult<Prisma.$DepartmentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    funcoes<T extends UserProject$funcoesArgs<ExtArgs> = {}>(args?: Subset<T, UserProject$funcoesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -10412,7 +10669,6 @@ export namespace Prisma {
     readonly active: FieldRef<"UserProject", 'Boolean'>
     readonly inactiveReason: FieldRef<"UserProject", 'String'>
     readonly inactivatedAt: FieldRef<"UserProject", 'DateTime'>
-    readonly role: FieldRef<"UserProject", 'String'>
     readonly departmentId: FieldRef<"UserProject", 'String'>
     readonly hourlyRate: FieldRef<"UserProject", 'Float'>
     readonly remuneracao: FieldRef<"UserProject", 'Float'>
@@ -10840,6 +11096,30 @@ export namespace Prisma {
   }
 
   /**
+   * UserProject.funcoes
+   */
+  export type UserProject$funcoesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    where?: UserProjectFuncaoWhereInput
+    orderBy?: UserProjectFuncaoOrderByWithRelationInput | UserProjectFuncaoOrderByWithRelationInput[]
+    cursor?: UserProjectFuncaoWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: UserProjectFuncaoScalarFieldEnum | UserProjectFuncaoScalarFieldEnum[]
+  }
+
+  /**
    * UserProject without action
    */
   export type UserProjectDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -11057,6 +11337,8 @@ export namespace Prisma {
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
     permissions?: boolean | Role$permissionsArgs<ExtArgs>
     userProjectRoles?: boolean | Role$userProjectRolesArgs<ExtArgs>
+    funcoesDeMembros?: boolean | Role$funcoesDeMembrosArgs<ExtArgs>
+    funcoesDeExternos?: boolean | Role$funcoesDeExternosArgs<ExtArgs>
     _count?: boolean | RoleCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["role"]>
 
@@ -11103,6 +11385,8 @@ export namespace Prisma {
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
     permissions?: boolean | Role$permissionsArgs<ExtArgs>
     userProjectRoles?: boolean | Role$userProjectRolesArgs<ExtArgs>
+    funcoesDeMembros?: boolean | Role$funcoesDeMembrosArgs<ExtArgs>
+    funcoesDeExternos?: boolean | Role$funcoesDeExternosArgs<ExtArgs>
     _count?: boolean | RoleCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type RoleIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -11118,6 +11402,8 @@ export namespace Prisma {
       tenant: Prisma.$TenantPayload<ExtArgs>
       permissions: Prisma.$RolePermissionPayload<ExtArgs>[]
       userProjectRoles: Prisma.$UserProjectRolePayload<ExtArgs>[]
+      funcoesDeMembros: Prisma.$UserProjectFuncaoPayload<ExtArgs>[]
+      funcoesDeExternos: Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -11526,6 +11812,8 @@ export namespace Prisma {
     tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     permissions<T extends Role$permissionsArgs<ExtArgs> = {}>(args?: Subset<T, Role$permissionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     userProjectRoles<T extends Role$userProjectRolesArgs<ExtArgs> = {}>(args?: Subset<T, Role$userProjectRolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProjectRolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    funcoesDeMembros<T extends Role$funcoesDeMembrosArgs<ExtArgs> = {}>(args?: Subset<T, Role$funcoesDeMembrosArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    funcoesDeExternos<T extends Role$funcoesDeExternosArgs<ExtArgs> = {}>(args?: Subset<T, Role$funcoesDeExternosArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -12010,6 +12298,54 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: UserProjectRoleScalarFieldEnum | UserProjectRoleScalarFieldEnum[]
+  }
+
+  /**
+   * Role.funcoesDeMembros
+   */
+  export type Role$funcoesDeMembrosArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    where?: UserProjectFuncaoWhereInput
+    orderBy?: UserProjectFuncaoOrderByWithRelationInput | UserProjectFuncaoOrderByWithRelationInput[]
+    cursor?: UserProjectFuncaoWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: UserProjectFuncaoScalarFieldEnum | UserProjectFuncaoScalarFieldEnum[]
+  }
+
+  /**
+   * Role.funcoesDeExternos
+   */
+  export type Role$funcoesDeExternosArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    where?: ProjectStakeholderFuncaoWhereInput
+    orderBy?: ProjectStakeholderFuncaoOrderByWithRelationInput | ProjectStakeholderFuncaoOrderByWithRelationInput[]
+    cursor?: ProjectStakeholderFuncaoWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ProjectStakeholderFuncaoScalarFieldEnum | ProjectStakeholderFuncaoScalarFieldEnum[]
   }
 
   /**
@@ -16691,7 +17027,6 @@ export namespace Prisma {
     order: number
     remuneracao: number
     horasDiarias: number
-    funcoes: number
     departamentos: number
     _all: number
   }
@@ -16737,7 +17072,6 @@ export namespace Prisma {
     order?: true
     remuneracao?: true
     horasDiarias?: true
-    funcoes?: true
     departamentos?: true
     _all?: true
   }
@@ -16836,7 +17170,6 @@ export namespace Prisma {
     order: number
     remuneracao: number | null
     horasDiarias: number | null
-    funcoes: string[]
     departamentos: string[]
     _count: ProjectStakeholderCountAggregateOutputType | null
     _avg: ProjectStakeholderAvgAggregateOutputType | null
@@ -16867,10 +17200,11 @@ export namespace Prisma {
     order?: boolean
     remuneracao?: boolean
     horasDiarias?: boolean
-    funcoes?: boolean
     departamentos?: boolean
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     stakeholder?: boolean | StakeholderDefaultArgs<ExtArgs>
+    funcoes?: boolean | ProjectStakeholder$funcoesArgs<ExtArgs>
+    _count?: boolean | ProjectStakeholderCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["projectStakeholder"]>
 
   export type ProjectStakeholderSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -16881,7 +17215,6 @@ export namespace Prisma {
     order?: boolean
     remuneracao?: boolean
     horasDiarias?: boolean
-    funcoes?: boolean
     departamentos?: boolean
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     stakeholder?: boolean | StakeholderDefaultArgs<ExtArgs>
@@ -16895,7 +17228,6 @@ export namespace Prisma {
     order?: boolean
     remuneracao?: boolean
     horasDiarias?: boolean
-    funcoes?: boolean
     departamentos?: boolean
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     stakeholder?: boolean | StakeholderDefaultArgs<ExtArgs>
@@ -16909,14 +17241,15 @@ export namespace Prisma {
     order?: boolean
     remuneracao?: boolean
     horasDiarias?: boolean
-    funcoes?: boolean
     departamentos?: boolean
   }
 
-  export type ProjectStakeholderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectId" | "stakeholderId" | "createdAt" | "order" | "remuneracao" | "horasDiarias" | "funcoes" | "departamentos", ExtArgs["result"]["projectStakeholder"]>
+  export type ProjectStakeholderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectId" | "stakeholderId" | "createdAt" | "order" | "remuneracao" | "horasDiarias" | "departamentos", ExtArgs["result"]["projectStakeholder"]>
   export type ProjectStakeholderInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     stakeholder?: boolean | StakeholderDefaultArgs<ExtArgs>
+    funcoes?: boolean | ProjectStakeholder$funcoesArgs<ExtArgs>
+    _count?: boolean | ProjectStakeholderCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type ProjectStakeholderIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     project?: boolean | ProjectDefaultArgs<ExtArgs>
@@ -16932,6 +17265,7 @@ export namespace Prisma {
     objects: {
       project: Prisma.$ProjectPayload<ExtArgs>
       stakeholder: Prisma.$StakeholderPayload<ExtArgs>
+      funcoes: Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -16941,7 +17275,6 @@ export namespace Prisma {
       order: number
       remuneracao: number | null
       horasDiarias: number | null
-      funcoes: string[]
       departamentos: string[]
     }, ExtArgs["result"]["projectStakeholder"]>
     composites: {}
@@ -17339,6 +17672,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     project<T extends ProjectDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ProjectDefaultArgs<ExtArgs>>): Prisma__ProjectClient<$Result.GetResult<Prisma.$ProjectPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     stakeholder<T extends StakeholderDefaultArgs<ExtArgs> = {}>(args?: Subset<T, StakeholderDefaultArgs<ExtArgs>>): Prisma__StakeholderClient<$Result.GetResult<Prisma.$StakeholderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    funcoes<T extends ProjectStakeholder$funcoesArgs<ExtArgs> = {}>(args?: Subset<T, ProjectStakeholder$funcoesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -17375,7 +17709,6 @@ export namespace Prisma {
     readonly order: FieldRef<"ProjectStakeholder", 'Int'>
     readonly remuneracao: FieldRef<"ProjectStakeholder", 'Float'>
     readonly horasDiarias: FieldRef<"ProjectStakeholder", 'Float'>
-    readonly funcoes: FieldRef<"ProjectStakeholder", 'String[]'>
     readonly departamentos: FieldRef<"ProjectStakeholder", 'String[]'>
   }
     
@@ -17778,6 +18111,30 @@ export namespace Prisma {
   }
 
   /**
+   * ProjectStakeholder.funcoes
+   */
+  export type ProjectStakeholder$funcoesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    where?: ProjectStakeholderFuncaoWhereInput
+    orderBy?: ProjectStakeholderFuncaoOrderByWithRelationInput | ProjectStakeholderFuncaoOrderByWithRelationInput[]
+    cursor?: ProjectStakeholderFuncaoWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ProjectStakeholderFuncaoScalarFieldEnum | ProjectStakeholderFuncaoScalarFieldEnum[]
+  }
+
+  /**
    * ProjectStakeholder without action
    */
   export type ProjectStakeholderDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -17793,6 +18150,2190 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: ProjectStakeholderInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model UserProjectFuncao
+   */
+
+  export type AggregateUserProjectFuncao = {
+    _count: UserProjectFuncaoCountAggregateOutputType | null
+    _avg: UserProjectFuncaoAvgAggregateOutputType | null
+    _sum: UserProjectFuncaoSumAggregateOutputType | null
+    _min: UserProjectFuncaoMinAggregateOutputType | null
+    _max: UserProjectFuncaoMaxAggregateOutputType | null
+  }
+
+  export type UserProjectFuncaoAvgAggregateOutputType = {
+    ordem: number | null
+  }
+
+  export type UserProjectFuncaoSumAggregateOutputType = {
+    ordem: number | null
+  }
+
+  export type UserProjectFuncaoMinAggregateOutputType = {
+    id: string | null
+    userProjectId: string | null
+    roleId: string | null
+    ordem: number | null
+  }
+
+  export type UserProjectFuncaoMaxAggregateOutputType = {
+    id: string | null
+    userProjectId: string | null
+    roleId: string | null
+    ordem: number | null
+  }
+
+  export type UserProjectFuncaoCountAggregateOutputType = {
+    id: number
+    userProjectId: number
+    roleId: number
+    ordem: number
+    _all: number
+  }
+
+
+  export type UserProjectFuncaoAvgAggregateInputType = {
+    ordem?: true
+  }
+
+  export type UserProjectFuncaoSumAggregateInputType = {
+    ordem?: true
+  }
+
+  export type UserProjectFuncaoMinAggregateInputType = {
+    id?: true
+    userProjectId?: true
+    roleId?: true
+    ordem?: true
+  }
+
+  export type UserProjectFuncaoMaxAggregateInputType = {
+    id?: true
+    userProjectId?: true
+    roleId?: true
+    ordem?: true
+  }
+
+  export type UserProjectFuncaoCountAggregateInputType = {
+    id?: true
+    userProjectId?: true
+    roleId?: true
+    ordem?: true
+    _all?: true
+  }
+
+  export type UserProjectFuncaoAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserProjectFuncao to aggregate.
+     */
+    where?: UserProjectFuncaoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserProjectFuncaos to fetch.
+     */
+    orderBy?: UserProjectFuncaoOrderByWithRelationInput | UserProjectFuncaoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: UserProjectFuncaoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserProjectFuncaos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserProjectFuncaos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned UserProjectFuncaos
+    **/
+    _count?: true | UserProjectFuncaoCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: UserProjectFuncaoAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: UserProjectFuncaoSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: UserProjectFuncaoMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: UserProjectFuncaoMaxAggregateInputType
+  }
+
+  export type GetUserProjectFuncaoAggregateType<T extends UserProjectFuncaoAggregateArgs> = {
+        [P in keyof T & keyof AggregateUserProjectFuncao]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateUserProjectFuncao[P]>
+      : GetScalarType<T[P], AggregateUserProjectFuncao[P]>
+  }
+
+
+
+
+  export type UserProjectFuncaoGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserProjectFuncaoWhereInput
+    orderBy?: UserProjectFuncaoOrderByWithAggregationInput | UserProjectFuncaoOrderByWithAggregationInput[]
+    by: UserProjectFuncaoScalarFieldEnum[] | UserProjectFuncaoScalarFieldEnum
+    having?: UserProjectFuncaoScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: UserProjectFuncaoCountAggregateInputType | true
+    _avg?: UserProjectFuncaoAvgAggregateInputType
+    _sum?: UserProjectFuncaoSumAggregateInputType
+    _min?: UserProjectFuncaoMinAggregateInputType
+    _max?: UserProjectFuncaoMaxAggregateInputType
+  }
+
+  export type UserProjectFuncaoGroupByOutputType = {
+    id: string
+    userProjectId: string
+    roleId: string
+    ordem: number
+    _count: UserProjectFuncaoCountAggregateOutputType | null
+    _avg: UserProjectFuncaoAvgAggregateOutputType | null
+    _sum: UserProjectFuncaoSumAggregateOutputType | null
+    _min: UserProjectFuncaoMinAggregateOutputType | null
+    _max: UserProjectFuncaoMaxAggregateOutputType | null
+  }
+
+  type GetUserProjectFuncaoGroupByPayload<T extends UserProjectFuncaoGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<UserProjectFuncaoGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof UserProjectFuncaoGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], UserProjectFuncaoGroupByOutputType[P]>
+            : GetScalarType<T[P], UserProjectFuncaoGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type UserProjectFuncaoSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userProjectId?: boolean
+    roleId?: boolean
+    ordem?: boolean
+    userProject?: boolean | UserProjectDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userProjectFuncao"]>
+
+  export type UserProjectFuncaoSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userProjectId?: boolean
+    roleId?: boolean
+    ordem?: boolean
+    userProject?: boolean | UserProjectDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userProjectFuncao"]>
+
+  export type UserProjectFuncaoSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userProjectId?: boolean
+    roleId?: boolean
+    ordem?: boolean
+    userProject?: boolean | UserProjectDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userProjectFuncao"]>
+
+  export type UserProjectFuncaoSelectScalar = {
+    id?: boolean
+    userProjectId?: boolean
+    roleId?: boolean
+    ordem?: boolean
+  }
+
+  export type UserProjectFuncaoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userProjectId" | "roleId" | "ordem", ExtArgs["result"]["userProjectFuncao"]>
+  export type UserProjectFuncaoInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    userProject?: boolean | UserProjectDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }
+  export type UserProjectFuncaoIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    userProject?: boolean | UserProjectDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }
+  export type UserProjectFuncaoIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    userProject?: boolean | UserProjectDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }
+
+  export type $UserProjectFuncaoPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "UserProjectFuncao"
+    objects: {
+      userProject: Prisma.$UserProjectPayload<ExtArgs>
+      role: Prisma.$RolePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userProjectId: string
+      roleId: string
+      ordem: number
+    }, ExtArgs["result"]["userProjectFuncao"]>
+    composites: {}
+  }
+
+  type UserProjectFuncaoGetPayload<S extends boolean | null | undefined | UserProjectFuncaoDefaultArgs> = $Result.GetResult<Prisma.$UserProjectFuncaoPayload, S>
+
+  type UserProjectFuncaoCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<UserProjectFuncaoFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: UserProjectFuncaoCountAggregateInputType | true
+    }
+
+  export interface UserProjectFuncaoDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['UserProjectFuncao'], meta: { name: 'UserProjectFuncao' } }
+    /**
+     * Find zero or one UserProjectFuncao that matches the filter.
+     * @param {UserProjectFuncaoFindUniqueArgs} args - Arguments to find a UserProjectFuncao
+     * @example
+     * // Get one UserProjectFuncao
+     * const userProjectFuncao = await prisma.userProjectFuncao.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends UserProjectFuncaoFindUniqueArgs>(args: SelectSubset<T, UserProjectFuncaoFindUniqueArgs<ExtArgs>>): Prisma__UserProjectFuncaoClient<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one UserProjectFuncao that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {UserProjectFuncaoFindUniqueOrThrowArgs} args - Arguments to find a UserProjectFuncao
+     * @example
+     * // Get one UserProjectFuncao
+     * const userProjectFuncao = await prisma.userProjectFuncao.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends UserProjectFuncaoFindUniqueOrThrowArgs>(args: SelectSubset<T, UserProjectFuncaoFindUniqueOrThrowArgs<ExtArgs>>): Prisma__UserProjectFuncaoClient<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first UserProjectFuncao that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProjectFuncaoFindFirstArgs} args - Arguments to find a UserProjectFuncao
+     * @example
+     * // Get one UserProjectFuncao
+     * const userProjectFuncao = await prisma.userProjectFuncao.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends UserProjectFuncaoFindFirstArgs>(args?: SelectSubset<T, UserProjectFuncaoFindFirstArgs<ExtArgs>>): Prisma__UserProjectFuncaoClient<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first UserProjectFuncao that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProjectFuncaoFindFirstOrThrowArgs} args - Arguments to find a UserProjectFuncao
+     * @example
+     * // Get one UserProjectFuncao
+     * const userProjectFuncao = await prisma.userProjectFuncao.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends UserProjectFuncaoFindFirstOrThrowArgs>(args?: SelectSubset<T, UserProjectFuncaoFindFirstOrThrowArgs<ExtArgs>>): Prisma__UserProjectFuncaoClient<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more UserProjectFuncaos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProjectFuncaoFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all UserProjectFuncaos
+     * const userProjectFuncaos = await prisma.userProjectFuncao.findMany()
+     * 
+     * // Get first 10 UserProjectFuncaos
+     * const userProjectFuncaos = await prisma.userProjectFuncao.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const userProjectFuncaoWithIdOnly = await prisma.userProjectFuncao.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends UserProjectFuncaoFindManyArgs>(args?: SelectSubset<T, UserProjectFuncaoFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a UserProjectFuncao.
+     * @param {UserProjectFuncaoCreateArgs} args - Arguments to create a UserProjectFuncao.
+     * @example
+     * // Create one UserProjectFuncao
+     * const UserProjectFuncao = await prisma.userProjectFuncao.create({
+     *   data: {
+     *     // ... data to create a UserProjectFuncao
+     *   }
+     * })
+     * 
+     */
+    create<T extends UserProjectFuncaoCreateArgs>(args: SelectSubset<T, UserProjectFuncaoCreateArgs<ExtArgs>>): Prisma__UserProjectFuncaoClient<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many UserProjectFuncaos.
+     * @param {UserProjectFuncaoCreateManyArgs} args - Arguments to create many UserProjectFuncaos.
+     * @example
+     * // Create many UserProjectFuncaos
+     * const userProjectFuncao = await prisma.userProjectFuncao.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends UserProjectFuncaoCreateManyArgs>(args?: SelectSubset<T, UserProjectFuncaoCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many UserProjectFuncaos and returns the data saved in the database.
+     * @param {UserProjectFuncaoCreateManyAndReturnArgs} args - Arguments to create many UserProjectFuncaos.
+     * @example
+     * // Create many UserProjectFuncaos
+     * const userProjectFuncao = await prisma.userProjectFuncao.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many UserProjectFuncaos and only return the `id`
+     * const userProjectFuncaoWithIdOnly = await prisma.userProjectFuncao.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends UserProjectFuncaoCreateManyAndReturnArgs>(args?: SelectSubset<T, UserProjectFuncaoCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a UserProjectFuncao.
+     * @param {UserProjectFuncaoDeleteArgs} args - Arguments to delete one UserProjectFuncao.
+     * @example
+     * // Delete one UserProjectFuncao
+     * const UserProjectFuncao = await prisma.userProjectFuncao.delete({
+     *   where: {
+     *     // ... filter to delete one UserProjectFuncao
+     *   }
+     * })
+     * 
+     */
+    delete<T extends UserProjectFuncaoDeleteArgs>(args: SelectSubset<T, UserProjectFuncaoDeleteArgs<ExtArgs>>): Prisma__UserProjectFuncaoClient<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one UserProjectFuncao.
+     * @param {UserProjectFuncaoUpdateArgs} args - Arguments to update one UserProjectFuncao.
+     * @example
+     * // Update one UserProjectFuncao
+     * const userProjectFuncao = await prisma.userProjectFuncao.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends UserProjectFuncaoUpdateArgs>(args: SelectSubset<T, UserProjectFuncaoUpdateArgs<ExtArgs>>): Prisma__UserProjectFuncaoClient<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more UserProjectFuncaos.
+     * @param {UserProjectFuncaoDeleteManyArgs} args - Arguments to filter UserProjectFuncaos to delete.
+     * @example
+     * // Delete a few UserProjectFuncaos
+     * const { count } = await prisma.userProjectFuncao.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends UserProjectFuncaoDeleteManyArgs>(args?: SelectSubset<T, UserProjectFuncaoDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more UserProjectFuncaos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProjectFuncaoUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many UserProjectFuncaos
+     * const userProjectFuncao = await prisma.userProjectFuncao.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends UserProjectFuncaoUpdateManyArgs>(args: SelectSubset<T, UserProjectFuncaoUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more UserProjectFuncaos and returns the data updated in the database.
+     * @param {UserProjectFuncaoUpdateManyAndReturnArgs} args - Arguments to update many UserProjectFuncaos.
+     * @example
+     * // Update many UserProjectFuncaos
+     * const userProjectFuncao = await prisma.userProjectFuncao.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more UserProjectFuncaos and only return the `id`
+     * const userProjectFuncaoWithIdOnly = await prisma.userProjectFuncao.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends UserProjectFuncaoUpdateManyAndReturnArgs>(args: SelectSubset<T, UserProjectFuncaoUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one UserProjectFuncao.
+     * @param {UserProjectFuncaoUpsertArgs} args - Arguments to update or create a UserProjectFuncao.
+     * @example
+     * // Update or create a UserProjectFuncao
+     * const userProjectFuncao = await prisma.userProjectFuncao.upsert({
+     *   create: {
+     *     // ... data to create a UserProjectFuncao
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the UserProjectFuncao we want to update
+     *   }
+     * })
+     */
+    upsert<T extends UserProjectFuncaoUpsertArgs>(args: SelectSubset<T, UserProjectFuncaoUpsertArgs<ExtArgs>>): Prisma__UserProjectFuncaoClient<$Result.GetResult<Prisma.$UserProjectFuncaoPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of UserProjectFuncaos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProjectFuncaoCountArgs} args - Arguments to filter UserProjectFuncaos to count.
+     * @example
+     * // Count the number of UserProjectFuncaos
+     * const count = await prisma.userProjectFuncao.count({
+     *   where: {
+     *     // ... the filter for the UserProjectFuncaos we want to count
+     *   }
+     * })
+    **/
+    count<T extends UserProjectFuncaoCountArgs>(
+      args?: Subset<T, UserProjectFuncaoCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], UserProjectFuncaoCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a UserProjectFuncao.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProjectFuncaoAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends UserProjectFuncaoAggregateArgs>(args: Subset<T, UserProjectFuncaoAggregateArgs>): Prisma.PrismaPromise<GetUserProjectFuncaoAggregateType<T>>
+
+    /**
+     * Group by UserProjectFuncao.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProjectFuncaoGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends UserProjectFuncaoGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: UserProjectFuncaoGroupByArgs['orderBy'] }
+        : { orderBy?: UserProjectFuncaoGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, UserProjectFuncaoGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetUserProjectFuncaoGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the UserProjectFuncao model
+   */
+  readonly fields: UserProjectFuncaoFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for UserProjectFuncao.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__UserProjectFuncaoClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    userProject<T extends UserProjectDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserProjectDefaultArgs<ExtArgs>>): Prisma__UserProjectClient<$Result.GetResult<Prisma.$UserProjectPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    role<T extends RoleDefaultArgs<ExtArgs> = {}>(args?: Subset<T, RoleDefaultArgs<ExtArgs>>): Prisma__RoleClient<$Result.GetResult<Prisma.$RolePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the UserProjectFuncao model
+   */
+  interface UserProjectFuncaoFieldRefs {
+    readonly id: FieldRef<"UserProjectFuncao", 'String'>
+    readonly userProjectId: FieldRef<"UserProjectFuncao", 'String'>
+    readonly roleId: FieldRef<"UserProjectFuncao", 'String'>
+    readonly ordem: FieldRef<"UserProjectFuncao", 'Int'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * UserProjectFuncao findUnique
+   */
+  export type UserProjectFuncaoFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which UserProjectFuncao to fetch.
+     */
+    where: UserProjectFuncaoWhereUniqueInput
+  }
+
+  /**
+   * UserProjectFuncao findUniqueOrThrow
+   */
+  export type UserProjectFuncaoFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which UserProjectFuncao to fetch.
+     */
+    where: UserProjectFuncaoWhereUniqueInput
+  }
+
+  /**
+   * UserProjectFuncao findFirst
+   */
+  export type UserProjectFuncaoFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which UserProjectFuncao to fetch.
+     */
+    where?: UserProjectFuncaoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserProjectFuncaos to fetch.
+     */
+    orderBy?: UserProjectFuncaoOrderByWithRelationInput | UserProjectFuncaoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserProjectFuncaos.
+     */
+    cursor?: UserProjectFuncaoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserProjectFuncaos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserProjectFuncaos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserProjectFuncaos.
+     */
+    distinct?: UserProjectFuncaoScalarFieldEnum | UserProjectFuncaoScalarFieldEnum[]
+  }
+
+  /**
+   * UserProjectFuncao findFirstOrThrow
+   */
+  export type UserProjectFuncaoFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which UserProjectFuncao to fetch.
+     */
+    where?: UserProjectFuncaoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserProjectFuncaos to fetch.
+     */
+    orderBy?: UserProjectFuncaoOrderByWithRelationInput | UserProjectFuncaoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserProjectFuncaos.
+     */
+    cursor?: UserProjectFuncaoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserProjectFuncaos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserProjectFuncaos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserProjectFuncaos.
+     */
+    distinct?: UserProjectFuncaoScalarFieldEnum | UserProjectFuncaoScalarFieldEnum[]
+  }
+
+  /**
+   * UserProjectFuncao findMany
+   */
+  export type UserProjectFuncaoFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which UserProjectFuncaos to fetch.
+     */
+    where?: UserProjectFuncaoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserProjectFuncaos to fetch.
+     */
+    orderBy?: UserProjectFuncaoOrderByWithRelationInput | UserProjectFuncaoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing UserProjectFuncaos.
+     */
+    cursor?: UserProjectFuncaoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserProjectFuncaos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserProjectFuncaos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserProjectFuncaos.
+     */
+    distinct?: UserProjectFuncaoScalarFieldEnum | UserProjectFuncaoScalarFieldEnum[]
+  }
+
+  /**
+   * UserProjectFuncao create
+   */
+  export type UserProjectFuncaoCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    /**
+     * The data needed to create a UserProjectFuncao.
+     */
+    data: XOR<UserProjectFuncaoCreateInput, UserProjectFuncaoUncheckedCreateInput>
+  }
+
+  /**
+   * UserProjectFuncao createMany
+   */
+  export type UserProjectFuncaoCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many UserProjectFuncaos.
+     */
+    data: UserProjectFuncaoCreateManyInput | UserProjectFuncaoCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * UserProjectFuncao createManyAndReturn
+   */
+  export type UserProjectFuncaoCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * The data used to create many UserProjectFuncaos.
+     */
+    data: UserProjectFuncaoCreateManyInput | UserProjectFuncaoCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * UserProjectFuncao update
+   */
+  export type UserProjectFuncaoUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    /**
+     * The data needed to update a UserProjectFuncao.
+     */
+    data: XOR<UserProjectFuncaoUpdateInput, UserProjectFuncaoUncheckedUpdateInput>
+    /**
+     * Choose, which UserProjectFuncao to update.
+     */
+    where: UserProjectFuncaoWhereUniqueInput
+  }
+
+  /**
+   * UserProjectFuncao updateMany
+   */
+  export type UserProjectFuncaoUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update UserProjectFuncaos.
+     */
+    data: XOR<UserProjectFuncaoUpdateManyMutationInput, UserProjectFuncaoUncheckedUpdateManyInput>
+    /**
+     * Filter which UserProjectFuncaos to update
+     */
+    where?: UserProjectFuncaoWhereInput
+    /**
+     * Limit how many UserProjectFuncaos to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * UserProjectFuncao updateManyAndReturn
+   */
+  export type UserProjectFuncaoUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * The data used to update UserProjectFuncaos.
+     */
+    data: XOR<UserProjectFuncaoUpdateManyMutationInput, UserProjectFuncaoUncheckedUpdateManyInput>
+    /**
+     * Filter which UserProjectFuncaos to update
+     */
+    where?: UserProjectFuncaoWhereInput
+    /**
+     * Limit how many UserProjectFuncaos to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * UserProjectFuncao upsert
+   */
+  export type UserProjectFuncaoUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    /**
+     * The filter to search for the UserProjectFuncao to update in case it exists.
+     */
+    where: UserProjectFuncaoWhereUniqueInput
+    /**
+     * In case the UserProjectFuncao found by the `where` argument doesn't exist, create a new UserProjectFuncao with this data.
+     */
+    create: XOR<UserProjectFuncaoCreateInput, UserProjectFuncaoUncheckedCreateInput>
+    /**
+     * In case the UserProjectFuncao was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<UserProjectFuncaoUpdateInput, UserProjectFuncaoUncheckedUpdateInput>
+  }
+
+  /**
+   * UserProjectFuncao delete
+   */
+  export type UserProjectFuncaoDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter which UserProjectFuncao to delete.
+     */
+    where: UserProjectFuncaoWhereUniqueInput
+  }
+
+  /**
+   * UserProjectFuncao deleteMany
+   */
+  export type UserProjectFuncaoDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserProjectFuncaos to delete
+     */
+    where?: UserProjectFuncaoWhereInput
+    /**
+     * Limit how many UserProjectFuncaos to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * UserProjectFuncao without action
+   */
+  export type UserProjectFuncaoDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProjectFuncao
+     */
+    select?: UserProjectFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserProjectFuncao
+     */
+    omit?: UserProjectFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserProjectFuncaoInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ProjectStakeholderFuncao
+   */
+
+  export type AggregateProjectStakeholderFuncao = {
+    _count: ProjectStakeholderFuncaoCountAggregateOutputType | null
+    _avg: ProjectStakeholderFuncaoAvgAggregateOutputType | null
+    _sum: ProjectStakeholderFuncaoSumAggregateOutputType | null
+    _min: ProjectStakeholderFuncaoMinAggregateOutputType | null
+    _max: ProjectStakeholderFuncaoMaxAggregateOutputType | null
+  }
+
+  export type ProjectStakeholderFuncaoAvgAggregateOutputType = {
+    ordem: number | null
+  }
+
+  export type ProjectStakeholderFuncaoSumAggregateOutputType = {
+    ordem: number | null
+  }
+
+  export type ProjectStakeholderFuncaoMinAggregateOutputType = {
+    id: string | null
+    projectStakeholderId: string | null
+    roleId: string | null
+    ordem: number | null
+  }
+
+  export type ProjectStakeholderFuncaoMaxAggregateOutputType = {
+    id: string | null
+    projectStakeholderId: string | null
+    roleId: string | null
+    ordem: number | null
+  }
+
+  export type ProjectStakeholderFuncaoCountAggregateOutputType = {
+    id: number
+    projectStakeholderId: number
+    roleId: number
+    ordem: number
+    _all: number
+  }
+
+
+  export type ProjectStakeholderFuncaoAvgAggregateInputType = {
+    ordem?: true
+  }
+
+  export type ProjectStakeholderFuncaoSumAggregateInputType = {
+    ordem?: true
+  }
+
+  export type ProjectStakeholderFuncaoMinAggregateInputType = {
+    id?: true
+    projectStakeholderId?: true
+    roleId?: true
+    ordem?: true
+  }
+
+  export type ProjectStakeholderFuncaoMaxAggregateInputType = {
+    id?: true
+    projectStakeholderId?: true
+    roleId?: true
+    ordem?: true
+  }
+
+  export type ProjectStakeholderFuncaoCountAggregateInputType = {
+    id?: true
+    projectStakeholderId?: true
+    roleId?: true
+    ordem?: true
+    _all?: true
+  }
+
+  export type ProjectStakeholderFuncaoAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ProjectStakeholderFuncao to aggregate.
+     */
+    where?: ProjectStakeholderFuncaoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ProjectStakeholderFuncaos to fetch.
+     */
+    orderBy?: ProjectStakeholderFuncaoOrderByWithRelationInput | ProjectStakeholderFuncaoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ProjectStakeholderFuncaoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ProjectStakeholderFuncaos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ProjectStakeholderFuncaos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ProjectStakeholderFuncaos
+    **/
+    _count?: true | ProjectStakeholderFuncaoCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: ProjectStakeholderFuncaoAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ProjectStakeholderFuncaoSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ProjectStakeholderFuncaoMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ProjectStakeholderFuncaoMaxAggregateInputType
+  }
+
+  export type GetProjectStakeholderFuncaoAggregateType<T extends ProjectStakeholderFuncaoAggregateArgs> = {
+        [P in keyof T & keyof AggregateProjectStakeholderFuncao]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateProjectStakeholderFuncao[P]>
+      : GetScalarType<T[P], AggregateProjectStakeholderFuncao[P]>
+  }
+
+
+
+
+  export type ProjectStakeholderFuncaoGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ProjectStakeholderFuncaoWhereInput
+    orderBy?: ProjectStakeholderFuncaoOrderByWithAggregationInput | ProjectStakeholderFuncaoOrderByWithAggregationInput[]
+    by: ProjectStakeholderFuncaoScalarFieldEnum[] | ProjectStakeholderFuncaoScalarFieldEnum
+    having?: ProjectStakeholderFuncaoScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ProjectStakeholderFuncaoCountAggregateInputType | true
+    _avg?: ProjectStakeholderFuncaoAvgAggregateInputType
+    _sum?: ProjectStakeholderFuncaoSumAggregateInputType
+    _min?: ProjectStakeholderFuncaoMinAggregateInputType
+    _max?: ProjectStakeholderFuncaoMaxAggregateInputType
+  }
+
+  export type ProjectStakeholderFuncaoGroupByOutputType = {
+    id: string
+    projectStakeholderId: string
+    roleId: string
+    ordem: number
+    _count: ProjectStakeholderFuncaoCountAggregateOutputType | null
+    _avg: ProjectStakeholderFuncaoAvgAggregateOutputType | null
+    _sum: ProjectStakeholderFuncaoSumAggregateOutputType | null
+    _min: ProjectStakeholderFuncaoMinAggregateOutputType | null
+    _max: ProjectStakeholderFuncaoMaxAggregateOutputType | null
+  }
+
+  type GetProjectStakeholderFuncaoGroupByPayload<T extends ProjectStakeholderFuncaoGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ProjectStakeholderFuncaoGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ProjectStakeholderFuncaoGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ProjectStakeholderFuncaoGroupByOutputType[P]>
+            : GetScalarType<T[P], ProjectStakeholderFuncaoGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ProjectStakeholderFuncaoSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    projectStakeholderId?: boolean
+    roleId?: boolean
+    ordem?: boolean
+    projectStakeholder?: boolean | ProjectStakeholderDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["projectStakeholderFuncao"]>
+
+  export type ProjectStakeholderFuncaoSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    projectStakeholderId?: boolean
+    roleId?: boolean
+    ordem?: boolean
+    projectStakeholder?: boolean | ProjectStakeholderDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["projectStakeholderFuncao"]>
+
+  export type ProjectStakeholderFuncaoSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    projectStakeholderId?: boolean
+    roleId?: boolean
+    ordem?: boolean
+    projectStakeholder?: boolean | ProjectStakeholderDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["projectStakeholderFuncao"]>
+
+  export type ProjectStakeholderFuncaoSelectScalar = {
+    id?: boolean
+    projectStakeholderId?: boolean
+    roleId?: boolean
+    ordem?: boolean
+  }
+
+  export type ProjectStakeholderFuncaoOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectStakeholderId" | "roleId" | "ordem", ExtArgs["result"]["projectStakeholderFuncao"]>
+  export type ProjectStakeholderFuncaoInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    projectStakeholder?: boolean | ProjectStakeholderDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }
+  export type ProjectStakeholderFuncaoIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    projectStakeholder?: boolean | ProjectStakeholderDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }
+  export type ProjectStakeholderFuncaoIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    projectStakeholder?: boolean | ProjectStakeholderDefaultArgs<ExtArgs>
+    role?: boolean | RoleDefaultArgs<ExtArgs>
+  }
+
+  export type $ProjectStakeholderFuncaoPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ProjectStakeholderFuncao"
+    objects: {
+      projectStakeholder: Prisma.$ProjectStakeholderPayload<ExtArgs>
+      role: Prisma.$RolePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      projectStakeholderId: string
+      roleId: string
+      ordem: number
+    }, ExtArgs["result"]["projectStakeholderFuncao"]>
+    composites: {}
+  }
+
+  type ProjectStakeholderFuncaoGetPayload<S extends boolean | null | undefined | ProjectStakeholderFuncaoDefaultArgs> = $Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload, S>
+
+  type ProjectStakeholderFuncaoCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<ProjectStakeholderFuncaoFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: ProjectStakeholderFuncaoCountAggregateInputType | true
+    }
+
+  export interface ProjectStakeholderFuncaoDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ProjectStakeholderFuncao'], meta: { name: 'ProjectStakeholderFuncao' } }
+    /**
+     * Find zero or one ProjectStakeholderFuncao that matches the filter.
+     * @param {ProjectStakeholderFuncaoFindUniqueArgs} args - Arguments to find a ProjectStakeholderFuncao
+     * @example
+     * // Get one ProjectStakeholderFuncao
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ProjectStakeholderFuncaoFindUniqueArgs>(args: SelectSubset<T, ProjectStakeholderFuncaoFindUniqueArgs<ExtArgs>>): Prisma__ProjectStakeholderFuncaoClient<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one ProjectStakeholderFuncao that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {ProjectStakeholderFuncaoFindUniqueOrThrowArgs} args - Arguments to find a ProjectStakeholderFuncao
+     * @example
+     * // Get one ProjectStakeholderFuncao
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ProjectStakeholderFuncaoFindUniqueOrThrowArgs>(args: SelectSubset<T, ProjectStakeholderFuncaoFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ProjectStakeholderFuncaoClient<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ProjectStakeholderFuncao that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ProjectStakeholderFuncaoFindFirstArgs} args - Arguments to find a ProjectStakeholderFuncao
+     * @example
+     * // Get one ProjectStakeholderFuncao
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ProjectStakeholderFuncaoFindFirstArgs>(args?: SelectSubset<T, ProjectStakeholderFuncaoFindFirstArgs<ExtArgs>>): Prisma__ProjectStakeholderFuncaoClient<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ProjectStakeholderFuncao that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ProjectStakeholderFuncaoFindFirstOrThrowArgs} args - Arguments to find a ProjectStakeholderFuncao
+     * @example
+     * // Get one ProjectStakeholderFuncao
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ProjectStakeholderFuncaoFindFirstOrThrowArgs>(args?: SelectSubset<T, ProjectStakeholderFuncaoFindFirstOrThrowArgs<ExtArgs>>): Prisma__ProjectStakeholderFuncaoClient<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more ProjectStakeholderFuncaos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ProjectStakeholderFuncaoFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ProjectStakeholderFuncaos
+     * const projectStakeholderFuncaos = await prisma.projectStakeholderFuncao.findMany()
+     * 
+     * // Get first 10 ProjectStakeholderFuncaos
+     * const projectStakeholderFuncaos = await prisma.projectStakeholderFuncao.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const projectStakeholderFuncaoWithIdOnly = await prisma.projectStakeholderFuncao.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ProjectStakeholderFuncaoFindManyArgs>(args?: SelectSubset<T, ProjectStakeholderFuncaoFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a ProjectStakeholderFuncao.
+     * @param {ProjectStakeholderFuncaoCreateArgs} args - Arguments to create a ProjectStakeholderFuncao.
+     * @example
+     * // Create one ProjectStakeholderFuncao
+     * const ProjectStakeholderFuncao = await prisma.projectStakeholderFuncao.create({
+     *   data: {
+     *     // ... data to create a ProjectStakeholderFuncao
+     *   }
+     * })
+     * 
+     */
+    create<T extends ProjectStakeholderFuncaoCreateArgs>(args: SelectSubset<T, ProjectStakeholderFuncaoCreateArgs<ExtArgs>>): Prisma__ProjectStakeholderFuncaoClient<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many ProjectStakeholderFuncaos.
+     * @param {ProjectStakeholderFuncaoCreateManyArgs} args - Arguments to create many ProjectStakeholderFuncaos.
+     * @example
+     * // Create many ProjectStakeholderFuncaos
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ProjectStakeholderFuncaoCreateManyArgs>(args?: SelectSubset<T, ProjectStakeholderFuncaoCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ProjectStakeholderFuncaos and returns the data saved in the database.
+     * @param {ProjectStakeholderFuncaoCreateManyAndReturnArgs} args - Arguments to create many ProjectStakeholderFuncaos.
+     * @example
+     * // Create many ProjectStakeholderFuncaos
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ProjectStakeholderFuncaos and only return the `id`
+     * const projectStakeholderFuncaoWithIdOnly = await prisma.projectStakeholderFuncao.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ProjectStakeholderFuncaoCreateManyAndReturnArgs>(args?: SelectSubset<T, ProjectStakeholderFuncaoCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a ProjectStakeholderFuncao.
+     * @param {ProjectStakeholderFuncaoDeleteArgs} args - Arguments to delete one ProjectStakeholderFuncao.
+     * @example
+     * // Delete one ProjectStakeholderFuncao
+     * const ProjectStakeholderFuncao = await prisma.projectStakeholderFuncao.delete({
+     *   where: {
+     *     // ... filter to delete one ProjectStakeholderFuncao
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ProjectStakeholderFuncaoDeleteArgs>(args: SelectSubset<T, ProjectStakeholderFuncaoDeleteArgs<ExtArgs>>): Prisma__ProjectStakeholderFuncaoClient<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one ProjectStakeholderFuncao.
+     * @param {ProjectStakeholderFuncaoUpdateArgs} args - Arguments to update one ProjectStakeholderFuncao.
+     * @example
+     * // Update one ProjectStakeholderFuncao
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ProjectStakeholderFuncaoUpdateArgs>(args: SelectSubset<T, ProjectStakeholderFuncaoUpdateArgs<ExtArgs>>): Prisma__ProjectStakeholderFuncaoClient<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more ProjectStakeholderFuncaos.
+     * @param {ProjectStakeholderFuncaoDeleteManyArgs} args - Arguments to filter ProjectStakeholderFuncaos to delete.
+     * @example
+     * // Delete a few ProjectStakeholderFuncaos
+     * const { count } = await prisma.projectStakeholderFuncao.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ProjectStakeholderFuncaoDeleteManyArgs>(args?: SelectSubset<T, ProjectStakeholderFuncaoDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ProjectStakeholderFuncaos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ProjectStakeholderFuncaoUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ProjectStakeholderFuncaos
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ProjectStakeholderFuncaoUpdateManyArgs>(args: SelectSubset<T, ProjectStakeholderFuncaoUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ProjectStakeholderFuncaos and returns the data updated in the database.
+     * @param {ProjectStakeholderFuncaoUpdateManyAndReturnArgs} args - Arguments to update many ProjectStakeholderFuncaos.
+     * @example
+     * // Update many ProjectStakeholderFuncaos
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more ProjectStakeholderFuncaos and only return the `id`
+     * const projectStakeholderFuncaoWithIdOnly = await prisma.projectStakeholderFuncao.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends ProjectStakeholderFuncaoUpdateManyAndReturnArgs>(args: SelectSubset<T, ProjectStakeholderFuncaoUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one ProjectStakeholderFuncao.
+     * @param {ProjectStakeholderFuncaoUpsertArgs} args - Arguments to update or create a ProjectStakeholderFuncao.
+     * @example
+     * // Update or create a ProjectStakeholderFuncao
+     * const projectStakeholderFuncao = await prisma.projectStakeholderFuncao.upsert({
+     *   create: {
+     *     // ... data to create a ProjectStakeholderFuncao
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ProjectStakeholderFuncao we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ProjectStakeholderFuncaoUpsertArgs>(args: SelectSubset<T, ProjectStakeholderFuncaoUpsertArgs<ExtArgs>>): Prisma__ProjectStakeholderFuncaoClient<$Result.GetResult<Prisma.$ProjectStakeholderFuncaoPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of ProjectStakeholderFuncaos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ProjectStakeholderFuncaoCountArgs} args - Arguments to filter ProjectStakeholderFuncaos to count.
+     * @example
+     * // Count the number of ProjectStakeholderFuncaos
+     * const count = await prisma.projectStakeholderFuncao.count({
+     *   where: {
+     *     // ... the filter for the ProjectStakeholderFuncaos we want to count
+     *   }
+     * })
+    **/
+    count<T extends ProjectStakeholderFuncaoCountArgs>(
+      args?: Subset<T, ProjectStakeholderFuncaoCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ProjectStakeholderFuncaoCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ProjectStakeholderFuncao.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ProjectStakeholderFuncaoAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ProjectStakeholderFuncaoAggregateArgs>(args: Subset<T, ProjectStakeholderFuncaoAggregateArgs>): Prisma.PrismaPromise<GetProjectStakeholderFuncaoAggregateType<T>>
+
+    /**
+     * Group by ProjectStakeholderFuncao.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ProjectStakeholderFuncaoGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ProjectStakeholderFuncaoGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ProjectStakeholderFuncaoGroupByArgs['orderBy'] }
+        : { orderBy?: ProjectStakeholderFuncaoGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ProjectStakeholderFuncaoGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetProjectStakeholderFuncaoGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ProjectStakeholderFuncao model
+   */
+  readonly fields: ProjectStakeholderFuncaoFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ProjectStakeholderFuncao.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ProjectStakeholderFuncaoClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    projectStakeholder<T extends ProjectStakeholderDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ProjectStakeholderDefaultArgs<ExtArgs>>): Prisma__ProjectStakeholderClient<$Result.GetResult<Prisma.$ProjectStakeholderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    role<T extends RoleDefaultArgs<ExtArgs> = {}>(args?: Subset<T, RoleDefaultArgs<ExtArgs>>): Prisma__RoleClient<$Result.GetResult<Prisma.$RolePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ProjectStakeholderFuncao model
+   */
+  interface ProjectStakeholderFuncaoFieldRefs {
+    readonly id: FieldRef<"ProjectStakeholderFuncao", 'String'>
+    readonly projectStakeholderId: FieldRef<"ProjectStakeholderFuncao", 'String'>
+    readonly roleId: FieldRef<"ProjectStakeholderFuncao", 'String'>
+    readonly ordem: FieldRef<"ProjectStakeholderFuncao", 'Int'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ProjectStakeholderFuncao findUnique
+   */
+  export type ProjectStakeholderFuncaoFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which ProjectStakeholderFuncao to fetch.
+     */
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+  }
+
+  /**
+   * ProjectStakeholderFuncao findUniqueOrThrow
+   */
+  export type ProjectStakeholderFuncaoFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which ProjectStakeholderFuncao to fetch.
+     */
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+  }
+
+  /**
+   * ProjectStakeholderFuncao findFirst
+   */
+  export type ProjectStakeholderFuncaoFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which ProjectStakeholderFuncao to fetch.
+     */
+    where?: ProjectStakeholderFuncaoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ProjectStakeholderFuncaos to fetch.
+     */
+    orderBy?: ProjectStakeholderFuncaoOrderByWithRelationInput | ProjectStakeholderFuncaoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ProjectStakeholderFuncaos.
+     */
+    cursor?: ProjectStakeholderFuncaoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ProjectStakeholderFuncaos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ProjectStakeholderFuncaos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ProjectStakeholderFuncaos.
+     */
+    distinct?: ProjectStakeholderFuncaoScalarFieldEnum | ProjectStakeholderFuncaoScalarFieldEnum[]
+  }
+
+  /**
+   * ProjectStakeholderFuncao findFirstOrThrow
+   */
+  export type ProjectStakeholderFuncaoFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which ProjectStakeholderFuncao to fetch.
+     */
+    where?: ProjectStakeholderFuncaoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ProjectStakeholderFuncaos to fetch.
+     */
+    orderBy?: ProjectStakeholderFuncaoOrderByWithRelationInput | ProjectStakeholderFuncaoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ProjectStakeholderFuncaos.
+     */
+    cursor?: ProjectStakeholderFuncaoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ProjectStakeholderFuncaos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ProjectStakeholderFuncaos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ProjectStakeholderFuncaos.
+     */
+    distinct?: ProjectStakeholderFuncaoScalarFieldEnum | ProjectStakeholderFuncaoScalarFieldEnum[]
+  }
+
+  /**
+   * ProjectStakeholderFuncao findMany
+   */
+  export type ProjectStakeholderFuncaoFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter, which ProjectStakeholderFuncaos to fetch.
+     */
+    where?: ProjectStakeholderFuncaoWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ProjectStakeholderFuncaos to fetch.
+     */
+    orderBy?: ProjectStakeholderFuncaoOrderByWithRelationInput | ProjectStakeholderFuncaoOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ProjectStakeholderFuncaos.
+     */
+    cursor?: ProjectStakeholderFuncaoWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ProjectStakeholderFuncaos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ProjectStakeholderFuncaos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ProjectStakeholderFuncaos.
+     */
+    distinct?: ProjectStakeholderFuncaoScalarFieldEnum | ProjectStakeholderFuncaoScalarFieldEnum[]
+  }
+
+  /**
+   * ProjectStakeholderFuncao create
+   */
+  export type ProjectStakeholderFuncaoCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ProjectStakeholderFuncao.
+     */
+    data: XOR<ProjectStakeholderFuncaoCreateInput, ProjectStakeholderFuncaoUncheckedCreateInput>
+  }
+
+  /**
+   * ProjectStakeholderFuncao createMany
+   */
+  export type ProjectStakeholderFuncaoCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ProjectStakeholderFuncaos.
+     */
+    data: ProjectStakeholderFuncaoCreateManyInput | ProjectStakeholderFuncaoCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ProjectStakeholderFuncao createManyAndReturn
+   */
+  export type ProjectStakeholderFuncaoCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * The data used to create many ProjectStakeholderFuncaos.
+     */
+    data: ProjectStakeholderFuncaoCreateManyInput | ProjectStakeholderFuncaoCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ProjectStakeholderFuncao update
+   */
+  export type ProjectStakeholderFuncaoUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ProjectStakeholderFuncao.
+     */
+    data: XOR<ProjectStakeholderFuncaoUpdateInput, ProjectStakeholderFuncaoUncheckedUpdateInput>
+    /**
+     * Choose, which ProjectStakeholderFuncao to update.
+     */
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+  }
+
+  /**
+   * ProjectStakeholderFuncao updateMany
+   */
+  export type ProjectStakeholderFuncaoUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ProjectStakeholderFuncaos.
+     */
+    data: XOR<ProjectStakeholderFuncaoUpdateManyMutationInput, ProjectStakeholderFuncaoUncheckedUpdateManyInput>
+    /**
+     * Filter which ProjectStakeholderFuncaos to update
+     */
+    where?: ProjectStakeholderFuncaoWhereInput
+    /**
+     * Limit how many ProjectStakeholderFuncaos to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * ProjectStakeholderFuncao updateManyAndReturn
+   */
+  export type ProjectStakeholderFuncaoUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * The data used to update ProjectStakeholderFuncaos.
+     */
+    data: XOR<ProjectStakeholderFuncaoUpdateManyMutationInput, ProjectStakeholderFuncaoUncheckedUpdateManyInput>
+    /**
+     * Filter which ProjectStakeholderFuncaos to update
+     */
+    where?: ProjectStakeholderFuncaoWhereInput
+    /**
+     * Limit how many ProjectStakeholderFuncaos to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ProjectStakeholderFuncao upsert
+   */
+  export type ProjectStakeholderFuncaoUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ProjectStakeholderFuncao to update in case it exists.
+     */
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+    /**
+     * In case the ProjectStakeholderFuncao found by the `where` argument doesn't exist, create a new ProjectStakeholderFuncao with this data.
+     */
+    create: XOR<ProjectStakeholderFuncaoCreateInput, ProjectStakeholderFuncaoUncheckedCreateInput>
+    /**
+     * In case the ProjectStakeholderFuncao was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ProjectStakeholderFuncaoUpdateInput, ProjectStakeholderFuncaoUncheckedUpdateInput>
+  }
+
+  /**
+   * ProjectStakeholderFuncao delete
+   */
+  export type ProjectStakeholderFuncaoDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
+    /**
+     * Filter which ProjectStakeholderFuncao to delete.
+     */
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+  }
+
+  /**
+   * ProjectStakeholderFuncao deleteMany
+   */
+  export type ProjectStakeholderFuncaoDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ProjectStakeholderFuncaos to delete
+     */
+    where?: ProjectStakeholderFuncaoWhereInput
+    /**
+     * Limit how many ProjectStakeholderFuncaos to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * ProjectStakeholderFuncao without action
+   */
+  export type ProjectStakeholderFuncaoDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ProjectStakeholderFuncao
+     */
+    select?: ProjectStakeholderFuncaoSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ProjectStakeholderFuncao
+     */
+    omit?: ProjectStakeholderFuncaoOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ProjectStakeholderFuncaoInclude<ExtArgs> | null
   }
 
 
@@ -17914,7 +20455,6 @@ export namespace Prisma {
     active: 'active',
     inactiveReason: 'inactiveReason',
     inactivatedAt: 'inactivatedAt',
-    role: 'role',
     departmentId: 'departmentId',
     hourlyRate: 'hourlyRate',
     remuneracao: 'remuneracao',
@@ -18014,11 +20554,30 @@ export namespace Prisma {
     order: 'order',
     remuneracao: 'remuneracao',
     horasDiarias: 'horasDiarias',
-    funcoes: 'funcoes',
     departamentos: 'departamentos'
   };
 
   export type ProjectStakeholderScalarFieldEnum = (typeof ProjectStakeholderScalarFieldEnum)[keyof typeof ProjectStakeholderScalarFieldEnum]
+
+
+  export const UserProjectFuncaoScalarFieldEnum: {
+    id: 'id',
+    userProjectId: 'userProjectId',
+    roleId: 'roleId',
+    ordem: 'ordem'
+  };
+
+  export type UserProjectFuncaoScalarFieldEnum = (typeof UserProjectFuncaoScalarFieldEnum)[keyof typeof UserProjectFuncaoScalarFieldEnum]
+
+
+  export const ProjectStakeholderFuncaoScalarFieldEnum: {
+    id: 'id',
+    projectStakeholderId: 'projectStakeholderId',
+    roleId: 'roleId',
+    ordem: 'ordem'
+  };
+
+  export type ProjectStakeholderFuncaoScalarFieldEnum = (typeof ProjectStakeholderFuncaoScalarFieldEnum)[keyof typeof ProjectStakeholderFuncaoScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -18702,7 +21261,6 @@ export namespace Prisma {
     active?: BoolFilter<"UserProject"> | boolean
     inactiveReason?: StringNullableFilter<"UserProject"> | string | null
     inactivatedAt?: DateTimeNullableFilter<"UserProject"> | Date | string | null
-    role?: StringNullableFilter<"UserProject"> | string | null
     departmentId?: StringNullableFilter<"UserProject"> | string | null
     hourlyRate?: FloatNullableFilter<"UserProject"> | number | null
     remuneracao?: FloatNullableFilter<"UserProject"> | number | null
@@ -18713,6 +21271,7 @@ export namespace Prisma {
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
     project?: XOR<ProjectScalarRelationFilter, ProjectWhereInput>
     department?: XOR<DepartmentNullableScalarRelationFilter, DepartmentWhereInput> | null
+    funcoes?: UserProjectFuncaoListRelationFilter
   }
 
   export type UserProjectOrderByWithRelationInput = {
@@ -18722,7 +21281,6 @@ export namespace Prisma {
     active?: SortOrder
     inactiveReason?: SortOrderInput | SortOrder
     inactivatedAt?: SortOrderInput | SortOrder
-    role?: SortOrderInput | SortOrder
     departmentId?: SortOrderInput | SortOrder
     hourlyRate?: SortOrderInput | SortOrder
     remuneracao?: SortOrderInput | SortOrder
@@ -18733,6 +21291,7 @@ export namespace Prisma {
     user?: UserOrderByWithRelationInput
     project?: ProjectOrderByWithRelationInput
     department?: DepartmentOrderByWithRelationInput
+    funcoes?: UserProjectFuncaoOrderByRelationAggregateInput
   }
 
   export type UserProjectWhereUniqueInput = Prisma.AtLeast<{
@@ -18746,7 +21305,6 @@ export namespace Prisma {
     active?: BoolFilter<"UserProject"> | boolean
     inactiveReason?: StringNullableFilter<"UserProject"> | string | null
     inactivatedAt?: DateTimeNullableFilter<"UserProject"> | Date | string | null
-    role?: StringNullableFilter<"UserProject"> | string | null
     departmentId?: StringNullableFilter<"UserProject"> | string | null
     hourlyRate?: FloatNullableFilter<"UserProject"> | number | null
     remuneracao?: FloatNullableFilter<"UserProject"> | number | null
@@ -18757,6 +21315,7 @@ export namespace Prisma {
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
     project?: XOR<ProjectScalarRelationFilter, ProjectWhereInput>
     department?: XOR<DepartmentNullableScalarRelationFilter, DepartmentWhereInput> | null
+    funcoes?: UserProjectFuncaoListRelationFilter
   }, "id" | "userId_projectId">
 
   export type UserProjectOrderByWithAggregationInput = {
@@ -18766,7 +21325,6 @@ export namespace Prisma {
     active?: SortOrder
     inactiveReason?: SortOrderInput | SortOrder
     inactivatedAt?: SortOrderInput | SortOrder
-    role?: SortOrderInput | SortOrder
     departmentId?: SortOrderInput | SortOrder
     hourlyRate?: SortOrderInput | SortOrder
     remuneracao?: SortOrderInput | SortOrder
@@ -18791,7 +21349,6 @@ export namespace Prisma {
     active?: BoolWithAggregatesFilter<"UserProject"> | boolean
     inactiveReason?: StringNullableWithAggregatesFilter<"UserProject"> | string | null
     inactivatedAt?: DateTimeNullableWithAggregatesFilter<"UserProject"> | Date | string | null
-    role?: StringNullableWithAggregatesFilter<"UserProject"> | string | null
     departmentId?: StringNullableWithAggregatesFilter<"UserProject"> | string | null
     hourlyRate?: FloatNullableWithAggregatesFilter<"UserProject"> | number | null
     remuneracao?: FloatNullableWithAggregatesFilter<"UserProject"> | number | null
@@ -18817,6 +21374,8 @@ export namespace Prisma {
     tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
     permissions?: RolePermissionListRelationFilter
     userProjectRoles?: UserProjectRoleListRelationFilter
+    funcoesDeMembros?: UserProjectFuncaoListRelationFilter
+    funcoesDeExternos?: ProjectStakeholderFuncaoListRelationFilter
   }
 
   export type RoleOrderByWithRelationInput = {
@@ -18832,6 +21391,8 @@ export namespace Prisma {
     tenant?: TenantOrderByWithRelationInput
     permissions?: RolePermissionOrderByRelationAggregateInput
     userProjectRoles?: UserProjectRoleOrderByRelationAggregateInput
+    funcoesDeMembros?: UserProjectFuncaoOrderByRelationAggregateInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoOrderByRelationAggregateInput
   }
 
   export type RoleWhereUniqueInput = Prisma.AtLeast<{
@@ -18851,6 +21412,8 @@ export namespace Prisma {
     tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
     permissions?: RolePermissionListRelationFilter
     userProjectRoles?: UserProjectRoleListRelationFilter
+    funcoesDeMembros?: UserProjectFuncaoListRelationFilter
+    funcoesDeExternos?: ProjectStakeholderFuncaoListRelationFilter
   }, "id" | "nameKey_tenantId_scope">
 
   export type RoleOrderByWithAggregationInput = {
@@ -19232,10 +21795,10 @@ export namespace Prisma {
     order?: IntFilter<"ProjectStakeholder"> | number
     remuneracao?: FloatNullableFilter<"ProjectStakeholder"> | number | null
     horasDiarias?: FloatNullableFilter<"ProjectStakeholder"> | number | null
-    funcoes?: StringNullableListFilter<"ProjectStakeholder">
     departamentos?: StringNullableListFilter<"ProjectStakeholder">
     project?: XOR<ProjectScalarRelationFilter, ProjectWhereInput>
     stakeholder?: XOR<StakeholderScalarRelationFilter, StakeholderWhereInput>
+    funcoes?: ProjectStakeholderFuncaoListRelationFilter
   }
 
   export type ProjectStakeholderOrderByWithRelationInput = {
@@ -19246,10 +21809,10 @@ export namespace Prisma {
     order?: SortOrder
     remuneracao?: SortOrderInput | SortOrder
     horasDiarias?: SortOrderInput | SortOrder
-    funcoes?: SortOrder
     departamentos?: SortOrder
     project?: ProjectOrderByWithRelationInput
     stakeholder?: StakeholderOrderByWithRelationInput
+    funcoes?: ProjectStakeholderFuncaoOrderByRelationAggregateInput
   }
 
   export type ProjectStakeholderWhereUniqueInput = Prisma.AtLeast<{
@@ -19264,10 +21827,10 @@ export namespace Prisma {
     order?: IntFilter<"ProjectStakeholder"> | number
     remuneracao?: FloatNullableFilter<"ProjectStakeholder"> | number | null
     horasDiarias?: FloatNullableFilter<"ProjectStakeholder"> | number | null
-    funcoes?: StringNullableListFilter<"ProjectStakeholder">
     departamentos?: StringNullableListFilter<"ProjectStakeholder">
     project?: XOR<ProjectScalarRelationFilter, ProjectWhereInput>
     stakeholder?: XOR<StakeholderScalarRelationFilter, StakeholderWhereInput>
+    funcoes?: ProjectStakeholderFuncaoListRelationFilter
   }, "id" | "projectId_stakeholderId">
 
   export type ProjectStakeholderOrderByWithAggregationInput = {
@@ -19278,7 +21841,6 @@ export namespace Prisma {
     order?: SortOrder
     remuneracao?: SortOrderInput | SortOrder
     horasDiarias?: SortOrderInput | SortOrder
-    funcoes?: SortOrder
     departamentos?: SortOrder
     _count?: ProjectStakeholderCountOrderByAggregateInput
     _avg?: ProjectStakeholderAvgOrderByAggregateInput
@@ -19298,8 +21860,119 @@ export namespace Prisma {
     order?: IntWithAggregatesFilter<"ProjectStakeholder"> | number
     remuneracao?: FloatNullableWithAggregatesFilter<"ProjectStakeholder"> | number | null
     horasDiarias?: FloatNullableWithAggregatesFilter<"ProjectStakeholder"> | number | null
-    funcoes?: StringNullableListFilter<"ProjectStakeholder">
     departamentos?: StringNullableListFilter<"ProjectStakeholder">
+  }
+
+  export type UserProjectFuncaoWhereInput = {
+    AND?: UserProjectFuncaoWhereInput | UserProjectFuncaoWhereInput[]
+    OR?: UserProjectFuncaoWhereInput[]
+    NOT?: UserProjectFuncaoWhereInput | UserProjectFuncaoWhereInput[]
+    id?: StringFilter<"UserProjectFuncao"> | string
+    userProjectId?: StringFilter<"UserProjectFuncao"> | string
+    roleId?: StringFilter<"UserProjectFuncao"> | string
+    ordem?: IntFilter<"UserProjectFuncao"> | number
+    userProject?: XOR<UserProjectScalarRelationFilter, UserProjectWhereInput>
+    role?: XOR<RoleScalarRelationFilter, RoleWhereInput>
+  }
+
+  export type UserProjectFuncaoOrderByWithRelationInput = {
+    id?: SortOrder
+    userProjectId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+    userProject?: UserProjectOrderByWithRelationInput
+    role?: RoleOrderByWithRelationInput
+  }
+
+  export type UserProjectFuncaoWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    userProjectId_roleId?: UserProjectFuncaoUserProjectIdRoleIdCompoundUniqueInput
+    AND?: UserProjectFuncaoWhereInput | UserProjectFuncaoWhereInput[]
+    OR?: UserProjectFuncaoWhereInput[]
+    NOT?: UserProjectFuncaoWhereInput | UserProjectFuncaoWhereInput[]
+    userProjectId?: StringFilter<"UserProjectFuncao"> | string
+    roleId?: StringFilter<"UserProjectFuncao"> | string
+    ordem?: IntFilter<"UserProjectFuncao"> | number
+    userProject?: XOR<UserProjectScalarRelationFilter, UserProjectWhereInput>
+    role?: XOR<RoleScalarRelationFilter, RoleWhereInput>
+  }, "id" | "userProjectId_roleId">
+
+  export type UserProjectFuncaoOrderByWithAggregationInput = {
+    id?: SortOrder
+    userProjectId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+    _count?: UserProjectFuncaoCountOrderByAggregateInput
+    _avg?: UserProjectFuncaoAvgOrderByAggregateInput
+    _max?: UserProjectFuncaoMaxOrderByAggregateInput
+    _min?: UserProjectFuncaoMinOrderByAggregateInput
+    _sum?: UserProjectFuncaoSumOrderByAggregateInput
+  }
+
+  export type UserProjectFuncaoScalarWhereWithAggregatesInput = {
+    AND?: UserProjectFuncaoScalarWhereWithAggregatesInput | UserProjectFuncaoScalarWhereWithAggregatesInput[]
+    OR?: UserProjectFuncaoScalarWhereWithAggregatesInput[]
+    NOT?: UserProjectFuncaoScalarWhereWithAggregatesInput | UserProjectFuncaoScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"UserProjectFuncao"> | string
+    userProjectId?: StringWithAggregatesFilter<"UserProjectFuncao"> | string
+    roleId?: StringWithAggregatesFilter<"UserProjectFuncao"> | string
+    ordem?: IntWithAggregatesFilter<"UserProjectFuncao"> | number
+  }
+
+  export type ProjectStakeholderFuncaoWhereInput = {
+    AND?: ProjectStakeholderFuncaoWhereInput | ProjectStakeholderFuncaoWhereInput[]
+    OR?: ProjectStakeholderFuncaoWhereInput[]
+    NOT?: ProjectStakeholderFuncaoWhereInput | ProjectStakeholderFuncaoWhereInput[]
+    id?: StringFilter<"ProjectStakeholderFuncao"> | string
+    projectStakeholderId?: StringFilter<"ProjectStakeholderFuncao"> | string
+    roleId?: StringFilter<"ProjectStakeholderFuncao"> | string
+    ordem?: IntFilter<"ProjectStakeholderFuncao"> | number
+    projectStakeholder?: XOR<ProjectStakeholderScalarRelationFilter, ProjectStakeholderWhereInput>
+    role?: XOR<RoleScalarRelationFilter, RoleWhereInput>
+  }
+
+  export type ProjectStakeholderFuncaoOrderByWithRelationInput = {
+    id?: SortOrder
+    projectStakeholderId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+    projectStakeholder?: ProjectStakeholderOrderByWithRelationInput
+    role?: RoleOrderByWithRelationInput
+  }
+
+  export type ProjectStakeholderFuncaoWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    projectStakeholderId_roleId?: ProjectStakeholderFuncaoProjectStakeholderIdRoleIdCompoundUniqueInput
+    AND?: ProjectStakeholderFuncaoWhereInput | ProjectStakeholderFuncaoWhereInput[]
+    OR?: ProjectStakeholderFuncaoWhereInput[]
+    NOT?: ProjectStakeholderFuncaoWhereInput | ProjectStakeholderFuncaoWhereInput[]
+    projectStakeholderId?: StringFilter<"ProjectStakeholderFuncao"> | string
+    roleId?: StringFilter<"ProjectStakeholderFuncao"> | string
+    ordem?: IntFilter<"ProjectStakeholderFuncao"> | number
+    projectStakeholder?: XOR<ProjectStakeholderScalarRelationFilter, ProjectStakeholderWhereInput>
+    role?: XOR<RoleScalarRelationFilter, RoleWhereInput>
+  }, "id" | "projectStakeholderId_roleId">
+
+  export type ProjectStakeholderFuncaoOrderByWithAggregationInput = {
+    id?: SortOrder
+    projectStakeholderId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+    _count?: ProjectStakeholderFuncaoCountOrderByAggregateInput
+    _avg?: ProjectStakeholderFuncaoAvgOrderByAggregateInput
+    _max?: ProjectStakeholderFuncaoMaxOrderByAggregateInput
+    _min?: ProjectStakeholderFuncaoMinOrderByAggregateInput
+    _sum?: ProjectStakeholderFuncaoSumOrderByAggregateInput
+  }
+
+  export type ProjectStakeholderFuncaoScalarWhereWithAggregatesInput = {
+    AND?: ProjectStakeholderFuncaoScalarWhereWithAggregatesInput | ProjectStakeholderFuncaoScalarWhereWithAggregatesInput[]
+    OR?: ProjectStakeholderFuncaoScalarWhereWithAggregatesInput[]
+    NOT?: ProjectStakeholderFuncaoScalarWhereWithAggregatesInput | ProjectStakeholderFuncaoScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"ProjectStakeholderFuncao"> | string
+    projectStakeholderId?: StringWithAggregatesFilter<"ProjectStakeholderFuncao"> | string
+    roleId?: StringWithAggregatesFilter<"ProjectStakeholderFuncao"> | string
+    ordem?: IntWithAggregatesFilter<"ProjectStakeholderFuncao"> | number
   }
 
   export type TenantCreateInput = {
@@ -19911,7 +22584,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
     horasDiarias?: number | null
@@ -19921,6 +22593,7 @@ export namespace Prisma {
     user: UserCreateNestedOneWithoutProjectsInput
     project: ProjectCreateNestedOneWithoutMembersInput
     department?: DepartmentCreateNestedOneWithoutUserProjectsInput
+    funcoes?: UserProjectFuncaoCreateNestedManyWithoutUserProjectInput
   }
 
   export type UserProjectUncheckedCreateInput = {
@@ -19930,7 +22603,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -19938,6 +22610,7 @@ export namespace Prisma {
     startDate?: Date | string
     endDate?: Date | string | null
     order?: number
+    funcoes?: UserProjectFuncaoUncheckedCreateNestedManyWithoutUserProjectInput
   }
 
   export type UserProjectUpdateInput = {
@@ -19945,7 +22618,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -19955,6 +22627,7 @@ export namespace Prisma {
     user?: UserUpdateOneRequiredWithoutProjectsNestedInput
     project?: ProjectUpdateOneRequiredWithoutMembersNestedInput
     department?: DepartmentUpdateOneWithoutUserProjectsNestedInput
+    funcoes?: UserProjectFuncaoUpdateManyWithoutUserProjectNestedInput
   }
 
   export type UserProjectUncheckedUpdateInput = {
@@ -19964,7 +22637,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -19972,6 +22644,7 @@ export namespace Prisma {
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     order?: IntFieldUpdateOperationsInput | number
+    funcoes?: UserProjectFuncaoUncheckedUpdateManyWithoutUserProjectNestedInput
   }
 
   export type UserProjectCreateManyInput = {
@@ -19981,7 +22654,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -19996,7 +22668,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -20012,7 +22683,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -20034,6 +22704,8 @@ export namespace Prisma {
     tenant: TenantCreateNestedOneWithoutRolesInput
     permissions?: RolePermissionCreateNestedManyWithoutRoleInput
     userProjectRoles?: UserProjectRoleCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoCreateNestedManyWithoutRoleInput
   }
 
   export type RoleUncheckedCreateInput = {
@@ -20048,6 +22720,8 @@ export namespace Prisma {
     updatedAt?: Date | string
     permissions?: RolePermissionUncheckedCreateNestedManyWithoutRoleInput
     userProjectRoles?: UserProjectRoleUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutRoleInput
   }
 
   export type RoleUpdateInput = {
@@ -20062,6 +22736,8 @@ export namespace Prisma {
     tenant?: TenantUpdateOneRequiredWithoutRolesNestedInput
     permissions?: RolePermissionUpdateManyWithoutRoleNestedInput
     userProjectRoles?: UserProjectRoleUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUpdateManyWithoutRoleNestedInput
   }
 
   export type RoleUncheckedUpdateInput = {
@@ -20076,6 +22752,8 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissions?: RolePermissionUncheckedUpdateManyWithoutRoleNestedInput
     userProjectRoles?: UserProjectRoleUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedUpdateManyWithoutRoleNestedInput
   }
 
   export type RoleCreateManyInput = {
@@ -20484,10 +23162,10 @@ export namespace Prisma {
     order?: number
     remuneracao?: number | null
     horasDiarias?: number | null
-    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
     departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
     project: ProjectCreateNestedOneWithoutStakeholdersInput
     stakeholder: StakeholderCreateNestedOneWithoutProjectsInput
+    funcoes?: ProjectStakeholderFuncaoCreateNestedManyWithoutProjectStakeholderInput
   }
 
   export type ProjectStakeholderUncheckedCreateInput = {
@@ -20498,8 +23176,8 @@ export namespace Prisma {
     order?: number
     remuneracao?: number | null
     horasDiarias?: number | null
-    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
     departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
+    funcoes?: ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutProjectStakeholderInput
   }
 
   export type ProjectStakeholderUpdateInput = {
@@ -20508,10 +23186,10 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
     project?: ProjectUpdateOneRequiredWithoutStakeholdersNestedInput
     stakeholder?: StakeholderUpdateOneRequiredWithoutProjectsNestedInput
+    funcoes?: ProjectStakeholderFuncaoUpdateManyWithoutProjectStakeholderNestedInput
   }
 
   export type ProjectStakeholderUncheckedUpdateInput = {
@@ -20522,8 +23200,8 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
+    funcoes?: ProjectStakeholderFuncaoUncheckedUpdateManyWithoutProjectStakeholderNestedInput
   }
 
   export type ProjectStakeholderCreateManyInput = {
@@ -20534,7 +23212,6 @@ export namespace Prisma {
     order?: number
     remuneracao?: number | null
     horasDiarias?: number | null
-    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
     departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
   }
 
@@ -20544,7 +23221,6 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
   }
 
@@ -20556,8 +23232,101 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
+  }
+
+  export type UserProjectFuncaoCreateInput = {
+    id?: string
+    ordem?: number
+    userProject: UserProjectCreateNestedOneWithoutFuncoesInput
+    role: RoleCreateNestedOneWithoutFuncoesDeMembrosInput
+  }
+
+  export type UserProjectFuncaoUncheckedCreateInput = {
+    id?: string
+    userProjectId: string
+    roleId: string
+    ordem?: number
+  }
+
+  export type UserProjectFuncaoUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+    userProject?: UserProjectUpdateOneRequiredWithoutFuncoesNestedInput
+    role?: RoleUpdateOneRequiredWithoutFuncoesDeMembrosNestedInput
+  }
+
+  export type UserProjectFuncaoUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userProjectId?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type UserProjectFuncaoCreateManyInput = {
+    id?: string
+    userProjectId: string
+    roleId: string
+    ordem?: number
+  }
+
+  export type UserProjectFuncaoUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type UserProjectFuncaoUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userProjectId?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type ProjectStakeholderFuncaoCreateInput = {
+    id?: string
+    ordem?: number
+    projectStakeholder: ProjectStakeholderCreateNestedOneWithoutFuncoesInput
+    role: RoleCreateNestedOneWithoutFuncoesDeExternosInput
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedCreateInput = {
+    id?: string
+    projectStakeholderId: string
+    roleId: string
+    ordem?: number
+  }
+
+  export type ProjectStakeholderFuncaoUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+    projectStakeholder?: ProjectStakeholderUpdateOneRequiredWithoutFuncoesNestedInput
+    role?: RoleUpdateOneRequiredWithoutFuncoesDeExternosNestedInput
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    projectStakeholderId?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type ProjectStakeholderFuncaoCreateManyInput = {
+    id?: string
+    projectStakeholderId: string
+    roleId: string
+    ordem?: number
+  }
+
+  export type ProjectStakeholderFuncaoUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    projectStakeholderId?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
   }
 
   export type StringFilter<$PrismaModel = never> = {
@@ -21220,6 +23989,16 @@ export namespace Prisma {
     isNot?: DepartmentWhereInput | null
   }
 
+  export type UserProjectFuncaoListRelationFilter = {
+    every?: UserProjectFuncaoWhereInput
+    some?: UserProjectFuncaoWhereInput
+    none?: UserProjectFuncaoWhereInput
+  }
+
+  export type UserProjectFuncaoOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type UserProjectUserIdProjectIdCompoundUniqueInput = {
     userId: string
     projectId: string
@@ -21232,7 +24011,6 @@ export namespace Prisma {
     active?: SortOrder
     inactiveReason?: SortOrder
     inactivatedAt?: SortOrder
-    role?: SortOrder
     departmentId?: SortOrder
     hourlyRate?: SortOrder
     remuneracao?: SortOrder
@@ -21256,7 +24034,6 @@ export namespace Prisma {
     active?: SortOrder
     inactiveReason?: SortOrder
     inactivatedAt?: SortOrder
-    role?: SortOrder
     departmentId?: SortOrder
     hourlyRate?: SortOrder
     remuneracao?: SortOrder
@@ -21273,7 +24050,6 @@ export namespace Prisma {
     active?: SortOrder
     inactiveReason?: SortOrder
     inactivatedAt?: SortOrder
-    role?: SortOrder
     departmentId?: SortOrder
     hourlyRate?: SortOrder
     remuneracao?: SortOrder
@@ -21303,7 +24079,17 @@ export namespace Prisma {
     none?: RolePermissionWhereInput
   }
 
+  export type ProjectStakeholderFuncaoListRelationFilter = {
+    every?: ProjectStakeholderFuncaoWhereInput
+    some?: ProjectStakeholderFuncaoWhereInput
+    none?: ProjectStakeholderFuncaoWhereInput
+  }
+
   export type RolePermissionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type ProjectStakeholderFuncaoOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -21563,7 +24349,6 @@ export namespace Prisma {
     order?: SortOrder
     remuneracao?: SortOrder
     horasDiarias?: SortOrder
-    funcoes?: SortOrder
     departamentos?: SortOrder
   }
 
@@ -21597,6 +24382,84 @@ export namespace Prisma {
     order?: SortOrder
     remuneracao?: SortOrder
     horasDiarias?: SortOrder
+  }
+
+  export type UserProjectScalarRelationFilter = {
+    is?: UserProjectWhereInput
+    isNot?: UserProjectWhereInput
+  }
+
+  export type UserProjectFuncaoUserProjectIdRoleIdCompoundUniqueInput = {
+    userProjectId: string
+    roleId: string
+  }
+
+  export type UserProjectFuncaoCountOrderByAggregateInput = {
+    id?: SortOrder
+    userProjectId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+  }
+
+  export type UserProjectFuncaoAvgOrderByAggregateInput = {
+    ordem?: SortOrder
+  }
+
+  export type UserProjectFuncaoMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userProjectId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+  }
+
+  export type UserProjectFuncaoMinOrderByAggregateInput = {
+    id?: SortOrder
+    userProjectId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+  }
+
+  export type UserProjectFuncaoSumOrderByAggregateInput = {
+    ordem?: SortOrder
+  }
+
+  export type ProjectStakeholderScalarRelationFilter = {
+    is?: ProjectStakeholderWhereInput
+    isNot?: ProjectStakeholderWhereInput
+  }
+
+  export type ProjectStakeholderFuncaoProjectStakeholderIdRoleIdCompoundUniqueInput = {
+    projectStakeholderId: string
+    roleId: string
+  }
+
+  export type ProjectStakeholderFuncaoCountOrderByAggregateInput = {
+    id?: SortOrder
+    projectStakeholderId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+  }
+
+  export type ProjectStakeholderFuncaoAvgOrderByAggregateInput = {
+    ordem?: SortOrder
+  }
+
+  export type ProjectStakeholderFuncaoMaxOrderByAggregateInput = {
+    id?: SortOrder
+    projectStakeholderId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+  }
+
+  export type ProjectStakeholderFuncaoMinOrderByAggregateInput = {
+    id?: SortOrder
+    projectStakeholderId?: SortOrder
+    roleId?: SortOrder
+    ordem?: SortOrder
+  }
+
+  export type ProjectStakeholderFuncaoSumOrderByAggregateInput = {
+    ordem?: SortOrder
   }
 
   export type ProjectCreateNestedManyWithoutTenantInput = {
@@ -22326,6 +25189,20 @@ export namespace Prisma {
     connect?: DepartmentWhereUniqueInput
   }
 
+  export type UserProjectFuncaoCreateNestedManyWithoutUserProjectInput = {
+    create?: XOR<UserProjectFuncaoCreateWithoutUserProjectInput, UserProjectFuncaoUncheckedCreateWithoutUserProjectInput> | UserProjectFuncaoCreateWithoutUserProjectInput[] | UserProjectFuncaoUncheckedCreateWithoutUserProjectInput[]
+    connectOrCreate?: UserProjectFuncaoCreateOrConnectWithoutUserProjectInput | UserProjectFuncaoCreateOrConnectWithoutUserProjectInput[]
+    createMany?: UserProjectFuncaoCreateManyUserProjectInputEnvelope
+    connect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+  }
+
+  export type UserProjectFuncaoUncheckedCreateNestedManyWithoutUserProjectInput = {
+    create?: XOR<UserProjectFuncaoCreateWithoutUserProjectInput, UserProjectFuncaoUncheckedCreateWithoutUserProjectInput> | UserProjectFuncaoCreateWithoutUserProjectInput[] | UserProjectFuncaoUncheckedCreateWithoutUserProjectInput[]
+    connectOrCreate?: UserProjectFuncaoCreateOrConnectWithoutUserProjectInput | UserProjectFuncaoCreateOrConnectWithoutUserProjectInput[]
+    createMany?: UserProjectFuncaoCreateManyUserProjectInputEnvelope
+    connect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+  }
+
   export type UserUpdateOneRequiredWithoutProjectsNestedInput = {
     create?: XOR<UserCreateWithoutProjectsInput, UserUncheckedCreateWithoutProjectsInput>
     connectOrCreate?: UserCreateOrConnectWithoutProjectsInput
@@ -22352,6 +25229,34 @@ export namespace Prisma {
     update?: XOR<XOR<DepartmentUpdateToOneWithWhereWithoutUserProjectsInput, DepartmentUpdateWithoutUserProjectsInput>, DepartmentUncheckedUpdateWithoutUserProjectsInput>
   }
 
+  export type UserProjectFuncaoUpdateManyWithoutUserProjectNestedInput = {
+    create?: XOR<UserProjectFuncaoCreateWithoutUserProjectInput, UserProjectFuncaoUncheckedCreateWithoutUserProjectInput> | UserProjectFuncaoCreateWithoutUserProjectInput[] | UserProjectFuncaoUncheckedCreateWithoutUserProjectInput[]
+    connectOrCreate?: UserProjectFuncaoCreateOrConnectWithoutUserProjectInput | UserProjectFuncaoCreateOrConnectWithoutUserProjectInput[]
+    upsert?: UserProjectFuncaoUpsertWithWhereUniqueWithoutUserProjectInput | UserProjectFuncaoUpsertWithWhereUniqueWithoutUserProjectInput[]
+    createMany?: UserProjectFuncaoCreateManyUserProjectInputEnvelope
+    set?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    disconnect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    delete?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    connect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    update?: UserProjectFuncaoUpdateWithWhereUniqueWithoutUserProjectInput | UserProjectFuncaoUpdateWithWhereUniqueWithoutUserProjectInput[]
+    updateMany?: UserProjectFuncaoUpdateManyWithWhereWithoutUserProjectInput | UserProjectFuncaoUpdateManyWithWhereWithoutUserProjectInput[]
+    deleteMany?: UserProjectFuncaoScalarWhereInput | UserProjectFuncaoScalarWhereInput[]
+  }
+
+  export type UserProjectFuncaoUncheckedUpdateManyWithoutUserProjectNestedInput = {
+    create?: XOR<UserProjectFuncaoCreateWithoutUserProjectInput, UserProjectFuncaoUncheckedCreateWithoutUserProjectInput> | UserProjectFuncaoCreateWithoutUserProjectInput[] | UserProjectFuncaoUncheckedCreateWithoutUserProjectInput[]
+    connectOrCreate?: UserProjectFuncaoCreateOrConnectWithoutUserProjectInput | UserProjectFuncaoCreateOrConnectWithoutUserProjectInput[]
+    upsert?: UserProjectFuncaoUpsertWithWhereUniqueWithoutUserProjectInput | UserProjectFuncaoUpsertWithWhereUniqueWithoutUserProjectInput[]
+    createMany?: UserProjectFuncaoCreateManyUserProjectInputEnvelope
+    set?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    disconnect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    delete?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    connect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    update?: UserProjectFuncaoUpdateWithWhereUniqueWithoutUserProjectInput | UserProjectFuncaoUpdateWithWhereUniqueWithoutUserProjectInput[]
+    updateMany?: UserProjectFuncaoUpdateManyWithWhereWithoutUserProjectInput | UserProjectFuncaoUpdateManyWithWhereWithoutUserProjectInput[]
+    deleteMany?: UserProjectFuncaoScalarWhereInput | UserProjectFuncaoScalarWhereInput[]
+  }
+
   export type TenantCreateNestedOneWithoutRolesInput = {
     create?: XOR<TenantCreateWithoutRolesInput, TenantUncheckedCreateWithoutRolesInput>
     connectOrCreate?: TenantCreateOrConnectWithoutRolesInput
@@ -22372,6 +25277,20 @@ export namespace Prisma {
     connect?: UserProjectRoleWhereUniqueInput | UserProjectRoleWhereUniqueInput[]
   }
 
+  export type UserProjectFuncaoCreateNestedManyWithoutRoleInput = {
+    create?: XOR<UserProjectFuncaoCreateWithoutRoleInput, UserProjectFuncaoUncheckedCreateWithoutRoleInput> | UserProjectFuncaoCreateWithoutRoleInput[] | UserProjectFuncaoUncheckedCreateWithoutRoleInput[]
+    connectOrCreate?: UserProjectFuncaoCreateOrConnectWithoutRoleInput | UserProjectFuncaoCreateOrConnectWithoutRoleInput[]
+    createMany?: UserProjectFuncaoCreateManyRoleInputEnvelope
+    connect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+  }
+
+  export type ProjectStakeholderFuncaoCreateNestedManyWithoutRoleInput = {
+    create?: XOR<ProjectStakeholderFuncaoCreateWithoutRoleInput, ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput> | ProjectStakeholderFuncaoCreateWithoutRoleInput[] | ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput[]
+    connectOrCreate?: ProjectStakeholderFuncaoCreateOrConnectWithoutRoleInput | ProjectStakeholderFuncaoCreateOrConnectWithoutRoleInput[]
+    createMany?: ProjectStakeholderFuncaoCreateManyRoleInputEnvelope
+    connect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+  }
+
   export type RolePermissionUncheckedCreateNestedManyWithoutRoleInput = {
     create?: XOR<RolePermissionCreateWithoutRoleInput, RolePermissionUncheckedCreateWithoutRoleInput> | RolePermissionCreateWithoutRoleInput[] | RolePermissionUncheckedCreateWithoutRoleInput[]
     connectOrCreate?: RolePermissionCreateOrConnectWithoutRoleInput | RolePermissionCreateOrConnectWithoutRoleInput[]
@@ -22384,6 +25303,20 @@ export namespace Prisma {
     connectOrCreate?: UserProjectRoleCreateOrConnectWithoutRoleInput | UserProjectRoleCreateOrConnectWithoutRoleInput[]
     createMany?: UserProjectRoleCreateManyRoleInputEnvelope
     connect?: UserProjectRoleWhereUniqueInput | UserProjectRoleWhereUniqueInput[]
+  }
+
+  export type UserProjectFuncaoUncheckedCreateNestedManyWithoutRoleInput = {
+    create?: XOR<UserProjectFuncaoCreateWithoutRoleInput, UserProjectFuncaoUncheckedCreateWithoutRoleInput> | UserProjectFuncaoCreateWithoutRoleInput[] | UserProjectFuncaoUncheckedCreateWithoutRoleInput[]
+    connectOrCreate?: UserProjectFuncaoCreateOrConnectWithoutRoleInput | UserProjectFuncaoCreateOrConnectWithoutRoleInput[]
+    createMany?: UserProjectFuncaoCreateManyRoleInputEnvelope
+    connect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutRoleInput = {
+    create?: XOR<ProjectStakeholderFuncaoCreateWithoutRoleInput, ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput> | ProjectStakeholderFuncaoCreateWithoutRoleInput[] | ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput[]
+    connectOrCreate?: ProjectStakeholderFuncaoCreateOrConnectWithoutRoleInput | ProjectStakeholderFuncaoCreateOrConnectWithoutRoleInput[]
+    createMany?: ProjectStakeholderFuncaoCreateManyRoleInputEnvelope
+    connect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
   }
 
   export type EnumRoleScopeFieldUpdateOperationsInput = {
@@ -22426,6 +25359,34 @@ export namespace Prisma {
     deleteMany?: UserProjectRoleScalarWhereInput | UserProjectRoleScalarWhereInput[]
   }
 
+  export type UserProjectFuncaoUpdateManyWithoutRoleNestedInput = {
+    create?: XOR<UserProjectFuncaoCreateWithoutRoleInput, UserProjectFuncaoUncheckedCreateWithoutRoleInput> | UserProjectFuncaoCreateWithoutRoleInput[] | UserProjectFuncaoUncheckedCreateWithoutRoleInput[]
+    connectOrCreate?: UserProjectFuncaoCreateOrConnectWithoutRoleInput | UserProjectFuncaoCreateOrConnectWithoutRoleInput[]
+    upsert?: UserProjectFuncaoUpsertWithWhereUniqueWithoutRoleInput | UserProjectFuncaoUpsertWithWhereUniqueWithoutRoleInput[]
+    createMany?: UserProjectFuncaoCreateManyRoleInputEnvelope
+    set?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    disconnect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    delete?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    connect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    update?: UserProjectFuncaoUpdateWithWhereUniqueWithoutRoleInput | UserProjectFuncaoUpdateWithWhereUniqueWithoutRoleInput[]
+    updateMany?: UserProjectFuncaoUpdateManyWithWhereWithoutRoleInput | UserProjectFuncaoUpdateManyWithWhereWithoutRoleInput[]
+    deleteMany?: UserProjectFuncaoScalarWhereInput | UserProjectFuncaoScalarWhereInput[]
+  }
+
+  export type ProjectStakeholderFuncaoUpdateManyWithoutRoleNestedInput = {
+    create?: XOR<ProjectStakeholderFuncaoCreateWithoutRoleInput, ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput> | ProjectStakeholderFuncaoCreateWithoutRoleInput[] | ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput[]
+    connectOrCreate?: ProjectStakeholderFuncaoCreateOrConnectWithoutRoleInput | ProjectStakeholderFuncaoCreateOrConnectWithoutRoleInput[]
+    upsert?: ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutRoleInput | ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutRoleInput[]
+    createMany?: ProjectStakeholderFuncaoCreateManyRoleInputEnvelope
+    set?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    disconnect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    delete?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    connect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    update?: ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutRoleInput | ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutRoleInput[]
+    updateMany?: ProjectStakeholderFuncaoUpdateManyWithWhereWithoutRoleInput | ProjectStakeholderFuncaoUpdateManyWithWhereWithoutRoleInput[]
+    deleteMany?: ProjectStakeholderFuncaoScalarWhereInput | ProjectStakeholderFuncaoScalarWhereInput[]
+  }
+
   export type RolePermissionUncheckedUpdateManyWithoutRoleNestedInput = {
     create?: XOR<RolePermissionCreateWithoutRoleInput, RolePermissionUncheckedCreateWithoutRoleInput> | RolePermissionCreateWithoutRoleInput[] | RolePermissionUncheckedCreateWithoutRoleInput[]
     connectOrCreate?: RolePermissionCreateOrConnectWithoutRoleInput | RolePermissionCreateOrConnectWithoutRoleInput[]
@@ -22452,6 +25413,34 @@ export namespace Prisma {
     update?: UserProjectRoleUpdateWithWhereUniqueWithoutRoleInput | UserProjectRoleUpdateWithWhereUniqueWithoutRoleInput[]
     updateMany?: UserProjectRoleUpdateManyWithWhereWithoutRoleInput | UserProjectRoleUpdateManyWithWhereWithoutRoleInput[]
     deleteMany?: UserProjectRoleScalarWhereInput | UserProjectRoleScalarWhereInput[]
+  }
+
+  export type UserProjectFuncaoUncheckedUpdateManyWithoutRoleNestedInput = {
+    create?: XOR<UserProjectFuncaoCreateWithoutRoleInput, UserProjectFuncaoUncheckedCreateWithoutRoleInput> | UserProjectFuncaoCreateWithoutRoleInput[] | UserProjectFuncaoUncheckedCreateWithoutRoleInput[]
+    connectOrCreate?: UserProjectFuncaoCreateOrConnectWithoutRoleInput | UserProjectFuncaoCreateOrConnectWithoutRoleInput[]
+    upsert?: UserProjectFuncaoUpsertWithWhereUniqueWithoutRoleInput | UserProjectFuncaoUpsertWithWhereUniqueWithoutRoleInput[]
+    createMany?: UserProjectFuncaoCreateManyRoleInputEnvelope
+    set?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    disconnect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    delete?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    connect?: UserProjectFuncaoWhereUniqueInput | UserProjectFuncaoWhereUniqueInput[]
+    update?: UserProjectFuncaoUpdateWithWhereUniqueWithoutRoleInput | UserProjectFuncaoUpdateWithWhereUniqueWithoutRoleInput[]
+    updateMany?: UserProjectFuncaoUpdateManyWithWhereWithoutRoleInput | UserProjectFuncaoUpdateManyWithWhereWithoutRoleInput[]
+    deleteMany?: UserProjectFuncaoScalarWhereInput | UserProjectFuncaoScalarWhereInput[]
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedUpdateManyWithoutRoleNestedInput = {
+    create?: XOR<ProjectStakeholderFuncaoCreateWithoutRoleInput, ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput> | ProjectStakeholderFuncaoCreateWithoutRoleInput[] | ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput[]
+    connectOrCreate?: ProjectStakeholderFuncaoCreateOrConnectWithoutRoleInput | ProjectStakeholderFuncaoCreateOrConnectWithoutRoleInput[]
+    upsert?: ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutRoleInput | ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutRoleInput[]
+    createMany?: ProjectStakeholderFuncaoCreateManyRoleInputEnvelope
+    set?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    disconnect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    delete?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    connect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    update?: ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutRoleInput | ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutRoleInput[]
+    updateMany?: ProjectStakeholderFuncaoUpdateManyWithWhereWithoutRoleInput | ProjectStakeholderFuncaoUpdateManyWithWhereWithoutRoleInput[]
+    deleteMany?: ProjectStakeholderFuncaoScalarWhereInput | ProjectStakeholderFuncaoScalarWhereInput[]
   }
 
   export type RolePermissionCreateNestedManyWithoutPermissionInput = {
@@ -22638,10 +25627,6 @@ export namespace Prisma {
     deleteMany?: ProjectStakeholderScalarWhereInput | ProjectStakeholderScalarWhereInput[]
   }
 
-  export type ProjectStakeholderCreatefuncoesInput = {
-    set: string[]
-  }
-
   export type ProjectStakeholderCreatedepartamentosInput = {
     set: string[]
   }
@@ -22658,9 +25643,18 @@ export namespace Prisma {
     connect?: StakeholderWhereUniqueInput
   }
 
-  export type ProjectStakeholderUpdatefuncoesInput = {
-    set?: string[]
-    push?: string | string[]
+  export type ProjectStakeholderFuncaoCreateNestedManyWithoutProjectStakeholderInput = {
+    create?: XOR<ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput, ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput> | ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput[] | ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput[]
+    connectOrCreate?: ProjectStakeholderFuncaoCreateOrConnectWithoutProjectStakeholderInput | ProjectStakeholderFuncaoCreateOrConnectWithoutProjectStakeholderInput[]
+    createMany?: ProjectStakeholderFuncaoCreateManyProjectStakeholderInputEnvelope
+    connect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutProjectStakeholderInput = {
+    create?: XOR<ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput, ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput> | ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput[] | ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput[]
+    connectOrCreate?: ProjectStakeholderFuncaoCreateOrConnectWithoutProjectStakeholderInput | ProjectStakeholderFuncaoCreateOrConnectWithoutProjectStakeholderInput[]
+    createMany?: ProjectStakeholderFuncaoCreateManyProjectStakeholderInputEnvelope
+    connect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
   }
 
   export type ProjectStakeholderUpdatedepartamentosInput = {
@@ -22682,6 +25676,90 @@ export namespace Prisma {
     upsert?: StakeholderUpsertWithoutProjectsInput
     connect?: StakeholderWhereUniqueInput
     update?: XOR<XOR<StakeholderUpdateToOneWithWhereWithoutProjectsInput, StakeholderUpdateWithoutProjectsInput>, StakeholderUncheckedUpdateWithoutProjectsInput>
+  }
+
+  export type ProjectStakeholderFuncaoUpdateManyWithoutProjectStakeholderNestedInput = {
+    create?: XOR<ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput, ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput> | ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput[] | ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput[]
+    connectOrCreate?: ProjectStakeholderFuncaoCreateOrConnectWithoutProjectStakeholderInput | ProjectStakeholderFuncaoCreateOrConnectWithoutProjectStakeholderInput[]
+    upsert?: ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutProjectStakeholderInput | ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutProjectStakeholderInput[]
+    createMany?: ProjectStakeholderFuncaoCreateManyProjectStakeholderInputEnvelope
+    set?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    disconnect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    delete?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    connect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    update?: ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutProjectStakeholderInput | ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutProjectStakeholderInput[]
+    updateMany?: ProjectStakeholderFuncaoUpdateManyWithWhereWithoutProjectStakeholderInput | ProjectStakeholderFuncaoUpdateManyWithWhereWithoutProjectStakeholderInput[]
+    deleteMany?: ProjectStakeholderFuncaoScalarWhereInput | ProjectStakeholderFuncaoScalarWhereInput[]
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedUpdateManyWithoutProjectStakeholderNestedInput = {
+    create?: XOR<ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput, ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput> | ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput[] | ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput[]
+    connectOrCreate?: ProjectStakeholderFuncaoCreateOrConnectWithoutProjectStakeholderInput | ProjectStakeholderFuncaoCreateOrConnectWithoutProjectStakeholderInput[]
+    upsert?: ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutProjectStakeholderInput | ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutProjectStakeholderInput[]
+    createMany?: ProjectStakeholderFuncaoCreateManyProjectStakeholderInputEnvelope
+    set?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    disconnect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    delete?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    connect?: ProjectStakeholderFuncaoWhereUniqueInput | ProjectStakeholderFuncaoWhereUniqueInput[]
+    update?: ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutProjectStakeholderInput | ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutProjectStakeholderInput[]
+    updateMany?: ProjectStakeholderFuncaoUpdateManyWithWhereWithoutProjectStakeholderInput | ProjectStakeholderFuncaoUpdateManyWithWhereWithoutProjectStakeholderInput[]
+    deleteMany?: ProjectStakeholderFuncaoScalarWhereInput | ProjectStakeholderFuncaoScalarWhereInput[]
+  }
+
+  export type UserProjectCreateNestedOneWithoutFuncoesInput = {
+    create?: XOR<UserProjectCreateWithoutFuncoesInput, UserProjectUncheckedCreateWithoutFuncoesInput>
+    connectOrCreate?: UserProjectCreateOrConnectWithoutFuncoesInput
+    connect?: UserProjectWhereUniqueInput
+  }
+
+  export type RoleCreateNestedOneWithoutFuncoesDeMembrosInput = {
+    create?: XOR<RoleCreateWithoutFuncoesDeMembrosInput, RoleUncheckedCreateWithoutFuncoesDeMembrosInput>
+    connectOrCreate?: RoleCreateOrConnectWithoutFuncoesDeMembrosInput
+    connect?: RoleWhereUniqueInput
+  }
+
+  export type UserProjectUpdateOneRequiredWithoutFuncoesNestedInput = {
+    create?: XOR<UserProjectCreateWithoutFuncoesInput, UserProjectUncheckedCreateWithoutFuncoesInput>
+    connectOrCreate?: UserProjectCreateOrConnectWithoutFuncoesInput
+    upsert?: UserProjectUpsertWithoutFuncoesInput
+    connect?: UserProjectWhereUniqueInput
+    update?: XOR<XOR<UserProjectUpdateToOneWithWhereWithoutFuncoesInput, UserProjectUpdateWithoutFuncoesInput>, UserProjectUncheckedUpdateWithoutFuncoesInput>
+  }
+
+  export type RoleUpdateOneRequiredWithoutFuncoesDeMembrosNestedInput = {
+    create?: XOR<RoleCreateWithoutFuncoesDeMembrosInput, RoleUncheckedCreateWithoutFuncoesDeMembrosInput>
+    connectOrCreate?: RoleCreateOrConnectWithoutFuncoesDeMembrosInput
+    upsert?: RoleUpsertWithoutFuncoesDeMembrosInput
+    connect?: RoleWhereUniqueInput
+    update?: XOR<XOR<RoleUpdateToOneWithWhereWithoutFuncoesDeMembrosInput, RoleUpdateWithoutFuncoesDeMembrosInput>, RoleUncheckedUpdateWithoutFuncoesDeMembrosInput>
+  }
+
+  export type ProjectStakeholderCreateNestedOneWithoutFuncoesInput = {
+    create?: XOR<ProjectStakeholderCreateWithoutFuncoesInput, ProjectStakeholderUncheckedCreateWithoutFuncoesInput>
+    connectOrCreate?: ProjectStakeholderCreateOrConnectWithoutFuncoesInput
+    connect?: ProjectStakeholderWhereUniqueInput
+  }
+
+  export type RoleCreateNestedOneWithoutFuncoesDeExternosInput = {
+    create?: XOR<RoleCreateWithoutFuncoesDeExternosInput, RoleUncheckedCreateWithoutFuncoesDeExternosInput>
+    connectOrCreate?: RoleCreateOrConnectWithoutFuncoesDeExternosInput
+    connect?: RoleWhereUniqueInput
+  }
+
+  export type ProjectStakeholderUpdateOneRequiredWithoutFuncoesNestedInput = {
+    create?: XOR<ProjectStakeholderCreateWithoutFuncoesInput, ProjectStakeholderUncheckedCreateWithoutFuncoesInput>
+    connectOrCreate?: ProjectStakeholderCreateOrConnectWithoutFuncoesInput
+    upsert?: ProjectStakeholderUpsertWithoutFuncoesInput
+    connect?: ProjectStakeholderWhereUniqueInput
+    update?: XOR<XOR<ProjectStakeholderUpdateToOneWithWhereWithoutFuncoesInput, ProjectStakeholderUpdateWithoutFuncoesInput>, ProjectStakeholderUncheckedUpdateWithoutFuncoesInput>
+  }
+
+  export type RoleUpdateOneRequiredWithoutFuncoesDeExternosNestedInput = {
+    create?: XOR<RoleCreateWithoutFuncoesDeExternosInput, RoleUncheckedCreateWithoutFuncoesDeExternosInput>
+    connectOrCreate?: RoleCreateOrConnectWithoutFuncoesDeExternosInput
+    upsert?: RoleUpsertWithoutFuncoesDeExternosInput
+    connect?: RoleWhereUniqueInput
+    update?: XOR<XOR<RoleUpdateToOneWithWhereWithoutFuncoesDeExternosInput, RoleUpdateWithoutFuncoesDeExternosInput>, RoleUncheckedUpdateWithoutFuncoesDeExternosInput>
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -23079,6 +26157,8 @@ export namespace Prisma {
     updatedAt?: Date | string
     permissions?: RolePermissionCreateNestedManyWithoutRoleInput
     userProjectRoles?: UserProjectRoleCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoCreateNestedManyWithoutRoleInput
   }
 
   export type RoleUncheckedCreateWithoutTenantInput = {
@@ -23092,6 +26172,8 @@ export namespace Prisma {
     updatedAt?: Date | string
     permissions?: RolePermissionUncheckedCreateNestedManyWithoutRoleInput
     userProjectRoles?: UserProjectRoleUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutRoleInput
   }
 
   export type RoleCreateOrConnectWithoutTenantInput = {
@@ -23326,7 +26408,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
     horasDiarias?: number | null
@@ -23335,6 +26416,7 @@ export namespace Prisma {
     order?: number
     project: ProjectCreateNestedOneWithoutMembersInput
     department?: DepartmentCreateNestedOneWithoutUserProjectsInput
+    funcoes?: UserProjectFuncaoCreateNestedManyWithoutUserProjectInput
   }
 
   export type UserProjectUncheckedCreateWithoutUserInput = {
@@ -23343,7 +26425,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -23351,6 +26432,7 @@ export namespace Prisma {
     startDate?: Date | string
     endDate?: Date | string | null
     order?: number
+    funcoes?: UserProjectFuncaoUncheckedCreateNestedManyWithoutUserProjectInput
   }
 
   export type UserProjectCreateOrConnectWithoutUserInput = {
@@ -23492,7 +26574,6 @@ export namespace Prisma {
     active?: BoolFilter<"UserProject"> | boolean
     inactiveReason?: StringNullableFilter<"UserProject"> | string | null
     inactivatedAt?: DateTimeNullableFilter<"UserProject"> | Date | string | null
-    role?: StringNullableFilter<"UserProject"> | string | null
     departmentId?: StringNullableFilter<"UserProject"> | string | null
     hourlyRate?: FloatNullableFilter<"UserProject"> | number | null
     remuneracao?: FloatNullableFilter<"UserProject"> | number | null
@@ -23653,7 +26734,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
     horasDiarias?: number | null
@@ -23662,6 +26742,7 @@ export namespace Prisma {
     order?: number
     user: UserCreateNestedOneWithoutProjectsInput
     department?: DepartmentCreateNestedOneWithoutUserProjectsInput
+    funcoes?: UserProjectFuncaoCreateNestedManyWithoutUserProjectInput
   }
 
   export type UserProjectUncheckedCreateWithoutProjectInput = {
@@ -23670,7 +26751,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -23678,6 +26758,7 @@ export namespace Prisma {
     startDate?: Date | string
     endDate?: Date | string | null
     order?: number
+    funcoes?: UserProjectFuncaoUncheckedCreateNestedManyWithoutUserProjectInput
   }
 
   export type UserProjectCreateOrConnectWithoutProjectInput = {
@@ -23754,9 +26835,9 @@ export namespace Prisma {
     order?: number
     remuneracao?: number | null
     horasDiarias?: number | null
-    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
     departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
     stakeholder: StakeholderCreateNestedOneWithoutProjectsInput
+    funcoes?: ProjectStakeholderFuncaoCreateNestedManyWithoutProjectStakeholderInput
   }
 
   export type ProjectStakeholderUncheckedCreateWithoutProjectInput = {
@@ -23766,8 +26847,8 @@ export namespace Prisma {
     order?: number
     remuneracao?: number | null
     horasDiarias?: number | null
-    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
     departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
+    funcoes?: ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutProjectStakeholderInput
   }
 
   export type ProjectStakeholderCreateOrConnectWithoutProjectInput = {
@@ -23906,7 +26987,6 @@ export namespace Prisma {
     order?: IntFilter<"ProjectStakeholder"> | number
     remuneracao?: FloatNullableFilter<"ProjectStakeholder"> | number | null
     horasDiarias?: FloatNullableFilter<"ProjectStakeholder"> | number | null
-    funcoes?: StringNullableListFilter<"ProjectStakeholder">
     departamentos?: StringNullableListFilter<"ProjectStakeholder">
   }
 
@@ -24122,7 +27202,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
     horasDiarias?: number | null
@@ -24131,6 +27210,7 @@ export namespace Prisma {
     order?: number
     user: UserCreateNestedOneWithoutProjectsInput
     project: ProjectCreateNestedOneWithoutMembersInput
+    funcoes?: UserProjectFuncaoCreateNestedManyWithoutUserProjectInput
   }
 
   export type UserProjectUncheckedCreateWithoutDepartmentInput = {
@@ -24140,13 +27220,13 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
     horasDiarias?: number | null
     startDate?: Date | string
     endDate?: Date | string | null
     order?: number
+    funcoes?: UserProjectFuncaoUncheckedCreateNestedManyWithoutUserProjectInput
   }
 
   export type UserProjectCreateOrConnectWithoutDepartmentInput = {
@@ -24489,6 +27569,28 @@ export namespace Prisma {
     create: XOR<DepartmentCreateWithoutUserProjectsInput, DepartmentUncheckedCreateWithoutUserProjectsInput>
   }
 
+  export type UserProjectFuncaoCreateWithoutUserProjectInput = {
+    id?: string
+    ordem?: number
+    role: RoleCreateNestedOneWithoutFuncoesDeMembrosInput
+  }
+
+  export type UserProjectFuncaoUncheckedCreateWithoutUserProjectInput = {
+    id?: string
+    roleId: string
+    ordem?: number
+  }
+
+  export type UserProjectFuncaoCreateOrConnectWithoutUserProjectInput = {
+    where: UserProjectFuncaoWhereUniqueInput
+    create: XOR<UserProjectFuncaoCreateWithoutUserProjectInput, UserProjectFuncaoUncheckedCreateWithoutUserProjectInput>
+  }
+
+  export type UserProjectFuncaoCreateManyUserProjectInputEnvelope = {
+    data: UserProjectFuncaoCreateManyUserProjectInput | UserProjectFuncaoCreateManyUserProjectInput[]
+    skipDuplicates?: boolean
+  }
+
   export type UserUpsertWithoutProjectsInput = {
     update: XOR<UserUpdateWithoutProjectsInput, UserUncheckedUpdateWithoutProjectsInput>
     create: XOR<UserCreateWithoutProjectsInput, UserUncheckedCreateWithoutProjectsInput>
@@ -24640,6 +27742,32 @@ export namespace Prisma {
     users?: UserDepartmentUncheckedUpdateManyWithoutDepartmentNestedInput
   }
 
+  export type UserProjectFuncaoUpsertWithWhereUniqueWithoutUserProjectInput = {
+    where: UserProjectFuncaoWhereUniqueInput
+    update: XOR<UserProjectFuncaoUpdateWithoutUserProjectInput, UserProjectFuncaoUncheckedUpdateWithoutUserProjectInput>
+    create: XOR<UserProjectFuncaoCreateWithoutUserProjectInput, UserProjectFuncaoUncheckedCreateWithoutUserProjectInput>
+  }
+
+  export type UserProjectFuncaoUpdateWithWhereUniqueWithoutUserProjectInput = {
+    where: UserProjectFuncaoWhereUniqueInput
+    data: XOR<UserProjectFuncaoUpdateWithoutUserProjectInput, UserProjectFuncaoUncheckedUpdateWithoutUserProjectInput>
+  }
+
+  export type UserProjectFuncaoUpdateManyWithWhereWithoutUserProjectInput = {
+    where: UserProjectFuncaoScalarWhereInput
+    data: XOR<UserProjectFuncaoUpdateManyMutationInput, UserProjectFuncaoUncheckedUpdateManyWithoutUserProjectInput>
+  }
+
+  export type UserProjectFuncaoScalarWhereInput = {
+    AND?: UserProjectFuncaoScalarWhereInput | UserProjectFuncaoScalarWhereInput[]
+    OR?: UserProjectFuncaoScalarWhereInput[]
+    NOT?: UserProjectFuncaoScalarWhereInput | UserProjectFuncaoScalarWhereInput[]
+    id?: StringFilter<"UserProjectFuncao"> | string
+    userProjectId?: StringFilter<"UserProjectFuncao"> | string
+    roleId?: StringFilter<"UserProjectFuncao"> | string
+    ordem?: IntFilter<"UserProjectFuncao"> | number
+  }
+
   export type TenantCreateWithoutRolesInput = {
     id?: string
     name: string
@@ -24716,6 +27844,50 @@ export namespace Prisma {
 
   export type UserProjectRoleCreateManyRoleInputEnvelope = {
     data: UserProjectRoleCreateManyRoleInput | UserProjectRoleCreateManyRoleInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type UserProjectFuncaoCreateWithoutRoleInput = {
+    id?: string
+    ordem?: number
+    userProject: UserProjectCreateNestedOneWithoutFuncoesInput
+  }
+
+  export type UserProjectFuncaoUncheckedCreateWithoutRoleInput = {
+    id?: string
+    userProjectId: string
+    ordem?: number
+  }
+
+  export type UserProjectFuncaoCreateOrConnectWithoutRoleInput = {
+    where: UserProjectFuncaoWhereUniqueInput
+    create: XOR<UserProjectFuncaoCreateWithoutRoleInput, UserProjectFuncaoUncheckedCreateWithoutRoleInput>
+  }
+
+  export type UserProjectFuncaoCreateManyRoleInputEnvelope = {
+    data: UserProjectFuncaoCreateManyRoleInput | UserProjectFuncaoCreateManyRoleInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type ProjectStakeholderFuncaoCreateWithoutRoleInput = {
+    id?: string
+    ordem?: number
+    projectStakeholder: ProjectStakeholderCreateNestedOneWithoutFuncoesInput
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput = {
+    id?: string
+    projectStakeholderId: string
+    ordem?: number
+  }
+
+  export type ProjectStakeholderFuncaoCreateOrConnectWithoutRoleInput = {
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+    create: XOR<ProjectStakeholderFuncaoCreateWithoutRoleInput, ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput>
+  }
+
+  export type ProjectStakeholderFuncaoCreateManyRoleInputEnvelope = {
+    data: ProjectStakeholderFuncaoCreateManyRoleInput | ProjectStakeholderFuncaoCreateManyRoleInput[]
     skipDuplicates?: boolean
   }
 
@@ -24797,6 +27969,48 @@ export namespace Prisma {
     data: XOR<UserProjectRoleUpdateManyMutationInput, UserProjectRoleUncheckedUpdateManyWithoutRoleInput>
   }
 
+  export type UserProjectFuncaoUpsertWithWhereUniqueWithoutRoleInput = {
+    where: UserProjectFuncaoWhereUniqueInput
+    update: XOR<UserProjectFuncaoUpdateWithoutRoleInput, UserProjectFuncaoUncheckedUpdateWithoutRoleInput>
+    create: XOR<UserProjectFuncaoCreateWithoutRoleInput, UserProjectFuncaoUncheckedCreateWithoutRoleInput>
+  }
+
+  export type UserProjectFuncaoUpdateWithWhereUniqueWithoutRoleInput = {
+    where: UserProjectFuncaoWhereUniqueInput
+    data: XOR<UserProjectFuncaoUpdateWithoutRoleInput, UserProjectFuncaoUncheckedUpdateWithoutRoleInput>
+  }
+
+  export type UserProjectFuncaoUpdateManyWithWhereWithoutRoleInput = {
+    where: UserProjectFuncaoScalarWhereInput
+    data: XOR<UserProjectFuncaoUpdateManyMutationInput, UserProjectFuncaoUncheckedUpdateManyWithoutRoleInput>
+  }
+
+  export type ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutRoleInput = {
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+    update: XOR<ProjectStakeholderFuncaoUpdateWithoutRoleInput, ProjectStakeholderFuncaoUncheckedUpdateWithoutRoleInput>
+    create: XOR<ProjectStakeholderFuncaoCreateWithoutRoleInput, ProjectStakeholderFuncaoUncheckedCreateWithoutRoleInput>
+  }
+
+  export type ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutRoleInput = {
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+    data: XOR<ProjectStakeholderFuncaoUpdateWithoutRoleInput, ProjectStakeholderFuncaoUncheckedUpdateWithoutRoleInput>
+  }
+
+  export type ProjectStakeholderFuncaoUpdateManyWithWhereWithoutRoleInput = {
+    where: ProjectStakeholderFuncaoScalarWhereInput
+    data: XOR<ProjectStakeholderFuncaoUpdateManyMutationInput, ProjectStakeholderFuncaoUncheckedUpdateManyWithoutRoleInput>
+  }
+
+  export type ProjectStakeholderFuncaoScalarWhereInput = {
+    AND?: ProjectStakeholderFuncaoScalarWhereInput | ProjectStakeholderFuncaoScalarWhereInput[]
+    OR?: ProjectStakeholderFuncaoScalarWhereInput[]
+    NOT?: ProjectStakeholderFuncaoScalarWhereInput | ProjectStakeholderFuncaoScalarWhereInput[]
+    id?: StringFilter<"ProjectStakeholderFuncao"> | string
+    projectStakeholderId?: StringFilter<"ProjectStakeholderFuncao"> | string
+    roleId?: StringFilter<"ProjectStakeholderFuncao"> | string
+    ordem?: IntFilter<"ProjectStakeholderFuncao"> | number
+  }
+
   export type RolePermissionCreateWithoutPermissionInput = {
     id?: string
     role: RoleCreateNestedOneWithoutPermissionsInput
@@ -24844,6 +28058,8 @@ export namespace Prisma {
     updatedAt?: Date | string
     tenant: TenantCreateNestedOneWithoutRolesInput
     userProjectRoles?: UserProjectRoleCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoCreateNestedManyWithoutRoleInput
   }
 
   export type RoleUncheckedCreateWithoutPermissionsInput = {
@@ -24857,6 +28073,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     userProjectRoles?: UserProjectRoleUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutRoleInput
   }
 
   export type RoleCreateOrConnectWithoutPermissionsInput = {
@@ -24913,6 +28131,8 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenant?: TenantUpdateOneRequiredWithoutRolesNestedInput
     userProjectRoles?: UserProjectRoleUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUpdateManyWithoutRoleNestedInput
   }
 
   export type RoleUncheckedUpdateWithoutPermissionsInput = {
@@ -24926,6 +28146,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userProjectRoles?: UserProjectRoleUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedUpdateManyWithoutRoleNestedInput
   }
 
   export type PermissionUpsertWithoutRolesInput = {
@@ -25047,6 +28269,8 @@ export namespace Prisma {
     updatedAt?: Date | string
     tenant: TenantCreateNestedOneWithoutRolesInput
     permissions?: RolePermissionCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoCreateNestedManyWithoutRoleInput
   }
 
   export type RoleUncheckedCreateWithoutUserProjectRolesInput = {
@@ -25060,6 +28284,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     permissions?: RolePermissionUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutRoleInput
   }
 
   export type RoleCreateOrConnectWithoutUserProjectRolesInput = {
@@ -25197,6 +28423,8 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenant?: TenantUpdateOneRequiredWithoutRolesNestedInput
     permissions?: RolePermissionUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUpdateManyWithoutRoleNestedInput
   }
 
   export type RoleUncheckedUpdateWithoutUserProjectRolesInput = {
@@ -25210,6 +28438,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissions?: RolePermissionUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedUpdateManyWithoutRoleNestedInput
   }
 
   export type UserUpsertWithoutUserProjectRolesInput = {
@@ -25278,9 +28508,9 @@ export namespace Prisma {
     order?: number
     remuneracao?: number | null
     horasDiarias?: number | null
-    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
     departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
     project: ProjectCreateNestedOneWithoutStakeholdersInput
+    funcoes?: ProjectStakeholderFuncaoCreateNestedManyWithoutProjectStakeholderInput
   }
 
   export type ProjectStakeholderUncheckedCreateWithoutStakeholderInput = {
@@ -25290,8 +28520,8 @@ export namespace Prisma {
     order?: number
     remuneracao?: number | null
     horasDiarias?: number | null
-    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
     departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
+    funcoes?: ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutProjectStakeholderInput
   }
 
   export type ProjectStakeholderCreateOrConnectWithoutStakeholderInput = {
@@ -25551,6 +28781,28 @@ export namespace Prisma {
     create: XOR<StakeholderCreateWithoutProjectsInput, StakeholderUncheckedCreateWithoutProjectsInput>
   }
 
+  export type ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput = {
+    id?: string
+    ordem?: number
+    role: RoleCreateNestedOneWithoutFuncoesDeExternosInput
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput = {
+    id?: string
+    roleId: string
+    ordem?: number
+  }
+
+  export type ProjectStakeholderFuncaoCreateOrConnectWithoutProjectStakeholderInput = {
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+    create: XOR<ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput, ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput>
+  }
+
+  export type ProjectStakeholderFuncaoCreateManyProjectStakeholderInputEnvelope = {
+    data: ProjectStakeholderFuncaoCreateManyProjectStakeholderInput | ProjectStakeholderFuncaoCreateManyProjectStakeholderInput[]
+    skipDuplicates?: boolean
+  }
+
   export type ProjectUpsertWithoutStakeholdersInput = {
     update: XOR<ProjectUpdateWithoutStakeholdersInput, ProjectUncheckedUpdateWithoutStakeholdersInput>
     create: XOR<ProjectCreateWithoutStakeholdersInput, ProjectUncheckedCreateWithoutStakeholdersInput>
@@ -25691,6 +28943,314 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type ProjectStakeholderFuncaoUpsertWithWhereUniqueWithoutProjectStakeholderInput = {
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+    update: XOR<ProjectStakeholderFuncaoUpdateWithoutProjectStakeholderInput, ProjectStakeholderFuncaoUncheckedUpdateWithoutProjectStakeholderInput>
+    create: XOR<ProjectStakeholderFuncaoCreateWithoutProjectStakeholderInput, ProjectStakeholderFuncaoUncheckedCreateWithoutProjectStakeholderInput>
+  }
+
+  export type ProjectStakeholderFuncaoUpdateWithWhereUniqueWithoutProjectStakeholderInput = {
+    where: ProjectStakeholderFuncaoWhereUniqueInput
+    data: XOR<ProjectStakeholderFuncaoUpdateWithoutProjectStakeholderInput, ProjectStakeholderFuncaoUncheckedUpdateWithoutProjectStakeholderInput>
+  }
+
+  export type ProjectStakeholderFuncaoUpdateManyWithWhereWithoutProjectStakeholderInput = {
+    where: ProjectStakeholderFuncaoScalarWhereInput
+    data: XOR<ProjectStakeholderFuncaoUpdateManyMutationInput, ProjectStakeholderFuncaoUncheckedUpdateManyWithoutProjectStakeholderInput>
+  }
+
+  export type UserProjectCreateWithoutFuncoesInput = {
+    id?: string
+    active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
+    hourlyRate?: number | null
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    startDate?: Date | string
+    endDate?: Date | string | null
+    order?: number
+    user: UserCreateNestedOneWithoutProjectsInput
+    project: ProjectCreateNestedOneWithoutMembersInput
+    department?: DepartmentCreateNestedOneWithoutUserProjectsInput
+  }
+
+  export type UserProjectUncheckedCreateWithoutFuncoesInput = {
+    id?: string
+    userId: string
+    projectId: string
+    active?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
+    departmentId?: string | null
+    hourlyRate?: number | null
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    startDate?: Date | string
+    endDate?: Date | string | null
+    order?: number
+  }
+
+  export type UserProjectCreateOrConnectWithoutFuncoesInput = {
+    where: UserProjectWhereUniqueInput
+    create: XOR<UserProjectCreateWithoutFuncoesInput, UserProjectUncheckedCreateWithoutFuncoesInput>
+  }
+
+  export type RoleCreateWithoutFuncoesDeMembrosInput = {
+    id?: string
+    name: string
+    nameKey: string
+    scope: $Enums.RoleScope
+    description?: string | null
+    deletedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    tenant: TenantCreateNestedOneWithoutRolesInput
+    permissions?: RolePermissionCreateNestedManyWithoutRoleInput
+    userProjectRoles?: UserProjectRoleCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoCreateNestedManyWithoutRoleInput
+  }
+
+  export type RoleUncheckedCreateWithoutFuncoesDeMembrosInput = {
+    id?: string
+    tenantId: string
+    name: string
+    nameKey: string
+    scope: $Enums.RoleScope
+    description?: string | null
+    deletedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    permissions?: RolePermissionUncheckedCreateNestedManyWithoutRoleInput
+    userProjectRoles?: UserProjectRoleUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedCreateNestedManyWithoutRoleInput
+  }
+
+  export type RoleCreateOrConnectWithoutFuncoesDeMembrosInput = {
+    where: RoleWhereUniqueInput
+    create: XOR<RoleCreateWithoutFuncoesDeMembrosInput, RoleUncheckedCreateWithoutFuncoesDeMembrosInput>
+  }
+
+  export type UserProjectUpsertWithoutFuncoesInput = {
+    update: XOR<UserProjectUpdateWithoutFuncoesInput, UserProjectUncheckedUpdateWithoutFuncoesInput>
+    create: XOR<UserProjectCreateWithoutFuncoesInput, UserProjectUncheckedCreateWithoutFuncoesInput>
+    where?: UserProjectWhereInput
+  }
+
+  export type UserProjectUpdateToOneWithWhereWithoutFuncoesInput = {
+    where?: UserProjectWhereInput
+    data: XOR<UserProjectUpdateWithoutFuncoesInput, UserProjectUncheckedUpdateWithoutFuncoesInput>
+  }
+
+  export type UserProjectUpdateWithoutFuncoesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    startDate?: DateTimeFieldUpdateOperationsInput | Date | string
+    endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    user?: UserUpdateOneRequiredWithoutProjectsNestedInput
+    project?: ProjectUpdateOneRequiredWithoutMembersNestedInput
+    department?: DepartmentUpdateOneWithoutUserProjectsNestedInput
+  }
+
+  export type UserProjectUncheckedUpdateWithoutFuncoesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    projectId?: StringFieldUpdateOperationsInput | string
+    active?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    departmentId?: NullableStringFieldUpdateOperationsInput | string | null
+    hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    startDate?: DateTimeFieldUpdateOperationsInput | Date | string
+    endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    order?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type RoleUpsertWithoutFuncoesDeMembrosInput = {
+    update: XOR<RoleUpdateWithoutFuncoesDeMembrosInput, RoleUncheckedUpdateWithoutFuncoesDeMembrosInput>
+    create: XOR<RoleCreateWithoutFuncoesDeMembrosInput, RoleUncheckedCreateWithoutFuncoesDeMembrosInput>
+    where?: RoleWhereInput
+  }
+
+  export type RoleUpdateToOneWithWhereWithoutFuncoesDeMembrosInput = {
+    where?: RoleWhereInput
+    data: XOR<RoleUpdateWithoutFuncoesDeMembrosInput, RoleUncheckedUpdateWithoutFuncoesDeMembrosInput>
+  }
+
+  export type RoleUpdateWithoutFuncoesDeMembrosInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    nameKey?: StringFieldUpdateOperationsInput | string
+    scope?: EnumRoleScopeFieldUpdateOperationsInput | $Enums.RoleScope
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    tenant?: TenantUpdateOneRequiredWithoutRolesNestedInput
+    permissions?: RolePermissionUpdateManyWithoutRoleNestedInput
+    userProjectRoles?: UserProjectRoleUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUpdateManyWithoutRoleNestedInput
+  }
+
+  export type RoleUncheckedUpdateWithoutFuncoesDeMembrosInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    nameKey?: StringFieldUpdateOperationsInput | string
+    scope?: EnumRoleScopeFieldUpdateOperationsInput | $Enums.RoleScope
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    permissions?: RolePermissionUncheckedUpdateManyWithoutRoleNestedInput
+    userProjectRoles?: UserProjectRoleUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedUpdateManyWithoutRoleNestedInput
+  }
+
+  export type ProjectStakeholderCreateWithoutFuncoesInput = {
+    id?: string
+    createdAt?: Date | string
+    order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
+    project: ProjectCreateNestedOneWithoutStakeholdersInput
+    stakeholder: StakeholderCreateNestedOneWithoutProjectsInput
+  }
+
+  export type ProjectStakeholderUncheckedCreateWithoutFuncoesInput = {
+    id?: string
+    projectId: string
+    stakeholderId: string
+    createdAt?: Date | string
+    order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
+  }
+
+  export type ProjectStakeholderCreateOrConnectWithoutFuncoesInput = {
+    where: ProjectStakeholderWhereUniqueInput
+    create: XOR<ProjectStakeholderCreateWithoutFuncoesInput, ProjectStakeholderUncheckedCreateWithoutFuncoesInput>
+  }
+
+  export type RoleCreateWithoutFuncoesDeExternosInput = {
+    id?: string
+    name: string
+    nameKey: string
+    scope: $Enums.RoleScope
+    description?: string | null
+    deletedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    tenant: TenantCreateNestedOneWithoutRolesInput
+    permissions?: RolePermissionCreateNestedManyWithoutRoleInput
+    userProjectRoles?: UserProjectRoleCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoCreateNestedManyWithoutRoleInput
+  }
+
+  export type RoleUncheckedCreateWithoutFuncoesDeExternosInput = {
+    id?: string
+    tenantId: string
+    name: string
+    nameKey: string
+    scope: $Enums.RoleScope
+    description?: string | null
+    deletedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    permissions?: RolePermissionUncheckedCreateNestedManyWithoutRoleInput
+    userProjectRoles?: UserProjectRoleUncheckedCreateNestedManyWithoutRoleInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedCreateNestedManyWithoutRoleInput
+  }
+
+  export type RoleCreateOrConnectWithoutFuncoesDeExternosInput = {
+    where: RoleWhereUniqueInput
+    create: XOR<RoleCreateWithoutFuncoesDeExternosInput, RoleUncheckedCreateWithoutFuncoesDeExternosInput>
+  }
+
+  export type ProjectStakeholderUpsertWithoutFuncoesInput = {
+    update: XOR<ProjectStakeholderUpdateWithoutFuncoesInput, ProjectStakeholderUncheckedUpdateWithoutFuncoesInput>
+    create: XOR<ProjectStakeholderCreateWithoutFuncoesInput, ProjectStakeholderUncheckedCreateWithoutFuncoesInput>
+    where?: ProjectStakeholderWhereInput
+  }
+
+  export type ProjectStakeholderUpdateToOneWithWhereWithoutFuncoesInput = {
+    where?: ProjectStakeholderWhereInput
+    data: XOR<ProjectStakeholderUpdateWithoutFuncoesInput, ProjectStakeholderUncheckedUpdateWithoutFuncoesInput>
+  }
+
+  export type ProjectStakeholderUpdateWithoutFuncoesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
+    project?: ProjectUpdateOneRequiredWithoutStakeholdersNestedInput
+    stakeholder?: StakeholderUpdateOneRequiredWithoutProjectsNestedInput
+  }
+
+  export type ProjectStakeholderUncheckedUpdateWithoutFuncoesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    projectId?: StringFieldUpdateOperationsInput | string
+    stakeholderId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
+  }
+
+  export type RoleUpsertWithoutFuncoesDeExternosInput = {
+    update: XOR<RoleUpdateWithoutFuncoesDeExternosInput, RoleUncheckedUpdateWithoutFuncoesDeExternosInput>
+    create: XOR<RoleCreateWithoutFuncoesDeExternosInput, RoleUncheckedCreateWithoutFuncoesDeExternosInput>
+    where?: RoleWhereInput
+  }
+
+  export type RoleUpdateToOneWithWhereWithoutFuncoesDeExternosInput = {
+    where?: RoleWhereInput
+    data: XOR<RoleUpdateWithoutFuncoesDeExternosInput, RoleUncheckedUpdateWithoutFuncoesDeExternosInput>
+  }
+
+  export type RoleUpdateWithoutFuncoesDeExternosInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    nameKey?: StringFieldUpdateOperationsInput | string
+    scope?: EnumRoleScopeFieldUpdateOperationsInput | $Enums.RoleScope
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    tenant?: TenantUpdateOneRequiredWithoutRolesNestedInput
+    permissions?: RolePermissionUpdateManyWithoutRoleNestedInput
+    userProjectRoles?: UserProjectRoleUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUpdateManyWithoutRoleNestedInput
+  }
+
+  export type RoleUncheckedUpdateWithoutFuncoesDeExternosInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    nameKey?: StringFieldUpdateOperationsInput | string
+    scope?: EnumRoleScopeFieldUpdateOperationsInput | $Enums.RoleScope
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    permissions?: RolePermissionUncheckedUpdateManyWithoutRoleNestedInput
+    userProjectRoles?: UserProjectRoleUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedUpdateManyWithoutRoleNestedInput
   }
 
   export type ProjectCreateManyTenantInput = {
@@ -25919,6 +29479,8 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissions?: RolePermissionUpdateManyWithoutRoleNestedInput
     userProjectRoles?: UserProjectRoleUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUpdateManyWithoutRoleNestedInput
   }
 
   export type RoleUncheckedUpdateWithoutTenantInput = {
@@ -25932,6 +29494,8 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissions?: RolePermissionUncheckedUpdateManyWithoutRoleNestedInput
     userProjectRoles?: UserProjectRoleUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeMembros?: UserProjectFuncaoUncheckedUpdateManyWithoutRoleNestedInput
+    funcoesDeExternos?: ProjectStakeholderFuncaoUncheckedUpdateManyWithoutRoleNestedInput
   }
 
   export type RoleUncheckedUpdateManyWithoutTenantInput = {
@@ -26025,7 +29589,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -26054,7 +29617,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -26063,6 +29625,7 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     project?: ProjectUpdateOneRequiredWithoutMembersNestedInput
     department?: DepartmentUpdateOneWithoutUserProjectsNestedInput
+    funcoes?: UserProjectFuncaoUpdateManyWithoutUserProjectNestedInput
   }
 
   export type UserProjectUncheckedUpdateWithoutUserInput = {
@@ -26071,7 +29634,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -26079,6 +29641,7 @@ export namespace Prisma {
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     order?: IntFieldUpdateOperationsInput | number
+    funcoes?: UserProjectFuncaoUncheckedUpdateManyWithoutUserProjectNestedInput
   }
 
   export type UserProjectUncheckedUpdateManyWithoutUserInput = {
@@ -26087,7 +29650,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -26145,7 +29707,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     departmentId?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
@@ -26181,7 +29742,6 @@ export namespace Prisma {
     order?: number
     remuneracao?: number | null
     horasDiarias?: number | null
-    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
     departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
   }
 
@@ -26190,7 +29750,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -26199,6 +29758,7 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     user?: UserUpdateOneRequiredWithoutProjectsNestedInput
     department?: DepartmentUpdateOneWithoutUserProjectsNestedInput
+    funcoes?: UserProjectFuncaoUpdateManyWithoutUserProjectNestedInput
   }
 
   export type UserProjectUncheckedUpdateWithoutProjectInput = {
@@ -26207,7 +29767,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -26215,6 +29774,7 @@ export namespace Prisma {
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     order?: IntFieldUpdateOperationsInput | number
+    funcoes?: UserProjectFuncaoUncheckedUpdateManyWithoutUserProjectNestedInput
   }
 
   export type UserProjectUncheckedUpdateManyWithoutProjectInput = {
@@ -26223,7 +29783,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     departmentId?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -26296,9 +29855,9 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
     stakeholder?: StakeholderUpdateOneRequiredWithoutProjectsNestedInput
+    funcoes?: ProjectStakeholderFuncaoUpdateManyWithoutProjectStakeholderNestedInput
   }
 
   export type ProjectStakeholderUncheckedUpdateWithoutProjectInput = {
@@ -26308,8 +29867,8 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
+    funcoes?: ProjectStakeholderFuncaoUncheckedUpdateManyWithoutProjectStakeholderNestedInput
   }
 
   export type ProjectStakeholderUncheckedUpdateManyWithoutProjectInput = {
@@ -26319,7 +29878,6 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
   }
 
@@ -26335,7 +29893,6 @@ export namespace Prisma {
     active?: boolean
     inactiveReason?: string | null
     inactivatedAt?: Date | string | null
-    role?: string | null
     hourlyRate?: number | null
     remuneracao?: number | null
     horasDiarias?: number | null
@@ -26364,7 +29921,6 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
@@ -26373,6 +29929,7 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     user?: UserUpdateOneRequiredWithoutProjectsNestedInput
     project?: ProjectUpdateOneRequiredWithoutMembersNestedInput
+    funcoes?: UserProjectFuncaoUpdateManyWithoutUserProjectNestedInput
   }
 
   export type UserProjectUncheckedUpdateWithoutDepartmentInput = {
@@ -26382,13 +29939,13 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     order?: IntFieldUpdateOperationsInput | number
+    funcoes?: UserProjectFuncaoUncheckedUpdateManyWithoutUserProjectNestedInput
   }
 
   export type UserProjectUncheckedUpdateManyWithoutDepartmentInput = {
@@ -26398,13 +29955,36 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    role?: NullableStringFieldUpdateOperationsInput | string | null
     hourlyRate?: NullableFloatFieldUpdateOperationsInput | number | null
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     order?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type UserProjectFuncaoCreateManyUserProjectInput = {
+    id?: string
+    roleId: string
+    ordem?: number
+  }
+
+  export type UserProjectFuncaoUpdateWithoutUserProjectInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+    role?: RoleUpdateOneRequiredWithoutFuncoesDeMembrosNestedInput
+  }
+
+  export type UserProjectFuncaoUncheckedUpdateWithoutUserProjectInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type UserProjectFuncaoUncheckedUpdateManyWithoutUserProjectInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
   }
 
   export type RolePermissionCreateManyRoleInput = {
@@ -26419,6 +29999,18 @@ export namespace Prisma {
     deletedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+  }
+
+  export type UserProjectFuncaoCreateManyRoleInput = {
+    id?: string
+    userProjectId: string
+    ordem?: number
+  }
+
+  export type ProjectStakeholderFuncaoCreateManyRoleInput = {
+    id?: string
+    projectStakeholderId: string
+    ordem?: number
   }
 
   export type RolePermissionUpdateWithoutRoleInput = {
@@ -26463,6 +30055,42 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type UserProjectFuncaoUpdateWithoutRoleInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+    userProject?: UserProjectUpdateOneRequiredWithoutFuncoesNestedInput
+  }
+
+  export type UserProjectFuncaoUncheckedUpdateWithoutRoleInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userProjectId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type UserProjectFuncaoUncheckedUpdateManyWithoutRoleInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userProjectId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type ProjectStakeholderFuncaoUpdateWithoutRoleInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+    projectStakeholder?: ProjectStakeholderUpdateOneRequiredWithoutFuncoesNestedInput
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedUpdateWithoutRoleInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    projectStakeholderId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedUpdateManyWithoutRoleInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    projectStakeholderId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
   export type RolePermissionCreateManyPermissionInput = {
     id?: string
     roleId: string
@@ -26490,7 +30118,6 @@ export namespace Prisma {
     order?: number
     remuneracao?: number | null
     horasDiarias?: number | null
-    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
     departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
   }
 
@@ -26500,9 +30127,9 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
     project?: ProjectUpdateOneRequiredWithoutStakeholdersNestedInput
+    funcoes?: ProjectStakeholderFuncaoUpdateManyWithoutProjectStakeholderNestedInput
   }
 
   export type ProjectStakeholderUncheckedUpdateWithoutStakeholderInput = {
@@ -26512,8 +30139,8 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
+    funcoes?: ProjectStakeholderFuncaoUncheckedUpdateManyWithoutProjectStakeholderNestedInput
   }
 
   export type ProjectStakeholderUncheckedUpdateManyWithoutStakeholderInput = {
@@ -26523,8 +30150,31 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
     horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
-    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
     departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
+  }
+
+  export type ProjectStakeholderFuncaoCreateManyProjectStakeholderInput = {
+    id?: string
+    roleId: string
+    ordem?: number
+  }
+
+  export type ProjectStakeholderFuncaoUpdateWithoutProjectStakeholderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+    role?: RoleUpdateOneRequiredWithoutFuncoesDeExternosNestedInput
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedUpdateWithoutProjectStakeholderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type ProjectStakeholderFuncaoUncheckedUpdateManyWithoutProjectStakeholderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    roleId?: StringFieldUpdateOperationsInput | string
+    ordem?: IntFieldUpdateOperationsInput | number
   }
 
 

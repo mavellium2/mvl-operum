@@ -8,14 +8,14 @@
  *   - repassa UserProjectRole.roleId para a vencedora;
  *   - move as associações ProjetoFuncao (descarta as que já existem);
  *   - copia as RolePermission que faltarem na vencedora;
- *   - troca o nome da duplicada pelo da vencedora nos cargos UserProject.role;
+ *   - repassa as funções dos membros e externos (UserProjectFuncao,
+ *     ProjectStakeholderFuncao) para a vencedora, sem repetir;
  *   - aplica soft delete (deletedAt).
  *
  * Antes disso, separa funções compostas ("Desenvolvedora Front-End | Redatora"):
  * cada parte vira (ou reaproveita) uma função; associações a projetos e
- * permissões passam para as partes, o papel do membro vai para a 1ª parte e a
- * composta recebe soft delete. Os cargos em texto (UserProject.role) são
- * normalizados ("A | B" → "A, B", sem repetidas).
+ * permissões passam para as partes, quem tinha a composta passa a ter cada
+ * parte, o papel do membro vai para a 1ª parte e a composta recebe soft delete.
  *
  * Idempotente. Por padrão só mostra o plano (dry-run):
  *   pnpm exec tsx scripts/dedupe-funcoes.ts
@@ -26,15 +26,12 @@ import 'dotenv/config'
 import prisma from '@/lib/prisma'
 import { planejarDeduplicacao, type GrupoDuplicado } from '@/lib/funcoesDedupe'
 import { funcaoKey } from '@/lib/utils/normalize'
-import { separarFuncoes, textoDeFuncoes } from '@/lib/funcoes'
+import { separarFuncoes } from '@/lib/funcoes'
 
 const APPLY = process.argv.includes('--apply')
 /** --tenant=<id>: só esta instituição (útil para rodar em produção uma por vez). */
 const TENANT = process.argv.find(a => a.startsWith('--tenant='))?.slice('--tenant='.length)
 
-function splitCargos(role: string | null): string[] {
-  return (role ?? '').split(',').map(s => s.trim()).filter(Boolean)
-}
 
 async function fundirGrupo(tenantId: string, grupo: GrupoDuplicado) {
   const keeperId = grupo.vencedora.id
@@ -65,31 +62,32 @@ async function fundirGrupo(tenantId: string, grupo: GrupoDuplicado) {
       }
     }
 
-    // Cargos em texto livre (UserProject.role) exibidos em Stakeholders/Documentos.
-    const membros = await tx.userProject.findMany({
-      where: { project: { tenantId }, role: { not: null } },
-      select: { userId: true, projectId: true, role: true },
-    })
-    for (const m of membros) {
-      const cargos = splitCargos(m.role)
-      const novos: string[] = []
-      for (const c of cargos) {
-        const nome = funcaoKey(c) === grupo.chave ? grupo.vencedora.name : c
-        if (!novos.some(n => funcaoKey(n) === funcaoKey(nome))) novos.push(nome)
-      }
-      if (novos.join(', ') !== cargos.join(', ')) {
-        await tx.userProject.update({
-          where: { userId_projectId: { userId: m.userId, projectId: m.projectId } },
-          data: { role: novos.join(', ') },
-        })
-      }
-    }
+    // Funções de membros e externos: passam para a vencedora, sem vínculo repetido.
+    await repassarVinculos(tx, dupIds, [keeperId])
 
     await tx.role.updateMany({ where: { id: { in: dupIds } }, data: { deletedAt: new Date() } })
   })
 }
 
 const COMPOSTA = /[|;,]/
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+
+/** Quem tinha uma das funções `de` passa a ter as funções `para` (membros e externos), sem repetir. */
+async function repassarVinculos(tx: Tx, de: string[], para: string[]) {
+  for (const v of await tx.userProjectFuncao.findMany({ where: { roleId: { in: de } } })) {
+    for (const [i, roleId] of para.entries()) {
+      await tx.userProjectFuncao.upsert({ where: { userProjectId_roleId: { userProjectId: v.userProjectId, roleId } }, create: { userProjectId: v.userProjectId, roleId, ordem: v.ordem + i }, update: {} })
+    }
+  }
+  await tx.userProjectFuncao.deleteMany({ where: { roleId: { in: de.filter(id => !para.includes(id)) } } })
+  for (const v of await tx.projectStakeholderFuncao.findMany({ where: { roleId: { in: de } } })) {
+    for (const [i, roleId] of para.entries()) {
+      await tx.projectStakeholderFuncao.upsert({ where: { projectStakeholderId_roleId: { projectStakeholderId: v.projectStakeholderId, roleId } }, create: { projectStakeholderId: v.projectStakeholderId, roleId, ordem: v.ordem + i }, update: {} })
+    }
+  }
+  await tx.projectStakeholderFuncao.deleteMany({ where: { roleId: { in: de.filter(id => !para.includes(id)) } } })
+}
 
 /** Função do catálogo equivalente a `nome` (reaproveita, restaura ou cria). */
 async function funcaoPara(tenantId: string, nome: string) {
@@ -106,7 +104,7 @@ async function funcaoPara(tenantId: string, nome: string) {
   return criada.id
 }
 
-/** Separa as funções compostas do tenant e normaliza os cargos em texto. */
+/** Separa as funções compostas do tenant: quem as tinha passa a ter cada parte. */
 async function separarCompostas(tenantId: string): Promise<number> {
   const compostas = await prisma.role.findMany({ where: { tenantId, deletedAt: null }, select: { id: true, name: true } })
   let total = 0
@@ -119,6 +117,7 @@ async function separarCompostas(tenantId: string): Promise<number> {
     for (const parte of partes) ids.push(await funcaoPara(tenantId, parte))
     await prisma.$transaction(async tx => {
       await tx.userProjectRole.updateMany({ where: { roleId: r.id }, data: { roleId: ids[0] } })
+      await repassarVinculos(tx, [r.id], ids)
       for (const a of await tx.projetoFuncao.findMany({ where: { funcaoId: r.id } })) {
         for (const id of ids) {
           if (!(await tx.projetoFuncao.findFirst({ where: { projetoId: a.projetoId, funcaoId: id }, select: { id: true } }))) {
@@ -132,22 +131,6 @@ async function separarCompostas(tenantId: string): Promise<number> {
       }
       await tx.role.update({ where: { id: r.id }, data: { deletedAt: new Date() } })
     })
-  }
-  // Cargos em texto livre ("Tech Lead | Full-stack" gravado pela API/MCP).
-  // Cada parte usa o nome oficial do catálogo (ex.: "Gerente de Projetos" → "Gerente de Projeto").
-  const catalogo = await prisma.role.findMany({ where: { tenantId, deletedAt: null }, select: { name: true, nameKey: true, scope: true } })
-  const oficial = new Map<string, string>()
-  for (const r of [...catalogo].sort((a, b) => Number(b.nameKey === 'gerente' && b.scope === 'PROJETO') - Number(a.nameKey === 'gerente' && a.scope === 'PROJETO'))) {
-    if (!COMPOSTA.test(r.name) && !oficial.has(funcaoKey(r.name))) oficial.set(funcaoKey(r.name), r.name)
-  }
-  const membros = await prisma.userProject.findMany({ where: { project: { tenantId }, role: { not: null } }, select: { id: true, role: true } })
-  for (const m of membros) {
-    const normal = textoDeFuncoes(separarFuncoes(m.role).map(n => oficial.get(funcaoKey(n)) ?? n))
-    if (normal !== (m.role ?? '')) {
-      total++
-      console.log(`  cargo   "${m.role}" → "${normal}"`)
-      if (APPLY) await prisma.userProject.update({ where: { id: m.id }, data: { role: normal || null } })
-    }
   }
   return total
 }

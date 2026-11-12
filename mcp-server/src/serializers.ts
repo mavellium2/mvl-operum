@@ -39,7 +39,8 @@ export function serializeMember(m: Raw, user?: Raw) {
     user_id: str(m?.userId),
     name: user ? str(user.name) : null,
     email: user ? str(user.email) : null,
-    role: str(m?.role),
+    // Funções do cadastro, uma por item (nunca texto "A, B").
+    funcoes: Array.isArray(m?.funcoes) ? (m.funcoes as Raw[]).map(f => str((f?.role as Raw)?.name)).filter((n): n is string => !!n) : [],
     department_id: str(m?.departmentId),
     hourly_rate: num(m?.hourlyRate),
     remuneracao: num(m?.remuneracao),

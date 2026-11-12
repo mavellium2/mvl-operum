@@ -1,9 +1,10 @@
 import { funcaoKey } from '@/lib/utils/normalize'
 
 /**
- * Separadores de funções num mesmo texto. "Desenvolvedora Front-End | Redatora" são
- * duas funções, não uma. A vírgula também separa porque é o formato gravado em
- * UserProject.role ("Front-End, Redatora"). Barra (UI/UX) e hífen (Front-End) não separam.
+ * Separadores que indicam mais de uma função num texto: "Desenvolvedora Front-End |
+ * Redatora" são duas. Servem para recusar no cadastro e separar entradas antigas;
+ * as funções de uma pessoa são gravadas como lista de vínculos, nunca como texto.
+ * Barra (UI/UX) e hífen (Front-End) não separam.
  */
 const SEPARADORES = /\s*[|;,]\s*/
 
@@ -19,9 +20,6 @@ export function separarFuncoes(nomes: (string | null | undefined)[] | string | n
   }
   return saida
 }
-
-/** Texto gravado em UserProject.role: funções separadas por vírgula, sem repetidas. */
-export const textoDeFuncoes = (nomes: Parameters<typeof separarFuncoes>[0]) => separarFuncoes(nomes).join(', ')
 
 /** Nome de UMA função (cadastro): recusa texto com mais de uma. */
 export function erroNomeDeFuncao(nome: string): string | null {

@@ -1,9 +1,7 @@
 import prisma from '@/lib/prisma'
-import { textoDeFuncoes } from '@/lib/funcoes'
 import { CreateProjectSchema, UpdateProjectSchema } from '@/lib/validation/projectSchemas'
 import type { CreateProjectInput, UpdateProjectInput, MacroFaseInput } from '@/lib/validation/projectSchemas'
 import {
-  setProjectManagerRole,
   removeProjectRole,
   isProjectManager,
   countProjectManagers,
@@ -211,57 +209,6 @@ export async function getMembersWithDetails(projectId: string) {
   })
 }
 
-export async function updateUserProject(
-  userId: string,
-  projectId: string,
-  data: {
-    projectRole?: string
-    roles?: string[]
-    departments?: string[]
-    role?: string
-    departmentId?: string | null
-    hourlyRate?: number | null
-    active?: boolean
-    tenantId?: string
-  },
-) {
-  const existing = await prisma.userProject.findUnique({
-    where: { userId_projectId: { userId, projectId } },
-  })
-  if (!existing) throw new NotFoundError('Member not found')
-
-  // Mesma regra das funções: grava "A, B", nunca "A | B".
-  const roleStr =
-    data.roles !== undefined
-      ? data.roles.length > 0
-        ? textoDeFuncoes(data.roles) || null
-        : null
-      : data.role !== undefined
-        ? textoDeFuncoes(data.role) || null
-        : undefined
-
-  const result = await prisma.userProject.update({
-    where: { id: existing.id },
-    data: {
-      ...(roleStr !== undefined ? { role: roleStr } : {}),
-      ...(data.departmentId !== undefined ? { departmentId: data.departmentId } : {}),
-      ...(data.hourlyRate !== undefined ? { hourlyRate: data.hourlyRate } : {}),
-      ...(data.active !== undefined
-        ? { active: data.active, endDate: data.active ? null : new Date() }
-        : {}),
-    },
-  })
-
-  if (data.projectRole !== undefined && data.tenantId) {
-    if (data.projectRole === 'gerente') {
-      await setProjectManagerRole(userId, projectId, data.tenantId)
-    } else {
-      await removeProjectRole(userId, projectId)
-    }
-  }
-
-  return result
-}
 
 export async function getUserProjectsWithDetails(userId: string) {
   return prisma.userProject.findMany({

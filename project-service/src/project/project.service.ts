@@ -5,7 +5,7 @@ import { z } from 'zod'
 import type { Prisma, ProjectStatus } from '../../lib/generated/prisma'
 import { isTransactionConflict } from '../common/transaction-conflict'
 import { motivoParaNaoExcluir, tarefasNoProjeto } from '../common/tarefas-no-projeto'
-import { textoDeFuncoes } from '../common/funcoes'
+import { definirFuncoesDoMembro, FUNCOES_ORDENADAS } from '../common/funcoes'
 
 export const MacroFasesSchema = z.array(z.object({
   fase: z.string().trim().max(500),
@@ -56,6 +56,9 @@ export const CreateProjectSchema = z.object({
  */
 export const AddMemberSchema = z.object({
   userId: z.string().trim().min(1).max(128),
+  /** Funções do cadastro, uma por item. */
+  funcoes: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
+  /** Legado (texto livre): separado em funções; nunca é gravado como texto. */
   role: z.string().trim().max(500).nullable().optional(),
   departmentId: z.string().trim().min(1).max(128).nullable().optional(),
   hourlyRate: z.number().min(0).max(1_000_000).nullable().optional(),
@@ -122,7 +125,7 @@ export class ProjectService {
     const project = await prisma.project.findFirst({
       where: { id, tenantId, deletedAt: null },
       include: {
-        members: true,
+        members: { include: { funcoes: FUNCOES_ORDENADAS } },
         macroFases: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }] },
         stakeholders: { include: { stakeholder: true } },
       },
@@ -204,8 +207,6 @@ export class ProjectService {
       throw new ConflictException('Esta pessoa é externa neste projeto. Use "Mudar para interno".')
     }
     const data = {
-      // "Tech Lead | Full-stack" são duas funções: grava "Tech Lead, Full-stack" (API/MCP).
-      ...(input.role !== undefined ? { role: textoDeFuncoes(input.role) } : {}),
       ...(input.departmentId !== undefined ? { departmentId: input.departmentId } : {}),
       ...(input.hourlyRate !== undefined ? { hourlyRate: input.hourlyRate } : {}),
     }
@@ -213,10 +214,16 @@ export class ProjectService {
       const dept = await prisma.department.findFirst({ where: { id: data.departmentId, tenantId }, select: { id: true } })
       if (!dept) throw new BadRequestException('Departamento inválido')
     }
-    return prisma.userProject.upsert({
-      where: { userId_projectId: { userId, projectId } },
-      create: { ...data, userId, projectId },
-      update: { ...data, active: true, inactiveReason: null, inactivatedAt: null },
+    const funcoes = input.funcoes ?? (input.role !== undefined ? input.role : undefined)
+    return prisma.$transaction(async tx => {
+      const membro = await tx.userProject.upsert({
+        where: { userId_projectId: { userId, projectId } },
+        create: { ...data, userId, projectId },
+        update: { ...data, active: true, inactiveReason: null, inactivatedAt: null },
+      })
+      // Cada função é um vínculo com o cadastro ("Tech Lead | Full-stack" são duas).
+      if (funcoes !== undefined) await definirFuncoesDoMembro(tx, tenantId, membro.id, funcoes)
+      return tx.userProject.findUniqueOrThrow({ where: { id: membro.id }, include: { funcoes: FUNCOES_ORDENADAS } })
     })
   }
 

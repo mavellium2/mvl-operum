@@ -10,11 +10,11 @@ const { usuario, contato } = vi.hoisted(() => ({
 }))
 vi.mock('@/lib/prisma', () => ({ default: {
   projectStakeholder: { findMany: vi.fn().mockResolvedValue([
-    { stakeholderId: 'sk-cli', remuneracao: 1500, horasDiarias: 4, funcoes: ['Cliente'], departamentos: [], stakeholder: contato('sk-cli', 'Cliente Externo', null) },
+    { stakeholderId: 'sk-cli', remuneracao: 1500, horasDiarias: 4, funcoes: [{ roleId: 'r-cli', role: { name: 'Cliente' } }], departamentos: [], stakeholder: contato('sk-cli', 'Cliente Externo', null) },
   ]) },
   stakeholder: { findMany: vi.fn().mockResolvedValue([contato('sk-cli', 'Cliente Externo', null), contato('sk-ana', 'Ana (contato)', 'u-ana'), contato('sk-bia', 'Bia', null)]) },
   userProject: { findMany: vi.fn().mockResolvedValue([{
-    userId: 'u-ana', active: true, role: null, remuneracao: null, horasDiarias: null, hourlyRate: null, startDate: new Date(), inactiveReason: null, inactivatedAt: null, department: null,
+    userId: 'u-ana', active: true, funcoes: [], remuneracao: null, horasDiarias: null, hourlyRate: null, startDate: new Date(), inactiveReason: null, inactivatedAt: null, department: null,
     user: { ...usuario('u-ana', 'Ana'), phone: null, cep: null, logradouro: null, numero: null, complemento: null, bairro: null, cidade: null, estado: null, notes: null, deletedAt: null, isActive: true, signatureUrl: null, contato: { company: 'Fatec', competence: 'Back-end' } },
   }]) },
   user: { findMany: vi.fn().mockResolvedValue([usuario('u-ana', 'Ana'), usuario('u-paulo', 'Paulo')]) },

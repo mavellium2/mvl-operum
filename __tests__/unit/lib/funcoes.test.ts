@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ehFuncaoDeGerente, erroNomeDeFuncao, separarFuncoes, textoDeFuncoes } from '@/lib/funcoes'
+import { ehFuncaoDeGerente, erroNomeDeFuncao, separarFuncoes } from '@/lib/funcoes'
 
 describe('funções de uma pessoa', () => {
   it('texto composto vira funções separadas', () => {
@@ -12,7 +12,6 @@ describe('funções de uma pessoa', () => {
   })
   it('tira equivalentes repetidas (acento, caixa, plural)', () => {
     expect(separarFuncoes(['Gerente de Projeto', 'gerente de projetos', 'Redatora', 'redatora'])).toEqual(['Gerente de Projeto', 'Redatora'])
-    expect(textoDeFuncoes('A | B, a')).toBe('A, B')
   })
   it('o cadastro aceita uma função por vez', () => {
     expect(erroNomeDeFuncao('Tech Lead | Full-stack')).toMatch(/Uma função por vez.*"Tech Lead" e "Full-stack"/)

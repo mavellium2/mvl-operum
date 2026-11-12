@@ -5,13 +5,15 @@ import { ConflictException, NotFoundException } from '@nestjs/common'
 vi.mock('../prisma', () => ({
   prisma: {
     project: { findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn() },
-    userProject: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
+    userProject: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn(), delete: vi.fn(), findUniqueOrThrow: vi.fn() },
     userProjectRole: { findFirst: vi.fn(), deleteMany: vi.fn() },
+    userProjectFuncao: { deleteMany: vi.fn(), upsert: vi.fn() },
+    role: { findMany: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     department: { findFirst: vi.fn() },
     projectStakeholder: { findFirst: vi.fn() },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
-    $transaction: vi.fn(async (ops: unknown[]) => ops),
+    $transaction: vi.fn(),
   },
 }))
 
@@ -31,6 +33,9 @@ describe('ProjectService.addMember', () => {
     vi.clearAllMocks()
     db.project.findFirst.mockResolvedValue({ id: 'p1', tenantId: 't1' })
     db.projectStakeholder.findFirst.mockResolvedValue(null)
+    db.$transaction.mockImplementation(async (arg: unknown) => typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(prisma) : arg)
+    db.userProject.findUniqueOrThrow.mockResolvedValue({ id: 'up1', funcoes: [] })
+    db.role.findMany.mockResolvedValue([{ id: 'r-dev', name: 'Dev', deletedAt: null, nameKey: 'dev', scope: 'TENANT' }])
     assertUser.mockResolvedValue(undefined)
     service = new ProjectService()
   })
@@ -49,19 +54,30 @@ describe('ProjectService.addMember', () => {
   })
 
   it('adiciona usuário do mesmo tenant', async () => {
-    db.userProject.upsert.mockResolvedValue({})
-    await service.addMember('p1', 't1', 'u1', { role: 'dev' })
+    db.userProject.upsert.mockResolvedValue({ id: 'up1' })
+    await service.addMember('p1', 't1', 'u1', { funcoes: ['dev'] })
     expect(assertUser).toHaveBeenCalledWith('u1', 't1')
     expect(db.userProject.upsert).toHaveBeenCalled()
   })
 
   it('corpo não troca o projeto nem o estado do vínculo (atribuição em massa)', async () => {
-    db.userProject.upsert.mockResolvedValue({})
-    const { userId, ...data } = AddMemberSchema.parse({ userId: 'u1', role: 'dev', projectId: 'p-outro', active: false, order: 99, tenantId: 't2' })
+    db.userProject.upsert.mockResolvedValue({ id: 'up1' })
+    const { userId, ...data } = AddMemberSchema.parse({ userId: 'u1', funcoes: ['dev'], projectId: 'p-outro', active: false, order: 99, tenantId: 't2' })
     await service.addMember('p1', 't1', userId, data)
     const args = db.userProject.upsert.mock.calls[0][0]
-    expect(args.create).toEqual({ role: 'dev', userId: 'u1', projectId: 'p1' })
-    expect(args.update).toEqual({ role: 'dev', active: true, inactiveReason: null, inactivatedAt: null })
+    expect(args.create).toEqual({ userId: 'u1', projectId: 'p1' })
+    expect(args.update).toEqual({ active: true, inactiveReason: null, inactivatedAt: null })
+  })
+
+  it('funções viram vínculos com o cadastro; texto "A | B" nunca é gravado', async () => {
+    db.userProject.upsert.mockResolvedValue({ id: 'up1' })
+    db.role.upsert.mockImplementation(async ({ create }: { create: { name: string } }) => ({ id: `r-${create.name}` }))
+    await service.addMember('p1', 't1', 'u1', { role: 'Dev | Tech Lead' })
+    expect(JSON.stringify(db.userProject.upsert.mock.calls[0][0])).not.toContain('Tech Lead')
+    // "Dev" reaproveita a função do cadastro; "Tech Lead" é criada (uma só).
+    expect(db.role.upsert).toHaveBeenCalledTimes(1)
+    expect(db.userProjectFuncao.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: { userProjectId: 'up1', roleId: 'r-dev', ordem: 0 } }))
+    expect(db.userProjectFuncao.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: { userProjectId: 'up1', roleId: 'r-Tech Lead', ordem: 1 } }))
   })
 
   it('departamento de outra instituição é recusado', async () => {

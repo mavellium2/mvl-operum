@@ -2,6 +2,7 @@ import 'server-only'
 import type { Prisma } from '@/lib/generated/prisma'
 import prisma from '@/lib/prisma'
 import { separarFuncoes } from '@/lib/funcoes'
+import { copiarFuncoes, definirFuncoesDoExterno, FUNCOES_ORDENADAS } from '@/services/funcoesDaPessoa'
 
 /**
  * Uma pessoa, um cadastro: a conta do sistema (User) e o contato (Stakeholder)
@@ -77,7 +78,7 @@ export async function tornarExterno(tenantId: string, projectId: string, userId:
   return prisma.$transaction(async tx => {
     const membro = await tx.userProject.findFirst({
       where: { projectId, userId, user: { tenantId, deletedAt: null } },
-      include: { department: { select: { name: true } } },
+      include: { department: { select: { name: true } }, funcoes: FUNCOES_ORDENADAS },
     })
     if (!membro) throw new PessoaError('Esta pessoa não está na equipe deste projeto.')
     const gerente = await tx.userProjectRole.findFirst({ where: { userId, projectId, deletedAt: null, role: { is: { nameKey: 'gerente', scope: 'PROJETO' } } } })
@@ -85,13 +86,15 @@ export async function tornarExterno(tenantId: string, projectId: string, userId:
     const contato = await garantirContatoDoUsuario(tx, tenantId, userId)
     const dados = {
       remuneracao: membro.remuneracao, horasDiarias: membro.horasDiarias,
-      funcoes: nomes((membro.role ?? '').split(',')), departamentos: nomes(membro.department?.name ? [membro.department.name] : []),
+      departamentos: nomes(membro.department?.name ? [membro.department.name] : []),
     }
-    await tx.projectStakeholder.upsert({
+    const externo = await tx.projectStakeholder.upsert({
       where: { projectId_stakeholderId: { projectId, stakeholderId: contato.id } },
       create: { projectId, stakeholderId: contato.id, order: await proximaOrdem(tx, projectId), ...dados },
       update: dados,
     })
+    // As mesmas funções do cadastro, por id (nada de texto).
+    await copiarFuncoes(membro.funcoes.map(f => f.roleId), { projectStakeholderId: externo.id }, tx)
     // Mesmo efeito do "desvincular": sem motivo, sai também da lista de membros.
     await tx.userProject.update({ where: { id: membro.id }, data: { active: false, inactiveReason: null, inactivatedAt: null } })
     return contato
@@ -118,7 +121,7 @@ export async function tornarInterno(tenantId: string, projectId: string, stakeho
       await tx.stakeholder.update({ where: { id: contato.id }, data: { userId: novoUserId } })
       userId = novoUserId
     }
-    const vinculo = await tx.projectStakeholder.findUnique({ where: { projectId_stakeholderId: { projectId, stakeholderId } } })
+    const vinculo = await tx.projectStakeholder.findUnique({ where: { projectId_stakeholderId: { projectId, stakeholderId } }, include: { funcoes: FUNCOES_ORDENADAS } })
     const levar = vinculo
       ? {
         ...(vinculo.remuneracao != null ? { remuneracao: vinculo.remuneracao } : {}),
@@ -126,12 +129,15 @@ export async function tornarInterno(tenantId: string, projectId: string, stakeho
         ...(vinculo.remuneracao != null && vinculo.horasDiarias ? { hourlyRate: vinculo.remuneracao / 30 / vinculo.horasDiarias } : {}),
       }
       : {}
-    await tx.userProject.upsert({
+    const membro = await tx.userProject.upsert({
       where: { userId_projectId: { userId, projectId } },
       create: { userId, projectId, ...levar },
       update: { active: true, inactiveReason: null, inactivatedAt: null, endDate: null, ...levar },
     })
-    if (vinculo) await tx.projectStakeholder.delete({ where: { id: vinculo.id } })
+    if (vinculo) {
+      await copiarFuncoes(vinculo.funcoes.map(f => f.roleId), { userProjectId: membro.id }, tx)
+      await tx.projectStakeholder.delete({ where: { id: vinculo.id } })
+    }
     return { userId }
   })
 }
@@ -140,14 +146,17 @@ export async function tornarInterno(tenantId: string, projectId: string, stakeho
 export async function salvarDadosDoExterno(tenantId: string, projectId: string, stakeholderId: string, dados: DadosNoProjeto) {
   const vinculo = await prisma.projectStakeholder.findFirst({ where: { projectId, stakeholderId, stakeholder: { tenantId } } })
   if (!vinculo) throw new PessoaError('Esta pessoa não é parte interessada deste projeto.')
-  return prisma.projectStakeholder.update({
-    where: { id: vinculo.id },
-    data: {
-      ...(dados.remuneracao !== undefined ? { remuneracao: dados.remuneracao } : {}),
-      ...(dados.horasDiarias !== undefined ? { horasDiarias: dados.horasDiarias } : {}),
-      ...(dados.funcoes !== undefined ? { funcoes: nomes(dados.funcoes) } : {}),
-      ...(dados.departamentos !== undefined ? { departamentos: nomes(dados.departamentos) } : {}),
-    },
+  return prisma.$transaction(async tx => {
+    // Funções: cada uma um vínculo com o cadastro (escolhidas uma a uma na tela).
+    if (dados.funcoes !== undefined) await definirFuncoesDoExterno(tenantId, vinculo.id, nomes(dados.funcoes), tx)
+    return tx.projectStakeholder.update({
+      where: { id: vinculo.id },
+      data: {
+        ...(dados.remuneracao !== undefined ? { remuneracao: dados.remuneracao } : {}),
+        ...(dados.horasDiarias !== undefined ? { horasDiarias: dados.horasDiarias } : {}),
+        ...(dados.departamentos !== undefined ? { departamentos: nomes(dados.departamentos) } : {}),
+      },
+    })
   })
 }
 
