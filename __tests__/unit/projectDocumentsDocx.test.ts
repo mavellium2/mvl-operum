@@ -6,7 +6,7 @@ import { createRequire } from 'node:module'
 const testRequire = createRequire(import.meta.url)
 const JSZip = createRequire(testRequire.resolve('docx'))('jszip')
 import { join } from 'node:path'
-import { buildCharterDocx, buildStakeholderDocx, downloadAtaDocx } from '@/lib/exports/projectDocumentsDocx'
+import { buildCharterDocx, downloadAtaDocx } from '@/lib/exports/projectDocumentsDocx'
 import { buildAtaDocx } from '@/lib/exports/ataDocx'
 import { parseDocumentCost } from '@/lib/documentCost'
 import { charterChanges } from '@/lib/charterChanges'
@@ -22,29 +22,7 @@ async function inspect(name: string, doc: Parameters<typeof Packer.toBuffer>[0])
 describe('modelos documentais', () => {
   it('custo em formato brasileiro preserva milhar e centavos', () => { expect(parseDocumentCost('R$ 1.000,50')).toBe(1000.5); expect(parseDocumentCost('1000.50')).toBe(1000.5) })
   it('diff registra apenas campos alterados, incluindo remoção', () => { expect(charterChanges({ objetivos: 'Antes', metodologia: 'Igual' }, { objetivos: 'Depois', metodologia: 'Igual' })).toEqual([{ field: 'objetivos', before: 'Antes', after: 'Depois' }]); expect(charterChanges({ categoria: 'Faculdade' }, {})).toContainEqual({ field: 'categoria', before: 'Faculdade', after: null }) })
-  it('partes interessadas usa paisagem e as oito colunas do modelo', async () => {
-    const xml = await inspect('stakeholders', await buildStakeholderDocx({ categoria: 'Faculdade', nomeProjeto: 'Operum', gerenteProjeto: 'Gerente', elaboradoPor: 'Elaborador', aprovadoPor: '', versao: '1', dataCriacao: '', dataAprovacao: '' }, [{ ref: '01', nome: 'Integrante', empresaEquipe: 'Equipe', cargoCompetencia: 'Desenvolvedor', email: 'pessoa@example.test', telefoneFax: '(11) 90000-0000', endereco: 'Campus', observacoes: 'Parte interessada' }]))
-    expect(xml).toContain('w:orient="landscape"'); expect(xml).toContain('w:w="15138"'); expect(xml).toContain('Telefone/Celular'); expect(xml).toContain('Observação')
-  })
-  it('rodapé de stakeholders contém somente o campo de número da página', async () => {
-    const doc = await buildStakeholderDocx({ categoria: 'Faculdade', nomeProjeto: 'Operum', gerenteProjeto: 'Gerente', elaboradoPor: '', aprovadoPor: '', versao: '1', dataCriacao: '', dataAprovacao: '' }, [])
-    const zip = await JSZip.loadAsync(await Packer.toBuffer(doc))
-    const footer = await zip.file('word/footer1.xml').async('string')
-    expect(footer).toContain('PAGE')
-    expect(footer).not.toContain('©')
-    expect(footer).not.toContain('03_Form Stakeholders')
-    expect(footer).not.toContain('·')
-    const literalText = [...footer.matchAll(/<w:t(?: [^>]*)?>(.*?)<\/w:t>/g)].map(m => m[1]).join('').trim()
-    expect(literalText.replace(/1/g, '')).toBe('')
-  })
-  it('partes interessadas inativas saem em vermelho no docx, com o motivo na observação', async () => {
-    const header = { categoria: 'Faculdade', nomeProjeto: 'Operum', gerenteProjeto: 'Gerente', elaboradoPor: '', aprovadoPor: '', versao: '1', dataCriacao: '', dataAprovacao: '' }
-    const base = { ref: '01', nome: 'Pessoa', empresaEquipe: 'Equipe', cargoCompetencia: 'Dev', email: 'p@example.test', telefoneFax: '', endereco: '' }
-    const ativo = await inspect('stakeholders-ativo', await buildStakeholderDocx(header, [base]))
-    const inativo = await inspect('stakeholders-inativo', await buildStakeholderDocx(header, [{ ...base, inativo: true, motivoInativo: 'Contrato encerrado' }]))
-    expect(ativo).not.toContain('B91C1C')
-    expect(inativo).toContain('B91C1C'); expect(inativo).toContain('Inativo: Contrato encerrado')
-  })
+  // Partes interessadas: o Word sai da própria folha da tela (lib/exports/folhaDocx, testado em folhaDocx.test.ts).
   it('termo mantém a ordem do modelo, numera fases e calcula total', async () => {
     const xml = await inspect('charter', await buildCharterDocx(charter))
     expect(xml).toContain('3.000,75'); expect(xml).toContain('1.1 Planejamento'); expect(xml.indexOf('Descrição do produto')).toBeLessThan(xml.indexOf('Macro fases')); expect(xml.indexOf('Designação de gerente')).toBeLessThan(xml.indexOf('Metodologia do projeto'))
@@ -74,7 +52,6 @@ describe('modelos documentais', () => {
 
 describe('assinatura do gerente inline no Word', () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
-  const header = { categoria: 'Faculdade', nomeProjeto: 'Operum', gerenteProjeto: 'Gerente', elaboradoPor: '', aprovadoPor: '', versao: '1', dataCriacao: '', dataAprovacao: '' }
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64')
   function images(width: number, height: number) {
     const close = vi.fn()
@@ -84,13 +61,11 @@ describe('assinatura do gerente inline no Word', () => {
     vi.stubGlobal('fetch', fetchImage)
     return { close, fetchImage }
   }
-  for (const kind of ['termo', 'stakeholders'] as const) {
+  for (const kind of ['termo'] as const) {
     it.each([[600, 100, 170, 170 / 6], [100, 600, 5, 30]])(`${kind}: rótulo e imagem no mesmo parágrafo, sem distorcer proporção %ix%i`, async (width, height, expectedWidth, expectedHeight) => {
       const { close, fetchImage } = images(width, height)
       const url = 'http://localhost:9000/mvloperum/signatures/gerente.png'
-      const doc = kind === 'termo'
-        ? await buildCharterDocx({ ...charter, gerenteSignatureUrl: url })
-        : await buildStakeholderDocx({ ...header, signatureUrl: url }, [])
+      const doc = await buildCharterDocx({ ...charter, gerenteSignatureUrl: url })
       const xml = await inspect(`assinatura-inline-${kind}-${width}`, doc)
       const signatureParagraphs = (xml.match(/<w:p(?: [^>]*)?>[\s\S]*?<\/w:p>/g) || []).filter((p: string) => p.includes('Assinatura:'))
       expect(signatureParagraphs).toHaveLength(1)

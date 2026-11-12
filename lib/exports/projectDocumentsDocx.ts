@@ -1,9 +1,8 @@
 import { exibirEnvolvidos } from '@/lib/charterEnvolvidos'
 import { AlignmentType, TabStopType, ImageRun, Packer, Paragraph, TextRun } from 'docx'
 import type { CharterDocumentProps } from '@/components/projetos/documentacao/ProjectCharterDocument'
-import { observacaoDaLinha, type ProjetoHeader, type Stakeholder } from '@/components/projetos/StakeholderDocument'
 import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
-import { heading, modelDocument, modelTable, paragraphs, redParagraphs } from './documentModel'
+import { heading, modelDocument, modelTable, paragraphs } from './documentModel'
 import { parseDocumentCost } from '@/lib/documentCost'
 export { parseDocumentCost } from '@/lib/documentCost'
 async function imageRun(url: string | null | undefined, box = { width: 100, height: 75 }): Promise<ImageRun | undefined> {
@@ -37,13 +36,6 @@ async function save(doc: Parameters<typeof Packer.toBlob>[0], name: string) {
   const url = URL.createObjectURL(await Packer.toBlob(doc)), link = document.createElement('a')
   link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-export async function buildStakeholderDocx(h: ProjetoHeader, rows: Stakeholder[]) {
-  return modelDocument('Formulário de Stakeholders', [ ...await image(h.logoUrl), title('Formulário de Stakeholders'),
-    modelTable([11353,3785], [[h.categoria,''],[`Nome do projeto: ${h.nomeProjeto}`,''],[`Gerente do projeto: ${h.gerenteProjeto}`,''],[`Elaborado por: ${h.elaboradoPor}`,''],[`Aprovado por: ${h.aprovadoPor}`,await signature(h.signatureUrl)],[`Versão: ${h.versao}`,`Data de aprovação: ${h.dataAprovacao}`]], false, true),
-    heading('Partes interessadas'),
-    modelTable([650,2000,1700,2300,2200,1800,2300,2188], [['Ref','Nome','Empresa/Equipe','Cargo/Competência','e-mail','Telefone/Celular','Endereço','Observação'], ...rows.map(s => { const cells = [s.ref,s.nome,s.empresaEquipe,s.cargoCompetencia,s.email,s.telefoneFax,s.endereco,observacaoDaLinha(s)]; return s.inativo ? cells.map(redParagraphs) : cells })], true)
-  ], '', true)
-}
 export async function buildCharterDocx(p: CharterDocumentProps) {
   const total = p.fases.reduce((sum,f) => sum+parseDocumentCost(f.custo),0)
   return modelDocument('Termo de Abertura de Projeto - project charter', [ ...await image(p.logoUrl), title('Termo de Abertura de Projeto - project charter'),
@@ -57,7 +49,6 @@ export async function buildCharterDocx(p: CharterDocumentProps) {
     ...(p.metodologia ? [heading('Metodologia do projeto'),...paragraphs(p.metodologia)] : [])
   ], '© 02_Project Charter')
 }
-export async function downloadStakeholderDocx(h: ProjetoHeader, rows: Stakeholder[]) { await save(await buildStakeholderDocx(h, rows), 'partes-interessadas.docx') }
 export async function downloadCharterDocx(p: CharterDocumentProps) { await save(await buildCharterDocx(p), 'termo-de-abertura.docx') }
 /** Imagem para o Word gerado no navegador; indisponível vira "sem imagem" (não impede o download). */
 async function imagemNoNavegador(url: string | null | undefined, caixa: { maxW: number; maxH: number; centro?: boolean }): Promise<Paragraph[]> {
@@ -97,4 +88,13 @@ export async function downloadCapaDocx(d: import('./capaDocx').CapaExportData & 
   if (!cabecalho || (logoUrl && !logo)) throw new Error('Imagem da capa indisponível')
   const nome = d.nomeProjeto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
   await save(buildCapaDocx(d, { cabecalho, logo }), `capa${nome ? `-${nome}` : ''}.docx`)
+}
+
+/**
+ * Word idêntico à folha desenhada na tela (páginas, tabelas, imagens e rodapé).
+ * `raiz` é o elemento do <Folha> (a cópia de impressão do documento).
+ */
+export async function downloadFolhaDocx(raiz: HTMLElement, titulo: string, arquivo: string) {
+  const { folhaParaDocx } = await import('./folhaDocx')
+  await save(await folhaParaDocx(raiz, titulo), arquivo)
 }
