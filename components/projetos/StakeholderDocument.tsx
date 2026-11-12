@@ -152,7 +152,8 @@ const StakeholderDocument = forwardRef<HTMLDivElement, Props>(
               <td style={{ ...cel, whiteSpace: 'nowrap' }}>
                 <AssinaturaEmLinha url={header.signatureUrl} rotulo={<B>Assinatura:</B>} vazio={editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined} />
               </td>
-              <td style={{ ...cel, whiteSpace: 'nowrap' }}>
+              {/* No meio da linha, alinhada com "Assinatura:" (a imagem deixa a linha mais alta). */}
+              <td style={{ ...cel, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                 <B>Data de aprovação:</B>{' '}
                 {editavel
                   ? <CampoData id="ds-data-aprovacao" rotulo="Data de aprovação" ajuda="Dia em que o gerente aprovou esta versão." valor={ed?.dataAprovacaoRaw ?? ''} onChange={ed?.onDataAprovacao ?? nada} />

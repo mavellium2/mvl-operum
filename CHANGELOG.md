@@ -13,6 +13,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Macro fases:** a Data limite fica centralizada na coluna, na leitura e na edição.
 
+- **Campos do Termo sem espaço sobrando:** Justificativa, Objetivos, Metodologia, Descrição do produto, Premissas/restrições, Principais envolvidos e Limites de autoridade deixam de ter altura mínima fixa e acompanham o texto (vazios mantêm uma linha para digitar), na tela, no PDF e no Word. Principais envolvidos tem o mesmo recuo em cima e embaixo, e a Data de aprovação fica no meio da linha, alinhada com a assinatura (também em Partes interessadas).
+
 - **Principais envolvidos:** os títulos criados podem ser excluídos junto com as pessoas deles. "Integrantes do Grupo" vem da equipe e continua fixo.
 
 - Sai o gerador antigo do Word do Termo e o módulo `documentModel.ts`, sem uso.

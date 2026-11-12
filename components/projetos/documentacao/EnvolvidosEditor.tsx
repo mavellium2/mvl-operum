@@ -62,6 +62,6 @@ export default function EnvolvidosEditor({ value, membros, onChange }: { value: 
       </div>
 
     </GrupoEnvolvidos>)}
-    <GlassButton variant="ghost" type="button" onClick={() => { setNewIndex(blocks.length); onChange(gravarEnvolvidos([...blocks, { titulo: '', texto: '' }])) }} className="glass-button--small print:hidden"><Plus size={14} strokeWidth={1.75} aria-hidden="true" />Adicionar título</GlassButton>
+    <GlassButton variant="ghost" type="button" onClick={() => { setNewIndex(blocks.length); onChange(gravarEnvolvidos([...blocks, { titulo: '', texto: '' }])) }} className="glass-button--small self-start print:hidden"><Plus size={14} strokeWidth={1.75} aria-hidden="true" />Adicionar título</GlassButton>
   </EnvolvidosLayout>
 }
