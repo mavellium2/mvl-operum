@@ -1215,3 +1215,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Condições de revisão:** sincronizar entre dispositivos exige persistir os acessos no servidor.
 - **Referências:** `lib/recentProject.ts`, `components/layout/RecentProjectRecorder.tsx`, `services/projectList.ts`, `app/actions/projectList.ts`, `project-service/src/project/project.controller.ts`, `project-service/src/project/project.service.ts`.
 
+## ADR-097 — Uma pessoa, um cadastro: interna ou externa em cada projeto
+
+- **Data:** 2026-11-12.
+- **Status:** implementada.
+- **Contexto:** internos eram contas do sistema (`User` + `UserProject`) e externos eram contatos (`Stakeholder` + `ProjectStakeholder`), sem ligação. Quem era interno não podia ser usado como externo (e vice-versa) sem cadastrar de novo. O usuário pediu que as pessoas estejam nas duas listas e possam mudar de interno para externo; confirmou que interno continua sendo membro com acesso e que a classificação vale por projeto. Pediu também os mesmos campos (remuneração, horas, valores) para os dois.
+- **Escolha:** `Stakeholder.userId` (opcional, único, `ON DELETE SET NULL`) liga o contato à conta da mesma pessoa. A classificação é por projeto e exclusiva. `ProjectStakeholder` ganha `remuneracao`, `horasDiarias`, `funcoes` e `departamentos`. As trocas são server actions com `projeto:equipe`, numa transação (`services/pessoasDoProjeto.ts`); a exclusividade também é garantida no project-service (`addMember` e `linkProject`). Contato sem login só vira interno quando um administrador cria a conta (mesma regra de criação de usuário).
+- **Justificativa:** mantém o significado de "interno" (acesso, cards, horas, Termo e Ata) e evita duplicar pessoas sem migrar dados nem fundir tabelas. Ligar contato e conta preserva o histórico dos dois lados.
+- **Alternativas consideradas:** fundir `User` e `Stakeholder` numa tabela (migração grande e mistura credenciais com contatos); interno/externo só como rótulo do documento (não atende "interno = membro com acesso"); classificação global da pessoa (não permite ser interno num projeto e externo em outro).
+- **Consequências:** migration `20261112140000_pessoa_interna_externa` só acrescenta colunas. Interno → externo tira o acesso da pessoa àquele projeto; cards dela continuam com ela. Cargos que alimentam permissões continuam só para o administrador; funções do externo são rótulos. A remuneração do externo não entra em custos de cards (externo não é responsável de card). Documentos já salvos tratam os dois identificadores da mesma pessoa como a mesma linha.
+- **Condições de revisão:** se externos passarem a lançar horas ou ter custo na planilha, rever onde a remuneração deles entra no cálculo.
+- **Referências:** `services/pessoasDoProjeto.ts`, `services/stakeholdersDoProjeto.ts`, `app/actions/stakeholders.ts`, `components/projetos/ProjetoStakeholdersClient.tsx`, `lib/partesInteressadas.ts`, `project-service/src/project/project.service.ts`, `project-service/src/stakeholder/stakeholder.service.ts`, `prisma/migrations/20261112140000_pessoa_interna_externa/migration.sql`.
+

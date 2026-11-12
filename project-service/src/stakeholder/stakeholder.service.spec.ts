@@ -17,12 +17,13 @@ vi.mock('../prisma', () => ({
       update: vi.fn(),
     },
     projectStakeholder: mockProjectStakeholder,
+    userProject: { findFirst: vi.fn() },
   },
 }))
 
 vi.mock('../common/tenant-scope', () => ({ assertProjectInTenant: vi.fn() }))
 
-import { NotFoundException } from '@nestjs/common'
+import { ConflictException, NotFoundException } from '@nestjs/common'
 import { assertProjectInTenant } from '../common/tenant-scope'
 import { StakeholderService, UpdateStakeholderSchema } from './stakeholder.service'
 
@@ -87,6 +88,25 @@ describe('StakeholderService', () => {
       expect(mockProjectStakeholder.findMany).not.toHaveBeenCalled()
       expect(mockProjectStakeholder.updateMany).not.toHaveBeenCalled()
       expect(mockProjectStakeholder.upsert).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('uma pessoa: interna ou externa em cada projeto', () => {
+    it('não vincula como externo o contato de quem já é membro ativo do projeto', async () => {
+      const db = (await import('../prisma')).prisma as unknown as { stakeholder: { findFirst: ReturnType<typeof vi.fn> }; userProject: { findFirst: ReturnType<typeof vi.fn> } }
+      db.stakeholder.findFirst.mockResolvedValue({ id: 'sk1', tenantId: 't1', userId: 'u1' })
+      db.userProject.findFirst.mockResolvedValue({ id: 'up1' })
+      await expect(service.linkProject('sk1', 'p1', 't1')).rejects.toThrow(ConflictException)
+      expect(db.userProject.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'p1', userId: 'u1', active: true } }))
+      expect(mockProjectStakeholder.upsert).not.toHaveBeenCalled()
+    })
+    it('contato sem conta, ou conta fora da equipe, vincula normalmente', async () => {
+      const db = (await import('../prisma')).prisma as unknown as { stakeholder: { findFirst: ReturnType<typeof vi.fn> }; userProject: { findFirst: ReturnType<typeof vi.fn> } }
+      db.stakeholder.findFirst.mockResolvedValue({ id: 'sk1', tenantId: 't1', userId: 'u1' })
+      db.userProject.findFirst.mockResolvedValue(null)
+      mockProjectStakeholder.upsert.mockResolvedValue({ id: 'ps1' })
+      await service.linkProject('sk1', 'p1', 't1')
+      expect(mockProjectStakeholder.upsert).toHaveBeenCalled()
     })
   })
 

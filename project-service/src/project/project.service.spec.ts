@@ -1,12 +1,13 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { NotFoundException } from '@nestjs/common'
+import { ConflictException, NotFoundException } from '@nestjs/common'
 
 vi.mock('../prisma', () => ({
   prisma: {
     project: { findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     userProject: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
     department: { findFirst: vi.fn() },
+    projectStakeholder: { findFirst: vi.fn() },
   },
 }))
 
@@ -25,8 +26,16 @@ describe('ProjectService.addMember', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     db.project.findFirst.mockResolvedValue({ id: 'p1', tenantId: 't1' })
+    db.projectStakeholder.findFirst.mockResolvedValue(null)
     assertUser.mockResolvedValue(undefined)
     service = new ProjectService()
+  })
+
+  it('recusa (409) quem já é externo neste projeto: a troca é por "Mudar para interno"', async () => {
+    db.projectStakeholder.findFirst.mockResolvedValue({ id: 'ps1' })
+    await expect(service.addMember('p1', 't1', 'u1', {})).rejects.toThrow(ConflictException)
+    expect(db.projectStakeholder.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'p1', stakeholder: { userId: 'u1' } } }))
+    expect(db.userProject.upsert).not.toHaveBeenCalled()
   })
 
   it('rejeita (404) usuário de outro tenant como membro', async () => {

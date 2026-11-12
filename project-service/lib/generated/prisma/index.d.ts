@@ -164,7 +164,7 @@ export class PrismaClient<
    * Read more in our [docs](https://pris.ly/d/client).
    */
 
-  constructor(optionsArg ?: Prisma.Subset<ClientOptions, Prisma.PrismaClientOptions>);
+  constructor(optionsArg ?: Prisma.PrismaClientConstructorArgs<ClientOptions>);
   $on<V extends U>(eventType: V, callback: (event: V extends 'query' ? Prisma.QueryEvent : Prisma.LogEvent) => void): PrismaClient;
 
   /**
@@ -237,7 +237,7 @@ export class PrismaClient<
    * 
    * Read more in our [docs](https://www.prisma.io/docs/orm/prisma-client/queries/transactions).
    */
-  $transaction<P extends Prisma.PrismaPromise<any>[]>(arg: [...P], options?: { isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<runtime.Types.Utils.UnwrapTuple<P>>
+  $transaction<P extends Prisma.PrismaPromise<any>[]>(arg: [...P], options?: { maxWait?: number, timeout?: number, isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<runtime.Types.Utils.UnwrapTuple<P>>
 
   $transaction<R>(fn: (prisma: Omit<PrismaClient, runtime.ITXClientDenyList>) => $Utils.JsPromise<R>, options?: { maxWait?: number, timeout?: number, isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<R>
 
@@ -424,8 +424,8 @@ export namespace Prisma {
   export import Exact = $Public.Exact
 
   /**
-   * Prisma Client JS version: 7.7.0
-   * Query Engine version: 75cbdc1eb7150937890ad5465d861175c6624711
+   * Prisma Client JS version: 7.10.0
+   * Query Engine version: 0edf323efd1d98336f3f0a68684b56f689b900d3
    */
   export type PrismaVersion = {
     client: string
@@ -560,6 +560,19 @@ export namespace Prisma {
   };
 
   /**
+   * Resolved type of the argument passed to the `PrismaClient` constructor.
+   *
+   * When called without a narrower options type (the common case), this resolves
+   * to `PrismaClientOptions` directly, which produces a clear TypeScript error
+   * message (`not assignable to parameter of type 'PrismaClientOptions'`) when
+   * the argument is missing or incomplete. When the user supplies a narrower
+   * options type (e.g. via a literal), it falls back to `Subset` to keep
+   * filtering out unknown properties.
+   */
+  export type PrismaClientConstructorArgs<Options extends PrismaClientOptions> =
+    [PrismaClientOptions] extends [Options] ? PrismaClientOptions : Subset<Options, PrismaClientOptions>;
+
+  /**
    * SelectSubset
    * @desc From `T` pick properties that exist in `U`. Simple version of Intersection.
    * Additionally, it validates, if both select and include are present. If the case, it errors.
@@ -591,7 +604,7 @@ export namespace Prisma {
   type XOR<T, U> =
     T extends object ?
     U extends object ?
-      (Without<T, U> & U) | (Without<U, T> & T)
+      ((Without<T, U> & U) | (Without<U, T> & T)) & object
     : U : T
 
 
@@ -1870,11 +1883,26 @@ export namespace Prisma {
       isolationLevel?: Prisma.TransactionIsolationLevel
     }
     /**
-     * Instance of a Driver Adapter, e.g., like one provided by `@prisma/adapter-planetscale`
+     * A driver adapter that PrismaClient uses to connect to your database, such as the ones provided by `@prisma/adapter-pg`, `@prisma/adapter-libsql`, `@prisma/adapter-planetscale`, etc.
+     * 
+     * A driver adapter is **required** unless you connect to your database through Prisma Accelerate (in which case use `accelerateUrl` instead).
+     * 
+     * Learn more: https://pris.ly/d/driver-adapters
+     * 
+     * @example
+     * ```ts
+     * import { PrismaPg } from '@prisma/adapter-pg'
+     * import { PrismaClient } from './generated/prisma/client'
+     * 
+     * const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+     * const prisma = new PrismaClient({ adapter })
+     * ```
      */
     adapter?: runtime.SqlDriverAdapterFactory
     /**
-     * Prisma Accelerate URL allowing the client to connect through Accelerate instead of a direct database.
+     * The Prisma Accelerate connection URL. Use this option to connect to your database through Prisma Accelerate instead of using a driver adapter to connect directly.
+     * 
+     * Learn more: https://pris.ly/d/accelerate
      */
     accelerateUrl?: string
     /**
@@ -3661,6 +3689,7 @@ export namespace Prisma {
     projects?: boolean | User$projectsArgs<ExtArgs>
     departments?: boolean | User$departmentsArgs<ExtArgs>
     userProjectRoles?: boolean | User$userProjectRolesArgs<ExtArgs>
+    contato?: boolean | User$contatoArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -3693,6 +3722,7 @@ export namespace Prisma {
     projects?: boolean | User$projectsArgs<ExtArgs>
     departments?: boolean | User$departmentsArgs<ExtArgs>
     userProjectRoles?: boolean | User$userProjectRolesArgs<ExtArgs>
+    contato?: boolean | User$contatoArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -3704,6 +3734,7 @@ export namespace Prisma {
       projects: Prisma.$UserProjectPayload<ExtArgs>[]
       departments: Prisma.$UserDepartmentPayload<ExtArgs>[]
       userProjectRoles: Prisma.$UserProjectRolePayload<ExtArgs>[]
+      contato: Prisma.$StakeholderPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -4108,6 +4139,7 @@ export namespace Prisma {
     projects<T extends User$projectsArgs<ExtArgs> = {}>(args?: Subset<T, User$projectsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProjectPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     departments<T extends User$departmentsArgs<ExtArgs> = {}>(args?: Subset<T, User$departmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserDepartmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     userProjectRoles<T extends User$userProjectRolesArgs<ExtArgs> = {}>(args?: Subset<T, User$userProjectRolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProjectRolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    contato<T extends User$contatoArgs<ExtArgs> = {}>(args?: Subset<T, User$contatoArgs<ExtArgs>>): Prisma__StakeholderClient<$Result.GetResult<Prisma.$StakeholderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4604,6 +4636,25 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: UserProjectRoleScalarFieldEnum | UserProjectRoleScalarFieldEnum[]
+  }
+
+  /**
+   * User.contato
+   */
+  export type User$contatoArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Stakeholder
+     */
+    select?: StakeholderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Stakeholder
+     */
+    omit?: StakeholderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: StakeholderInclude<ExtArgs> | null
+    where?: StakeholderWhereInput
   }
 
   /**
@@ -15276,6 +15327,7 @@ export namespace Prisma {
     inactivatedAt: Date | null
     createdAt: Date | null
     updatedAt: Date | null
+    userId: string | null
   }
 
   export type StakeholderMaxAggregateOutputType = {
@@ -15300,6 +15352,7 @@ export namespace Prisma {
     inactivatedAt: Date | null
     createdAt: Date | null
     updatedAt: Date | null
+    userId: string | null
   }
 
   export type StakeholderCountAggregateOutputType = {
@@ -15324,6 +15377,7 @@ export namespace Prisma {
     inactivatedAt: number
     createdAt: number
     updatedAt: number
+    userId: number
     _all: number
   }
 
@@ -15350,6 +15404,7 @@ export namespace Prisma {
     inactivatedAt?: true
     createdAt?: true
     updatedAt?: true
+    userId?: true
   }
 
   export type StakeholderMaxAggregateInputType = {
@@ -15374,6 +15429,7 @@ export namespace Prisma {
     inactivatedAt?: true
     createdAt?: true
     updatedAt?: true
+    userId?: true
   }
 
   export type StakeholderCountAggregateInputType = {
@@ -15398,6 +15454,7 @@ export namespace Prisma {
     inactivatedAt?: true
     createdAt?: true
     updatedAt?: true
+    userId?: true
     _all?: true
   }
 
@@ -15495,6 +15552,7 @@ export namespace Prisma {
     inactivatedAt: Date | null
     createdAt: Date
     updatedAt: Date
+    userId: string | null
     _count: StakeholderCountAggregateOutputType | null
     _min: StakeholderMinAggregateOutputType | null
     _max: StakeholderMaxAggregateOutputType | null
@@ -15536,6 +15594,8 @@ export namespace Prisma {
     inactivatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    userId?: boolean
+    user?: boolean | Stakeholder$userArgs<ExtArgs>
     projects?: boolean | Stakeholder$projectsArgs<ExtArgs>
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
     _count?: boolean | StakeholderCountOutputTypeDefaultArgs<ExtArgs>
@@ -15563,6 +15623,8 @@ export namespace Prisma {
     inactivatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    userId?: boolean
+    user?: boolean | Stakeholder$userArgs<ExtArgs>
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["stakeholder"]>
 
@@ -15588,6 +15650,8 @@ export namespace Prisma {
     inactivatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    userId?: boolean
+    user?: boolean | Stakeholder$userArgs<ExtArgs>
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["stakeholder"]>
 
@@ -15613,24 +15677,29 @@ export namespace Prisma {
     inactivatedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    userId?: boolean
   }
 
-  export type StakeholderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "name" | "logoUrl" | "company" | "competence" | "email" | "phone" | "cep" | "logradouro" | "numero" | "complemento" | "bairro" | "cidade" | "estado" | "notes" | "isActive" | "inactiveReason" | "inactivatedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["stakeholder"]>
+  export type StakeholderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "name" | "logoUrl" | "company" | "competence" | "email" | "phone" | "cep" | "logradouro" | "numero" | "complemento" | "bairro" | "cidade" | "estado" | "notes" | "isActive" | "inactiveReason" | "inactivatedAt" | "createdAt" | "updatedAt" | "userId", ExtArgs["result"]["stakeholder"]>
   export type StakeholderInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | Stakeholder$userArgs<ExtArgs>
     projects?: boolean | Stakeholder$projectsArgs<ExtArgs>
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
     _count?: boolean | StakeholderCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type StakeholderIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | Stakeholder$userArgs<ExtArgs>
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
   }
   export type StakeholderIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | Stakeholder$userArgs<ExtArgs>
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
   }
 
   export type $StakeholderPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Stakeholder"
     objects: {
+      user: Prisma.$UserPayload<ExtArgs> | null
       projects: Prisma.$ProjectStakeholderPayload<ExtArgs>[]
       tenant: Prisma.$TenantPayload<ExtArgs>
     }
@@ -15656,6 +15725,10 @@ export namespace Prisma {
       inactivatedAt: Date | null
       createdAt: Date
       updatedAt: Date
+      /**
+       * * Conta do sistema da mesma pessoa: um cadastro só, usado como interno ou externo em cada projeto.
+       */
+      userId: string | null
     }, ExtArgs["result"]["stakeholder"]>
     composites: {}
   }
@@ -16050,6 +16123,7 @@ export namespace Prisma {
    */
   export interface Prisma__StakeholderClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends Stakeholder$userArgs<ExtArgs> = {}>(args?: Subset<T, Stakeholder$userArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     projects<T extends Stakeholder$projectsArgs<ExtArgs> = {}>(args?: Subset<T, Stakeholder$projectsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ProjectStakeholderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     /**
@@ -16102,6 +16176,7 @@ export namespace Prisma {
     readonly inactivatedAt: FieldRef<"Stakeholder", 'DateTime'>
     readonly createdAt: FieldRef<"Stakeholder", 'DateTime'>
     readonly updatedAt: FieldRef<"Stakeholder", 'DateTime'>
+    readonly userId: FieldRef<"Stakeholder", 'String'>
   }
     
 
@@ -16503,6 +16578,25 @@ export namespace Prisma {
   }
 
   /**
+   * Stakeholder.user
+   */
+  export type Stakeholder$userArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the User
+     */
+    select?: UserSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the User
+     */
+    omit?: UserOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserInclude<ExtArgs> | null
+    where?: UserWhereInput
+  }
+
+  /**
    * Stakeholder.projects
    */
   export type Stakeholder$projectsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -16559,10 +16653,14 @@ export namespace Prisma {
 
   export type ProjectStakeholderAvgAggregateOutputType = {
     order: number | null
+    remuneracao: number | null
+    horasDiarias: number | null
   }
 
   export type ProjectStakeholderSumAggregateOutputType = {
     order: number | null
+    remuneracao: number | null
+    horasDiarias: number | null
   }
 
   export type ProjectStakeholderMinAggregateOutputType = {
@@ -16571,6 +16669,8 @@ export namespace Prisma {
     stakeholderId: string | null
     createdAt: Date | null
     order: number | null
+    remuneracao: number | null
+    horasDiarias: number | null
   }
 
   export type ProjectStakeholderMaxAggregateOutputType = {
@@ -16579,6 +16679,8 @@ export namespace Prisma {
     stakeholderId: string | null
     createdAt: Date | null
     order: number | null
+    remuneracao: number | null
+    horasDiarias: number | null
   }
 
   export type ProjectStakeholderCountAggregateOutputType = {
@@ -16587,16 +16689,24 @@ export namespace Prisma {
     stakeholderId: number
     createdAt: number
     order: number
+    remuneracao: number
+    horasDiarias: number
+    funcoes: number
+    departamentos: number
     _all: number
   }
 
 
   export type ProjectStakeholderAvgAggregateInputType = {
     order?: true
+    remuneracao?: true
+    horasDiarias?: true
   }
 
   export type ProjectStakeholderSumAggregateInputType = {
     order?: true
+    remuneracao?: true
+    horasDiarias?: true
   }
 
   export type ProjectStakeholderMinAggregateInputType = {
@@ -16605,6 +16715,8 @@ export namespace Prisma {
     stakeholderId?: true
     createdAt?: true
     order?: true
+    remuneracao?: true
+    horasDiarias?: true
   }
 
   export type ProjectStakeholderMaxAggregateInputType = {
@@ -16613,6 +16725,8 @@ export namespace Prisma {
     stakeholderId?: true
     createdAt?: true
     order?: true
+    remuneracao?: true
+    horasDiarias?: true
   }
 
   export type ProjectStakeholderCountAggregateInputType = {
@@ -16621,6 +16735,10 @@ export namespace Prisma {
     stakeholderId?: true
     createdAt?: true
     order?: true
+    remuneracao?: true
+    horasDiarias?: true
+    funcoes?: true
+    departamentos?: true
     _all?: true
   }
 
@@ -16716,6 +16834,10 @@ export namespace Prisma {
     stakeholderId: string
     createdAt: Date
     order: number
+    remuneracao: number | null
+    horasDiarias: number | null
+    funcoes: string[]
+    departamentos: string[]
     _count: ProjectStakeholderCountAggregateOutputType | null
     _avg: ProjectStakeholderAvgAggregateOutputType | null
     _sum: ProjectStakeholderSumAggregateOutputType | null
@@ -16743,6 +16865,10 @@ export namespace Prisma {
     stakeholderId?: boolean
     createdAt?: boolean
     order?: boolean
+    remuneracao?: boolean
+    horasDiarias?: boolean
+    funcoes?: boolean
+    departamentos?: boolean
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     stakeholder?: boolean | StakeholderDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["projectStakeholder"]>
@@ -16753,6 +16879,10 @@ export namespace Prisma {
     stakeholderId?: boolean
     createdAt?: boolean
     order?: boolean
+    remuneracao?: boolean
+    horasDiarias?: boolean
+    funcoes?: boolean
+    departamentos?: boolean
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     stakeholder?: boolean | StakeholderDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["projectStakeholder"]>
@@ -16763,6 +16893,10 @@ export namespace Prisma {
     stakeholderId?: boolean
     createdAt?: boolean
     order?: boolean
+    remuneracao?: boolean
+    horasDiarias?: boolean
+    funcoes?: boolean
+    departamentos?: boolean
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     stakeholder?: boolean | StakeholderDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["projectStakeholder"]>
@@ -16773,9 +16907,13 @@ export namespace Prisma {
     stakeholderId?: boolean
     createdAt?: boolean
     order?: boolean
+    remuneracao?: boolean
+    horasDiarias?: boolean
+    funcoes?: boolean
+    departamentos?: boolean
   }
 
-  export type ProjectStakeholderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectId" | "stakeholderId" | "createdAt" | "order", ExtArgs["result"]["projectStakeholder"]>
+  export type ProjectStakeholderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectId" | "stakeholderId" | "createdAt" | "order" | "remuneracao" | "horasDiarias" | "funcoes" | "departamentos", ExtArgs["result"]["projectStakeholder"]>
   export type ProjectStakeholderInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     project?: boolean | ProjectDefaultArgs<ExtArgs>
     stakeholder?: boolean | StakeholderDefaultArgs<ExtArgs>
@@ -16801,6 +16939,10 @@ export namespace Prisma {
       stakeholderId: string
       createdAt: Date
       order: number
+      remuneracao: number | null
+      horasDiarias: number | null
+      funcoes: string[]
+      departamentos: string[]
     }, ExtArgs["result"]["projectStakeholder"]>
     composites: {}
   }
@@ -17231,6 +17373,10 @@ export namespace Prisma {
     readonly stakeholderId: FieldRef<"ProjectStakeholder", 'String'>
     readonly createdAt: FieldRef<"ProjectStakeholder", 'DateTime'>
     readonly order: FieldRef<"ProjectStakeholder", 'Int'>
+    readonly remuneracao: FieldRef<"ProjectStakeholder", 'Float'>
+    readonly horasDiarias: FieldRef<"ProjectStakeholder", 'Float'>
+    readonly funcoes: FieldRef<"ProjectStakeholder", 'String[]'>
+    readonly departamentos: FieldRef<"ProjectStakeholder", 'String[]'>
   }
     
 
@@ -17853,7 +17999,8 @@ export namespace Prisma {
     inactiveReason: 'inactiveReason',
     inactivatedAt: 'inactivatedAt',
     createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
+    updatedAt: 'updatedAt',
+    userId: 'userId'
   };
 
   export type StakeholderScalarFieldEnum = (typeof StakeholderScalarFieldEnum)[keyof typeof StakeholderScalarFieldEnum]
@@ -17864,7 +18011,11 @@ export namespace Prisma {
     projectId: 'projectId',
     stakeholderId: 'stakeholderId',
     createdAt: 'createdAt',
-    order: 'order'
+    order: 'order',
+    remuneracao: 'remuneracao',
+    horasDiarias: 'horasDiarias',
+    funcoes: 'funcoes',
+    departamentos: 'departamentos'
   };
 
   export type ProjectStakeholderScalarFieldEnum = (typeof ProjectStakeholderScalarFieldEnum)[keyof typeof ProjectStakeholderScalarFieldEnum]
@@ -18093,6 +18244,7 @@ export namespace Prisma {
     projects?: UserProjectListRelationFilter
     departments?: UserDepartmentListRelationFilter
     userProjectRoles?: UserProjectRoleListRelationFilter
+    contato?: XOR<StakeholderNullableScalarRelationFilter, StakeholderWhereInput> | null
   }
 
   export type UserOrderByWithRelationInput = {
@@ -18104,6 +18256,7 @@ export namespace Prisma {
     projects?: UserProjectOrderByRelationAggregateInput
     departments?: UserDepartmentOrderByRelationAggregateInput
     userProjectRoles?: UserProjectRoleOrderByRelationAggregateInput
+    contato?: StakeholderOrderByWithRelationInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -18119,6 +18272,7 @@ export namespace Prisma {
     projects?: UserProjectListRelationFilter
     departments?: UserDepartmentListRelationFilter
     userProjectRoles?: UserProjectRoleListRelationFilter
+    contato?: XOR<StakeholderNullableScalarRelationFilter, StakeholderWhereInput> | null
   }, "id" | "email_tenantId">
 
   export type UserOrderByWithAggregationInput = {
@@ -18946,6 +19100,8 @@ export namespace Prisma {
     inactivatedAt?: DateTimeNullableFilter<"Stakeholder"> | Date | string | null
     createdAt?: DateTimeFilter<"Stakeholder"> | Date | string
     updatedAt?: DateTimeFilter<"Stakeholder"> | Date | string
+    userId?: StringNullableFilter<"Stakeholder"> | string | null
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
     projects?: ProjectStakeholderListRelationFilter
     tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
   }
@@ -18972,12 +19128,15 @@ export namespace Prisma {
     inactivatedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    userId?: SortOrderInput | SortOrder
+    user?: UserOrderByWithRelationInput
     projects?: ProjectStakeholderOrderByRelationAggregateInput
     tenant?: TenantOrderByWithRelationInput
   }
 
   export type StakeholderWhereUniqueInput = Prisma.AtLeast<{
     id?: string
+    userId?: string
     AND?: StakeholderWhereInput | StakeholderWhereInput[]
     OR?: StakeholderWhereInput[]
     NOT?: StakeholderWhereInput | StakeholderWhereInput[]
@@ -19001,9 +19160,10 @@ export namespace Prisma {
     inactivatedAt?: DateTimeNullableFilter<"Stakeholder"> | Date | string | null
     createdAt?: DateTimeFilter<"Stakeholder"> | Date | string
     updatedAt?: DateTimeFilter<"Stakeholder"> | Date | string
+    user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
     projects?: ProjectStakeholderListRelationFilter
     tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
-  }, "id">
+  }, "id" | "userId">
 
   export type StakeholderOrderByWithAggregationInput = {
     id?: SortOrder
@@ -19027,6 +19187,7 @@ export namespace Prisma {
     inactivatedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    userId?: SortOrderInput | SortOrder
     _count?: StakeholderCountOrderByAggregateInput
     _max?: StakeholderMaxOrderByAggregateInput
     _min?: StakeholderMinOrderByAggregateInput
@@ -19057,6 +19218,7 @@ export namespace Prisma {
     inactivatedAt?: DateTimeNullableWithAggregatesFilter<"Stakeholder"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Stakeholder"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Stakeholder"> | Date | string
+    userId?: StringNullableWithAggregatesFilter<"Stakeholder"> | string | null
   }
 
   export type ProjectStakeholderWhereInput = {
@@ -19068,6 +19230,10 @@ export namespace Prisma {
     stakeholderId?: StringFilter<"ProjectStakeholder"> | string
     createdAt?: DateTimeFilter<"ProjectStakeholder"> | Date | string
     order?: IntFilter<"ProjectStakeholder"> | number
+    remuneracao?: FloatNullableFilter<"ProjectStakeholder"> | number | null
+    horasDiarias?: FloatNullableFilter<"ProjectStakeholder"> | number | null
+    funcoes?: StringNullableListFilter<"ProjectStakeholder">
+    departamentos?: StringNullableListFilter<"ProjectStakeholder">
     project?: XOR<ProjectScalarRelationFilter, ProjectWhereInput>
     stakeholder?: XOR<StakeholderScalarRelationFilter, StakeholderWhereInput>
   }
@@ -19078,6 +19244,10 @@ export namespace Prisma {
     stakeholderId?: SortOrder
     createdAt?: SortOrder
     order?: SortOrder
+    remuneracao?: SortOrderInput | SortOrder
+    horasDiarias?: SortOrderInput | SortOrder
+    funcoes?: SortOrder
+    departamentos?: SortOrder
     project?: ProjectOrderByWithRelationInput
     stakeholder?: StakeholderOrderByWithRelationInput
   }
@@ -19092,6 +19262,10 @@ export namespace Prisma {
     stakeholderId?: StringFilter<"ProjectStakeholder"> | string
     createdAt?: DateTimeFilter<"ProjectStakeholder"> | Date | string
     order?: IntFilter<"ProjectStakeholder"> | number
+    remuneracao?: FloatNullableFilter<"ProjectStakeholder"> | number | null
+    horasDiarias?: FloatNullableFilter<"ProjectStakeholder"> | number | null
+    funcoes?: StringNullableListFilter<"ProjectStakeholder">
+    departamentos?: StringNullableListFilter<"ProjectStakeholder">
     project?: XOR<ProjectScalarRelationFilter, ProjectWhereInput>
     stakeholder?: XOR<StakeholderScalarRelationFilter, StakeholderWhereInput>
   }, "id" | "projectId_stakeholderId">
@@ -19102,6 +19276,10 @@ export namespace Prisma {
     stakeholderId?: SortOrder
     createdAt?: SortOrder
     order?: SortOrder
+    remuneracao?: SortOrderInput | SortOrder
+    horasDiarias?: SortOrderInput | SortOrder
+    funcoes?: SortOrder
+    departamentos?: SortOrder
     _count?: ProjectStakeholderCountOrderByAggregateInput
     _avg?: ProjectStakeholderAvgOrderByAggregateInput
     _max?: ProjectStakeholderMaxOrderByAggregateInput
@@ -19118,6 +19296,10 @@ export namespace Prisma {
     stakeholderId?: StringWithAggregatesFilter<"ProjectStakeholder"> | string
     createdAt?: DateTimeWithAggregatesFilter<"ProjectStakeholder"> | Date | string
     order?: IntWithAggregatesFilter<"ProjectStakeholder"> | number
+    remuneracao?: FloatNullableWithAggregatesFilter<"ProjectStakeholder"> | number | null
+    horasDiarias?: FloatNullableWithAggregatesFilter<"ProjectStakeholder"> | number | null
+    funcoes?: StringNullableListFilter<"ProjectStakeholder">
+    departamentos?: StringNullableListFilter<"ProjectStakeholder">
   }
 
   export type TenantCreateInput = {
@@ -19215,6 +19397,7 @@ export namespace Prisma {
     projects?: UserProjectCreateNestedManyWithoutUserInput
     departments?: UserDepartmentCreateNestedManyWithoutUserInput
     userProjectRoles?: UserProjectRoleCreateNestedManyWithoutUserInput
+    contato?: StakeholderCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -19226,6 +19409,7 @@ export namespace Prisma {
     projects?: UserProjectUncheckedCreateNestedManyWithoutUserInput
     departments?: UserDepartmentUncheckedCreateNestedManyWithoutUserInput
     userProjectRoles?: UserProjectRoleUncheckedCreateNestedManyWithoutUserInput
+    contato?: StakeholderUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -19237,6 +19421,7 @@ export namespace Prisma {
     projects?: UserProjectUpdateManyWithoutUserNestedInput
     departments?: UserDepartmentUpdateManyWithoutUserNestedInput
     userProjectRoles?: UserProjectRoleUpdateManyWithoutUserNestedInput
+    contato?: StakeholderUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -19248,6 +19433,7 @@ export namespace Prisma {
     projects?: UserProjectUncheckedUpdateManyWithoutUserNestedInput
     departments?: UserDepartmentUncheckedUpdateManyWithoutUserNestedInput
     userProjectRoles?: UserProjectRoleUncheckedUpdateManyWithoutUserNestedInput
+    contato?: StakeholderUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -20136,6 +20322,7 @@ export namespace Prisma {
     inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutContatoInput
     projects?: ProjectStakeholderCreateNestedManyWithoutStakeholderInput
     tenant: TenantCreateNestedOneWithoutStakeholdersInput
   }
@@ -20162,6 +20349,7 @@ export namespace Prisma {
     inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    userId?: string | null
     projects?: ProjectStakeholderUncheckedCreateNestedManyWithoutStakeholderInput
   }
 
@@ -20186,6 +20374,7 @@ export namespace Prisma {
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutContatoNestedInput
     projects?: ProjectStakeholderUpdateManyWithoutStakeholderNestedInput
     tenant?: TenantUpdateOneRequiredWithoutStakeholdersNestedInput
   }
@@ -20212,6 +20401,7 @@ export namespace Prisma {
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
     projects?: ProjectStakeholderUncheckedUpdateManyWithoutStakeholderNestedInput
   }
 
@@ -20237,6 +20427,7 @@ export namespace Prisma {
     inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    userId?: string | null
   }
 
   export type StakeholderUpdateManyMutationInput = {
@@ -20284,12 +20475,17 @@ export namespace Prisma {
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type ProjectStakeholderCreateInput = {
     id?: string
     createdAt?: Date | string
     order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
     project: ProjectCreateNestedOneWithoutStakeholdersInput
     stakeholder: StakeholderCreateNestedOneWithoutProjectsInput
   }
@@ -20300,12 +20496,20 @@ export namespace Prisma {
     stakeholderId: string
     createdAt?: Date | string
     order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
   }
 
   export type ProjectStakeholderUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
     project?: ProjectUpdateOneRequiredWithoutStakeholdersNestedInput
     stakeholder?: StakeholderUpdateOneRequiredWithoutProjectsNestedInput
   }
@@ -20316,6 +20520,10 @@ export namespace Prisma {
     stakeholderId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
   }
 
   export type ProjectStakeholderCreateManyInput = {
@@ -20324,12 +20532,20 @@ export namespace Prisma {
     stakeholderId: string
     createdAt?: Date | string
     order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
   }
 
   export type ProjectStakeholderUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
   }
 
   export type ProjectStakeholderUncheckedUpdateManyInput = {
@@ -20338,6 +20554,10 @@ export namespace Prisma {
     stakeholderId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
   }
 
   export type StringFilter<$PrismaModel = never> = {
@@ -20531,6 +20751,11 @@ export namespace Prisma {
     every?: UserProjectRoleWhereInput
     some?: UserProjectRoleWhereInput
     none?: UserProjectRoleWhereInput
+  }
+
+  export type StakeholderNullableScalarRelationFilter = {
+    is?: StakeholderWhereInput | null
+    isNot?: StakeholderWhereInput | null
   }
 
   export type UserProjectOrderByRelationAggregateInput = {
@@ -21240,6 +21465,11 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type UserNullableScalarRelationFilter = {
+    is?: UserWhereInput | null
+    isNot?: UserWhereInput | null
+  }
+
   export type StakeholderCountOrderByAggregateInput = {
     id?: SortOrder
     tenantId?: SortOrder
@@ -21262,6 +21492,7 @@ export namespace Prisma {
     inactivatedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    userId?: SortOrder
   }
 
   export type StakeholderMaxOrderByAggregateInput = {
@@ -21286,6 +21517,7 @@ export namespace Prisma {
     inactivatedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    userId?: SortOrder
   }
 
   export type StakeholderMinOrderByAggregateInput = {
@@ -21310,6 +21542,7 @@ export namespace Prisma {
     inactivatedAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    userId?: SortOrder
   }
 
   export type StakeholderScalarRelationFilter = {
@@ -21328,10 +21561,16 @@ export namespace Prisma {
     stakeholderId?: SortOrder
     createdAt?: SortOrder
     order?: SortOrder
+    remuneracao?: SortOrder
+    horasDiarias?: SortOrder
+    funcoes?: SortOrder
+    departamentos?: SortOrder
   }
 
   export type ProjectStakeholderAvgOrderByAggregateInput = {
     order?: SortOrder
+    remuneracao?: SortOrder
+    horasDiarias?: SortOrder
   }
 
   export type ProjectStakeholderMaxOrderByAggregateInput = {
@@ -21340,6 +21579,8 @@ export namespace Prisma {
     stakeholderId?: SortOrder
     createdAt?: SortOrder
     order?: SortOrder
+    remuneracao?: SortOrder
+    horasDiarias?: SortOrder
   }
 
   export type ProjectStakeholderMinOrderByAggregateInput = {
@@ -21348,10 +21589,14 @@ export namespace Prisma {
     stakeholderId?: SortOrder
     createdAt?: SortOrder
     order?: SortOrder
+    remuneracao?: SortOrder
+    horasDiarias?: SortOrder
   }
 
   export type ProjectStakeholderSumOrderByAggregateInput = {
     order?: SortOrder
+    remuneracao?: SortOrder
+    horasDiarias?: SortOrder
   }
 
   export type ProjectCreateNestedManyWithoutTenantInput = {
@@ -21559,6 +21804,12 @@ export namespace Prisma {
     connect?: UserProjectRoleWhereUniqueInput | UserProjectRoleWhereUniqueInput[]
   }
 
+  export type StakeholderCreateNestedOneWithoutUserInput = {
+    create?: XOR<StakeholderCreateWithoutUserInput, StakeholderUncheckedCreateWithoutUserInput>
+    connectOrCreate?: StakeholderCreateOrConnectWithoutUserInput
+    connect?: StakeholderWhereUniqueInput
+  }
+
   export type UserProjectUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<UserProjectCreateWithoutUserInput, UserProjectUncheckedCreateWithoutUserInput> | UserProjectCreateWithoutUserInput[] | UserProjectUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserProjectCreateOrConnectWithoutUserInput | UserProjectCreateOrConnectWithoutUserInput[]
@@ -21578,6 +21829,12 @@ export namespace Prisma {
     connectOrCreate?: UserProjectRoleCreateOrConnectWithoutUserInput | UserProjectRoleCreateOrConnectWithoutUserInput[]
     createMany?: UserProjectRoleCreateManyUserInputEnvelope
     connect?: UserProjectRoleWhereUniqueInput | UserProjectRoleWhereUniqueInput[]
+  }
+
+  export type StakeholderUncheckedCreateNestedOneWithoutUserInput = {
+    create?: XOR<StakeholderCreateWithoutUserInput, StakeholderUncheckedCreateWithoutUserInput>
+    connectOrCreate?: StakeholderCreateOrConnectWithoutUserInput
+    connect?: StakeholderWhereUniqueInput
   }
 
   export type UserProjectUpdateManyWithoutUserNestedInput = {
@@ -21622,6 +21879,16 @@ export namespace Prisma {
     deleteMany?: UserProjectRoleScalarWhereInput | UserProjectRoleScalarWhereInput[]
   }
 
+  export type StakeholderUpdateOneWithoutUserNestedInput = {
+    create?: XOR<StakeholderCreateWithoutUserInput, StakeholderUncheckedCreateWithoutUserInput>
+    connectOrCreate?: StakeholderCreateOrConnectWithoutUserInput
+    upsert?: StakeholderUpsertWithoutUserInput
+    disconnect?: StakeholderWhereInput | boolean
+    delete?: StakeholderWhereInput | boolean
+    connect?: StakeholderWhereUniqueInput
+    update?: XOR<XOR<StakeholderUpdateToOneWithWhereWithoutUserInput, StakeholderUpdateWithoutUserInput>, StakeholderUncheckedUpdateWithoutUserInput>
+  }
+
   export type UserProjectUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<UserProjectCreateWithoutUserInput, UserProjectUncheckedCreateWithoutUserInput> | UserProjectCreateWithoutUserInput[] | UserProjectUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserProjectCreateOrConnectWithoutUserInput | UserProjectCreateOrConnectWithoutUserInput[]
@@ -21662,6 +21929,16 @@ export namespace Prisma {
     update?: UserProjectRoleUpdateWithWhereUniqueWithoutUserInput | UserProjectRoleUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: UserProjectRoleUpdateManyWithWhereWithoutUserInput | UserProjectRoleUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: UserProjectRoleScalarWhereInput | UserProjectRoleScalarWhereInput[]
+  }
+
+  export type StakeholderUncheckedUpdateOneWithoutUserNestedInput = {
+    create?: XOR<StakeholderCreateWithoutUserInput, StakeholderUncheckedCreateWithoutUserInput>
+    connectOrCreate?: StakeholderCreateOrConnectWithoutUserInput
+    upsert?: StakeholderUpsertWithoutUserInput
+    disconnect?: StakeholderWhereInput | boolean
+    delete?: StakeholderWhereInput | boolean
+    connect?: StakeholderWhereUniqueInput
+    update?: XOR<XOR<StakeholderUpdateToOneWithWhereWithoutUserInput, StakeholderUpdateWithoutUserInput>, StakeholderUncheckedUpdateWithoutUserInput>
   }
 
   export type ProjectCreatedepartamentosInput = {
@@ -22289,6 +22566,12 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutUserProjectRolesInput, UserUpdateWithoutUserProjectRolesInput>, UserUncheckedUpdateWithoutUserProjectRolesInput>
   }
 
+  export type UserCreateNestedOneWithoutContatoInput = {
+    create?: XOR<UserCreateWithoutContatoInput, UserUncheckedCreateWithoutContatoInput>
+    connectOrCreate?: UserCreateOrConnectWithoutContatoInput
+    connect?: UserWhereUniqueInput
+  }
+
   export type ProjectStakeholderCreateNestedManyWithoutStakeholderInput = {
     create?: XOR<ProjectStakeholderCreateWithoutStakeholderInput, ProjectStakeholderUncheckedCreateWithoutStakeholderInput> | ProjectStakeholderCreateWithoutStakeholderInput[] | ProjectStakeholderUncheckedCreateWithoutStakeholderInput[]
     connectOrCreate?: ProjectStakeholderCreateOrConnectWithoutStakeholderInput | ProjectStakeholderCreateOrConnectWithoutStakeholderInput[]
@@ -22307,6 +22590,16 @@ export namespace Prisma {
     connectOrCreate?: ProjectStakeholderCreateOrConnectWithoutStakeholderInput | ProjectStakeholderCreateOrConnectWithoutStakeholderInput[]
     createMany?: ProjectStakeholderCreateManyStakeholderInputEnvelope
     connect?: ProjectStakeholderWhereUniqueInput | ProjectStakeholderWhereUniqueInput[]
+  }
+
+  export type UserUpdateOneWithoutContatoNestedInput = {
+    create?: XOR<UserCreateWithoutContatoInput, UserUncheckedCreateWithoutContatoInput>
+    connectOrCreate?: UserCreateOrConnectWithoutContatoInput
+    upsert?: UserUpsertWithoutContatoInput
+    disconnect?: UserWhereInput | boolean
+    delete?: UserWhereInput | boolean
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutContatoInput, UserUpdateWithoutContatoInput>, UserUncheckedUpdateWithoutContatoInput>
   }
 
   export type ProjectStakeholderUpdateManyWithoutStakeholderNestedInput = {
@@ -22345,6 +22638,14 @@ export namespace Prisma {
     deleteMany?: ProjectStakeholderScalarWhereInput | ProjectStakeholderScalarWhereInput[]
   }
 
+  export type ProjectStakeholderCreatefuncoesInput = {
+    set: string[]
+  }
+
+  export type ProjectStakeholderCreatedepartamentosInput = {
+    set: string[]
+  }
+
   export type ProjectCreateNestedOneWithoutStakeholdersInput = {
     create?: XOR<ProjectCreateWithoutStakeholdersInput, ProjectUncheckedCreateWithoutStakeholdersInput>
     connectOrCreate?: ProjectCreateOrConnectWithoutStakeholdersInput
@@ -22355,6 +22656,16 @@ export namespace Prisma {
     create?: XOR<StakeholderCreateWithoutProjectsInput, StakeholderUncheckedCreateWithoutProjectsInput>
     connectOrCreate?: StakeholderCreateOrConnectWithoutProjectsInput
     connect?: StakeholderWhereUniqueInput
+  }
+
+  export type ProjectStakeholderUpdatefuncoesInput = {
+    set?: string[]
+    push?: string | string[]
+  }
+
+  export type ProjectStakeholderUpdatedepartamentosInput = {
+    set?: string[]
+    push?: string | string[]
   }
 
   export type ProjectUpdateOneRequiredWithoutStakeholdersNestedInput = {
@@ -22814,6 +23125,7 @@ export namespace Prisma {
     inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutContatoInput
     projects?: ProjectStakeholderCreateNestedManyWithoutStakeholderInput
   }
 
@@ -22838,6 +23150,7 @@ export namespace Prisma {
     inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    userId?: string | null
     projects?: ProjectStakeholderUncheckedCreateNestedManyWithoutStakeholderInput
   }
 
@@ -23005,6 +23318,7 @@ export namespace Prisma {
     inactivatedAt?: DateTimeNullableFilter<"Stakeholder"> | Date | string | null
     createdAt?: DateTimeFilter<"Stakeholder"> | Date | string
     updatedAt?: DateTimeFilter<"Stakeholder"> | Date | string
+    userId?: StringNullableFilter<"Stakeholder"> | string | null
   }
 
   export type UserProjectCreateWithoutUserInput = {
@@ -23097,6 +23411,61 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type StakeholderCreateWithoutUserInput = {
+    id?: string
+    name: string
+    logoUrl?: string | null
+    company?: string | null
+    competence?: string | null
+    email?: string | null
+    phone?: string | null
+    cep?: string | null
+    logradouro?: string | null
+    numero?: string | null
+    complemento?: string | null
+    bairro?: string | null
+    cidade?: string | null
+    estado?: string | null
+    notes?: string | null
+    isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    projects?: ProjectStakeholderCreateNestedManyWithoutStakeholderInput
+    tenant: TenantCreateNestedOneWithoutStakeholdersInput
+  }
+
+  export type StakeholderUncheckedCreateWithoutUserInput = {
+    id?: string
+    tenantId: string
+    name: string
+    logoUrl?: string | null
+    company?: string | null
+    competence?: string | null
+    email?: string | null
+    phone?: string | null
+    cep?: string | null
+    logradouro?: string | null
+    numero?: string | null
+    complemento?: string | null
+    bairro?: string | null
+    cidade?: string | null
+    estado?: string | null
+    notes?: string | null
+    isActive?: boolean
+    inactiveReason?: string | null
+    inactivatedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    projects?: ProjectStakeholderUncheckedCreateNestedManyWithoutStakeholderInput
+  }
+
+  export type StakeholderCreateOrConnectWithoutUserInput = {
+    where: StakeholderWhereUniqueInput
+    create: XOR<StakeholderCreateWithoutUserInput, StakeholderUncheckedCreateWithoutUserInput>
+  }
+
   export type UserProjectUpsertWithWhereUniqueWithoutUserInput = {
     where: UserProjectWhereUniqueInput
     update: XOR<UserProjectUpdateWithoutUserInput, UserProjectUncheckedUpdateWithoutUserInput>
@@ -23185,6 +23554,67 @@ export namespace Prisma {
     deletedAt?: DateTimeNullableFilter<"UserProjectRole"> | Date | string | null
     createdAt?: DateTimeFilter<"UserProjectRole"> | Date | string
     updatedAt?: DateTimeFilter<"UserProjectRole"> | Date | string
+  }
+
+  export type StakeholderUpsertWithoutUserInput = {
+    update: XOR<StakeholderUpdateWithoutUserInput, StakeholderUncheckedUpdateWithoutUserInput>
+    create: XOR<StakeholderCreateWithoutUserInput, StakeholderUncheckedCreateWithoutUserInput>
+    where?: StakeholderWhereInput
+  }
+
+  export type StakeholderUpdateToOneWithWhereWithoutUserInput = {
+    where?: StakeholderWhereInput
+    data: XOR<StakeholderUpdateWithoutUserInput, StakeholderUncheckedUpdateWithoutUserInput>
+  }
+
+  export type StakeholderUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    logoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    company?: NullableStringFieldUpdateOperationsInput | string | null
+    competence?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    cep?: NullableStringFieldUpdateOperationsInput | string | null
+    logradouro?: NullableStringFieldUpdateOperationsInput | string | null
+    numero?: NullableStringFieldUpdateOperationsInput | string | null
+    complemento?: NullableStringFieldUpdateOperationsInput | string | null
+    bairro?: NullableStringFieldUpdateOperationsInput | string | null
+    cidade?: NullableStringFieldUpdateOperationsInput | string | null
+    estado?: NullableStringFieldUpdateOperationsInput | string | null
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    projects?: ProjectStakeholderUpdateManyWithoutStakeholderNestedInput
+    tenant?: TenantUpdateOneRequiredWithoutStakeholdersNestedInput
+  }
+
+  export type StakeholderUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    logoUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    company?: NullableStringFieldUpdateOperationsInput | string | null
+    competence?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    cep?: NullableStringFieldUpdateOperationsInput | string | null
+    logradouro?: NullableStringFieldUpdateOperationsInput | string | null
+    numero?: NullableStringFieldUpdateOperationsInput | string | null
+    complemento?: NullableStringFieldUpdateOperationsInput | string | null
+    bairro?: NullableStringFieldUpdateOperationsInput | string | null
+    cidade?: NullableStringFieldUpdateOperationsInput | string | null
+    estado?: NullableStringFieldUpdateOperationsInput | string | null
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    inactiveReason?: NullableStringFieldUpdateOperationsInput | string | null
+    inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    projects?: ProjectStakeholderUncheckedUpdateManyWithoutStakeholderNestedInput
   }
 
   export type TenantCreateWithoutProjectsInput = {
@@ -23322,6 +23752,10 @@ export namespace Prisma {
     id?: string
     createdAt?: Date | string
     order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
     stakeholder: StakeholderCreateNestedOneWithoutProjectsInput
   }
 
@@ -23330,6 +23764,10 @@ export namespace Prisma {
     stakeholderId: string
     createdAt?: Date | string
     order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
   }
 
   export type ProjectStakeholderCreateOrConnectWithoutProjectInput = {
@@ -23466,6 +23904,10 @@ export namespace Prisma {
     stakeholderId?: StringFilter<"ProjectStakeholder"> | string
     createdAt?: DateTimeFilter<"ProjectStakeholder"> | Date | string
     order?: IntFilter<"ProjectStakeholder"> | number
+    remuneracao?: FloatNullableFilter<"ProjectStakeholder"> | number | null
+    horasDiarias?: FloatNullableFilter<"ProjectStakeholder"> | number | null
+    funcoes?: StringNullableListFilter<"ProjectStakeholder">
+    departamentos?: StringNullableListFilter<"ProjectStakeholder">
   }
 
   export type ProjectCreateWithoutMacroFasesInput = {
@@ -23794,6 +24236,7 @@ export namespace Prisma {
     role?: string
     projects?: UserProjectCreateNestedManyWithoutUserInput
     userProjectRoles?: UserProjectRoleCreateNestedManyWithoutUserInput
+    contato?: StakeholderCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutDepartmentsInput = {
@@ -23804,6 +24247,7 @@ export namespace Prisma {
     role?: string
     projects?: UserProjectUncheckedCreateNestedManyWithoutUserInput
     userProjectRoles?: UserProjectRoleUncheckedCreateNestedManyWithoutUserInput
+    contato?: StakeholderUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutDepartmentsInput = {
@@ -23861,6 +24305,7 @@ export namespace Prisma {
     role?: StringFieldUpdateOperationsInput | string
     projects?: UserProjectUpdateManyWithoutUserNestedInput
     userProjectRoles?: UserProjectRoleUpdateManyWithoutUserNestedInput
+    contato?: StakeholderUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutDepartmentsInput = {
@@ -23871,6 +24316,7 @@ export namespace Prisma {
     role?: StringFieldUpdateOperationsInput | string
     projects?: UserProjectUncheckedUpdateManyWithoutUserNestedInput
     userProjectRoles?: UserProjectRoleUncheckedUpdateManyWithoutUserNestedInput
+    contato?: StakeholderUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type DepartmentUpsertWithoutUsersInput = {
@@ -23918,6 +24364,7 @@ export namespace Prisma {
     role?: string
     departments?: UserDepartmentCreateNestedManyWithoutUserInput
     userProjectRoles?: UserProjectRoleCreateNestedManyWithoutUserInput
+    contato?: StakeholderCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutProjectsInput = {
@@ -23928,6 +24375,7 @@ export namespace Prisma {
     role?: string
     departments?: UserDepartmentUncheckedCreateNestedManyWithoutUserInput
     userProjectRoles?: UserProjectRoleUncheckedCreateNestedManyWithoutUserInput
+    contato?: StakeholderUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutProjectsInput = {
@@ -24060,6 +24508,7 @@ export namespace Prisma {
     role?: StringFieldUpdateOperationsInput | string
     departments?: UserDepartmentUpdateManyWithoutUserNestedInput
     userProjectRoles?: UserProjectRoleUpdateManyWithoutUserNestedInput
+    contato?: StakeholderUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutProjectsInput = {
@@ -24070,6 +24519,7 @@ export namespace Prisma {
     role?: StringFieldUpdateOperationsInput | string
     departments?: UserDepartmentUncheckedUpdateManyWithoutUserNestedInput
     userProjectRoles?: UserProjectRoleUncheckedUpdateManyWithoutUserNestedInput
+    contato?: StakeholderUncheckedUpdateOneWithoutUserNestedInput
   }
 
   export type ProjectUpsertWithoutMembersInput = {
@@ -24625,6 +25075,7 @@ export namespace Prisma {
     role?: string
     projects?: UserProjectCreateNestedManyWithoutUserInput
     departments?: UserDepartmentCreateNestedManyWithoutUserInput
+    contato?: StakeholderCreateNestedOneWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutUserProjectRolesInput = {
@@ -24635,6 +25086,7 @@ export namespace Prisma {
     role?: string
     projects?: UserProjectUncheckedCreateNestedManyWithoutUserInput
     departments?: UserDepartmentUncheckedCreateNestedManyWithoutUserInput
+    contato?: StakeholderUncheckedCreateNestedOneWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutUserProjectRolesInput = {
@@ -24779,6 +25231,7 @@ export namespace Prisma {
     role?: StringFieldUpdateOperationsInput | string
     projects?: UserProjectUpdateManyWithoutUserNestedInput
     departments?: UserDepartmentUpdateManyWithoutUserNestedInput
+    contato?: StakeholderUpdateOneWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutUserProjectRolesInput = {
@@ -24789,12 +25242,44 @@ export namespace Prisma {
     role?: StringFieldUpdateOperationsInput | string
     projects?: UserProjectUncheckedUpdateManyWithoutUserNestedInput
     departments?: UserDepartmentUncheckedUpdateManyWithoutUserNestedInput
+    contato?: StakeholderUncheckedUpdateOneWithoutUserNestedInput
+  }
+
+  export type UserCreateWithoutContatoInput = {
+    id?: string
+    tenantId: string
+    name: string
+    email: string
+    role?: string
+    projects?: UserProjectCreateNestedManyWithoutUserInput
+    departments?: UserDepartmentCreateNestedManyWithoutUserInput
+    userProjectRoles?: UserProjectRoleCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutContatoInput = {
+    id?: string
+    tenantId: string
+    name: string
+    email: string
+    role?: string
+    projects?: UserProjectUncheckedCreateNestedManyWithoutUserInput
+    departments?: UserDepartmentUncheckedCreateNestedManyWithoutUserInput
+    userProjectRoles?: UserProjectRoleUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutContatoInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutContatoInput, UserUncheckedCreateWithoutContatoInput>
   }
 
   export type ProjectStakeholderCreateWithoutStakeholderInput = {
     id?: string
     createdAt?: Date | string
     order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
     project: ProjectCreateNestedOneWithoutStakeholdersInput
   }
 
@@ -24803,6 +25288,10 @@ export namespace Prisma {
     projectId: string
     createdAt?: Date | string
     order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
   }
 
   export type ProjectStakeholderCreateOrConnectWithoutStakeholderInput = {
@@ -24844,6 +25333,39 @@ export namespace Prisma {
   export type TenantCreateOrConnectWithoutStakeholdersInput = {
     where: TenantWhereUniqueInput
     create: XOR<TenantCreateWithoutStakeholdersInput, TenantUncheckedCreateWithoutStakeholdersInput>
+  }
+
+  export type UserUpsertWithoutContatoInput = {
+    update: XOR<UserUpdateWithoutContatoInput, UserUncheckedUpdateWithoutContatoInput>
+    create: XOR<UserCreateWithoutContatoInput, UserUncheckedCreateWithoutContatoInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutContatoInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutContatoInput, UserUncheckedUpdateWithoutContatoInput>
+  }
+
+  export type UserUpdateWithoutContatoInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    projects?: UserProjectUpdateManyWithoutUserNestedInput
+    departments?: UserDepartmentUpdateManyWithoutUserNestedInput
+    userProjectRoles?: UserProjectRoleUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutContatoInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    projects?: UserProjectUncheckedUpdateManyWithoutUserNestedInput
+    departments?: UserDepartmentUncheckedUpdateManyWithoutUserNestedInput
+    userProjectRoles?: UserProjectRoleUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ProjectStakeholderUpsertWithWhereUniqueWithoutStakeholderInput = {
@@ -24995,6 +25517,7 @@ export namespace Prisma {
     inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    user?: UserCreateNestedOneWithoutContatoInput
     tenant: TenantCreateNestedOneWithoutStakeholdersInput
   }
 
@@ -25020,6 +25543,7 @@ export namespace Prisma {
     inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    userId?: string | null
   }
 
   export type StakeholderCreateOrConnectWithoutProjectsInput = {
@@ -25140,6 +25664,7 @@ export namespace Prisma {
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutContatoNestedInput
     tenant?: TenantUpdateOneRequiredWithoutStakeholdersNestedInput
   }
 
@@ -25165,6 +25690,7 @@ export namespace Prisma {
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type ProjectCreateManyTenantInput = {
@@ -25241,6 +25767,7 @@ export namespace Prisma {
     inactivatedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    userId?: string | null
   }
 
   export type ProjectUpdateWithoutTenantInput = {
@@ -25439,6 +25966,7 @@ export namespace Prisma {
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneWithoutContatoNestedInput
     projects?: ProjectStakeholderUpdateManyWithoutStakeholderNestedInput
   }
 
@@ -25463,6 +25991,7 @@ export namespace Prisma {
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
     projects?: ProjectStakeholderUncheckedUpdateManyWithoutStakeholderNestedInput
   }
 
@@ -25487,6 +26016,7 @@ export namespace Prisma {
     inactivatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userId?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type UserProjectCreateManyUserInput = {
@@ -25649,6 +26179,10 @@ export namespace Prisma {
     stakeholderId: string
     createdAt?: Date | string
     order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
   }
 
   export type UserProjectUpdateWithoutProjectInput = {
@@ -25760,6 +26294,10 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
     stakeholder?: StakeholderUpdateOneRequiredWithoutProjectsNestedInput
   }
 
@@ -25768,6 +26306,10 @@ export namespace Prisma {
     stakeholderId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
   }
 
   export type ProjectStakeholderUncheckedUpdateManyWithoutProjectInput = {
@@ -25775,6 +26317,10 @@ export namespace Prisma {
     stakeholderId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
   }
 
   export type UserDepartmentCreateManyDepartmentInput = {
@@ -25942,12 +26488,20 @@ export namespace Prisma {
     projectId: string
     createdAt?: Date | string
     order?: number
+    remuneracao?: number | null
+    horasDiarias?: number | null
+    funcoes?: ProjectStakeholderCreatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderCreatedepartamentosInput | string[]
   }
 
   export type ProjectStakeholderUpdateWithoutStakeholderInput = {
     id?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
     project?: ProjectUpdateOneRequiredWithoutStakeholdersNestedInput
   }
 
@@ -25956,6 +26510,10 @@ export namespace Prisma {
     projectId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
   }
 
   export type ProjectStakeholderUncheckedUpdateManyWithoutStakeholderInput = {
@@ -25963,6 +26521,10 @@ export namespace Prisma {
     projectId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     order?: IntFieldUpdateOperationsInput | number
+    remuneracao?: NullableFloatFieldUpdateOperationsInput | number | null
+    horasDiarias?: NullableFloatFieldUpdateOperationsInput | number | null
+    funcoes?: ProjectStakeholderUpdatefuncoesInput | string[]
+    departamentos?: ProjectStakeholderUpdatedepartamentosInput | string[]
   }
 
 

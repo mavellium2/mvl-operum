@@ -25,6 +25,10 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Projetos em ordem de abertura:** a lista de projetos segue a ordem em que cada usuário abriu os projetos, do mais recente para o mais antigo (antes só o último aberto subia; os demais voltavam à ordem de criação). Ex.: com Janus, Operum e Fechai, abrir Fechai, Janus e Operum deixa a lista em Operum, Janus, Fechai. A ordem é de cada usuário em cada instituição; concluídos, arquivados e inativos continuam depois dos ativos.
 
+- **Stakeholders: uma pessoa, um cadastro:** quem é cadastrado pode ser usado como interno ou como externo, em cada projeto. A lista de "adicionar externo" mostra também os usuários do sistema, e a de "adicionar interno" também os contatos externos (sem login, o administrador cria o login já preenchido). No cadastro de cada pessoa, "Mudar para externo" (sai da equipe e perde o acesso àquele projeto) e "Mudar para interno" (entra na equipe), com confirmação. O gerente não pode virar externo sem passar a gerência. Migration `20261112140000_pessoa_interna_externa`.
+
+- **Mesmos campos para interno e externo:** empresa, competência, remuneração mensal, horas por dia, valor por dia/hora/minuto, funções e departamentos aparecem para os dois. Gerente e assinatura continuam só do interno.
+
 - Sai o gerador antigo do Word do Termo e o módulo `documentModel.ts`, sem uso.
 
 ## [1.55.0] — 2026-11-11

@@ -197,6 +197,10 @@ export class ProjectService {
   async addMember(projectId: string, tenantId: string, userId: string, input: Omit<AddMemberInput, 'userId'>) {
     await this.findOne(projectId, tenantId)
     await assertUserInTenant(userId, tenantId)
+    // Uma pessoa é interna OU externa em cada projeto: quem é externo aqui muda pela troca.
+    if (await prisma.projectStakeholder.findFirst({ where: { projectId, stakeholder: { userId } }, select: { id: true } })) {
+      throw new ConflictException('Esta pessoa é externa neste projeto. Use "Mudar para interno".')
+    }
     const data = {
       ...(input.role !== undefined ? { role: input.role } : {}),
       ...(input.departmentId !== undefined ? { departmentId: input.departmentId } : {}),

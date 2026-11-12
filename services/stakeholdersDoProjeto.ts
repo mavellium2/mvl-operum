@@ -51,6 +51,7 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
               deletedAt: true,
               isActive: true,
               signatureUrl: true,
+              contato: { select: { company: true, competence: true } },
             },
           },
           department: { select: { name: true } },
@@ -79,34 +80,60 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
   // ── External stakeholders
   const linkedStakeholderIds = new Set(projectStakeholders.map(ps => ps.stakeholderId))
 
-  const stakeholdersDisponiveis: StakeholderExterno[] = allGlobalStakeholders
-    .filter(s => !linkedStakeholderIds.has(s.id))
-    .map(s => ({
-      id: s.id,
-      tenantId: s.tenantId,
-      name: s.name,
-      logoUrl: s.logoUrl,
-      company: s.company,
-      competence: s.competence,
-      email: s.email,
-      phone: s.phone,
-      cep: s.cep,
-      logradouro: s.logradouro,
-      numero: s.numero,
-      complemento: s.complemento,
-      bairro: s.bairro,
-      cidade: s.cidade,
-      estado: s.estado,
-      notes: s.notes,
-      isActive: s.isActive,
-    }))
-
-  // ── Internal members
+  // Uma pessoa, um cadastro: em cada projeto ela é interna OU externa. As duas listas de
+  // "adicionar" mostram todo mundo que ainda não está neste projeto (contas e contatos).
   const memberUserIds = new Set(userProjects.map(up => up.userId))
+  const contaDosExternos = new Set(projectStakeholders.map(ps => ps.stakeholder.userId).filter((id): id is string => !!id))
+  const contasComContato = new Set(allGlobalStakeholders.map(s => s.userId).filter((id): id is string => !!id))
+  const foraDoProjeto = (userId: string) => !memberUserIds.has(userId) && !contaDosExternos.has(userId)
 
-  const usuariosDisponiveis: UsuarioDisponivel[] = allUsers
-    .filter(u => !memberUserIds.has(u.id))
-    .map(u => ({ id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl, role: u.role }))
+  const stakeholdersDisponiveis: StakeholderExterno[] = [
+    ...allGlobalStakeholders
+      // Contato de uma conta que é membro deste projeto: está como interno aqui.
+      .filter(s => !linkedStakeholderIds.has(s.id) && (!s.userId || foraDoProjeto(s.userId)))
+      .map(s => ({
+        id: s.id,
+        tenantId: s.tenantId,
+        name: s.name,
+        logoUrl: s.logoUrl,
+        company: s.company,
+        competence: s.competence,
+        email: s.email,
+        phone: s.phone,
+        cep: s.cep,
+        logradouro: s.logradouro,
+        numero: s.numero,
+        complemento: s.complemento,
+        bairro: s.bairro,
+        cidade: s.cidade,
+        estado: s.estado,
+        notes: s.notes,
+        isActive: s.isActive,
+        userId: s.userId,
+      })),
+    // Contas do sistema que ainda não têm contato: podem entrar como externas.
+    ...allUsers
+      .filter(u => !contasComContato.has(u.id) && foraDoProjeto(u.id))
+      .map(u => ({
+        id: `usuario:${u.id}`, tenantId, name: u.name, logoUrl: u.avatarUrl, company: null, competence: null,
+        email: u.email, phone: null, cep: null, logradouro: null, numero: null, complemento: null, bairro: null,
+        cidade: null, estado: null, notes: null, isActive: true, userId: u.id,
+      })),
+  ].sort((x, y) => x.name.localeCompare(y.name, 'pt-BR'))
+
+  const usuariosDisponiveis: UsuarioDisponivel[] = [
+    ...allUsers
+      .filter(u => foraDoProjeto(u.id))
+      .map(u => ({ id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl, role: u.role })),
+    // Contatos fora do projeto: entram como internos; sem conta, o administrador cria o login.
+    ...allGlobalStakeholders
+      // Contato com conta aparece pela conta (acima); conta desativada não volta como interno.
+      .filter(s => !linkedStakeholderIds.has(s.id) && !s.userId)
+      .map(s => ({
+        id: `contato:${s.id}`, name: s.name, email: s.email ?? '', avatarUrl: s.logoUrl, role: 'member',
+        stakeholderId: s.id, semConta: true,
+      })),
+  ].sort((x, y) => x.name.localeCompare(y.name, 'pt-BR'))
 
   // ── Build unified list — fetch gerente roles in parallel
   const membrosComRole = await Promise.all(
@@ -134,6 +161,8 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
           cidade: up.user.cidade,
           estado: up.user.estado,
           notes: up.user.notes,
+          company: up.user.contato?.company ?? null,
+          competence: up.user.contato?.competence ?? null,
           cargos,
           departamento: up.department?.name ? [up.department.name] : [],
           isGerente: projectRole === 'gerente',
@@ -169,6 +198,12 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
     notes: ps.stakeholder.notes,
     company: ps.stakeholder.company,
     competence: ps.stakeholder.competence,
+    // Mesmos dados do membro da equipe, guardados no vínculo com este projeto.
+    remuneracao: ps.remuneracao,
+    horasDiarias: ps.horasDiarias,
+    cargos: ps.funcoes,
+    departamento: ps.departamentos,
+    contaId: ps.stakeholder.userId,
     isActive: ps.stakeholder.isActive,
     inactiveReason: ps.stakeholder.inactiveReason,
     inactivatedAt: ps.stakeholder.inactivatedAt?.toISOString() ?? null,

@@ -8,6 +8,14 @@ import { s3, BUCKET, publicUrl } from '@/lib/minio'
 import prisma from '@/lib/prisma'
 import { normalizarContato } from '@/lib/contato'
 import { lerImagemAssinatura } from '@/lib/imagemAssinatura'
+import { erroMoeda, parseMoeda } from '@/lib/dinheiro'
+import { parseHoras } from '@/lib/validation/horas'
+import { requireProjectPermission } from '@/services/projectAccess'
+import { carregarStakeholdersDoProjeto } from '@/services/stakeholdersDoProjeto'
+import {
+  adicionarUsuarioComoExterno, PessoaError, salvarDadosDoExterno, salvarEmpresaDoUsuario, tornarExterno, tornarInterno,
+  type DadosNoProjeto,
+} from '@/services/pessoasDoProjeto'
 
 interface StakeholderInput {
   name: string
@@ -157,5 +165,116 @@ export async function uploadMemberSignatureAction(formData: FormData, userId: st
   } catch (err) {
     console.error('[uploadMemberSignatureAction]', err)
     return { error: err instanceof Error ? err.message : 'Erro ao fazer upload da assinatura' }
+  }
+}
+
+// ── Uma pessoa, um cadastro: interno ou externo em cada projeto ───────────────
+
+type Sessao = Awaited<ReturnType<typeof verifySession>>
+
+async function comPermissaoDeEquipe<T>(projectId: string, fazer: (s: Sessao) => Promise<T>) {
+  const sessao = await verifySession()
+  await requireProjectPermission(sessao, projectId, 'projeto:equipe')
+  return fazer(sessao)
+}
+
+/** Resposta das trocas: o cadastro do projeto já atualizado (listas de interno e externo). */
+async function cadastroAtualizado(tenantId: string, projectId: string) {
+  revalidatePath(`/projetos/${projectId}/stakeholders`)
+  return carregarStakeholdersDoProjeto(tenantId, projectId)
+}
+
+function mensagemDeErro(err: unknown, padrao: string) {
+  if (err instanceof PessoaError) return err.message
+  return err instanceof Error && err.message ? err.message : padrao
+}
+
+/** Usa uma conta do sistema como parte interessada externa (sem dar acesso ao projeto). */
+export async function adicionarUsuarioComoExternoAction(projectId: string, userId: string) {
+  try {
+    return await comPermissaoDeEquipe(projectId, async s => {
+      await adicionarUsuarioComoExterno(s.tenantId, projectId, userId)
+      return { success: true as const, cadastro: await cadastroAtualizado(s.tenantId, projectId) }
+    })
+  } catch (err) {
+    return { error: mensagemDeErro(err, 'Não foi possível adicionar como externo.') }
+  }
+}
+
+/** Interno → externo neste projeto (sai da equipe e fica nas partes interessadas). */
+export async function tornarExternoAction(projectId: string, userId: string) {
+  try {
+    return await comPermissaoDeEquipe(projectId, async s => {
+      await tornarExterno(s.tenantId, projectId, userId)
+      return { success: true as const, cadastro: await cadastroAtualizado(s.tenantId, projectId) }
+    })
+  } catch (err) {
+    return { error: mensagemDeErro(err, 'Não foi possível mudar para externo.') }
+  }
+}
+
+/**
+ * Contato → interno neste projeto. Sem conta ligada, devolve `semConta`: o
+ * administrador cria o login (mesmo fluxo de "Criar membro") e chama de novo com
+ * `novoUserId`. Só o administrador liga uma conta nova a um contato.
+ */
+export async function tornarInternoAction(projectId: string, stakeholderId: string, novoUserId?: string) {
+  try {
+    return await comPermissaoDeEquipe(projectId, async s => {
+      if (novoUserId && s.role !== 'admin') return { error: 'Só o administrador cria o login de uma pessoa.' }
+      await tornarInterno(s.tenantId, projectId, stakeholderId, novoUserId)
+      return { success: true as const, cadastro: await cadastroAtualizado(s.tenantId, projectId) }
+    })
+  } catch (err) {
+    if (err instanceof PessoaError && err.message === 'SEM_CONTA') return { semConta: true as const, error: 'Esta pessoa ainda não tem login no sistema.' }
+    return { error: mensagemDeErro(err, 'Não foi possível mudar para interno.') }
+  }
+}
+
+/** Remuneração mensal, horas por dia, funções e departamentos do externo neste projeto. */
+export async function salvarDadosDoExternoAction(projectId: string, stakeholderId: string, dados: {
+  remuneracao?: string | number | null; horasDiarias?: string | number | null; funcoes?: string[]; departamentos?: string[]
+}) {
+  try {
+    return await comPermissaoDeEquipe(projectId, async s => {
+      const valores: DadosNoProjeto = { funcoes: dados.funcoes, departamentos: dados.departamentos }
+      // Mesmas regras do membro da equipe: valor em reais válido e horas entre 0 e 24.
+      if (dados.remuneracao !== undefined) {
+        if (dados.remuneracao === null || dados.remuneracao === '') valores.remuneracao = null
+        else {
+          const erro = erroMoeda(dados.remuneracao, { rotulo: 'Remuneração' })
+          if (erro) return { error: erro }
+          valores.remuneracao = parseMoeda(dados.remuneracao)
+        }
+      }
+      if (dados.horasDiarias !== undefined) {
+        if (dados.horasDiarias === null || dados.horasDiarias === '') valores.horasDiarias = null
+        else {
+          const { valor, erro } = parseHoras(dados.horasDiarias)
+          if (erro) return { error: erro }
+          valores.horasDiarias = valor
+        }
+      }
+      await salvarDadosDoExterno(s.tenantId, projectId, stakeholderId, valores)
+      revalidatePath(`/projetos/${projectId}/stakeholders`)
+      return { success: true as const }
+    })
+  } catch (err) {
+    return { error: mensagemDeErro(err, 'Não foi possível salvar os dados do projeto.') }
+  }
+}
+
+/** Empresa e competência de quem é interno (no contato da mesma pessoa). */
+export async function salvarEmpresaDoMembroAction(projectId: string, userId: string, empresa: { company?: string | null; competence?: string | null }) {
+  try {
+    return await comPermissaoDeEquipe(projectId, async s => {
+      const membro = await prisma.userProject.findFirst({ where: { projectId, userId, user: { tenantId: s.tenantId, deletedAt: null } }, select: { id: true } })
+      if (!membro) return { error: 'Membro não encontrado neste projeto.' }
+      await salvarEmpresaDoUsuario(s.tenantId, userId, empresa)
+      revalidatePath(`/projetos/${projectId}/stakeholders`)
+      return { success: true as const }
+    })
+  } catch (err) {
+    return { error: mensagemDeErro(err, 'Não foi possível salvar empresa e competência.') }
   }
 }

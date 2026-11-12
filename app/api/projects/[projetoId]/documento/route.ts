@@ -7,7 +7,7 @@ import { documentoVigente } from '@/services/documentRevisionService'
 import type { ProjetoHeader, Stakeholder } from '@/components/projetos/StakeholderDocument'
 import { departamentosDoProjeto } from '@/services/departamentosDoProjeto'
 import { linhaDoCabecalho } from '@/lib/linhaInstitucional'
-import { acrescentarPartesDoCadastro, identificarPartesDoCadastro } from '@/lib/partesInteressadas'
+import { acrescentarPartesDoCadastro, identificarPartesDoCadastro, semAlternativos } from '@/lib/partesInteressadas'
 
 function buildAddress(e: {
   logradouro?: string | null
@@ -67,6 +67,7 @@ export async function GET(
               notes: true,
               deletedAt: true,
               isActive: true,
+              contato: { select: { id: true } },
             },
           },
           department: { select: { name: true } },
@@ -110,6 +111,8 @@ export async function GET(
       .map((up, i) => ({
         ref: String(i + 1).padStart(2, '0'),
         cadastroId: `interno:${up.userId}`,
+        // Mesma pessoa como externa (antes de uma troca): não pode entrar duplicada.
+        ...(up.user.contato ? { cadastroAlternativos: [`externo:${up.user.contato.id}`] } : {}),
         nome: up.user.name,
         empresaEquipe: up.department?.name ?? project.name,
         cargoCompetencia: up.role ?? '',
@@ -123,6 +126,7 @@ export async function GET(
     const externos: Stakeholder[] = projectStakeholders.map((ps, i) => ({
       ref: String(membros.length + i + 1).padStart(2, '0'),
       cadastroId: `externo:${ps.stakeholder.id}`,
+      ...(ps.stakeholder.userId ? { cadastroAlternativos: [`interno:${ps.stakeholder.userId}`] } : {}),
       nome: ps.stakeholder.name,
       empresaEquipe: ps.stakeholder.company ?? '',
       cargoCompetencia: ps.stakeholder.competence ?? '',
@@ -137,7 +141,7 @@ export async function GET(
 
     // Após adicionar ao projeto, a tabela precisa do cadastro atual, não da versão aprovada antiga.
     if (new URL(request.url).searchParams.get('origem') === 'cadastro') {
-      return NextResponse.json({ header, stakeholders: [...membros, ...externos] })
+      return NextResponse.json({ header, stakeholders: semAlternativos([...membros, ...externos]) })
     }
 
     // Snapshots antigos não têm a marca de inativo: cruza pelo nome com os inativos atuais.
@@ -166,7 +170,7 @@ export async function GET(
     const atuais = acrescentarPartesDoCadastro(identificarPartesDoCadastro(linhasSalvas, cadastro), cadastro, payload?.cadastrosExcluidos)
     return NextResponse.json(payload
       ? { ...payload, header: { ...payload.header, nomeProjeto: header.nomeProjeto, gerenteProjeto: header.gerenteProjeto, logoUrl: header.logoUrl, categoria: header.categoria, signatureUrl: header.signatureUrl }, stakeholders: atuais, cadastroAtualizado: atuais.length > linhasSalvas.length }
-      : { header, stakeholders: cadastro })
+      : { header, stakeholders: semAlternativos(cadastro) })
   } catch (err) {
     console.error('[documento/route]', err)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
