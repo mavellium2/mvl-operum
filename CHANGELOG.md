@@ -29,6 +29,10 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Mesmos campos para interno e externo:** empresa, competência, remuneração mensal, horas por dia, valor por dia/hora/minuto, funções e departamentos aparecem para os dois. Gerente e assinatura continuam só do interno.
 
+- **Inativar a conta não some mais com a pessoa do projeto:** quem tem a conta desativada continua em Stakeholders e no documento de Partes interessadas, em vermelho e com o motivo. Ao desativar a conta (motivo obrigatório), a pessoa é inativada em todos os projetos com esse motivo, perde o acesso, os cards abertos dela passam a pedir outro responsável e o gerente de cada projeto é avisado. Reativar a conta devolve os projetos que a desativação tirou. Vínculos antigos de contas já desativadas foram corrigidos (migration `20261112150000_membros_de_contas_inativas`).
+
+- **Excluir usuário e excluir do projeto:** em Usuários, "Excluir" apaga a conta de vez só quando ela não tem nenhum vínculo (projeto, tarefa, horas, comentário, documento, ata); com vínculos, mostra quais são e orienta a inativar. Em Stakeholders, "Excluir do projeto" (no lugar de "Desvincular") só funciona sem tarefas naquele projeto; vale também para a API e o MCP.
+
 - Sai o gerador antigo do Word do Termo e o módulo `documentModel.ts`, sem uso.
 
 ## [1.55.0] — 2026-11-11

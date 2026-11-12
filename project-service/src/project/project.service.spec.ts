@@ -5,9 +5,13 @@ import { ConflictException, NotFoundException } from '@nestjs/common'
 vi.mock('../prisma', () => ({
   prisma: {
     project: { findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn() },
-    userProject: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
+    userProject: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
+    userProjectRole: { findFirst: vi.fn(), deleteMany: vi.fn() },
     department: { findFirst: vi.fn() },
     projectStakeholder: { findFirst: vi.fn() },
+    $queryRaw: vi.fn(),
+    $executeRaw: vi.fn(),
+    $transaction: vi.fn(async (ops: unknown[]) => ops),
   },
 }))
 
@@ -17,7 +21,7 @@ import { prisma } from '../prisma'
 import { assertUserInTenant } from '../common/tenant-scope'
 import { ProjectService, UpdateProjectSchema, AddMemberSchema } from './project.service'
 
-const db = prisma as unknown as Record<string, Record<string, ReturnType<typeof vi.fn>>>
+const db = prisma as unknown as Record<string, Record<string, ReturnType<typeof vi.fn>>> & Record<'$queryRaw' | '$executeRaw' | '$transaction', ReturnType<typeof vi.fn>>
 const assertUser = assertUserInTenant as unknown as ReturnType<typeof vi.fn>
 
 describe('ProjectService.addMember', () => {
@@ -107,9 +111,29 @@ describe('ProjectService.setMemberSituacao', () => {
     await expect(service.setMemberSituacao('p1', 't2', 'u1', true)).rejects.toThrow(NotFoundException)
   })
 
-  it('desvincular limpa o motivo, para o membro sair também de Stakeholders', async () => {
+  it('excluir da equipe: só sem tarefas no projeto, apagando vínculo, papéis e permissões', async () => {
+    db.userProject.findUnique.mockResolvedValue({ id: 'up1' })
+    db.userProjectRole.findFirst.mockResolvedValue(null)
+    db.$queryRaw.mockResolvedValue([{ responsavel: 0, horas: 0, comentarios: 0 }])
     await service.removeMember('p1', 't1', 'u1')
-    expect(db.userProject.update.mock.calls[0][0].data).toEqual({ active: false, inactiveReason: null, inactivatedAt: null })
+    expect(db.$transaction).toHaveBeenCalled()
+    expect(db.userProject.delete).toHaveBeenCalledWith({ where: { id: 'up1' } })
+    expect(db.userProjectRole.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u1', projectId: 'p1' } })
+  })
+
+  it('excluir da equipe é recusado (409) com tarefas no projeto, dizendo o que prende', async () => {
+    db.userProject.findUnique.mockResolvedValue({ id: 'up1' })
+    db.userProjectRole.findFirst.mockResolvedValue(null)
+    db.$queryRaw.mockResolvedValue([{ responsavel: 2, horas: 1, comentarios: 0 }])
+    await expect(service.removeMember('p1', 't1', 'u1')).rejects.toThrow(/responsável por 2 card\(s\), 1 lançamento\(s\) de horas/)
+    expect(db.userProject.delete).not.toHaveBeenCalled()
+  })
+
+  it('o gerente não é excluído da equipe', async () => {
+    db.userProject.findUnique.mockResolvedValue({ id: 'up1' })
+    db.userProjectRole.findFirst.mockResolvedValue({ id: 'r1' })
+    await expect(service.removeMember('p1', 't1', 'u1')).rejects.toThrow(ConflictException)
+    expect(db.$queryRaw).not.toHaveBeenCalled()
   })
 })
 

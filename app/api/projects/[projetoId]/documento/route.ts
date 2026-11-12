@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 import { verifySession } from '@/lib/dal'
 import prisma from '@/lib/prisma'
+import { CONTA_INATIVADA } from '@/lib/contaInativada'
 import { canProjectPermission as can } from '@/services/projectAccess'
 import { documentoVigente } from '@/services/documentRevisionService'
 import type { ProjetoHeader, Stakeholder } from '@/components/projetos/StakeholderDocument'
@@ -107,7 +108,8 @@ export async function GET(
     }
 
     const membros: Stakeholder[] = userProjects
-      .filter(up => up.user.deletedAt === null && up.user.isActive)
+      // Conta desativada no sistema continua no documento, marcada como inativa.
+      .filter(up => up.user.deletedAt === null)
       .map((up, i) => ({
         ref: String(i + 1).padStart(2, '0'),
         cadastroId: `interno:${up.userId}`,
@@ -120,7 +122,7 @@ export async function GET(
         telefoneFax: up.user.phone ?? '',
         endereco: buildAddress(up.user),
         observacoes: up.user.notes ?? '',
-        ...(up.active === false ? { inativo: true, motivoInativo: up.inactiveReason ?? '' } : {}),
+        ...(up.active === false || !up.user.isActive ? { inativo: true, motivoInativo: (up.active ? CONTA_INATIVADA : up.inactiveReason) ?? '' } : {}),
       }))
 
     const externos: Stakeholder[] = projectStakeholders.map((ps, i) => ({

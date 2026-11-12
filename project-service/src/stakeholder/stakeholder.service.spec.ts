@@ -18,6 +18,7 @@ vi.mock('../prisma', () => ({
     },
     projectStakeholder: mockProjectStakeholder,
     userProject: { findFirst: vi.fn() },
+    $queryRaw: vi.fn(),
   },
 }))
 
@@ -107,6 +108,22 @@ describe('StakeholderService', () => {
       mockProjectStakeholder.upsert.mockResolvedValue({ id: 'ps1' })
       await service.linkProject('sk1', 'p1', 't1')
       expect(mockProjectStakeholder.upsert).toHaveBeenCalled()
+    })
+  })
+
+  describe('excluir o externo do projeto', () => {
+    it('contato com login que tem tarefas no projeto não sai (409)', async () => {
+      const db = (await import('../prisma')).prisma as unknown as { stakeholder: { findFirst: ReturnType<typeof vi.fn> }; $queryRaw: ReturnType<typeof vi.fn> }
+      db.stakeholder.findFirst.mockResolvedValue({ id: 'sk1', tenantId: 't1', userId: 'u1' })
+      db.$queryRaw.mockResolvedValue([{ responsavel: 1, horas: 0, comentarios: 0 }])
+      await expect(service.unlinkProject('sk1', 'p1', 't1')).rejects.toThrow(ConflictException)
+      expect(mockProjectStakeholder.delete).not.toHaveBeenCalled()
+    })
+    it('contato sem login sai do projeto', async () => {
+      const db = (await import('../prisma')).prisma as unknown as { stakeholder: { findFirst: ReturnType<typeof vi.fn> } }
+      db.stakeholder.findFirst.mockResolvedValue({ id: 'sk1', tenantId: 't1', userId: null })
+      await service.unlinkProject('sk1', 'p1', 't1')
+      expect(mockProjectStakeholder.delete).toHaveBeenCalledWith({ where: { projectId_stakeholderId: { projectId: 'p1', stakeholderId: 'sk1' } } })
     })
   })
 

@@ -17,7 +17,7 @@ import { Fragment, useState, useTransition, useEffect, useRef } from 'react'
 import {
   Plus,
   Pencil,
-  UserMinus,
+  Trash2,
   UserPlus,
   Building2,
   Mail,
@@ -889,43 +889,6 @@ export default function ProjetoStakeholdersClient({
     })
   }
 
-  // ── Unbind external stakeholder
-  function handleUnbindExterno(s: StakeholderUnificado) {
-    if (!canManage || !s.stakeholderId) return
-    const externo: StakeholderExterno = {
-      id: s.stakeholderId,
-      tenantId: s.tenantId!,
-      name: s.name,
-      logoUrl: s.avatarUrl,
-      company: s.company ?? null,
-      competence: s.competence ?? null,
-      email: s.email,
-      phone: s.phone,
-      cep: s.cep,
-      logradouro: s.logradouro,
-      numero: s.numero,
-      complemento: s.complemento,
-      bairro: s.bairro,
-      cidade: s.cidade,
-      estado: s.estado,
-      notes: s.notes,
-      isActive: s.isActive ?? true,
-    }
-    setProjeto(prev => prev.filter(x => x.id !== s.id))
-    setDispExterno(prev => [...prev, externo])
-    if (selected?.id === s.id) handleClearSelection()
-
-    startTransition(async () => {
-      setLoadingId(s.id)
-      const result = await unbindStakeholderAction(projetoId, s.stakeholderId!)
-      setLoadingId(null)
-      if ('error' in result) {
-        setProjeto(prev => [...prev, s])
-        setDispExterno(prev => prev.filter(x => x.id !== externo.id))
-      } else void recarregar()
-    })
-  }
-
   // ── Add internal member
   function handleAddInterno(u: UsuarioDisponivel) {
     if (!canManage) return
@@ -1026,31 +989,6 @@ export default function ProjetoStakeholdersClient({
     })
   }
 
-  // ── Remove internal member
-  function handleRemoveInterno(s: StakeholderUnificado) {
-    if (!canManage || !s.userId) return
-    const usuario: UsuarioDisponivel = {
-      id: s.userId,
-      name: s.name,
-      email: s.email ?? '',
-      avatarUrl: s.avatarUrl,
-      role: s.userRole ?? 'member',
-    }
-    setProjeto(prev => prev.filter(x => x.id !== s.id))
-    setDispInterno(prev => [...prev, usuario])
-    if (selected?.id === s.id) handleClearSelection()
-
-    startTransition(async () => {
-      setLoadingId(s.id)
-      const result = await removeMemberAction(projetoId, s.userId!)
-      setLoadingId(null)
-      if ('error' in result) {
-        setProjeto(prev => [...prev, s])
-        setDispInterno(prev => prev.filter(x => x.id !== usuario.id))
-      } else void recarregar()
-    })
-  }
-
   // ── Inativar / reativar stakeholder (com motivo). Externo: cadastro global.
   // Membro da equipe: perde o acesso ao projeto, mas continua listado e nos cards.
   const [inativando, setInativando] = useState<StakeholderUnificado | null>(null)
@@ -1122,9 +1060,29 @@ export default function ProjetoStakeholdersClient({
     })
   }
 
+  // Excluir do projeto: só sem tarefas no projeto (o servidor confere). Com tarefas, inativar.
+  const [excluindo, setExcluindo] = useState<StakeholderUnificado | null>(null)
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null)
   function handleUnlink(s: StakeholderUnificado) {
-    if (s.tipo === 'interno') handleRemoveInterno(s)
-    else handleUnbindExterno(s)
+    setErroExclusao(null)
+    setExcluindo(s)
+  }
+  function confirmarExclusao(s: StakeholderUnificado) {
+    startTransition(async () => {
+      setLoadingId(s.id)
+      const result = s.tipo === 'interno'
+        ? await removeMemberAction(projetoId, s.userId!)
+        : await unbindStakeholderAction(projetoId, s.stakeholderId!)
+      setLoadingId(null)
+      // O diálogo fecha ao confirmar: reabre com o motivo da recusa.
+      if ('error' in result) { setErroExclusao(result.error ?? 'Não foi possível excluir do projeto.'); setExcluindo(s); return }
+      setExcluindo(null)
+      if (selected?.id === s.id) handleClearSelection()
+      setProjeto(prev => prev.filter(x => x.id !== s.id))
+      toast(`"${s.name}" foi excluído deste projeto.`, 'success')
+      avisarAlteracao()
+      void recarregar()
+    })
   }
 
   // A ordem é independente por vínculo. Filtros não podem salvar uma ordem parcial.
@@ -2061,6 +2019,19 @@ export default function ProjetoStakeholdersClient({
     </>
   )
 
+  const dialogoExclusao = (
+    <ConfirmDialog
+      isOpen={excluindo !== null}
+      onClose={() => { if (loadingId === null) setExcluindo(null) }}
+      onConfirm={() => { if (excluindo) confirmarExclusao(excluindo) }}
+      title="Excluir do projeto"
+      confirmLabel={excluindo && loadingId === excluindo.id ? 'Excluindo…' : 'Excluir do projeto'}
+      confirmDisabled={loadingId !== null}
+      message={`${excluindo?.name ?? ''} sai deste projeto de vez. Só é possível sem tarefas aqui (responsável, horas ou comentários em cards). Com tarefas, use Inativar: tira o acesso e mantém o histórico.${excluindo?.tipo === 'interno' ? ' A conta continua no sistema.' : ' O contato continua no cadastro.'}`}
+    >
+      {erroExclusao && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erroExclusao}</p>}
+    </ConfirmDialog>
+  )
   const semLoginParaInterno = trocando?.tipo === 'externo' && !trocando.contaId
   const dialogoTroca = (
     <ConfirmDialog
@@ -2085,6 +2056,7 @@ export default function ProjetoStakeholdersClient({
       <DetailPanel floating label={painel.modo === 'interno' ? 'Adicionar membro da equipe' : 'Adicionar stakeholder externo'} className="gap-3 [&>*]:!w-full">
         {inativando === null && (showCol3 ? coluna3 : coluna2)}
         {dialogoTroca}
+        {dialogoExclusao}
       </DetailPanel>
     )
   }
@@ -2247,9 +2219,9 @@ export default function ProjetoStakeholdersClient({
                     {s.isActive === false && <><p className="text-sm font-medium text-red-700 mt-1">Inativo</p>{s.inactiveReason && <p className="text-sm text-red-700 break-words mt-1">Motivo: {s.inactiveReason}</p>}</>}
                   </div>
                 </div>
-                <div className="min-w-0"><span className={styles.fieldLabel}>Função</span><p className="text-sm text-gray-700 break-words">{s.tipo === 'interno' ? s.cargos?.join(', ') || 'Não informada' : s.competence || 'Não informada'}</p></div>
-                <div className="min-w-0"><span className={styles.fieldLabel}>Área / empresa</span><p className="text-sm text-gray-600 break-words">{s.tipo === 'interno' ? s.departamento?.join(', ') || 'Não informada' : s.company || 'Não informada'}</p></div>
-                <div className="text-sm text-gray-700 tabular-nums"><span className={styles.fieldLabel}>Remuneração</span>{s.tipo === 'interno' && (s.remuneracao ?? s.hourlyRate) != null ? <>{(s.remuneracao ?? s.hourlyRate)!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<span className="block text-sm text-gray-600">{s.remuneracao != null ? 'por mês' : 'por hora'}</span></> : <span aria-label="Não informada">—</span>}</div>
+                <div className="min-w-0"><span className={styles.fieldLabel}>Função</span><p className="text-sm text-gray-700 break-words">{s.cargos?.join(', ') || s.competence || 'Não informada'}</p></div>
+                <div className="min-w-0"><span className={styles.fieldLabel}>Área / empresa</span><p className="text-sm text-gray-600 break-words">{[s.departamento?.join(', '), s.company].filter(Boolean).join(' · ') || 'Não informada'}</p></div>
+                <div className="text-sm text-gray-700 tabular-nums"><span className={styles.fieldLabel}>Remuneração</span>{(s.remuneracao ?? s.hourlyRate) != null ? <>{(s.remuneracao ?? s.hourlyRate)!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<span className="block text-sm text-gray-600">{s.remuneracao != null ? 'por mês' : 'por hora'}</span></> : <span aria-label="Não informada">—</span>}</div>
                 <div className={`${styles.rowActions} flex flex-wrap items-center gap-1`}>
                   {reorderMode ? <>
                     <OperumButton variant="custom" type="button" disabled={!canReorder || posicao === 0 || exibidos[posicao - 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao - 1]))} aria-label={`Mover ${s.name} para cima`} className={styles.actionButton}><ArrowUp className="w-4 h-4" aria-hidden="true" /></OperumButton>
@@ -2257,7 +2229,7 @@ export default function ProjetoStakeholdersClient({
                   </> : <>
                     <OperumButton variant="custom" type="button" onClick={() => handleOpenEdit(s)} title="Editar" aria-label={`Editar ${s.name}`} className={`${styles.actionButton} text-blue-700`}><Pencil className="w-4 h-4" aria-hidden="true" /><span>Editar</span></OperumButton>
                     {podeAlterarSituacao(s) && <SituacaoButton ativo={s.isActive !== false} nome={s.name} disabled={loadingId === s.id} onClick={() => (s.isActive === false ? reativar(s) : abrirInativacao(s))} />}
-                    {canManage && <OperumButton variant="danger" type="button" onClick={() => handleUnlink(s)} disabled={loadingId === s.id} title="Desvincular do projeto" aria-label={`Desvincular ${s.name} do projeto`} className={`${styles.actionButton} text-gray-600 hover:text-red-700`}>{loadingId === s.id ? <Spinner /> : <UserMinus className="w-4 h-4" aria-hidden="true" />}</OperumButton>}
+                    {canManage && <OperumButton variant="danger" type="button" onClick={() => handleUnlink(s)} disabled={loadingId === s.id} title="Excluir do projeto" aria-label={`Excluir ${s.name} do projeto`} className={`${styles.actionButton} text-gray-600 hover:text-red-700`}>{loadingId === s.id ? <Spinner /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}</OperumButton>}
                   </>}
                 </div>
               </li>
@@ -2351,6 +2323,7 @@ export default function ProjetoStakeholdersClient({
       {coluna2}
       {coluna3}
       {dialogoTroca}
+      {dialogoExclusao}
     </div>
   )
 }

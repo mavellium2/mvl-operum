@@ -11,6 +11,8 @@ import { erroMoeda } from '@/lib/dinheiro'
 import { exigirOperadorDaPlataforma } from '@/lib/platformOperator'
 import prisma from '@/lib/prisma'
 import { auditarAdmin, comAuditoriaDeUsuario, dadosDoUsuario, diferencas } from '@/services/auditoriaAdminService'
+import { notificarPendenciasDoMembroInativo } from '@/services/membroInativo'
+import { CONTA_INATIVADA, motivoDaContaInativada } from '@/lib/contaInativada'
 
 async function requireAdmin() {
   const session = await verifySession()
@@ -107,15 +109,113 @@ export async function adminUpdateUserAction(
   }
 }
 
-export async function toggleUserActiveAction(userId: string, active: boolean) {
+/**
+ * Desativa ou reativa a conta. Desativar (motivo obrigatório) derruba as sessões e
+ * inativa a pessoa em todos os projetos com esse motivo, numa transação só: ela
+ * continua visível nos projetos e documentos (em vermelho), os dados dela ficam, e
+ * os cards abertos dela passam a pedir outro responsável (o gerente é avisado).
+ * Reativar devolve só os vínculos que a desativação tirou.
+ */
+export async function toggleUserActiveAction(userId: string, active: boolean, motivo?: string) {
   try {
     const session = await requireAdmin()
-    const user = await comAuditoriaDeUsuario(session, active ? 'USUARIO_ATIVAR' : 'USUARIO_DESATIVAR', userId,
-      () => adminApi.toggleActive(userId, active))
+    const reason = (motivo ?? '').trim()
+    if (!active && reason.length < 3) return { error: 'Informe o motivo da inativação.' }
+    if (reason.length > 400) return { error: 'O motivo pode ter no máximo 400 caracteres.' }
+    if (!active && userId === session.userId) return { error: 'Você não pode inativar a própria conta.' }
+    let projetosInativados: string[] = []
+    const user = await comAuditoriaDeUsuario(session, active ? 'USUARIO_ATIVAR' : 'USUARIO_DESATIVAR', userId, () =>
+      prisma.$transaction(async tx => {
+        const existente = await tx.user.findFirst({ where: { id: userId, tenantId: session.tenantId, deletedAt: null }, select: { id: true, isActive: true } })
+        if (!existente) throw new Error('Usuário não encontrado')
+        const doTenant = { project: { tenantId: session.tenantId, deletedAt: null } }
+        const agora = new Date()
+        if (!active) {
+          const ativos = await tx.userProject.findMany({ where: { userId, active: true, ...doTenant }, select: { projectId: true } })
+          projetosInativados = [...new Set(ativos.map(a => a.projectId))]
+          await tx.userProject.updateMany({
+            where: { userId, active: true, ...doTenant },
+            data: { active: false, endDate: agora, inactiveReason: motivoDaContaInativada(reason), inactivatedAt: agora },
+          })
+        } else {
+          await tx.userProject.updateMany({
+            where: { userId, active: false, inactiveReason: { startsWith: CONTA_INATIVADA }, ...doTenant },
+            data: { active: true, endDate: null, inactiveReason: null, inactivatedAt: null },
+          })
+        }
+        return tx.user.update({
+          where: { id: userId },
+          // Desativar invalida as sessões (mesma regra do auth-service).
+          data: { isActive: active, ...(!active && existente.isActive ? { tokenVersion: { increment: 1 } } : {}) },
+          select: { id: true, name: true, email: true, isActive: true, role: true, tokenVersion: true },
+        })
+      }), active ? undefined : { motivo: reason, projetos: projetosInativados.length })
+    // Cards abertos sem responsável ativo: avisa os gerentes de cada projeto (não desfaz a inativação se falhar).
+    await Promise.all(projetosInativados.map(async projectId => {
+      try { await notificarPendenciasDoMembroInativo(projectId, { id: userId, name: user.name }, motivoDaContaInativada(reason)) } catch { /* aviso é best-effort */ }
+      revalidatePath(`/projetos/${projectId}`, 'layout')
+    }))
     revalidatePath('/admin/users')
-    return { user }
+    return { user, projetos: projetosInativados.length }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao alterar status do usuário' }
+  }
+}
+
+/** O que impede excluir uma conta: qualquer vínculo com projetos, tarefas ou documentos. */
+async function vinculosDoUsuario(tenantId: string, userId: string) {
+  const [projetos, papeis, responsavel, horas, comentarios, movimentos, sprints, etiquetas, versoes, atas, presencas, acoesAta, externo, versoesProjeto, versoesPlanilha, rascunhosProjeto, operacoes] = await Promise.all([
+    prisma.userProject.count({ where: { userId } }),
+    prisma.userProjectRole.count({ where: { userId } }),
+    prisma.cardResponsible.count({ where: { userId } }),
+    prisma.timeEntry.count({ where: { userId } }),
+    prisma.comment.count({ where: { userId } }),
+    prisma.cardMovement.count({ where: { userId } }),
+    prisma.sprint.count({ where: { createdBy: userId } }),
+    prisma.tag.count({ where: { userId } }),
+    prisma.documentVersion.count({ where: { OR: [{ authorId: userId }, { approvedById: userId }] } }),
+    prisma.ata.count({ where: { OR: [{ elaboradoPorUserId: userId }, { aprovadoPorUserId: userId }] } }),
+    prisma.ataPresente.count({ where: { userId } }),
+    prisma.ataAcao.count({ where: { responsavelUserId: userId } }),
+    prisma.projectStakeholder.count({ where: { stakeholder: { userId, tenantId } } }),
+    prisma.projetoVersao.count({ where: { autorId: userId } }),
+    prisma.planilhaVersao.count({ where: { autorId: userId } }),
+    prisma.projectDraft.count({ where: { authorId: userId } }),
+    prisma.projetoOperacao.count({ where: { userId } }),
+  ])
+  const itens = [
+    [projetos, 'projeto(s)'], [papeis, 'papel(éis) em projeto'], [responsavel, 'card(s) como responsável'], [horas, 'lançamento(s) de horas'],
+    [comentarios, 'comentário(s)'], [movimentos, 'movimentação(ões) de card'], [sprints, 'sprint(s) criada(s)'], [etiquetas, 'etiqueta(s)'],
+    [versoes, 'versão(ões) de documento'], [atas, 'ata(s) elaborada(s)/aprovada(s)'], [presencas, 'presença(s) em ata'], [acoesAta, 'ação(ões) de ata'],
+    [externo, 'projeto(s) como externo'], [versoesProjeto + versoesPlanilha + rascunhosProjeto + operacoes, 'registro(s) no histórico de projetos'],
+  ] as const
+  return itens.filter(([n]) => n > 0).map(([n, rotulo]) => `${n} ${rotulo}`)
+}
+
+/**
+ * Exclui a conta de vez. Só quando ela não tem vínculo nenhum (projeto, tarefa,
+ * documento, ata…); com vínculos, o caminho é inativar. Notificações, rascunhos e
+ * preferências pessoais saem junto; o contato da pessoa, se houver, fica sem conta.
+ */
+export async function excluirUsuarioAction(userId: string) {
+  try {
+    const session = await requireAdmin()
+    if (userId === session.userId) return { error: 'Você não pode excluir a própria conta.' }
+    const alvo = await prisma.user.findFirst({ where: { id: userId, tenantId: session.tenantId, deletedAt: null }, select: { id: true, platformOperator: true } })
+    if (!alvo) return { error: 'Usuário não encontrado.' }
+    if (alvo.platformOperator) return { error: 'O operador da plataforma não pode ser excluído por aqui.' }
+    const vinculos = await vinculosDoUsuario(session.tenantId, userId)
+    if (vinculos.length) return { error: `Não é possível excluir: a conta tem vínculos (${vinculos.join(', ')}). Inative com um motivo para tirar o acesso e manter o histórico.`, vinculos }
+    const antes = await dadosDoUsuario(userId, session.tenantId).catch(() => null)
+    await prisma.$transaction([
+      prisma.userPermission.deleteMany({ where: { userId } }),
+      prisma.user.delete({ where: { id: userId } }),
+    ])
+    await auditarAdmin({ tenantId: session.tenantId, autorId: session.userId, action: 'USUARIO_EXCLUIR', entity: 'User', entityId: userId, details: { alteracoes: diferencas(antes, null) } })
+    revalidatePath('/admin/users')
+    return { success: true as const }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erro ao excluir o usuário.' }
   }
 }
 

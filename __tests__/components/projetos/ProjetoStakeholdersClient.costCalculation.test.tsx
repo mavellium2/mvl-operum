@@ -180,3 +180,23 @@ describe('ProjetoStakeholdersClient — externo com os mesmos dados do interno',
     await vi.waitFor(() => expect(tornarExternoAction).toHaveBeenCalledWith(PROJ_ID, 'u-m1'))
   })
 })
+
+describe('ProjetoStakeholdersClient — excluir do projeto', () => {
+  it('pede confirmação e mostra por que não pode excluir quando há tarefas', async () => {
+    const { removeMemberAction } = await import('@/app/actions/projects')
+    vi.mocked(removeMemberAction).mockResolvedValue({ error: 'Não é possível excluir: a pessoa tem tarefas neste projeto (responsável por 2 card(s)). Inative com um motivo para tirar o acesso e manter o histórico.' } as never)
+    render(
+      <ToastProvider>
+        <ProjetoStakeholdersClient projetoId={PROJ_ID} stakeholders={[makeInterno('m1', 'Joao Silva')]} stakeholdersDisponiveis={[]} usuariosDisponiveis={[]}
+          funcoesExistentes={[]} departamentosExistentes={[]} userRole="admin" />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir Joao Silva do projeto' }))
+    expect(screen.getByText(/Só é possível sem tarefas aqui/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir do projeto' }))
+    await vi.waitFor(() => expect(removeMemberAction).toHaveBeenCalledWith(PROJ_ID, 'u-m1'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('responsável por 2 card(s)')
+    // Continua na lista: nada foi excluído.
+    expect(screen.getAllByText('Joao Silva').length).toBeGreaterThan(0)
+  })
+})

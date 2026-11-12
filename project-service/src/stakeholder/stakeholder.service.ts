@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { prisma } from '../prisma'
 import { assertProjectInTenant } from '../common/tenant-scope'
+import { motivoParaNaoExcluir, tarefasNoProjeto } from '../common/tarefas-no-projeto'
 import { z } from 'zod'
 
 export const CreateStakeholderSchema = z.object({
@@ -95,8 +96,17 @@ export class StakeholderService {
     })
   }
 
+  /**
+   * Exclui o externo do projeto. Contato com login que já teve tarefas no projeto
+   * (quando era interno) não sai: o caminho é inativar com motivo.
+   */
   async unlinkProject(stakeholderId: string, projectId: string, tenantId: string) {
-    await this.findOne(stakeholderId, tenantId)
+    const contato = await this.findOne(stakeholderId, tenantId)
+    const userId = (contato as { userId?: string | null }).userId
+    if (userId) {
+      const bloqueio = motivoParaNaoExcluir(await tarefasNoProjeto(userId, projectId))
+      if (bloqueio) throw new ConflictException(bloqueio)
+    }
     await prisma.projectStakeholder.delete({
       where: { projectId_stakeholderId: { projectId, stakeholderId } },
     })

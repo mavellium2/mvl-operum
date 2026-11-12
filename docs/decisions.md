@@ -1227,3 +1227,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Condições de revisão:** se externos passarem a lançar horas ou ter custo na planilha, rever onde a remuneração deles entra no cálculo.
 - **Referências:** `services/pessoasDoProjeto.ts`, `services/stakeholdersDoProjeto.ts`, `app/actions/stakeholders.ts`, `components/projetos/ProjetoStakeholdersClient.tsx`, `lib/partesInteressadas.ts`, `project-service/src/project/project.service.ts`, `project-service/src/stakeholder/stakeholder.service.ts`, `prisma/migrations/20261112140000_pessoa_interna_externa/migration.sql`.
 
+## ADR-098 — Conta inativa fica nos projetos; excluir só sem vínculos
+
+- **Data:** 2026-11-12.
+- **Status:** implementada.
+- **Contexto:** inativar um membro no projeto e depois desativar a conta fazia a pessoa sumir do projeto (as listas filtravam `user.isActive`). Desativar a conta também não inativava a pessoa nos projetos, então os cards abertos dela não pediam outro responsável. O usuário pediu também excluir conta e excluir do projeto, só quando não houver vínculos.
+- **Escolha:** desativar a conta exige motivo e, numa transação do monolito, desativa a conta, derruba as sessões (`tokenVersion`) e inativa todos os vínculos ativos com o motivo prefixado "Conta inativada no sistema"; reativar devolve só esses. Contas desativadas aparecem como inativas nos projetos e documentos. Excluir a conta exige zero vínculos; excluir do projeto exige zero tarefas no projeto (responsável, horas ou comentários), conferido no project-service.
+- **Justificativa:** mantém o histórico e o rastro dos dados da pessoa (o pedido foi "não perder os dados") e reaproveita a regra de membro inativo (cards pedem outro responsável e o gerente é avisado). A exclusão fica restrita a cadastros sem uso, sem apagar nada em cascata.
+- **Alternativas consideradas:** manter a desativação no auth-service e inativar os vínculos depois, em outra chamada (não é atômico); excluir com cascata ou anonimização (perde histórico); soft delete da conta com `deletedAt` (o e-mail ficaria preso e a conta "fantasma" continuaria referenciada).
+- **Consequências:** a desativação deixa de passar pelo `PATCH` do auth-service (`adminApi.toggleActive`), mas aplica a mesma regra de sessão. Excluir do projeto passou a ser definitivo para quem não tem tarefas (antes "desvincular" só marcava `active = false`). A checagem de tarefas no project-service usa SQL sobre tabelas do sprint-service no banco compartilhado. Migration de dados `20261112150000_membros_de_contas_inativas`.
+- **Condições de revisão:** se os bancos dos serviços forem separados, a checagem de tarefas precisa virar consulta ao sprint-service.
+- **Referências:** `app/actions/admin.ts`, `components/admin/AdminUsersClient.tsx`, `lib/contaInativada.ts`, `services/stakeholdersDoProjeto.ts`, `app/api/projects/[projetoId]/documento/route.ts`, `project-service/src/common/tarefas-no-projeto.ts`, `project-service/src/project/project.service.ts`, `project-service/src/stakeholder/stakeholder.service.ts`, `components/projetos/ProjetoStakeholdersClient.tsx`.
+

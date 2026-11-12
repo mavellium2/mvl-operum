@@ -4,6 +4,7 @@ import { assertUserInTenant } from '../common/tenant-scope'
 import { z } from 'zod'
 import type { Prisma, ProjectStatus } from '../../lib/generated/prisma'
 import { isTransactionConflict } from '../common/transaction-conflict'
+import { motivoParaNaoExcluir, tarefasNoProjeto } from '../common/tarefas-no-projeto'
 
 export const MacroFasesSchema = z.array(z.object({
   fase: z.string().trim().max(500),
@@ -217,13 +218,24 @@ export class ProjectService {
     })
   }
 
+  /**
+   * Exclui a pessoa da equipe do projeto. Só vale para quem não tem tarefa no projeto
+   * (responsável, horas ou comentários em cards); com tarefas, o caminho é inativar com
+   * motivo. O gerente precisa passar a gerência antes.
+   */
   async removeMember(projectId: string, tenantId: string, userId: string) {
     await this.findOne(projectId, tenantId)
-    // Desvincular não é inativar: sem motivo, o membro sai também de Stakeholders.
-    await prisma.userProject.update({
-      where: { userId_projectId: { userId, projectId } },
-      data: { active: false, inactiveReason: null, inactivatedAt: null },
-    })
+    const membro = await prisma.userProject.findUnique({ where: { userId_projectId: { userId, projectId } } })
+    if (!membro) throw new NotFoundException('Membro não encontrado neste projeto')
+    const gerente = await prisma.userProjectRole.findFirst({ where: { userId, projectId, deletedAt: null, role: { is: { nameKey: 'gerente', scope: 'PROJETO' } } }, select: { id: true } })
+    if (gerente) throw new ConflictException('O gerente do projeto não pode ser excluído. Passe a gerência para outra pessoa antes.')
+    const bloqueio = motivoParaNaoExcluir(await tarefasNoProjeto(userId, projectId))
+    if (bloqueio) throw new ConflictException(bloqueio)
+    await prisma.$transaction([
+      prisma.userProjectRole.deleteMany({ where: { userId, projectId } }),
+      prisma.$executeRaw`DELETE FROM "UserPermission" WHERE "userId" = ${userId} AND "projectId" = ${projectId}`,
+      prisma.userProject.delete({ where: { id: membro.id } }),
+    ])
   }
 
   /**

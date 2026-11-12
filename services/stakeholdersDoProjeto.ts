@@ -2,6 +2,7 @@ import 'server-only'
 import { getProjectRoleForMember } from '@/services/projectRoleService'
 import { nomesUnicosDeFuncoes } from '@/lib/funcoesDedupe'
 import prisma from '@/lib/prisma'
+import { CONTA_INATIVADA } from '@/lib/contaInativada'
 import { findById } from '@/services/projectAccess'
 import type {
   StakeholderUnificado,
@@ -138,7 +139,8 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
   // ── Build unified list — fetch gerente roles in parallel
   const membrosComRole = await Promise.all(
     userProjects
-      .filter(up => up.user.deletedAt === null && up.user.isActive)
+      // Conta desativada no sistema continua aparecendo, como inativa (não some do projeto).
+      .filter(up => up.user.deletedAt === null)
       .map(async (up): Promise<StakeholderUnificado> => {
         const projectRole = await getProjectRoleForMember(up.userId, projetoId)
         const cargos = up.role
@@ -172,9 +174,10 @@ export async function carregarStakeholdersDoProjeto(tenantId: string, projetoId:
           startDate: up.startDate.toISOString(),
           userRole: up.user.role,
           signatureUrl: up.user.signatureUrl,
-          isActive: up.active,
-          inactiveReason: up.active ? null : up.inactiveReason,
-          inactivatedAt: up.active ? null : up.inactivatedAt?.toISOString() ?? null,
+          // Conta desativada vale como inativa no projeto, mesmo em vínculos antigos ainda ativos.
+          isActive: up.active && up.user.isActive,
+          inactiveReason: up.active && up.user.isActive ? null : (up.active ? CONTA_INATIVADA : up.inactiveReason),
+          inactivatedAt: up.active && up.user.isActive ? null : up.inactivatedAt?.toISOString() ?? null,
         }
       }),
   )
