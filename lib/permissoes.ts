@@ -12,8 +12,13 @@
  * das próprias linhas). Tech Lead e PO não têm padrão: por decisão do usuário,
  * começam iguais ao usuário comum.
  *
+ * Com várias funções, a pessoa fica com tudo que estiver ativo em qualquer uma
+ * delas (soma): uma função nunca tira permissão de outra. Só o ajuste individual
+ * "negar" retira.
+ *
  * Sem dependências de servidor: é usado também pela interface.
  */
+import { separarFuncoes } from './funcoes'
 
 export const PERMISSOES = [
   { chave: 'projeto:ver', grupo: 'Projeto', rotulo: 'Ver o projeto' },
@@ -121,7 +126,10 @@ export function resolverPermissoes(e: EntradaResolucao): Set<Permissao> {
   return permissoes
 }
 
-/** Cargos em texto (UserProject.role) → lista limpa. */
+/**
+ * Cargos em texto (UserProject.role) → lista limpa. Usa a mesma separação das funções
+ * ("A | B" também são duas), para cargos antigos gravados assim somarem as duas funções.
+ */
 export function cargosDoTexto(role: string | null | undefined): string[] {
-  return (role ?? '').split(',').map(c => c.trim()).filter(Boolean)
+  return separarFuncoes(role)
 }
