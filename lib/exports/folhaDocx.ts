@@ -33,7 +33,7 @@ interface EstiloRun { fonte: string; tamanho: number; negrito: boolean; italico:
 /** `base`: linha de base do texto na tela. */
 interface Linha { tokens: Token[]; bloco: HTMLElement; centro: number; base: number; quebraAntes: boolean }
 interface Caixa { left: number; right: number }
-interface Flutuante { el: HTMLImageElement; x: number; y: number; w: number; h: number }
+interface Flutuante { el: HTMLImageElement | SVGSVGElement; x: number; y: number; w: number; h: number }
 
 const visivel = (el: Element) => {
   if ((el as HTMLElement).closest('[data-tela-apenas],[data-rodape-pagina],[data-medicao]')) return false
@@ -389,18 +389,67 @@ function posicaoImagem(img: HTMLImageElement): Flutuante {
   return { el: img, x: r.left + (r.width - w) * (px0 ?? 0.5), y: r.top + (r.height - h) * (py0 ?? 0.5), w, h }
 }
 
+/** Desenho em SVG (ex.: EAP gráfica) na posição e tamanho da tela. */
+function posicaoSvg(svg: SVGSVGElement): Flutuante {
+  const r = svg.getBoundingClientRect()
+  return { el: svg, x: r.left, y: r.top, w: r.width, h: r.height }
+}
+
+/**
+ * SVG como arquivo independente: largura/altura fixas, namespace e as fontes
+ * calculadas em cada <text> (o arquivo não herda o CSS da página).
+ */
+function svgSozinho(svg: SVGSVGElement, w: number, h: number): string {
+  const copia = svg.cloneNode(true) as SVGSVGElement
+  copia.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+  copia.setAttribute('width', String(w)); copia.setAttribute('height', String(h))
+  copia.removeAttribute('style')
+  const originais = svg.querySelectorAll('text'), copias = copia.querySelectorAll('text')
+  originais.forEach((t, i) => {
+    const cs = getComputedStyle(t)
+    copias[i]?.setAttribute('font-family', fonteUsada(cs.fontFamily))
+  })
+  return new XMLSerializer().serializeToString(copia)
+}
+
+/** PNG do SVG em alta resolução: reserva para quem abre em Word sem suporte a SVG. */
+async function pngDoSvg(texto: string, w: number, h: number, escala = 4): Promise<Uint8Array> {
+  const url = URL.createObjectURL(new Blob([texto], { type: 'image/svg+xml' }))
+  try {
+    const img = new Image()
+    await new Promise<void>((ok, erro) => { img.onload = () => ok(); img.onerror = () => erro(new Error('Imagem indisponível: desenho')); img.src = url })
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.ceil(w * escala); canvas.height = Math.ceil(h * escala)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Imagem indisponível: desenho')
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise<Blob | null>(ok => canvas.toBlob(ok, 'image/png'))
+    if (!blob) throw new Error('Imagem indisponível: desenho')
+    return new Uint8Array(await blob.arrayBuffer())
+  } finally { URL.revokeObjectURL(url) }
+}
+
 async function imagemFlutuante(f: Flutuante, pagina: DOMRect): Promise<ImageRun> {
+  const posicao = {
+    horizontalPosition: { relative: HorizontalPositionRelativeFrom.PAGE, offset: emu(f.x - pagina.left) },
+    verticalPosition: { relative: VerticalPositionRelativeFrom.PAGE, offset: emu(f.y - pagina.top) },
+    wrap: { type: TextWrappingType.NONE }, allowOverlap: true, lockAnchor: true,
+  }
+  if (f.el instanceof SVGSVGElement) {
+    const nome = f.el.getAttribute('aria-label') || 'Desenho'
+    const texto = svgSozinho(f.el, f.w, f.h)
+    const png = await pngDoSvg(texto, f.w, f.h)
+    return new ImageRun({
+      type: 'svg', data: new TextEncoder().encode(texto), fallback: { type: 'png', data: png },
+      altText: { name: nome, description: nome, title: nome }, transformation: { width: f.w, height: f.h }, floating: posicao,
+    })
+  }
   const bytes = await baixarImagem(f.el.currentSrc || f.el.src, { credentials: 'same-origin' })
   const info = bytes ? infoDaImagem(bytes) : null
   if (!bytes || !info) throw new Error(`Imagem indisponível: ${f.el.alt || 'imagem'}`)
   return new ImageRun({
     type: info.tipo, data: bytes, altText: { name: f.el.alt || 'Imagem', description: f.el.alt || 'Imagem', title: f.el.alt || 'Imagem' },
-    transformation: { width: f.w, height: f.h },
-    floating: {
-      horizontalPosition: { relative: HorizontalPositionRelativeFrom.PAGE, offset: emu(f.x - pagina.left) },
-      verticalPosition: { relative: VerticalPositionRelativeFrom.PAGE, offset: emu(f.y - pagina.top) },
-      wrap: { type: TextWrappingType.NONE }, allowOverlap: true, lockAnchor: true,
-    },
+    transformation: { width: f.w, height: f.h }, floating: posicao,
   })
 }
 
@@ -450,7 +499,11 @@ export async function folhaParaDocx(raiz: HTMLElement, titulo: string): Promise<
     // Itens de primeiro nível: tabelas, imagens soltas e linhas de texto fora das tabelas.
     const tabelas = [...pagina.querySelectorAll<HTMLTableElement>('table')].filter(t => visivel(t) && !t.parentElement?.closest('table'))
     pagina.querySelectorAll('img').forEach(img => { if (visivel(img) && !img.closest('table')) imagens.push(posicaoImagem(img as HTMLImageElement)) })
-    const linhasSoltas = linhasDe(tokensDe(pagina, el => el.tagName === 'TABLE'))
+    // Desenhos (SVG de primeiro nível) entram inteiros como imagem; o texto deles não vai para o fluxo.
+    pagina.querySelectorAll<SVGSVGElement>('svg').forEach(svg => {
+      if (visivel(svg) && !svg.parentElement?.closest('svg') && !svg.closest('table') && svg.getBoundingClientRect().width > 0) imagens.push(posicaoSvg(svg))
+    })
+    const linhasSoltas = linhasDe(tokensDe(pagina, el => el.tagName === 'TABLE' || el.tagName.toLowerCase() === 'svg'))
     type Item = { topo: number; tipo: 'tabela'; el: HTMLTableElement } | { topo: number; tipo: 'linhas'; linhas: Linha[] }
     const itens: Item[] = tabelas.map(t => ({ topo: t.getBoundingClientRect().top, tipo: 'tabela' as const, el: t }))
     // Linhas consecutivas entre duas tabelas formam um grupo.

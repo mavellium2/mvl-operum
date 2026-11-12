@@ -11,6 +11,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Word do Termo idêntico à tela:** o Termo de Abertura passa a exportar o `.docx` a partir das folhas desenhadas, como Partes interessadas: mesmas páginas, bordas dos campos, fundos, fontes, logo, assinatura e rodapé. Os títulos viram estilos de título do Word (o do documento como Título 1 e os de seção como Título 2), aparecendo no painel de navegação sem mudar a aparência. Texto justificado continua justificado, e blocos lado a lado (número e nome da macro fase) ficam na mesma linha.
 
+- **Word da EAP:** a EAP ganha exportação para Word, idêntica à tela: folha da EAP gráfica (a árvore entra como desenho vetorial SVG na mesma posição e tamanho, com cópia PNG de reserva para Word sem suporte a SVG) e folhas da EAP em texto, com o mesmo quadro, recuos, negritos e rodapé "Página X de Y".
+
 - **Macro fases:** a Data limite fica centralizada na coluna, na leitura e na edição.
 
 - **Campos do Termo sem espaço sobrando:** Justificativa, Objetivos, Metodologia, Descrição do produto, Premissas/restrições, Principais envolvidos e Limites de autoridade deixam de ter altura mínima fixa e acompanham o texto (vazios mantêm uma linha para digitar), na tela, no PDF e no Word. Principais envolvidos tem o mesmo recuo em cima e embaixo, e a Data de aprovação fica no meio da linha, alinhada com a assinatura (também em Partes interessadas).
