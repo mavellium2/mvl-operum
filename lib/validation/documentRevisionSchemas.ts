@@ -7,7 +7,7 @@ import { recomputeNodeCodes } from '@/lib/eapCode'
 import { safeAvatarUrl } from './avatarUrl'
 import type { EapNode } from '@/types/eap'
 
-export const tipoDocumento = z.enum(['CHARTER', 'STAKEHOLDER', 'EAP', 'ATA'])
+export const tipoDocumento = z.enum(['CHARTER', 'STAKEHOLDER', 'EAP', 'ATA', 'CAPA'])
 export type TipoDocumento = z.infer<typeof tipoDocumento>
 const texto = z.string().max(50000).nullable().optional()
 export const charterSchema = z
@@ -133,7 +133,24 @@ export function validarEap(payload: unknown) {
   })
 }
 
+/** Campos editáveis da Capa (em amarelo no modelo). Logo e integrantes vêm do projeto. */
+const linhaCapa = z.string().max(500)
+export const capaSchema = z
+  .object({
+    instituicao: linhaCapa,
+    curso: linhaCapa,
+    disciplina: linhaCapa,
+    professor: linhaCapa,
+    endereco: linhaCapa,
+    email: linhaCapa,
+    periodo: z.string().max(50),
+  })
+  .partial()
+  .strict()
+export type CapaConteudo = z.infer<typeof capaSchema>
+
 export function validarDocumento(type: TipoDocumento, payload: unknown) {
+  if (type === 'CAPA') return capaSchema.parse(payload)
   if (type === 'CHARTER') return charterSchema.parse(payload)
   if (type === 'STAKEHOLDER') return stakeholderSchema.parse(payload)
   if (type === 'ATA') return AtualizarAtaSchema.parse(payload)

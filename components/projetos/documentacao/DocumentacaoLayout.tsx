@@ -7,12 +7,14 @@ import HistoricoDocumento from './HistoricoDocumento'
 import ProjectCharterWrapper from './ProjectCharterWrapper'
 import DocumentoAtas, { type AtaListItem } from './DocumentoAtas'
 import EapDocument from './EapDocument'
+import CapaDocumento from './CapaDocumento'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import Drawer from '@/components/ui/Drawer'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
 import './documentacao.css'
 
 const DOCUMENT_MAP = {
+  capa: CapaDocumento,
   stakeholder: DocumentoStakeholders,
   charter: ProjectCharterWrapper,
   eap: EapDocument,
@@ -58,13 +60,15 @@ export default function DocumentacaoLayout({ projetoId, atas, gerente, membros =
     window.addEventListener('operum:revisar-propostas', abrir)
     return () => window.removeEventListener('operum:revisar-propostas', abrir)
   }, [projetoId])
-  const tipo = ({ atas: 'ATA', charter: 'CHARTER', eap: 'EAP', stakeholder: 'STAKEHOLDER' } as const)[activeDoc]
+  const tipo = ({ atas: 'ATA', charter: 'CHARTER', eap: 'EAP', stakeholder: 'STAKEHOLDER', capa: 'CAPA' } as const)[activeDoc]
 
   return (
     <ProjectAppearance enabled isolated>
     <div data-testid="doc-layout" className="documentacao-theme flex flex-col lg:flex-row flex-1 h-full overflow-hidden">
       <div data-testid="doc-content" className="documentacao-content flex-1 min-w-0 overflow-y-auto">
-        {activeDoc === 'atas' ? (
+        {activeDoc === 'capa' ? (
+          <CapaDocumento key={publication} />
+        ) : activeDoc === 'atas' ? (
           <DocumentoAtas projetoId={projetoId} atas={atas} gerente={gerente} />
         ) : activeDoc === 'charter' ? (
           <ProjectCharterWrapper key={publication} membros={membros} />

@@ -162,43 +162,41 @@ const StakeholderDocument = forwardRef<HTMLDivElement, Props>(
           </tbody>
         </table>
 
-        {/* Partes interessadas */}
-        <div>
-          <SecaoTabela
-            testId="tabela-partes-interessadas"
-            semFaixa
-            titulo="Partes interessadas"
-            colunas={COLUNAS.map(c => ({ rotulo: c.campo === 'email' ? <em style={{ fontWeight: 'normal' }}>{c.rotulo}</em> : c.rotulo, largura: c.largura }))}
-            estiloCabecalho={{ background: '#e7e6e6', fontWeight: 'normal', textAlign: 'center', padding: '0 3px', fontSize: '9pt' }}
-            onAdicionar={ed?.onAdicionar}
-            menuAdicionar={menuAdicionar}
-            rotuloAdicionar="Adicionar parte interessada"
-          >
-            {stakeholders.length === 0 && !editavel && (
-              <tr><td colSpan={COLUNAS.length} style={{ ...cel, color: '#6b7280', fontStyle: 'italic' }}>Nenhuma parte interessada cadastrada.</td></tr>
-            )}
-            {stakeholders.map((s, i) => (
-              <LinhaLista key={`${s.ref}-${i}`} onRemover={ed ? () => ed.onRemover(i) : undefined} rotuloRemover={`Remover ${s.nome || `linha ${i + 1}`} desta versão`} style={s.inativo ? { color: '#b91c1c' } : undefined} data-inativo={s.inativo ? 'true' : undefined}>
-                {COLUNAS.map(c => {
-                  if (c.campo === 'ref') return <td key={c.campo} style={cel}>{s.ref}</td>
-                  const campo = c.campo
-                  // Observação: o motivo da inativação vem antes, como no PDF. Telefone sempre formatado.
-                  const bruto = campo === 'observacoes' && !editavel ? observacaoDaLinha(s) : (s[campo] ?? '')
-                  const valor = campo === 'telefoneFax' ? formatTelefone(bruto) : bruto
-                  return (
-                    <td key={campo} style={{ ...celCampo, overflowWrap: 'anywhere' }}>
-                      <CampoTexto
-                        id={`ds-${i}-${campo}`} rotulo={c.rotulo} ajuda={c.ajuda} pergunta={c.pergunta} alinhamento="center"
-                        valor={valor} onChange={v => ed?.onCelula(i, campo, v)} max={campo === 'observacoes' ? 500 : 200}
-                        linha={campo === 'email' || campo === 'telefoneFax'} celulaDeTabela compacto
-                      />
-                    </td>
-                  )
-                })}
-              </LinhaLista>
-            ))}
-          </SecaoTabela>
-        </div>
+        {/* Partes interessadas: bloco direto da folha, para a tabela continuar nas folhas seguintes. */}
+        <SecaoTabela
+          testId="tabela-partes-interessadas"
+          semFaixa
+          titulo="Partes interessadas"
+          colunas={COLUNAS.map(c => ({ rotulo: c.campo === 'email' ? <em style={{ fontWeight: 'normal' }}>{c.rotulo}</em> : c.rotulo, largura: c.largura }))}
+          estiloCabecalho={{ background: '#e7e6e6', fontWeight: 'normal', textAlign: 'center', padding: '0 3px', fontSize: '9pt' }}
+          onAdicionar={ed?.onAdicionar}
+          menuAdicionar={menuAdicionar}
+          rotuloAdicionar="Adicionar parte interessada"
+        >
+          {stakeholders.length === 0 && !editavel && (
+            <tr><td colSpan={COLUNAS.length} style={{ ...cel, color: '#6b7280', fontStyle: 'italic' }}>Nenhuma parte interessada cadastrada.</td></tr>
+          )}
+          {stakeholders.map((s, i) => (
+            <LinhaLista key={`${s.ref}-${i}`} onRemover={ed ? () => ed.onRemover(i) : undefined} rotuloRemover={`Remover ${s.nome || `linha ${i + 1}`} desta versão`} style={s.inativo ? { color: '#b91c1c' } : undefined} data-inativo={s.inativo ? 'true' : undefined}>
+              {COLUNAS.map(c => {
+                if (c.campo === 'ref') return <td key={c.campo} style={cel}>{s.ref}</td>
+                const campo = c.campo
+                // Observação: o motivo da inativação vem antes, como no PDF. Telefone sempre formatado.
+                const bruto = campo === 'observacoes' && !editavel ? observacaoDaLinha(s) : (s[campo] ?? '')
+                const valor = campo === 'telefoneFax' ? formatTelefone(bruto) : bruto
+                return (
+                  <td key={campo} style={{ ...celCampo, overflowWrap: 'anywhere' }}>
+                    <CampoTexto
+                      id={`ds-${i}-${campo}`} rotulo={c.rotulo} ajuda={c.ajuda} pergunta={c.pergunta} alinhamento="center"
+                      valor={valor} onChange={v => ed?.onCelula(i, campo, v)} max={campo === 'observacoes' ? 500 : 200}
+                      linha={campo === 'email' || campo === 'telefoneFax'} celulaDeTabela compacto
+                    />
+                  </td>
+                )
+              })}
+            </LinhaLista>
+          ))}
+        </SecaoTabela>
       </Folha>
     )
   }

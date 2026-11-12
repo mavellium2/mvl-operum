@@ -725,6 +725,7 @@ enum DocumentType {
   CHARTER
   EAP
   ATA
+  CAPA
 }
 
 model DocumentVersion {

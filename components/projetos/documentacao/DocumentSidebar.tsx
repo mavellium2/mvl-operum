@@ -8,6 +8,7 @@ import { fetchWithSession } from '@/lib/clientFetch'
 import { navegarComGuarda } from '@/components/documentos/editor/GuardaSaida'
 
 const DOCUMENTS = [
+  { id: 'capa', label: 'Capa', tipo: 'CAPA' },
   { id: 'stakeholder', label: 'Partes Interessadas', tipo: 'STAKEHOLDER' },
   { id: 'charter', label: 'Termo de Abertura', tipo: 'CHARTER' },
   { id: 'eap', label: 'EAP', tipo: 'EAP' },

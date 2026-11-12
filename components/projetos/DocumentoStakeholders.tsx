@@ -19,6 +19,7 @@ import { useParams } from 'next/navigation'
 import { useReactToPrint } from 'react-to-print'
 import { Save, Check, X } from 'lucide-react'
 import StakeholderDocument, {
+  TITULO_STAKEHOLDERS,
   type EdicaoStakeholders,
   type ProjetoHeader,
   type Stakeholder,
@@ -477,9 +478,13 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
   } : undefined
 
   async function baixarWord() {
-    if (!headerExibido) return
-    try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadStakeholderDocx(headerExibido, linhasExibidas) }
-    catch { toast('Não foi possível gerar o Word. Verifique as imagens do documento.', 'error') }
+    if (!headerExibido || !documentRef.current) return
+    // O Word sai da própria folha (cópia de impressão): mesmas páginas, posições e quebras.
+    try { await (await import('@/lib/exports/projectDocumentsDocx')).downloadFolhaDocx(documentRef.current, TITULO_STAKEHOLDERS, 'partes-interessadas.docx') }
+    catch (e) {
+      const imagem = e instanceof Error && e.message.startsWith('Imagem indisponível')
+      toast(imagem ? 'Não foi possível gerar o Word: a logo ou a assinatura não carregou. Tente novamente.' : 'Não foi possível gerar o Word. Tente novamente.', 'error')
+    }
   }
 
   if (loading || error || !headerExibido) {

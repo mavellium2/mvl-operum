@@ -7,6 +7,16 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.55.0] — 2026-11-11
+
+- **Capa na Documentação:** novo documento Capa no modelo "01 - CAPA" (Fatec Garça), com rascunho automático, versões, aprovação, impressão e PDF como os demais. Banner institucional, logo do projeto e integrantes (membros ativos) vêm do sistema; instituição, curso, disciplina, professor, endereço, e-mail e ano/semestre são editáveis na folha. Já vêm preenchidos o nome da faculdade, "CURSO SUPERIOR DE...", o endereço com telefone, disciplina e professor do Termo, e o período de Editar projeto (sem ano, usa o ano atual). O rascunho guarda só os campos alterados. Migration `20261111120000_documento_capa` adiciona `CAPA` ao `DocumentType`.
+
+- **Word da Capa idêntico à tela:** exportação `.docx` com as mesmas posições da folha (geometria única em `lib/capaLayout.ts`, usada pela folha e pelo Word), kerning ligado e linhas medidas na folha antes de exportar.
+
+- **Word de Partes interessadas idêntico à tela:** o `.docx` passa a ser montado a partir das folhas desenhadas (`lib/exports/folhaDocx.ts`): mesmas páginas, colunas, alturas de linha, quebras de texto, fontes, cores, logo, assinatura e rodapé "Página X de Y". Sai o modelo antigo, que tinha colunas diferentes da tela.
+
+- **Partes interessadas com muitas linhas:** a tabela agora continua nas folhas seguintes, repetindo o cabeçalho. Antes ela ia inteira para uma folha e o final era cortado na impressão e no PDF.
+
 ## [1.54.0] — 2026-11-05
 
 - **Atividades pela pizza:** clique no elaborador divide a pizza em uma fatia por atividade, proporcional ao tempo planejado (fatias iguais quando nenhuma tem tempo), com código e percentual em cada fatia. Abaixo, uma tabela com a estrutura da planilha: macrofases em faixa de seção, atividades, elaborada por, valor orçado e realizado (min, horas, dias, R$/min, materiais, total e datas), situação, sub-total por macrofase e total da pessoa. Realizado acima do orçado fica em vermelho. Troca direta entre elaboradores, fechamento ao clicar fora/Esc e distinção de homônimos por ID.
