@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import SprintBoard from '@/components/sprint/SprintBoard'
-import { createCardInSprintAction, updateCardInSprintAction, moveCardInSprintAction, renameSprintColumnAction, deleteSprintColumnAction } from '@/app/actions/sprintBoard'
+import { createCardInSprintAction, updateCardInSprintAction, moveCardInSprintAction, renameSprintColumnAction, deleteSprintColumnAction, setBacklogColorAction } from '@/app/actions/sprintBoard'
 import { fetchWithSession } from '@/lib/clientFetch'
 import { useSearchParams } from 'next/navigation'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -31,6 +31,7 @@ vi.mock('@/app/actions/sprintBoard', () => ({
   updateCardInSprintAction: vi.fn(),
   deleteCardInSprintAction: vi.fn(),
   getProjectBacklogAction: vi.fn().mockResolvedValue([]),
+  setBacklogColorAction: vi.fn().mockResolvedValue({ success: true }),
   moveCardToSprintAction: vi.fn(),
   moveCardToBacklogAction: vi.fn(),
   createBacklogCardAction: vi.fn(),
@@ -192,6 +193,13 @@ describe('SprintBoard', () => {
     renderWithProviders(<SprintBoard sprint={sprint} columns={columns} projectId="proj1" backlogCards={[backlogCard]} />)
     fireEvent.click(screen.getByText('Backlog Task'))
     expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument()
+  })
+
+  it('coluna Backlog tem o botão Cor da coluna e grava a cor no projeto', async () => {
+    renderWithProviders(<SprintBoard sprint={sprint} columns={columns} projectId="proj1" backlogCards={[]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Cor da coluna Backlog' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Vermelho' }))
+    await waitFor(() => expect(setBacklogColorAction).toHaveBeenCalledWith('proj1', expect.stringMatching(/^#/)))
   })
 
   it('opens concluded card in read-only mode', () => {

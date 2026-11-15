@@ -47,7 +47,7 @@ describe('Word da Capa', () => {
   it('tem os textos da folha, banner, linha e logo, em uma página A4', async () => {
     const doc = await xml(buildCapaDocx({ capa, nomeProjeto: 'Buddy', integrantes }, { cabecalho, logo: cabecalho }))
     for (const t of ['Faculdade de Tecnologia de Garça Deputado Júlio Julinho Marcondes de Moura”', 'CURSO SUPERIOR DE...', 'Gestão de Projetos',
-      'Prof. Esp. Fábio Rodrigues Gonçalves', 'Integrantes (Membro da Equipe)', ...integrantes,
+      'Prof. Esp. Fábio Rodrigues Gonçalves', 'Integrantes (Membros da Equipe)', ...integrantes,
       'Av. Presidente Vargas, 2331 – 17404-500 – Garça/SP – Tel.: (14) 3588-1800', 'E-mails:', 'buddyy@gmail.com', '2026 / 2']) {
       expect(doc).toContain(t)
     }

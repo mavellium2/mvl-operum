@@ -24,7 +24,6 @@ import { parseHoras } from '@/lib/validation/horas'
 import { dependenciasDoProjeto, mensagemDeBloqueio, type DependenciaProjeto } from '@/services/projetoDependencias'
 import { salvarProjetoEditor } from '@/services/projetoEditorService'
 import { syncProjetoDepartamentos } from '@/services/projetoDepartamentos'
-import { primeiraDataDeTarefa } from '@/services/inicioDoProjeto'
 
 
 export async function createProjetoAction(
@@ -159,14 +158,9 @@ export async function getProjetoAction(id: string) {
       }
     }
 
-    // Início = primeira tarefa com data; sem nenhuma, vale a data informada no projeto.
-    const primeiraTarefa = await primeiraDataDeTarefa(id, tenantId)
-
     return {
       projeto: {
         ...projeto,
-        startDate: primeiraTarefa ? primeiraTarefa.toISOString() : projeto.startDate,
-        inicioPelaPrimeiraTarefa: primeiraTarefa !== null,
         endDate: planilha?.dataFimProjeto ?? projeto.endDate,
         macroFases: macroFasesSyncPending ? projeto.macroFases ?? [] : macroFasesFromTree ?? projeto.macroFases ?? [],
         macroFasesSyncPending,

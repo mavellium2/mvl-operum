@@ -675,7 +675,7 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 ## ADR-050 — Data de início do projeto derivada da primeira tarefa
 
 - **Data:** 2026-10-21.
-- **Status:** implementada nesta entrega (1.34.0); publicação depende da integração da branch.
+- **Status:** substituída pela [ADR-101](#adr-101--início-do-projeto-informado-à-mão) em 1.57.0 (implementada em 1.34.0).
 - **Contexto:** card de 19/10 pede que o início do projeto corresponda à primeira tarefa, atualizado quando a tarefa muda e sem inventar data quando nenhuma tarefa tiver data.
 - **Escolha:** `Project.startDate` continua gravado, mas é sincronizado com a menor `Card.startDate` ativa do projeto após criar, editar ou excluir cards pelas actions do quadro e após a Planilha sincronizar os cards (`services/inicioDoProjeto.ts`). `getProjetoAction` devolve a data derivada e `inicioPelaPrimeiraTarefa`; Editar projeto trava o campo quando a data vem de uma tarefa. Sem tarefa com data, vale a data informada.
 - **Justificativa:** documentos, Gantt e cronograma já leem `Project.startDate`; manter a coluna gravada evita mudar cada leitor.
@@ -1261,3 +1261,25 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Alternativas consideradas:** manter texto com CHECK (ainda grava separador); array de ids em coluna (sem integridade referencial no Postgres).
 - **Consequências:** API/MCP passam a receber `funcoes` como lista (o `role` em texto continua aceito e é separado, por compatibilidade) e devolvem `funcoes: string[]`. Renomear uma função no cadastro reflete em todas as pessoas. Remover a coluna não tem volta pela migration; o conteúdo antigo fica nas tabelas novas.
 - **Referências:** `prisma/schema.prisma`, `project-service/prisma/schema.prisma`, `prisma/migrations/20261112170000_funcoes_como_lista/`, `services/funcoesDaPessoa.ts`, `services/authz.ts`, `services/projectRoleService.ts`, `app/actions/projetos.ts`, `project-service/src/common/funcoes.ts`, `mcp-server/src/tools/projects.ts`.
+
+## ADR-101 — Início do projeto informado à mão
+
+- **Data:** 2026-11-15.
+- **Status:** implementada (1.57.0). Substitui a [ADR-050](#adr-050--data-de-início-do-projeto-derivada-da-primeira-tarefa).
+- **Contexto:** o documento "Ajustes Operum" de 13/11/2026 (cliente) aponta que o início do projeto não é a data da primeira tarefa: um projeto que começa em 03/08/2026 pode ter a primeira atividade só em 10/08/2026. Com a ADR-050, o campo ficava travado e era sobrescrito a cada alteração de card.
+- **Escolha:** `Project.startDate` é só a data informada em Editar projeto. Removidos `services/inicioDoProjeto.ts`, a sincronização após as actions do quadro e a Planilha, e o campo `inicioPelaPrimeiraTarefa` de `getProjetoAction`.
+- **Justificativa:** o início é uma decisão de planejamento, não um resultado das tarefas.
+- **Alternativas consideradas:** manter a derivação com opção de sobrescrever (dois comportamentos para o mesmo campo, sem pedido do cliente).
+- **Consequências:** datas gravadas pela ADR-050 permanecem até alguém editá-las; não há migration de dados, porque não se sabe qual era a data pretendida.
+- **Referências:** `app/actions/projetos.ts`, `app/actions/sprintBoard.ts`, `services/planilhaService.ts`, `components/projetos/ProjetoFormPage.tsx`.
+
+## ADR-102 — Cor da coluna Backlog no projeto
+
+- **Data:** 2026-11-15.
+- **Status:** implementada (1.57.0).
+- **Contexto:** o mesmo documento de 13/11/2026 pede o ícone Cor da coluna na coluna Backlog. O Backlog é uma coluna virtual (cards sem sprint do projeto), sem registro em `SprintColumn`, onde a cor das demais colunas fica (ADR da 1.34.0).
+- **Escolha:** coluna `Project.backlogColor` (hex ou nulo; migration `20261115120000_cor_do_backlog`), gravada por `setBacklogColorAction` com `quadro:sprints` e lida por `getSprintBoardAction`. O quadro reutiliza `ColumnColorButton` e o mesmo estilo de cabeçalho das colunas.
+- **Justificativa:** o Backlog é do projeto e aparece igual em todas as sprints; guardar a cor no projeto mantém essa unidade.
+- **Alternativas consideradas:** guardar no navegador (não compartilhado entre membros); criar uma coluna real de Backlog no sprint-service (mudança de modelo bem maior que o pedido).
+- **Consequências:** a cor não passa pelo sprint-service nem pelo MCP; quem altera é o app, no banco principal.
+- **Referências:** `prisma/schema.prisma`, `app/actions/sprintBoard.ts`, `components/sprint/SprintBoard.tsx`, `components/board/ColumnColorButton.tsx`.

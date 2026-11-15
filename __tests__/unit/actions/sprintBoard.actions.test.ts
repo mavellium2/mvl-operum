@@ -27,13 +27,17 @@ vi.mock('@/services/membroInativo', () => ({ bloqueioDeConclusao: bloqueio }))
 vi.mock('@/lib/prisma', () => ({
   default: {
     userProject: { findMany: vi.fn() },
+    project: { findFirst: vi.fn(), updateMany: vi.fn() },
   },
 }))
+const exigir = vi.hoisted(() => vi.fn())
+vi.mock('@/services/projectAccess', () => ({ requireProjectPermission: exigir, canProjectPermission: vi.fn().mockResolvedValue(false) }))
 
 import { verifySession } from '@/lib/dal'
 import { sprintsApi, adminApi, tagsApi, cardsApi } from '@/lib/api-client'
 import prisma from '@/lib/prisma'
 import {
+  setBacklogColorAction,
   getSprintBoardAction,
   addSprintColumnAction,
   moveCardInSprintAction,
@@ -119,5 +123,30 @@ describe('moveCardInSprintAction', () => {
       sprintPosition: 0,
       reason: 'Revisão necessária',
     })
+  })
+})
+
+describe('setBacklogColorAction', () => {
+  beforeEach(() => {
+    mockVerify.mockResolvedValue({ userId: 'u1', tenantId: 't1' })
+    exigir.mockResolvedValue(undefined)
+    vi.mocked(prisma.project.updateMany).mockResolvedValue({ count: 1 } as never)
+  })
+
+  it('grava a cor no projeto do tenant, exigindo gerenciar colunas', async () => {
+    expect(await setBacklogColorAction('p1', '#ef4444')).toEqual({ success: true })
+    expect(exigir).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 't1' }), 'p1', 'quadro:sprints')
+    expect(prisma.project.updateMany).toHaveBeenCalledWith({ where: { id: 'p1', tenantId: 't1', deletedAt: null }, data: { backlogColor: '#ef4444' } })
+  })
+
+  it('aceita voltar ao padrão (null) e recusa cor inválida', async () => {
+    expect(await setBacklogColorAction('p1', null)).toEqual({ success: true })
+    expect(await setBacklogColorAction('p1', 'red')).toEqual({ error: 'Cor inválida' })
+  })
+
+  it('sem permissão não grava', async () => {
+    exigir.mockRejectedValue(new Error('Sem permissão'))
+    expect(await setBacklogColorAction('p1', '#ef4444')).toEqual({ error: 'Sem permissão' })
+    expect(prisma.project.updateMany).not.toHaveBeenCalled()
   })
 })

@@ -31,7 +31,7 @@ export const CAPA_LINHA_TOPO = 35.31
 export type EstiloCampo = { pt: number; negrito?: boolean; maiusculas?: boolean; sublinhado?: boolean; cor?: string; alinhamento: 'center' | 'right' | 'left' }
 export const ESTILO_CAPA: Record<keyof Required<CapaConteudo>, EstiloCampo> = {
   instituicao: { pt: 11, negrito: true, cor: CAPA.cor.instituicao, alinhamento: 'center' },
-  curso: { pt: 12, negrito: true, maiusculas: true, sublinhado: true, alinhamento: 'center' },
+  curso: { pt: 12, negrito: true, maiusculas: true, alinhamento: 'center' },
   disciplina: { pt: 12, negrito: true, alinhamento: 'center' },
   professor: { pt: 12, alinhamento: 'center' },
   endereco: { pt: 11, alinhamento: 'center' },
@@ -39,7 +39,7 @@ export const ESTILO_CAPA: Record<keyof Required<CapaConteudo>, EstiloCampo> = {
   periodo: { pt: 12, negrito: true, alinhamento: 'center' },
 }
 export const PREFIXO_EMAIL = 'E-mails:'
-export const TITULO_INTEGRANTES = 'Integrantes (Membro da Equipe)'
+export const TITULO_INTEGRANTES = 'Integrantes (Membros da Equipe)'
 export const SEM_INTEGRANTES = 'Nenhum membro ativo no projeto.'
 
 // ── Larguras de Arial (unidades de 1/1000 em), para quebrar as linhas como o navegador ──
