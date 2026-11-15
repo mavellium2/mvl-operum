@@ -21,6 +21,7 @@ import {
   addSprintColumnAction,
   renameSprintColumnAction,
   setSprintColumnColorAction,
+  setBacklogColorAction,
   deleteSprintColumnAction,
   reorderSprintColumnsAction,
   createCardInSprintAction,
@@ -38,6 +39,7 @@ import { addResponsibleAction, removeResponsibleAction } from '@/app/actions/car
 import { fetchWithSession } from '@/lib/clientFetch'
 import { aplicarFiltros, buscarCards, filtrosAtivos, FILTROS_PADRAO, type CardFilters } from '@/lib/cardFilters'
 import { ColumnSearchButton, ColumnSearchInput } from '@/components/board/ColumnSearch'
+import ColumnColorButton from '@/components/board/ColumnColorButton'
 import { isColunaConcluida } from '@/lib/cardUtils'
 import { precisaDeOutroResponsavel } from '@/lib/responsavelInativo'
 import { colunaExigeResponsavel } from '@/lib/responsavelObrigatorio'
@@ -103,6 +105,8 @@ interface SprintBoardProps {
   projectId?: string | null
   /** Membros inativados no projeto (continuam nos cards em que já eram responsáveis). */
   inactiveUserIds?: string[]
+  /** Cor do cabeçalho da coluna Backlog (por projeto); null = padrão. */
+  backlogColor?: string | null
 }
 
 function toColumnType(col: SprintColumnData): ColumnType {
@@ -161,7 +165,7 @@ function toSprintAttachment(att: Record<string, unknown>): NonNullable<SprintCar
   }
 }
 
-export default function SprintBoard({ sprint, columns: initialColumns, backlogCards: initialBacklogCards, users, tags, currentUser, initialCardId, projectId, inactiveUserIds }: SprintBoardProps) {
+export default function SprintBoard({ sprint, columns: initialColumns, backlogCards: initialBacklogCards, users, tags, currentUser, initialCardId, projectId, inactiveUserIds, backlogColor: initialBacklogColor = null }: SprintBoardProps) {
   const { toast } = useToast()
   const inativos = useMemo(() => new Set(inactiveUserIds ?? []), [inactiveUserIds])
   const permissions = useProjectPermissions()
@@ -192,6 +196,7 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
   const [addingCardToColumn, setAddingCardToColumn] = useState<string | null>(null)
   const [boardBg, setBoardBg] = useState('bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900')
   const [backlogCards, setBacklogCards] = useState<SprintCard[]>(initialBacklogCards ?? [])
+  const [backlogColor, setBacklogColor] = useState<string | null>(initialBacklogColor)
   const [filters, setFilters] = useState<CardFilters>(FILTROS_PADRAO)
   const now = useClientNow()
   const filtering = filtrosAtivos(filters)
@@ -412,6 +417,10 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
     if (!permissions.has('quadro:sprints')) return
     await confirmed(`column:${columnId}`, () => setSprintColumnColorAction(sprint.id, columnId, color), () => setColumns(cols => cols.map(c => c.id === columnId ? { ...c, color } : c)))
   }
+  async function handleChangeBacklogColor(color: string | null) {
+    if (!permissions.has('quadro:sprints') || !projectId) return
+    await confirmed('column:BACKLOG', () => setBacklogColorAction(projectId, color), () => setBacklogColor(color))
+  }
   async function handleDeleteColumn(columnId: string) {
     if (!permissions.has('quadro:sprints')) return
     await confirmed(`column:${columnId}`, () => deleteSprintColumnAction(sprint.id, columnId), () => setColumns(cols => cols.filter(c => c.id !== columnId)))
@@ -525,18 +534,26 @@ export default function SprintBoard({ sprint, columns: initialColumns, backlogCa
               <div className="flex flex-col w-72 sm:w-80 max-h-full shrink-0 bg-gray-100/90 backdrop-blur-sm rounded-2xl shadow-sm border border-black/5 overflow-hidden">
 
                 {/* Header — igual ao ColumnHeader mas sem rename/delete */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-black/5">
+                <div
+                  className="flex items-center justify-between px-4 py-3 border-b border-black/5 group"
+                  style={backlogColor ? { backgroundColor: `${backlogColor}26`, boxShadow: `inset 0 4px 0 ${backlogColor}` } : undefined}
+                >
                   <div className="flex items-center gap-2.5">
                     <span className="font-bold text-gray-800 text-sm tracking-tight">Backlog</span>
                     <span className="bg-gray-200/50 text-gray-600 text-[10px] font-bold rounded-md px-1.5 py-0.5 min-w-[20px] text-center border border-black/5">
                       {backlogSearching ? `${backlogShown.length}/${backlogVisible.length}` : backlogCards.length}
                     </span>
                   </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
                   <ColumnSearchButton
                     columnTitle="Backlog"
                     open={backlogSearchOpen}
                     onToggle={() => (backlogSearchOpen ? closeBacklogSearch() : setBacklogSearchOpen(true))}
                   />
+                  {permissions.has('quadro:sprints') && (
+                    <ColumnColorButton columnTitle="Backlog" value={backlogColor} onChange={handleChangeBacklogColor} />
+                  )}
+                  </div>
                 </div>
 
                 {backlogSearchOpen && (

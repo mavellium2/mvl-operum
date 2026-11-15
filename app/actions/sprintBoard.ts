@@ -4,7 +4,6 @@ import { requireProjectPermission } from '@/services/projectAccess'
 import { getTree } from '@/services/wbsService'
 import { planilhaDoProjeto, resumoDaPlanilhaPorCard, type ResumoCardPlanilha } from '@/services/planilhaService'
 import { canProjectPermission } from '@/services/projectAccess'
-import { sincronizarInicioPeloCard } from '@/services/inicioDoProjeto'
 import { verifySession } from '@/lib/dal'
 import { revalidatePath } from 'next/cache'
 import { sprintsApi, cardsApi, tagsApi, filesApi } from '@/lib/api-client'
@@ -42,6 +41,8 @@ type SprintBoardData = {
   sprint: { id: string; name: string; status: string; projectId?: string | null; startDate: Date | string | null; endDate: Date | string | null; description?: string | null; qualidade?: number | null; dificuldade?: number | null }
   columns: { id: string; title: string; position: number; cards: BoardCard[] }[]
   backlogCards: BacklogCard[]
+  /** Cor do cabeçalho da coluna Backlog (por projeto); null = padrão. */
+  backlogColor: string | null
   users: { id: string; name: string; email: string; avatarUrl?: string | null }[]
   /** Membros inativados no projeto: os cards só com eles pedem outro responsável. */
   inactiveUserIds: string[]
@@ -86,6 +87,16 @@ async function codigosEapDosCards(projectId: string, tenantId: string): Promise<
   }
 }
 
+async function corDoBacklog(projectId: string, tenantId: string): Promise<string | null> {
+  if (!projectId) return null
+  try {
+    const projeto = await prisma.project.findFirst({ where: { id: projectId, tenantId, deletedAt: null }, select: { backlogColor: true } })
+    return projeto?.backlogColor ?? null
+  } catch {
+    return null // sem a cor, o Backlog aparece com o visual padrão
+  }
+}
+
 export async function getSprintBoardAction(sprintId: string, projectId?: string): Promise<SprintBoardData | { error: string }> {
   try {
     const { tenantId, userId, role } = await verifySession()
@@ -119,6 +130,7 @@ export async function getSprintBoardAction(sprintId: string, projectId?: string)
         })
       : []
     const inactiveUserIds = inativos.map(i => i.user.id)
+    const backlogColor = await corDoBacklog(resolvedProjectId, tenantId)
 
     const typedColumns = columns as SprintBoardData['columns']
     const typedBacklog = backlogCards as BacklogCard[]
@@ -205,7 +217,7 @@ export async function getSprintBoardAction(sprintId: string, projectId?: string)
       } catch { /* sem EAP/planilha o quadro carrega sem esses dados */ }
     }
 
-    return { sprint, columns: finalColumns, backlogCards: finalBacklog, users, tags, inactiveUserIds } as unknown as SprintBoardData
+    return { sprint, columns: finalColumns, backlogCards: finalBacklog, backlogColor, users, tags, inactiveUserIds } as unknown as SprintBoardData
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao carregar sprint board' }
   }
@@ -272,7 +284,7 @@ export async function createCardInSprintAction(input: {
   endDate?: string | null
 }) {
   try {
-    const { tenantId } = await verifySession()
+    await verifySession()
     const card = await cardsApi.create({
       title: input.title,
       description: input.description ?? '',
@@ -283,7 +295,6 @@ export async function createCardInSprintAction(input: {
       ...datasDoCard(input),
     })
     revalidatePath(`/sprints/${input.sprintId}`)
-    await sincronizarInicioPeloCard((card as { id: string }).id, tenantId)
     return { card }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao criar card' }
@@ -308,6 +319,20 @@ export async function setSprintColumnColorAction(sprintId: string, columnId: str
     const column = await sprintsApi.updateColumn(sprintId, columnId, { color })
     revalidatePath(`/sprints/${sprintId}`)
     return { column }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erro ao alterar a cor da coluna' }
+  }
+}
+
+/** Cor da coluna virtual Backlog: guardada no projeto, vale para todas as sprints dele. */
+export async function setBacklogColorAction(projectId: string, color: string | null) {
+  try {
+    const session = await verifySession()
+    await requireProjectPermission(session, projectId, 'quadro:sprints')
+    if (color !== null && !/^#[0-9a-fA-F]{6}$/.test(color)) return { error: 'Cor inválida' }
+    const { count } = await prisma.project.updateMany({ where: { id: projectId, tenantId: session.tenantId, deletedAt: null }, data: { backlogColor: color } })
+    if (count === 0) return { error: 'Projeto não encontrado' }
+    return { success: true as const }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao alterar a cor da coluna' }
   }
@@ -340,10 +365,9 @@ export async function updateCardInSprintAction(
   data: { title: string; description: string; color: string; priority?: string },
 ) {
   try {
-    const { tenantId } = await verifySession()
+    await verifySession()
     const card = await cardsApi.update(cardId, data as Record<string, unknown>)
     revalidatePath(`/sprints/${sprintId}`)
-    await sincronizarInicioPeloCard((card as { id: string }).id, tenantId)
     return { card }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar card' }
@@ -367,12 +391,11 @@ export type PatchCardInput = z.infer<typeof PatchCardSchema>
  */
 export async function patchCardAction(sprintId: string, cardId: string, patch: PatchCardInput) {
   try {
-    const { tenantId } = await verifySession()
+    await verifySession()
     const parsed = PatchCardSchema.safeParse(patch)
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }
     const card = await cardsApi.update(cardId, parsed.data as Record<string, unknown>)
     revalidatePath(`/sprints/${sprintId}`)
-    await sincronizarInicioPeloCard((card as { id: string }).id, tenantId)
     return { card }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao atualizar card' }
@@ -381,10 +404,9 @@ export async function patchCardAction(sprintId: string, cardId: string, patch: P
 
 export async function deleteCardInSprintAction(sprintId: string, cardId: string) {
   try {
-    const { tenantId } = await verifySession()
+    await verifySession()
     await cardsApi.delete(cardId)
     revalidatePath(`/sprints/${sprintId}`)
-    await sincronizarInicioPeloCard(cardId, tenantId)
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao excluir card' }
@@ -442,7 +464,7 @@ export async function createBacklogCardAction(
   data: { title: string; description?: string; color?: string; priority?: string; startDate?: string | null; endDate?: string | null },
 ) {
   try {
-    const { tenantId } = await verifySession()
+    await verifySession()
     const card = await cardsApi.create({
       projectId,
       title: data.title,
@@ -451,7 +473,6 @@ export async function createBacklogCardAction(
       priority: data.priority,
       ...datasDoCard(data),
     })
-    await sincronizarInicioPeloCard((card as { id: string }).id, tenantId)
     return { card }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao criar card no backlog' }

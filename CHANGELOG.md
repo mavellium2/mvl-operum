@@ -7,6 +7,14 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.57.0] — 2026-11-15
+
+- **Início do projeto informado à mão:** em Editar projeto → Propriedades, o campo Início volta a ser editável e não segue mais a data da primeira tarefa. Ex.: projeto que começa em 03/08/2026 com a primeira atividade em 10/08/2026 mantém 03/08/2026. Datas já gravadas não mudam; criar, editar ou excluir tarefas e salvar a Planilha deixam de alterar o início (substitui a regra de 1.34.0, ADR-101).
+
+- **Cor da coluna Backlog:** a coluna Backlog do quadro ganha o botão Cor da coluna, igual às demais. A cor vale para todas as sprints do projeto e exige a mesma permissão de gerenciar colunas.
+
+- **Capa:** o nome do curso deixa de sair sublinhado, e o título dos integrantes passa a ser "Integrantes (Membros da Equipe)", na tela, no PDF e no Word.
+
 ## [1.56.0] — 2026-11-12
 
 - **Word do Termo idêntico à tela:** o Termo de Abertura passa a exportar o `.docx` a partir das folhas desenhadas, como Partes interessadas: mesmas páginas, bordas dos campos, fundos, fontes, logo, assinatura e rodapé. Os títulos viram estilos de título do Word (o do documento como Título 1 e os de seção como Título 2), aparecendo no painel de navegação sem mudar a aparência. Texto justificado continua justificado, e blocos lado a lado (número e nome da macro fase) ficam na mesma linha.

@@ -77,12 +77,6 @@ export default function NovoProjetoPage({ canAssignRoles = true }: { canAssignRo
   )
 }
 
-// ── Datas no padrão brasileiro (dd/mm/aaaa) ─────────────────
-// O valor mantido no state é ISO (YYYY-MM-DD) — só o display é mascarado.
-const isoToBR = (iso: string): string => {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : ''
-}
 
 // ── Estilo ──────────────────────────────────────────────────
 // Superfícies de vidro (translúcidas, com desfoque), como no iOS.
@@ -183,7 +177,6 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const [restaurando, setRestaurando] = useState<number | null>(null)
   const [recarregarHistorico, setRecarregarHistorico] = useState(0)
   const [faseAExcluir, setFaseAExcluir] = useState<{ nodeId: string; nome: string; numero: string; chave: string } | null>(null)
-  const [inicioPelaTarefa, setInicioPelaTarefa] = useState(false)
   const [aba, setAba] = useState<'diretrizes' | 'cronograma'>('diretrizes')
   const [abaVisivel, setAbaVisivel] = useState<'diretrizes' | 'cronograma'>('diretrizes')
   const [saindo, setSaindo] = useState(false)
@@ -276,7 +269,6 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
       }
       const p = result.projeto
       setSyncPending(p.macroFasesSyncPending)
-      setInicioPelaTarefa(Boolean((p as { inicioPelaPrimeiraTarefa?: boolean }).inicioPelaPrimeiraTarefa))
       const associados = (result as { departamentosAssociados?: { id: string; name: string }[] }).departamentosAssociados
       const gerenteId = (result as { gerenteId?: string }).gerenteId ?? ''
       setGerenteAtual((result as { gerente?: Usuario | null }).gerente ?? null)
@@ -808,13 +800,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
                   options={opcoesGerente} />
               </Propriedade>
               <Propriedade Icone={CalendarDays} rotulo="Início">
-                {inicioPelaTarefa ? (
-                  <div className="flex h-8 items-center justify-between gap-2 px-2.5 text-[13px] font-medium text-slate-600" data-testid="inicio-pela-tarefa" title="Definida pela primeira tarefa do projeto; muda quando as datas das tarefas mudam.">
-                    {isoToBR(form.startDate) || '—'}<span className="text-[11px] font-normal text-slate-400">1ª tarefa</span>
-                  </div>
-                ) : (
-                  <SeletorData ariaLabel="Data de início" error={erroCampo('startDate')} value={form.startDate} onChange={iso => setForm(prev => ({ ...prev, startDate: iso }))} className={propriedadeInput} />
-                )}
+                <SeletorData ariaLabel="Data de início" error={erroCampo('startDate')} value={form.startDate} onChange={iso => setForm(prev => ({ ...prev, startDate: iso }))} className={propriedadeInput} />
               </Propriedade>
               <Propriedade Icone={CalendarClock} rotulo="Fim previsto">
                 <SeletorData ariaLabel="Data prevista de fim" error={erroCampo('endDate')} value={form.endDate} onChange={iso => setForm(prev => ({ ...prev, endDate: iso }))} className={propriedadeInput} />

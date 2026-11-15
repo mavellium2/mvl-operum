@@ -63,6 +63,8 @@ model Project {
   location  String?
   startDate DateTime?
   endDate   DateTime?
+  /// Cor do cabeçalho da coluna virtual Backlog no quadro (hex ou nulo = padrão).
+  backlogColor String?
 
   justificativa     String? @db.Text
   objetivos         String? @db.Text

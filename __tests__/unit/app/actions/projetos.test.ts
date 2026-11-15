@@ -128,15 +128,13 @@ describe('Projeto Actions', () => {
       expect(result.projeto?.id).toBe('p1')
     })
 
-    it('data de início vem da primeira tarefa; sem tarefa com data, a informada', async () => {
+    it('data de início é a informada no projeto, mesmo com tarefa anterior ou posterior', async () => {
       vi.mocked(verifySession).mockResolvedValue(mockSession)
-      vi.mocked(projectsApi.get).mockResolvedValue({ id: 'p1', name: 'P', startDate: '2026-02-10T00:00:00.000Z' })
-      vi.mocked(prisma.card.findFirst).mockResolvedValueOnce({ startDate: new Date('2026-03-02T00:00:00Z') } as never)
-      let result = await getProjetoAction('p1')
-      expect(result.projeto).toMatchObject({ startDate: '2026-03-02T00:00:00.000Z', inicioPelaPrimeiraTarefa: true })
-
-      result = await getProjetoAction('p1')
-      expect(result.projeto).toMatchObject({ startDate: '2026-02-10T00:00:00.000Z', inicioPelaPrimeiraTarefa: false })
+      vi.mocked(projectsApi.get).mockResolvedValue({ id: 'p1', name: 'P', startDate: '2026-08-03T00:00:00.000Z' })
+      vi.mocked(prisma.card.findFirst).mockResolvedValue({ startDate: new Date('2026-08-10T00:00:00Z') } as never)
+      const result = await getProjetoAction('p1')
+      expect(result.projeto).toMatchObject({ startDate: '2026-08-03T00:00:00.000Z' })
+      expect(result.projeto).not.toHaveProperty('inicioPelaPrimeiraTarefa')
     })
 
     it('should return error if project not found', async () => {
