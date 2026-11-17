@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import prisma from '@/lib/prisma'
-import { documentoVigente, submeterDocumento, revisarDocumento, salvarRascunho, rascunhoDocumento, excluirAta, excluirVersao } from '@/services/documentRevisionService'
+import { documentoVigente, submeterDocumento, revisarDocumento, salvarRascunho, rascunhoDocumento, excluirAta, excluirVersao, criarRisco, excluirRisco, listarRiscos } from '@/services/documentRevisionService'
 import type { SessaoAuthz } from '@/services/authz'
 
 const testUrl = process.env.OPERUM_DOCUMENT_TEST_DATABASE_URL
@@ -190,6 +190,35 @@ describe.skipIf(!testUrl)('revisões documentais — PostgreSQL real', () => {
     await Promise.all(versions.map(version => revisarDocumento(manager, projectId, version.id, 'approve')))
     const atas = await prisma.ata.findMany({ where: { projetoId: projectId }, orderBy: { numero: 'asc' } })
     expect(atas.map(ata => ata.numero)).toEqual([1, 2])
+  })
+
+  it('riscos são documentos próprios: números em sequência, versões separadas e resumo pela vigente', async () => {
+    const [r1, r2] = [await criarRisco(member, projectId), await criarRisco(member, projectId)]
+    expect([r1.numero, r2.numero]).toEqual([1, 2])
+    await submeterDocumento(manager, projectId, 'RISCOS', { denominacao: 'Dependência', responsavel: 'Membro', responsavelFuncao: 'Dev', responsavelUserId: member.userId, impacto: 4 }, meta, r1.id)
+    const pendente = await submeterDocumento(member, projectId, 'RISCOS', { denominacao: 'Prazo' }, meta, r2.id)
+    expect(pendente.status).toBe('PENDING')
+    await expect(submeterDocumento(member, projectId, 'RISCOS', { denominacao: 'X' }, meta)).rejects.toThrow(/obrigatória/)
+    await expect(submeterDocumento(member, projectId, 'RISCOS', { responsavelUserId: foreignUserId }, meta, r1.id)).rejects.toThrow(/membros ativos/)
+    expect(await listarRiscos(member, projectId)).toEqual([
+      { id: r1.id, numero: 1, denominacao: 'Dependência', responsavel: 'Membro – Dev', impacto: 4, probabilidade: null, status: 'APPROVED' },
+      { id: r2.id, numero: 2, denominacao: 'Prazo', responsavel: '', impacto: null, probabilidade: null, status: 'PENDING' },
+    ])
+    expect((await documentoVigente(member, projectId, 'RISCOS', r1.id))?.payload).toMatchObject({ denominacao: 'Dependência' })
+  })
+
+  it('risco de outro projeto ou inexistente é recusado; excluir cancela pendentes e o número não volta', async () => {
+    const outro = await criarRisco(manager, otherProjectId).catch(() => null)
+    expect(outro).toBeNull()
+    await expect(salvarRascunho(member, projectId, 'RISCOS', { denominacao: 'X' }, randomUUID())).rejects.toThrow(/Risco não encontrado/)
+    const r = await criarRisco(member, projectId)
+    const pendente = await submeterDocumento(member, projectId, 'RISCOS', { denominacao: 'A' }, meta, r.id)
+    await expect(excluirRisco(member, projectId, r.id)).rejects.toThrow(/permissão/i)
+    await excluirRisco(manager, projectId, r.id)
+    expect((await prisma.documentVersion.findUniqueOrThrow({ where: { id: pendente.id } })).status).toBe('REJECTED')
+    await expect(submeterDocumento(member, projectId, 'RISCOS', { denominacao: 'B' }, meta, r.id)).rejects.toThrow(/Risco não encontrado/)
+    expect(await listarRiscos(member, projectId)).toEqual([])
+    expect((await criarRisco(member, projectId)).numero).toBe(2)
   })
 
   it('versões legadas sem snapshot não são aprováveis; exclusão não remove aprovada', async () => {

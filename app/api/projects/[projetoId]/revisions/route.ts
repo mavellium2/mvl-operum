@@ -16,6 +16,7 @@ import {
   tipoDocumento,
   metaDocumento,
   validarRecurso,
+  documentoPorRecurso,
 } from '@/lib/validation/documentRevisionSchemas'
 import { documentRevisionErrorResponse } from '@/lib/documentRevisionHttp'
 import { z } from 'zod'
@@ -44,7 +45,7 @@ export async function GET(req: Request, { params }: Ctx) {
           entityId: projetoId,
           AND: [
             { details: { path: ['documentType'], equals: documentType } },
-            ...(documentType === 'ATA' && !resourceId
+            ...(documentoPorRecurso(documentType) && !resourceId
               ? []
               : [{ details: { path: ['resourceId'], equals: resourceId } }]),
           ],
@@ -71,7 +72,7 @@ export async function GET(req: Request, { params }: Ctx) {
       where: {
         projectId: projetoId,
         documentType,
-        ...(documentType === 'ATA' && !resourceId ? {} : { resourceId }),
+        ...(documentoPorRecurso(documentType) && !resourceId ? {} : { resourceId }),
       },
       include: {
         author: { select: { name: true } },

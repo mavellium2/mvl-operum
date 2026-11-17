@@ -12,7 +12,10 @@ const DOCUMENTS = [
   { id: 'stakeholder', label: 'Partes Interessadas', tipo: 'STAKEHOLDER' },
   { id: 'charter', label: 'Termo de Abertura', tipo: 'CHARTER' },
   { id: 'eap', label: 'EAP', tipo: 'EAP' },
+  { id: 'escopo', label: 'Declaração do Escopo', tipo: 'ESCOPO' },
   { id: 'atas', label: 'Atas de Reunião', tipo: 'ATA' },
+  { id: 'riscos', label: 'Formulários de Riscos', tipo: 'RISCOS' },
+  { id: 'licoes', label: 'Lições Aprendidas', tipo: 'LICOES' },
 ] as const
 
 type DocId = (typeof DOCUMENTS)[number]['id']

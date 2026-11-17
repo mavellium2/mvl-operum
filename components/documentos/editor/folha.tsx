@@ -160,6 +160,16 @@ function linhasDe(children: ReactNode): ReactElement[] {
   return blocosDe(children)
 }
 
+/**
+ * Linhas de tabela que andam juntas na paginação (ex.: duas linhas com uma célula
+ * em `rowSpan`): a fatia de linhas trata o grupo como um bloco só. As linhas
+ * seguintes à primeira levam `data-continua`, e a medição soma a altura delas
+ * à da primeira.
+ */
+export function LinhasJuntas({ children }: { children: ReactNode }) {
+  return <>{blocosDe(children).map((linha, i) => (i === 0 ? linha : cloneElement(linha as ReactElement<Record<string, unknown>>, { 'data-continua': '' })))}</>
+}
+
 /** O bloco é uma seção de texto com um único campo de texto que pode continuar na folha seguinte. */
 function textoDividivel(bloco: ReactElement): boolean {
   if (bloco.type !== SecaoTexto) return false
@@ -400,7 +410,11 @@ function medirLinhas(pecas: HTMLElement[]) {
       const faixaH = cab.filter(r => r.dataset.faixa !== undefined).reduce((s, r) => s + r.offsetHeight, 0)
       const colH = cab.filter(r => r.dataset.faixa === undefined).reduce((s, r) => s + r.offsetHeight, 0)
       if (n === 0) { titulo = tituloAcima + faixaH; colunas = colH } else if (!colunas) colunas = colH
-      linhas.push(...[...(corpo.tBodies[0]?.rows ?? [])].map(r => r.offsetHeight))
+      for (const r of corpo.tBodies[0]?.rows ?? []) {
+        // Linha de um grupo (LinhasJuntas): soma à anterior, que é o mesmo bloco na fatia.
+        if (r.dataset.continua !== undefined && linhas.length) linhas[linhas.length - 1] += r.offsetHeight
+        else linhas.push(r.offsetHeight)
+      }
       if (n === pecas.length - 1) {
         rodape = corpo.tFoot?.offsetHeight ?? 0
         extra = Math.max(0, secao.offsetHeight - tituloAcima - corpo.offsetHeight)
@@ -531,10 +545,13 @@ function fatiaDeLinhas<T>(linhas: T[], fatia?: Fatia): T[] {
 }
 
 /**
- * Como o título da seção aparece: `faixa` (faixa cinza dentro da caixa) ou
- * `titulo` (negrito acima da caixa, recuado — modelo do Termo de Abertura).
+ * Como o título da seção aparece: `faixa` (faixa cinza dentro da caixa),
+ * `titulo` (negrito acima da caixa, recuado — modelo do Termo de Abertura) ou
+ * `interno` (negrito na primeira linha da caixa, sem faixa — Declaração do Escopo).
  */
-export type EstiloSecao = 'faixa' | 'titulo'
+export type EstiloSecao = 'faixa' | 'titulo' | 'interno'
+
+const tituloInterno: CSSProperties = { ...celula, fontWeight: 'bold', borderBottom: 'none', paddingBottom: 0 }
 
 const tituloAcima: CSSProperties = { fontWeight: 'bold', fontSize: '10pt', padding: '0 0 1px 10mm', lineHeight: 1.3 }
 
@@ -555,7 +572,8 @@ export function SecaoTexto({ titulo, children, alturaMinima = '22mm', estilo = '
       {estilo === 'titulo' && primeiro && <div data-secao-titulo="" style={tituloAcima}>{titulo}</div>}
       <table style={tabela}>
         {estilo === 'faixa' && primeiro && <thead><tr data-faixa=""><th style={faixa}>{titulo}</th></tr></thead>}
-        <tbody><tr><td style={{ ...celulaCampo, height: ultimo ? alturaMinima : undefined }}>{conteudo}</td></tr></tbody>
+        {estilo === 'interno' && primeiro && <thead><tr data-faixa=""><th style={tituloInterno}>{titulo}</th></tr></thead>}
+        <tbody><tr><td style={{ ...celulaCampo, height: ultimo ? alturaMinima : undefined, ...(estilo === 'interno' && primeiro ? { borderTop: 'none' } : {}) }}>{conteudo}</td></tr></tbody>
       </table>
     </div>
   )
@@ -747,7 +765,7 @@ export interface Fragmento { de: number; ate: number; primeiro: boolean; ultimo:
  * orienta o preenchimento. Um texto longo continua na folha seguinte
  * (`fragmento`): cada folha edita o seu pedaço e o valor completo é um só.
  */
-export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max = 2000, linha = false, alinhamento, preencher = true, celulaDeTabela = false, compacto = false, fragmento }: CampoBase & {
+export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max = 2000, linha = false, alinhamento, preencher = true, celulaDeTabela = false, compacto = false, dica, fragmento }: CampoBase & {
   pergunta?: string
   valor: string
   onChange: (valor: string) => void
@@ -761,6 +779,8 @@ export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max =
   celulaDeTabela?: boolean
   /** Menos espaço interno (tabelas densas, como a das partes interessadas). */
   compacto?: boolean
+  /** Texto exato mostrado com o campo vazio (ex.: a instrução "<citar…>" do modelo). Tem prioridade sobre `pergunta`. */
+  dica?: string
   /** Pedaço do texto mostrado nesta folha (definido pela paginação). */
   fragmento?: Fragmento
 }) {
@@ -800,7 +820,7 @@ export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max =
         rows={1}
         value={parte}
         maxLength={max ? Math.max(0, max - (valor.length - parte.length)) : undefined}
-        placeholder={primeiro ? (pergunta ? (linha || celulaDeTabela ? pergunta : `Clique para escrever: ${pergunta}`) : 'Clique para escrever') : undefined}
+        placeholder={primeiro ? dica ?? (pergunta ? (linha || celulaDeTabela ? pergunta : `Clique para escrever: ${pergunta}`) : 'Clique para escrever') : undefined}
         tabIndex={medindo ? -1 : undefined}
         onChange={e => mudar(e.target.value, e.target.selectionStart ?? e.target.value.length)}
         onKeyDown={e => {

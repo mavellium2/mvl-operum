@@ -1283,3 +1283,27 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Alternativas consideradas:** guardar no navegador (não compartilhado entre membros); criar uma coluna real de Backlog no sprint-service (mudança de modelo bem maior que o pedido).
 - **Consequências:** a cor não passa pelo sprint-service nem pelo MCP; quem altera é o app, no banco principal.
 - **Referências:** `prisma/schema.prisma`, `app/actions/sprintBoard.ts`, `components/sprint/SprintBoard.tsx`, `components/board/ColumnColorButton.tsx`.
+
+## ADR-103 — Declaração do Escopo, Riscos e Lições Aprendidas como documentos versionados
+
+- **Data:** 2026-11-17.
+- **Status:** implementada (1.58.0); a parte dos riscos (documento único com lista) foi substituída pela [ADR-104](#adr-104--cada-formulário-de-risco-é-um-documento-como-as-atas) antes da publicação.
+- **Contexto:** o usuário enviou os modelos das aulas de Gestão de Projetos (14 Declaração do Escopo, 15 Formulário de Riscos, 20 Lições Aprendidas) e exemplos preenchidos, pedindo os documentos que faltavam na Documentação com as mesmas regras de cabeçalho. Observações do professor nos exemplos: na Lista de entregas, usar só os níveis 1 e 2 da EAP; os riscos são "como as Atas", vários formulários, e cada integrante cuida de 1 ou 2.
+- **Escolha:** três novos `DocumentType` (`ESCOPO`, `RISCOS`, `LICOES`; migration `20261117120000_documentos_escopo_riscos_licoes`) no fluxo existente de `DocumentVersion`/rascunho/aprovação, sem tabelas próprias, como a Capa (ADR-094). Nome, gerente, linha institucional, logo, assinatura, entregas da EAP e textos do Termo vêm do sistema. Os riscos são um documento único com uma lista de formulários (cada um com Elaborado por e Responsável próprios), e não um recurso por risco como as Atas.
+- **Justificativa:** reaproveita versões, aprovação do gerente, histórico, impressão e Word sem novo modelo de dados. Um documento único para os riscos dá a mesma impressão de "vários formulários" sem criar a tabela, a listagem e a exclusão próprias que as Atas exigem.
+- **Alternativas consideradas:** tabela `Risco` com um documento por risco, como as Atas (cada risco com aprovação separada, mas muito mais código e telas); Lista de entregas copiada à mão (ficaria diferente da EAP).
+- **Consequências:** aprovar uma versão dos riscos aprova todos os formulários juntos. A Lista de entregas acompanha a EAP atual, não a da data da versão. O Word das caixas de entrega sai como texto nas células; as caixas azuis podem não sair iguais à tela.
+- **Referências:** `lib/validation/formulariosGP.ts`, `app/api/projects/[projetoId]/formularios/route.ts`, `components/projetos/documentacao/formularios/`, `components/documentos/editor/folha.tsx` (`SecaoTexto` estilo `interno`).
+- **Revisar quando:** for preciso aprovar ou atribuir cada risco separadamente.
+
+## ADR-104 — Cada formulário de risco é um documento, como as Atas
+
+- **Data:** 2026-11-17.
+- **Status:** implementada (1.58.0). Substitui a parte dos riscos da [ADR-103](#adr-103--declaração-do-escopo-riscos-e-lições-aprendidas-como-documentos-versionados).
+- **Contexto:** ao revisar a 1.58.0 localmente, o usuário pediu que os Formulários de Riscos funcionem como as Atas: vários documentos, cada risco um documento. A ADR-103 tinha juntado todos os riscos num documento único, e aprovar uma versão aprovava todos.
+- **Escolha:** tabela `Risco` (migration `20261117130000_riscos_como_documentos`) só com número, projeto, tenant e exclusão lógica. O conteúdo de cada risco é um documento `RISCOS` com `resourceId` = id do risco, no mesmo fluxo de rascunho, versões e aprovação da Ata (`documentoPorRecurso`). "Novo risco" cria o registro com o próximo número do projeto; números de riscos excluídos não voltam. A lista da Documentação resume denominação, responsável, impacto e probabilidade pela versão vigente (ou pela última proposta) e abre o editor em `?doc=riscos&risco=<id>`.
+- **Justificativa:** cada integrante cuida de 1 ou 2 riscos, então cada risco precisa de versões, aprovação, histórico e Word próprios. Reaproveitar o `resourceId` já usado pelas Atas evita um segundo fluxo de versões. Diferente da Ata, o conteúdo não é copiado para colunas da tabela, porque nada fora do documento consulta os campos do risco.
+- **Alternativas consideradas:** manter o documento único (rejeitada pelo usuário); copiar o modelo da Ata com colunas para cada campo do formulário (mais código sem consumidor); identificar riscos só pelo `resourceId` das versões, sem tabela (um risco novo, ainda sem versão, não apareceria para a equipe e não teria número estável).
+- **Consequências:** o payload de `RISCOS` passa a ser um formulário (`riscoSchema`), não uma lista; gravar exige o id de um risco ativo do projeto, e quem elaborou e o responsável precisam ser membros ativos. Excluir um risco cancela as propostas pendentes dele e fica no registro do documento. Como a 1.58.0 não foi publicada, não há conteúdo antigo de `RISCOS` a migrar.
+- **Referências:** `prisma/schema.prisma` (`Risco`), `services/documentRevisionService.ts` (`criarRisco`, `excluirRisco`, `listarRiscos`, `validarRisco`), `app/actions/riscos.ts`, `components/projetos/documentacao/formularios/DocumentoRiscos.tsx` e `FormulariosRiscos.tsx`, `__tests__/integration/documentRevision.postgres.test.ts`.
+- **Revisar quando:** outro módulo precisar consultar os campos dos riscos (ex.: matriz de riscos do projeto), o que pediria guardá-los em colunas.

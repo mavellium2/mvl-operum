@@ -5,6 +5,7 @@ import { verifySession } from '@/lib/dal'
 import { findById } from '@/services/projectAccess'
 import { canProjectPermission } from '@/services/projectAccess'
 import { listarAtasPorProjeto } from '@/services/ataService'
+import { listarRiscos, type RiscoListItem } from '@/services/documentRevisionService'
 import { resumoDaAta } from '@/lib/atasLista'
 import prisma from '@/lib/prisma'
 import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
@@ -29,6 +30,15 @@ export default async function DocumentacaoPage({ params, searchParams }: { param
     atas = await listarAtasPorProjeto(projetoId)
   } catch (err) {
     console.error('[DocumentacaoPage] falha ao listar atas:', err)
+  }
+  // Formulários de Riscos: só quando o documento aberto é o de riscos.
+  let riscos: RiscoListItem[] = []
+  if (doc === 'riscos') {
+    try {
+      riscos = await listarRiscos({ tenantId, role, userId }, projetoId)
+    } catch (err) {
+      console.error('[DocumentacaoPage] falha ao listar riscos:', err)
+    }
   }
   const gerente = await canProjectPermission({ tenantId, role, userId }, projetoId, 'documentos:excluir')
 
@@ -78,6 +88,7 @@ export default async function DocumentacaoPage({ params, searchParams }: { param
       <DocumentacaoLayout
         projetoId={projetoId}
         atas={atas.map(a => resumoDaAta(a))}
+        riscos={riscos}
         gerente={gerente}
         membros={membros}
         cadastroStakeholders={cadastroStakeholders}

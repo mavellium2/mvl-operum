@@ -17,7 +17,7 @@ export interface VersaoDocumento {
  * Versões de um documento (seletor "Versão" e contador de propostas pendentes
  * da barra do editor). Recarrega quando uma versão é salva ou revisada.
  */
-export function useVersoesDocumento(projetoId: string | undefined, tipo: 'CHARTER' | 'STAKEHOLDER' | 'EAP' | 'ATA' | 'CAPA', resourceId = '') {
+export function useVersoesDocumento(projetoId: string | undefined, tipo: 'CHARTER' | 'STAKEHOLDER' | 'EAP' | 'ATA' | 'CAPA' | 'ESCOPO' | 'RISCOS' | 'LICOES', resourceId = '') {
   const [versoes, setVersoes] = useState<VersaoDocumento[]>([])
   const carregar = useCallback(async () => {
     if (!projetoId) return
@@ -50,7 +50,7 @@ export function useVersoesDocumento(projetoId: string | undefined, tipo: 'CHARTE
 
 export const ROTULO_STATUS: Record<string, string> = { PENDING: 'pendente', APPROVED: 'aprovada', REJECTED: 'rejeitada' }
 
-/** Abre o painel "Propostas e registro" do documento (DocumentacaoLayout). */
-export function abrirPropostas(projetoId: string) {
-  window.dispatchEvent(new CustomEvent('operum:revisar-propostas', { detail: { projetoId } }))
+/** Abre o painel "Propostas e registro" do documento (DocumentacaoLayout); com `resourceId`, só daquele recurso (ata, risco). */
+export function abrirPropostas(projetoId: string, resourceId = '') {
+  window.dispatchEvent(new CustomEvent('operum:revisar-propostas', { detail: { projetoId, ...(resourceId ? { resourceId } : {}) } }))
 }

@@ -114,6 +114,7 @@ model Project {
   projetoDepartamentos ProjetoDepartamento[]
   projetoFuncoes       ProjetoFuncao[]
   atas                 Ata[]
+  riscos               Risco[]
   sincronizacao        ProjetoSincronizacao?
   eapDocument          EapDocument?
 
@@ -740,6 +741,9 @@ enum DocumentType {
   EAP
   ATA
   CAPA
+  ESCOPO
+  RISCOS
+  LICOES
 }
 
 model DocumentVersion {
@@ -770,6 +774,23 @@ model DocumentVersion {
 }
 
 // ── Atas de Reunião ───────────────────────────────────────
+
+/// Formulário de risco (como a Ata: um documento por risco). Só guarda o número e a
+/// exclusão; o conteúdo vive nas versões do documento RISCOS com resourceId = id.
+model Risco {
+  id        String    @id @default(cuid())
+  tenantId  String
+  projetoId String
+  numero    Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  project Project @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  @@unique([projetoId, numero])
+  @@index([tenantId, projetoId, deletedAt])
+}
 
 model Ata {
   instituicao        String?

@@ -11,11 +11,13 @@ import {
   validarEap,
   validarRecurso,
   charterSchema,
+  documentoPorRecurso,
   metaDocumento,
 } from '@/lib/validation/documentRevisionSchemas'
 import { getOrCreateDocument } from './eapService'
 import { registrarAcao } from './auditoriaService'
 import { AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
+import { riscoSchema, type Risco } from '@/lib/validation/formulariosGP'
 export {
   tipoDocumento,
   metaDocumento,
@@ -109,6 +111,8 @@ export async function salvarRascunho(
     await bloquearProjeto(tx, s, projectId)
     if (documentType === 'ATA')
       await validarAta(tx, s, projectId, resourceId, content)
+    if (documentType === 'RISCOS')
+      await validarRisco(tx, s, projectId, resourceId, content)
     const draft = await tx.documentDraft.upsert({
       where: whereDraft(s, projectId, documentType, resourceId),
       create: {
@@ -192,6 +196,30 @@ async function validarAta(
   if (revision)
     throw new DocumentRevisionError('Ata não encontrada neste projeto')
   return existing
+}
+
+/** O risco precisa existir neste projeto; quem elaborou e o responsável, ser membros ativos. */
+async function validarRisco(
+  tx: Prisma.TransactionClient,
+  s: SessaoAuthz,
+  projectId: string,
+  resourceId: string,
+  payload: unknown,
+) {
+  const risco = await tx.risco.findFirst({
+    where: { id: resourceId, projetoId: projectId, tenantId: s.tenantId, deletedAt: null },
+    select: { id: true },
+  })
+  if (!risco) throw new DocumentRevisionError('Risco não encontrado', 404)
+  const d = riscoSchema.parse(payload)
+  const ids = [...new Set([d.cabecalho?.elaboradoPorUserId, d.responsavelUserId].filter((v): v is string => !!v))]
+  if (ids.length) {
+    const members = await tx.userProject.count({
+      where: { projectId, active: true, userId: { in: ids }, user: { tenantId: s.tenantId, deletedAt: null, isActive: true } },
+    })
+    if (members !== ids.length)
+      throw new DocumentRevisionError('Responsáveis devem ser membros ativos do projeto')
+  }
 }
 
 async function aplicarDocumento(
@@ -371,8 +399,8 @@ export async function submeterDocumento(
   const db = transaction ?? prisma
   await acesso(s, projectId, 'documentos:editar')
   validarRecurso(documentType, resourceId, true)
-  if (documentType === 'ATA' && !resourceId)
-    throw new DocumentRevisionError('Identificação da ata obrigatória')
+  if (documentoPorRecurso(documentType) && !resourceId)
+    throw new DocumentRevisionError('Identificação do documento obrigatória')
   const metadata = metaDocumento.parse(meta)
   const [user, gerente] = await Promise.all([
     db.user.findFirst({ where: { id: s.userId, tenantId: s.tenantId }, select: { name: true } }),
@@ -401,6 +429,8 @@ export async function submeterDocumento(
         : proposed
     if (documentType === 'ATA')
       await validarAta(tx, s, projectId, resourceId, content)
+    if (documentType === 'RISCOS')
+      await validarRisco(tx, s, projectId, resourceId, content)
     if (approve)
       await aplicarDocumento(
         tx,
@@ -595,5 +625,105 @@ export async function excluirAta(
       },
       tx,
     )
+  })
+}
+
+/** Novo formulário de risco: o próximo número do projeto (números de riscos excluídos não voltam). */
+export async function criarRisco(s: SessaoAuthz, projectId: string) {
+  await acesso(s, projectId, 'documentos:editar')
+  return prisma.$transaction(async (tx) => {
+    await bloquearProjeto(tx, s, projectId)
+    const ultimo = await tx.risco.findFirst({ where: { projetoId: projectId }, orderBy: { numero: 'desc' }, select: { numero: true } })
+    const risco = await tx.risco.create({
+      data: { tenantId: s.tenantId, projetoId: projectId, numero: (ultimo?.numero ?? 0) + 1 },
+      select: { id: true, numero: true },
+    })
+    await registrarAcao(
+      {
+        tenantId: s.tenantId,
+        userId: s.userId,
+        action: 'DOCUMENTO_RASCUNHO',
+        entity: 'Document',
+        entityId: projectId,
+        details: { documentType: 'RISCOS', resourceId: risco.id, reason: `Risco ${risco.numero} criado` },
+      },
+      tx,
+    )
+    return risco
+  })
+}
+
+/** Exclui o risco da lista (como a Ata): as propostas pendentes dele são canceladas. */
+export async function excluirRisco(s: SessaoAuthz, projectId: string, riscoId: string) {
+  await acesso(s, projectId, 'documentos:excluir')
+  await prisma.$transaction(async (tx) => {
+    await bloquearProjeto(tx, s, projectId)
+    const changed = await tx.risco.updateMany({
+      where: { id: riscoId, projetoId: projectId, tenantId: s.tenantId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    })
+    if (!changed.count) throw new DocumentRevisionError('Risco não encontrado', 404)
+    await tx.documentVersion.updateMany({
+      where: { projectId, resourceId: riscoId, documentType: 'RISCOS', status: 'PENDING' },
+      data: { status: 'REJECTED', approvedById: s.userId },
+    })
+    await registrarAcao(
+      {
+        tenantId: s.tenantId,
+        userId: s.userId,
+        action: 'DOCUMENTO_EXCLUIR',
+        entity: 'Document',
+        entityId: projectId,
+        details: { documentType: 'RISCOS', resourceId: riscoId, reason: 'Risco excluído; propostas pendentes canceladas' },
+      },
+      tx,
+    )
+  })
+}
+
+export interface RiscoListItem {
+  id: string
+  numero: number
+  denominacao: string
+  responsavel: string
+  impacto: number | null
+  probabilidade: number | null
+  status: 'APPROVED' | 'PENDING' | 'REJECTED' | 'NONE'
+}
+
+/**
+ * Riscos do projeto para a lista da Documentação. O resumo (denominação,
+ * responsável, impacto e probabilidade) vem da versão vigente; sem ela, da
+ * última proposta enviada. O status é o da última versão enviada.
+ */
+export async function listarRiscos(s: SessaoAuthz, projectId: string): Promise<RiscoListItem[]> {
+  await acesso(s, projectId, 'documentos:ver')
+  const [riscos, versoes] = await Promise.all([
+    prisma.risco.findMany({
+      where: { projetoId: projectId, tenantId: s.tenantId, deletedAt: null },
+      orderBy: { numero: 'asc' },
+      select: { id: true, numero: true },
+    }),
+    prisma.documentVersion.findMany({
+      where: { projectId, documentType: 'RISCOS' },
+      orderBy: [{ createdAt: 'desc' }, { sequence: 'desc' }],
+      select: { resourceId: true, status: true, payload: true, approvedAt: true },
+      take: 2000,
+    }),
+  ])
+  return riscos.map((r) => {
+    const dele = versoes.filter((v) => v.resourceId === r.id)
+    const vigente = dele.filter((v) => v.status === 'APPROVED').sort((a, b) => (b.approvedAt?.getTime() ?? 0) - (a.approvedAt?.getTime() ?? 0))[0]
+    const fonte = (vigente ?? dele[0])?.payload as Risco | undefined
+    const responsavel = [fonte?.responsavel?.trim(), fonte?.responsavelFuncao?.trim()].filter(Boolean).join(' – ')
+    return {
+      id: r.id,
+      numero: r.numero,
+      denominacao: fonte?.denominacao?.trim() ?? '',
+      responsavel,
+      impacto: fonte?.impacto ?? null,
+      probabilidade: fonte?.probabilidade ?? null,
+      status: (dele[0]?.status ?? 'NONE') as RiscoListItem['status'],
+    }
   })
 }

@@ -376,6 +376,8 @@ function tabela(els: HTMLTableElement[], caixaPagina: Caixa, imagens: Flutuante[
         const ps = paragrafos(linhasDe(tokensDe(c, () => false)), { left: rc.left, right: rc.right }, inicio).map(x => x.p)
         return new TableCell({
           columnSpan: span > 1 ? span : undefined,
+          // Célula que ocupa várias linhas (ex.: comentário único dos aspectos 3 e 4 das Lições).
+          rowSpan: (c as HTMLTableCellElement).rowSpan > 1 ? (c as HTMLTableCellElement).rowSpan : undefined,
           width: { size: larguras.slice(indice(rc.left), indice(rc.left) + span).reduce((a, b) => a + b, 0), type: WidthType.DXA },
           margins: { top: 0, bottom: 0, left: 0, right: 0 },
           shading: fundo ? { type: ShadingType.CLEAR, fill: fundo, color: 'auto' } : undefined,

@@ -7,6 +7,20 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.58.0] — 2026-11-17
+
+- **Declaração do Escopo:** novo documento na Documentação, no modelo "14 Aula GP". Justificativa, Objetivos e Descrição do produto partem do Termo de Abertura; a Lista de entregas mostra os níveis 1 e 2 da EAP em caixas ligadas como numa EAP gráfica, com a fonte reduzida para o texto caber mesmo com muitas entregas (sem EAP, a edição mostra um exemplo); Responsabilidades já vem com cada membro e sua função. Campos vazios mostram a instrução do modelo (ex.: "<citar a razão pela qual o projeto é necessário…>"). Tudo editável na folha.
+
+- **Formulários de Riscos:** novo documento no modelo "15 Aula GP" que funciona como as Atas: cada risco é um documento próprio, com número (01, 02…), rascunho, versões, aprovação, histórico e Word. A lista mostra cada risco com denominação, responsável, impacto, probabilidade e status; "Novo risco" abre um formulário em branco. Cada formulário tem as quatro etapas: identificação, avaliação de impacto e probabilidade (1 a 5), resposta com responsável e reavaliação, e acompanhamento.
+
+- **Lições Aprendidas:** novo documento no modelo "20 Aula GP", com os 13 aspectos de Sim/Não e comentário (os aspectos 3 e 4, desvios de prazo e de custo, dividem um comentário, como no modelo) e as perguntas 14 a 17.
+
+- Os três têm o mesmo cabeçalho dos demais documentos (instituição, nome e gerente do projeto, elaborado por com a função, versão, aprovado pelo gerente, assinatura e data de aprovação), rascunho automático, versões com aprovação, impressão, PDF e Word. As folhas não têm o rodapé com © e o nome do documento.
+
+- **PDF dos documentos com bordas completas:** na pré-visualização e no PDF do Chrome, parte das bordas das tabelas sumia (linhas de 1px abaixo de um pixel na página reduzida). Na impressão das folhas, as bordas passam a 1,5 pt. Vale para todos os documentos da Documentação.
+
+- **Word com células que ocupam duas linhas:** o Word das folhas passa a juntar células na vertical, como no comentário único dos aspectos 3 e 4 das Lições Aprendidas.
+
 ## [1.57.0] — 2026-11-15
 
 - **Início do projeto informado à mão:** em Editar projeto → Propriedades, o campo Início volta a ser editável e não segue mais a data da primeira tarefa. Ex.: projeto que começa em 03/08/2026 com a primeira atividade em 10/08/2026 mantém 03/08/2026. Datas já gravadas não mudam; criar, editar ou excluir tarefas e salvar a Planilha deixam de alterar o início (substitui a regra de 1.34.0, ADR-101).
