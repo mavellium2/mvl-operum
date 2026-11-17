@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { EditorFolhaProvider } from '@/components/documentos/editor/folha'
 import { FolhasEscopo, escopoInicial, fonteDasCaixas } from '@/components/projetos/documentacao/formularios/DeclaracaoEscopo'
 import { FolhaRisco, riscoNormalizado } from '@/components/projetos/documentacao/formularios/FormulariosRiscos'
-import { FolhasLicoes } from '@/components/projetos/documentacao/formularios/LicoesAprendidas'
+import { FolhasLicoes, licoesNormalizado } from '@/components/projetos/documentacao/formularios/LicoesAprendidas'
 import type { DadosFormularios } from '@/components/projetos/documentacao/formularios/FormularioDocumento'
 
 const sistema: DadosFormularios = {
@@ -106,13 +106,15 @@ describe('Lições Aprendidas — modelo "20 Aula GP"', () => {
 
   it('13 aspectos com Sim/Não e comentário, guias "Por quê?" e perguntas 14 a 17', () => {
     render(<FolhasLicoes conteudo={conteudo} sistema={sistema} versaoPadrao="1.0" />)
-    const linhas = [...screen.getByTestId('licoes-aspectos').querySelectorAll('tbody tr')]
-    expect(linhas).toHaveLength(13)
+    // 3 e 4 dividem uma linha (comentário único), então são 12 linhas para 13 aspectos.
+    const linhas = [...screen.getByTestId('licoes-aspectos').querySelectorAll(':scope > table > tbody > tr')]
+    expect(linhas).toHaveLength(12)
     expect([...linhas[0].querySelectorAll('td')].map(td => td.textContent)).toEqual([
       '1. Os produtos/serviços entregues correspondem aos descritos na proposta executiva (termo de abertura)?', 'X', '', 'Conforme o termo.',
     ])
-    expect(linhas[6].querySelectorAll('td')[2].textContent).toBe('X')
-    expect(linhas[6].textContent).toContain('Por quê?')
+    expect(linhas[5].querySelectorAll('td')[2].textContent).toBe('X')
+    expect(linhas[5].textContent).toContain('7. Os clientes/usuários estão satisfeitos?')
+    expect(linhas[5].textContent).toContain('Por quê?')
     expect(linhas[2].textContent).toContain('Quais foram as causas dos desvios?')
     const texto = screen.getByTestId('licoes-folha').textContent ?? ''
     for (const p of ['14. O que faríamos da mesma forma?', '15. O que faríamos de maneira diferente?', '16. O que sabemos hoje, e que não sabíamos antes do projeto?', '17. Que recomendações devemos incluir para melhorar os próximos projetos?']) expect(texto).toContain(p)
@@ -135,5 +137,23 @@ describe('Lista de entregas — tamanho das caixas', () => {
     expect(fonteDasCaixas(itens(Array(6).fill('Ajuda')))).toBe(8)
     expect(fonteDasCaixas(itens([...Array(5).fill('Ajuda'), 'Desenvolvimento']))).toBeLessThan(8)
     expect(fonteDasCaixas(itens(Array(12).fill('Desenvolvimento')))).toBe(4.5)
+  })
+})
+
+describe('Lições Aprendidas — aspectos 3 e 4 com um comentário só', () => {
+  it('uma linha da tabela com os dois aspectos, Sim/Não de cada um e um único campo de comentário', () => {
+    render(editavel(<FolhasLicoes conteudo={{ cabecalho: {}, aspectos: {}, perguntas: {} }} sistema={sistema} versaoPadrao="1.0" alterar={() => {}} />))
+    const par = screen.getByTestId('licoes-aspectos-3-4')
+    expect(par.textContent).toContain('3. Houve desvios entre os prazos')
+    expect(par.textContent).toContain('4. Houve desvios entre os custos')
+    expect(within(par).getAllByRole('radio')).toHaveLength(4)
+    expect(within(par).getByLabelText('Comentário do aspecto 3 e 4')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Comentário do aspecto 4')).toBeNull()
+  })
+
+  it('comentário antigo do aspecto 4 passa para o comentário único', () => {
+    const c = licoesNormalizado({ aspectos: { a3: { sim: true, comentario: 'Prazo' }, a4: { sim: false, comentario: 'Custo' } } })
+    expect(c.aspectos.a3).toEqual({ sim: true, comentario: 'Prazo\nCusto' })
+    expect(c.aspectos.a4).toEqual({ sim: false, comentario: '' })
   })
 })

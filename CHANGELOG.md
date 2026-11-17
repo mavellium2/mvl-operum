@@ -13,7 +13,7 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Formulários de Riscos:** novo documento no modelo "15 Aula GP" que funciona como as Atas: cada risco é um documento próprio, com número (01, 02…), rascunho, versões, aprovação, histórico e Word. A lista mostra cada risco com denominação, responsável, impacto, probabilidade e status; "Novo risco" abre um formulário em branco. Cada formulário tem as quatro etapas: identificação, avaliação de impacto e probabilidade (1 a 5), resposta com responsável e reavaliação, e acompanhamento.
 
-- **Lições Aprendidas:** novo documento no modelo "20 Aula GP", com os 13 aspectos de Sim/Não e comentário e as perguntas 14 a 17.
+- **Lições Aprendidas:** novo documento no modelo "20 Aula GP", com os 13 aspectos de Sim/Não e comentário (os aspectos 3 e 4, desvios de prazo e de custo, dividem um comentário, como no modelo) e as perguntas 14 a 17.
 
 - Os três têm o mesmo cabeçalho dos demais documentos (instituição, nome e gerente do projeto, elaborado por com a função, versão, aprovado pelo gerente, assinatura e data de aprovação), rascunho automático, versões com aprovação, impressão, PDF e Word. As folhas não têm o rodapé com © e o nome do documento.
 

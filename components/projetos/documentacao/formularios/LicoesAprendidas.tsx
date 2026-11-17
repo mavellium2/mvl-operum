@@ -6,7 +6,7 @@ import {
 } from '@/lib/validation/formulariosGP'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
 import FormularioDocumento, { type RenderFormulario } from './FormularioDocumento'
-import { celulaGP, celulaGPCampo, FONTE_FORMULARIO, QuadroFormulario, TituloFormulario } from './QuadroFormulario'
+import { celulaGP, celulaGPCampo, FONTE_FORMULARIO, QuadroFormulario, tabelaGP, TituloFormulario } from './QuadroFormulario'
 
 export const TITULO_LICOES = 'Formulário de Lições Aprendidas'
 export const DOCUMENTO_LICOES = 'Lições Aprendidas'
@@ -18,9 +18,22 @@ type Licoes = {
 }
 
 export const licoesInicial = (): Licoes => ({ cabecalho: {}, aspectos: {}, perguntas: {} })
-export const licoesNormalizado = (salvo: LicoesConteudo): Licoes => ({ cabecalho: salvo.cabecalho ?? {}, aspectos: salvo.aspectos ?? {}, perguntas: salvo.perguntas ?? {} })
+/** Conteúdo salvo; um comentário antigo do aspecto 4 passa para o comentário único de 3 e 4. */
+export function licoesNormalizado(salvo: LicoesConteudo): Licoes {
+  const aspectos = { ...(salvo.aspectos ?? {}) }
+  const doQuatro = aspectos.a4?.comentario?.trim()
+  if (doQuatro) {
+    const doTres = aspectos.a3?.comentario?.trim()
+    aspectos.a3 = { ...aspectos.a3, comentario: doTres ? `${doTres}\n${doQuatro}` : doQuatro }
+    aspectos.a4 = { ...aspectos.a4, comentario: '' }
+  }
+  return { cabecalho: salvo.cabecalho ?? {}, aspectos, perguntas: salvo.perguntas ?? {} }
+}
 
 const cinzaAspecto = '#e7e6e6'
+const borda = '1px solid #000'
+/** Aspectos com um comentário só, como no modelo: o comentário do 3 vale para o 4. */
+const COMENTARIO_JUNTO: [IdAspecto, IdAspecto] = ['a3', 'a4']
 
 /** Sim ou Não do aspecto: rádio na edição; "X" no documento, como no modelo. */
 function MarcaSimNao({ id, rotulo, marcado, onMarcar }: { id: string; rotulo: string; marcado: boolean; onMarcar?: () => void }) {
@@ -56,20 +69,57 @@ export function FolhasLicoes({ conteudo, sistema, versaoPadrao, alterar, edicao 
         estiloCabecalho={{ fontSize: '10pt', padding: '1px 5px', fontWeight: 'bold', background: '#fff' }}
       >
         {ASPECTOS_LICOES.map((a, i) => {
+          if (a.id === COMENTARIO_JUNTO[1]) return null
           const r = conteudo.aspectos[a.id] ?? {}
+          const marcas = (id: IdAspecto, n: number) => {
+            const resp = conteudo.aspectos[id] ?? {}
+            return [
+              <MarcaSimNao key="s" id={`licoes-${id}`} rotulo={`${n}. Sim`} marcado={resp.sim === true} onMarcar={alterar && (() => responder(id, { sim: true }))} />,
+              <MarcaSimNao key="n" id={`licoes-${id}`} rotulo={`${n}. Não`} marcado={resp.sim === false} onMarcar={alterar && (() => responder(id, { sim: false }))} />,
+            ]
+          }
+          const comentario = (
+            <td style={celulaGPCampo}>
+              {'guia' in a && <div style={{ padding: '1px 5px 0' }}>{a.guia}</div>}
+              <CampoTexto id={`licoes-${a.id}-comentario`} rotulo={`Comentário do aspecto ${i + 1}${a.id === COMENTARIO_JUNTO[0] ? ` e ${i + 2}` : ''}`} ajuda={a.texto} pergunta="comentário" valor={r.comentario ?? ''} onChange={v => responder(a.id, { comentario: v })} alinhamento="left" max={5000} compacto />
+            </td>
+          )
+          if (a.id === COMENTARIO_JUNTO[0]) {
+            // Aspectos 3 e 4 têm um comentário só, como no modelo. Ficam numa linha da tabela
+            // (com os dois aspectos dentro) para a paginação nunca separar o par.
+            const proximo = ASPECTOS_LICOES[i + 1]
+            const par: [IdAspecto, string, number][] = [[a.id, a.texto, i + 1], [proximo.id, proximo.texto, i + 2]]
+            return (
+              <tr key={a.id} data-testid="licoes-aspectos-3-4" style={{ breakInside: 'avoid' }}>
+                <td colSpan={3} style={{ ...celulaGPCampo, background: cinzaAspecto, height: '1px' }}>
+                  <table style={{ ...tabelaGP, height: '100%' }}>
+                    <colgroup><col style={{ width: `${(45 / 57) * 100}%` }} /><col style={{ width: `${(6 / 57) * 100}%` }} /><col style={{ width: `${(6 / 57) * 100}%` }} /></colgroup>
+                    <tbody>
+                      {par.map(([id, texto, n], k) => {
+                        const linha = k === 0 ? { borderBottom: borda } : {}
+                        const [sim, nao] = marcas(id, n)
+                        return (
+                          <tr key={id}>
+                            <td style={{ ...celulaGP, border: 'none', ...linha, background: cinzaAspecto, paddingLeft: '4mm', textIndent: '-3mm' }}>{`${n}. ${texto}`}</td>
+                            <td style={{ ...celulaGPCampo, border: 'none', borderLeft: borda, ...linha, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{sim}</td>
+                            <td style={{ ...celulaGPCampo, border: 'none', borderLeft: borda, ...linha, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{nao}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </td>
+                {comentario}
+              </tr>
+            )
+          }
+          const [sim, nao] = marcas(a.id, i + 1)
           return (
             <tr key={a.id} style={{ breakInside: 'avoid' }}>
               <td style={{ ...celulaGP, background: cinzaAspecto, paddingLeft: '4mm', textIndent: '-3mm' }}>{`${i + 1}. ${a.texto}`}</td>
-              <td style={{ ...celulaGPCampo, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>
-                <MarcaSimNao id={`licoes-${a.id}`} rotulo={`${i + 1}. Sim`} marcado={r.sim === true} onMarcar={alterar && (() => responder(a.id, { sim: true }))} />
-              </td>
-              <td style={{ ...celulaGPCampo, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>
-                <MarcaSimNao id={`licoes-${a.id}`} rotulo={`${i + 1}. Não`} marcado={r.sim === false} onMarcar={alterar && (() => responder(a.id, { sim: false }))} />
-              </td>
-              <td style={celulaGPCampo}>
-                {'guia' in a && <div style={{ padding: '1px 5px 0' }}>{a.guia}</div>}
-                <CampoTexto id={`licoes-${a.id}-comentario`} rotulo={`Comentário do aspecto ${i + 1}`} ajuda={a.texto} pergunta="comentário" valor={r.comentario ?? ''} onChange={v => responder(a.id, { comentario: v })} alinhamento="left" max={5000} compacto />
-              </td>
+              <td style={{ ...celulaGPCampo, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{sim}</td>
+              <td style={{ ...celulaGPCampo, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{nao}</td>
+              {comentario}
             </tr>
           )
         })}
