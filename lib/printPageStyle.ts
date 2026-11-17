@@ -87,7 +87,14 @@ export function printFolhasStyle({ landscape = false }: { landscape?: boolean } 
       [data-pagina]:last-child { break-after: auto; page-break-after: auto; }
       textarea { resize: none; }
       textarea::placeholder { color: transparent !important; }
+      /* Bordas de 1px viram ~0,7px na pré-visualização e no leitor de PDF do Chrome
+         (PDFium), que descarta parte dessas linhas finas. Na impressão, ${BORDA_IMPRESSAO}
+         garante ao menos um pixel; só a largura muda (lados sem borda continuam sem). */
+      [data-pagina] :is(td, th) { border-width: ${BORDA_IMPRESSAO} !important; }
     }
   `
 }
+
+/** Largura das bordas das tabelas das folhas no PDF/impressão (1,5 pt; o Chrome arredonda bordas para pixels inteiros, então 1,5px viraria 1px). */
+export const BORDA_IMPRESSAO = '2px'
 
