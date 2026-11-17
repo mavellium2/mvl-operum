@@ -86,11 +86,12 @@ export function fonteDasCaixas(itens: NoEntrega[]): number {
 }
 const linhaEap = '1px solid #2f528f'
 
-function CaixaEntrega({ no, fonte, largura }: { no: NoEntrega; fonte: string; largura?: string }) {
+/** `largura` fixa (nível 2, divide a linha) ou ajustada ao texto (nível 1, até `larguraMaxima`). */
+function CaixaEntrega({ no, fonte, largura = 'fit-content', larguraMaxima, padding = '2px 3px' }: { no: NoEntrega; fonte: string; largura?: string; larguraMaxima?: string; padding?: string }) {
   return (
     <div style={{
-      display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', width: largura, minHeight: '10mm',
-      margin: '0 auto', padding: '2px 3px', border: linhaEap, borderRadius: '2mm', background: '#4472c4', color: '#fff',
+      display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', width: largura, maxWidth: larguraMaxima, minHeight: '10mm',
+      margin: '0 auto', padding, border: linhaEap, borderRadius: '2mm', background: '#4472c4', color: '#fff',
       fontFamily: FONTE_FORMULARIO, fontSize: fonte, lineHeight: 1.15, textAlign: 'center',
       overflowWrap: 'anywhere', hyphens: 'auto', wordBreak: 'break-word',
     }}>{`${no.codigo} ${no.titulo}`}</div>
@@ -107,7 +108,8 @@ function ArvoreEntregas({ raiz, itens }: { raiz: NoEntrega; itens: NoEntrega[] }
   const fonte = `${fonteDasCaixas(itens)}pt`
   return (
     <div lang="pt-BR" style={{ padding: '3mm 1mm 3mm' }}>
-      <CaixaEntrega no={raiz} fonte={n > 8 ? '8pt' : '9pt'} largura="55%" />
+      {/* Nível 1: largura do nome do projeto (com folga), como no modelo; nomes longos quebram em até 60% da linha. */}
+      <CaixaEntrega no={raiz} fonte={n > 8 ? '8pt' : '9pt'} larguraMaxima="60%" padding="2px 6mm" />
       {n > 0 && <>
         <div style={{ width: 0, height: '3mm', margin: '0 auto', borderLeft: linhaEap }} />
         <div style={{ display: 'flex' }}>
@@ -158,7 +160,7 @@ export function FolhasEscopo({ conteudo, sistema, versaoPadrao, alterar, edicao 
     </SecaoTexto>
   )
   return (
-    <Folha data-testid="escopo-folha" rodape={`© ${TITULO_ESCOPO}`} style={{ fontFamily: FONTE_FORMULARIO, fontSize: '10pt', gap: 0 }}>
+    <Folha data-testid="escopo-folha" style={{ fontFamily: FONTE_FORMULARIO, fontSize: '10pt', gap: 0 }}>
       <TituloFormulario titulo={TITULO_ESCOPO} logoUrl={sistema.logoUrl} />
       <div style={{ height: '4mm' }} />
       <QuadroFormulario testId="escopo-quadro" prefixoId="escopo" sistema={sistema} cabecalho={conteudo.cabecalho} versaoPadrao={versaoPadrao}
