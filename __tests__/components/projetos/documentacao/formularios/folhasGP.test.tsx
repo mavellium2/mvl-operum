@@ -96,6 +96,17 @@ describe('Formulário de Risco — modelo "15 Aula GP", um documento por risco',
     expect(screen.queryByRole('button', { name: 'Remover este risco' })).toBeNull()
   })
 
+  it('caixas de texto livre: vazias guardam espaço; preenchidas acompanham o texto', () => {
+    const caixa = (rotulo: string) => screen.getByText(rotulo).closest('td') as HTMLElement
+    const { unmount } = render(<FolhaRisco conteudo={{}} numero={1} sistema={sistema} versaoPadrao="1.0" />)
+    expect(caixa('Descrição do risco:').style.height).toBe('20mm')
+    expect(caixa('Ocorrências e alterações:').style.height).toBe('24mm')
+    unmount()
+    render(<FolhaRisco conteudo={{ descricao: 'A', estrategias: 'B', ocorrencias: 'C' }} numero={1} sistema={sistema} versaoPadrao="1.0" />)
+    for (const r of ['Descrição do risco:', 'Ocorrências e alterações:']) expect(caixa(r).style.height).toBe('')
+    expect(caixa('Estratégias para eliminar ou reduzir este risco (minimizar impacto e/ou probabilidade):').style.height).toBe('')
+  })
+
   it('risco salvo sem cabeçalho volta com cabeçalho vazio', () => {
     expect(riscoNormalizado({ denominacao: 'X' })).toEqual({ denominacao: 'X', cabecalho: {} })
   })

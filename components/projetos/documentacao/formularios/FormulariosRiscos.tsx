@@ -21,6 +21,12 @@ export const numeroRisco = (n: number) => String(n).padStart(2, '0')
 export const riscoInicial = (): Risco => ({ cabecalho: {} })
 export const riscoNormalizado = (salvo: Risco): Risco => ({ ...salvo, cabecalho: salvo.cabecalho ?? {} })
 
+/**
+ * Caixa de texto livre: vazia, guarda espaço para escrever à mão (como no
+ * modelo); preenchida, acompanha o texto, sem sobra embaixo.
+ */
+const alturaCaixa = (valor: string | undefined, vazia: string) => (valor?.trim() ? undefined : vazia)
+
 const etapa: CSSProperties = { fontWeight: 'bold', fontSize: '10pt', padding: '3mm 0 1px 6mm', fontFamily: FONTE_FORMULARIO }
 const B = ({ children }: { children: ReactNode }) => <strong>{children}</strong>
 
@@ -87,7 +93,7 @@ export function FolhaRisco({ conteudo: risco, numero, sistema, versaoPadrao, alt
               </td>
             </tr>
             <tr>
-              <td colSpan={2} style={{ ...celulaGPCampo, height: '20mm' }}>
+              <td colSpan={2} style={{ ...celulaGPCampo, height: alturaCaixa(risco.descricao, '20mm') }}>
                 <div style={{ padding: '1px 5px 0' }}><B>Descrição do risco:</B></div>
                 <CampoTexto id={`${p}-descricao`} rotulo="Descrição do risco" ajuda="O que pode acontecer e qual o efeito no projeto." pergunta="o que pode acontecer e qual o efeito?" valor={risco.descricao ?? ''} onChange={campo('descricao')} alinhamento="justify" max={20000} />
               </td>
@@ -109,7 +115,7 @@ export function FolhaRisco({ conteudo: risco, numero, sistema, versaoPadrao, alt
           <colgroup><col style={{ width: '50%' }} /><col style={{ width: '50%' }} /></colgroup>
           <tbody>
             <tr>
-              <td colSpan={2} style={{ ...celulaGPCampo, height: '24mm' }}>
+              <td colSpan={2} style={{ ...celulaGPCampo, height: alturaCaixa(risco.estrategias, '24mm') }}>
                 <div style={{ padding: '1px 5px 0' }}><B>Estratégias para eliminar ou reduzir este risco (minimizar impacto e/ou probabilidade):</B></div>
                 <CampoTexto id={`${p}-estrategias`} rotulo="Estratégias" ajuda="O que será feito para eliminar o risco ou reduzir o impacto e a probabilidade." pergunta="o que será feito para reduzir o risco?" valor={risco.estrategias ?? ''} onChange={campo('estrategias')} alinhamento="justify" max={20000} />
               </td>
@@ -145,7 +151,7 @@ export function FolhaRisco({ conteudo: risco, numero, sistema, versaoPadrao, alt
         <table style={tabelaGP}>
           <tbody>
             <tr>
-              <td style={{ ...celulaGPCampo, height: '24mm' }}>
+              <td style={{ ...celulaGPCampo, height: alturaCaixa(risco.ocorrencias, '24mm') }}>
                 <div style={{ padding: '1px 5px 0' }}><B>Ocorrências e alterações:</B></div>
                 <CampoTexto id={`${p}-ocorrencias`} rotulo="Ocorrências e alterações" ajuda="O que aconteceu com o risco ao longo do projeto e o que mudou na resposta." pergunta="o que aconteceu e o que mudou?" valor={risco.ocorrencias ?? ''} onChange={campo('ocorrencias')} alinhamento="justify" max={20000} />
               </td>
