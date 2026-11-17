@@ -6,8 +6,9 @@ import { EAP_LIMITS, SaveEapDocumentSchema } from './eapSchemas'
 import { recomputeNodeCodes } from '@/lib/eapCode'
 import { safeAvatarUrl } from './avatarUrl'
 import type { EapNode } from '@/types/eap'
+import { escopoSchema, licoesSchema, riscosSchema } from './formulariosGP'
 
-export const tipoDocumento = z.enum(['CHARTER', 'STAKEHOLDER', 'EAP', 'ATA', 'CAPA'])
+export const tipoDocumento = z.enum(['CHARTER', 'STAKEHOLDER', 'EAP', 'ATA', 'CAPA', 'ESCOPO', 'RISCOS', 'LICOES'])
 export type TipoDocumento = z.infer<typeof tipoDocumento>
 const texto = z.string().max(50000).nullable().optional()
 export const charterSchema = z
@@ -151,6 +152,9 @@ export type CapaConteudo = z.infer<typeof capaSchema>
 
 export function validarDocumento(type: TipoDocumento, payload: unknown) {
   if (type === 'CAPA') return capaSchema.parse(payload)
+  if (type === 'ESCOPO') return escopoSchema.parse(payload)
+  if (type === 'RISCOS') return riscosSchema.parse(payload)
+  if (type === 'LICOES') return licoesSchema.parse(payload)
   if (type === 'CHARTER') return charterSchema.parse(payload)
   if (type === 'STAKEHOLDER') return stakeholderSchema.parse(payload)
   if (type === 'ATA') return AtualizarAtaSchema.parse(payload)

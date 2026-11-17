@@ -740,6 +740,9 @@ enum DocumentType {
   EAP
   ATA
   CAPA
+  ESCOPO
+  RISCOS
+  LICOES
 }
 
 model DocumentVersion {

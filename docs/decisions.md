@@ -1283,3 +1283,16 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Alternativas consideradas:** guardar no navegador (não compartilhado entre membros); criar uma coluna real de Backlog no sprint-service (mudança de modelo bem maior que o pedido).
 - **Consequências:** a cor não passa pelo sprint-service nem pelo MCP; quem altera é o app, no banco principal.
 - **Referências:** `prisma/schema.prisma`, `app/actions/sprintBoard.ts`, `components/sprint/SprintBoard.tsx`, `components/board/ColumnColorButton.tsx`.
+
+## ADR-103 — Declaração do Escopo, Riscos e Lições Aprendidas como documentos versionados
+
+- **Data:** 2026-11-17.
+- **Status:** implementada (1.58.0).
+- **Contexto:** o usuário enviou os modelos das aulas de Gestão de Projetos (14 Declaração do Escopo, 15 Formulário de Riscos, 20 Lições Aprendidas) e exemplos preenchidos, pedindo os documentos que faltavam na Documentação com as mesmas regras de cabeçalho. Observações do professor nos exemplos: na Lista de entregas, usar só os níveis 1 e 2 da EAP; os riscos são "como as Atas", vários formulários, e cada integrante cuida de 1 ou 2.
+- **Escolha:** três novos `DocumentType` (`ESCOPO`, `RISCOS`, `LICOES`; migration `20261117120000_documentos_escopo_riscos_licoes`) no fluxo existente de `DocumentVersion`/rascunho/aprovação, sem tabelas próprias, como a Capa (ADR-094). Nome, gerente, linha institucional, logo, assinatura, entregas da EAP e textos do Termo vêm do sistema. Os riscos são um documento único com uma lista de formulários (cada um com Elaborado por e Responsável próprios), e não um recurso por risco como as Atas.
+- **Justificativa:** reaproveita versões, aprovação do gerente, histórico, impressão e Word sem novo modelo de dados. Um documento único para os riscos dá a mesma impressão de "vários formulários" sem criar a tabela, a listagem e a exclusão próprias que as Atas exigem.
+- **Alternativas consideradas:** tabela `Risco` com um documento por risco, como as Atas (cada risco com aprovação separada, mas muito mais código e telas); Lista de entregas copiada à mão (ficaria diferente da EAP).
+- **Consequências:** aprovar uma versão dos riscos aprova todos os formulários juntos. A Lista de entregas acompanha a EAP atual, não a da data da versão. O Word das caixas de entrega sai como texto nas células; as caixas azuis podem não sair iguais à tela.
+- **Referências:** `lib/validation/formulariosGP.ts`, `app/api/projects/[projetoId]/formularios/route.ts`, `components/projetos/documentacao/formularios/`, `components/documentos/editor/folha.tsx` (`SecaoTexto` estilo `interno`).
+- **Revisar quando:** for preciso aprovar ou atribuir cada risco separadamente.
+

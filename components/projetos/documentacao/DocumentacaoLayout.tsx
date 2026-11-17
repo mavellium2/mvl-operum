@@ -8,6 +8,9 @@ import ProjectCharterWrapper from './ProjectCharterWrapper'
 import DocumentoAtas, { type AtaListItem } from './DocumentoAtas'
 import EapDocument from './EapDocument'
 import CapaDocumento from './CapaDocumento'
+import DeclaracaoEscopo from './formularios/DeclaracaoEscopo'
+import FormulariosRiscos from './formularios/FormulariosRiscos'
+import LicoesAprendidas from './formularios/LicoesAprendidas'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import Drawer from '@/components/ui/Drawer'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
@@ -19,6 +22,9 @@ const DOCUMENT_MAP = {
   charter: ProjectCharterWrapper,
   eap: EapDocument,
   atas: DocumentoAtas,
+  escopo: DeclaracaoEscopo,
+  riscos: FormulariosRiscos,
+  licoes: LicoesAprendidas,
 } as const
 
 type DocType = keyof typeof DOCUMENT_MAP
@@ -60,7 +66,7 @@ export default function DocumentacaoLayout({ projetoId, atas, gerente, membros =
     window.addEventListener('operum:revisar-propostas', abrir)
     return () => window.removeEventListener('operum:revisar-propostas', abrir)
   }, [projetoId])
-  const tipo = ({ atas: 'ATA', charter: 'CHARTER', eap: 'EAP', stakeholder: 'STAKEHOLDER', capa: 'CAPA' } as const)[activeDoc]
+  const tipo = ({ atas: 'ATA', charter: 'CHARTER', eap: 'EAP', stakeholder: 'STAKEHOLDER', capa: 'CAPA', escopo: 'ESCOPO', riscos: 'RISCOS', licoes: 'LICOES' } as const)[activeDoc]
 
   return (
     <ProjectAppearance enabled isolated>
@@ -72,6 +78,12 @@ export default function DocumentacaoLayout({ projetoId, atas, gerente, membros =
           <DocumentoAtas projetoId={projetoId} atas={atas} gerente={gerente} />
         ) : activeDoc === 'charter' ? (
           <ProjectCharterWrapper key={publication} membros={membros} />
+        ) : activeDoc === 'escopo' ? (
+          <DeclaracaoEscopo key={publication} membros={membros} />
+        ) : activeDoc === 'riscos' ? (
+          <FormulariosRiscos key={publication} membros={membros} />
+        ) : activeDoc === 'licoes' ? (
+          <LicoesAprendidas key={publication} membros={membros} />
         ) : activeDoc === 'eap' ? (
           <EapDocument key={publication} membros={membros} />
         ) : (

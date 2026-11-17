@@ -531,10 +531,13 @@ function fatiaDeLinhas<T>(linhas: T[], fatia?: Fatia): T[] {
 }
 
 /**
- * Como o título da seção aparece: `faixa` (faixa cinza dentro da caixa) ou
- * `titulo` (negrito acima da caixa, recuado — modelo do Termo de Abertura).
+ * Como o título da seção aparece: `faixa` (faixa cinza dentro da caixa),
+ * `titulo` (negrito acima da caixa, recuado — modelo do Termo de Abertura) ou
+ * `interno` (negrito na primeira linha da caixa, sem faixa — Declaração do Escopo).
  */
-export type EstiloSecao = 'faixa' | 'titulo'
+export type EstiloSecao = 'faixa' | 'titulo' | 'interno'
+
+const tituloInterno: CSSProperties = { ...celula, fontWeight: 'bold', borderBottom: 'none', paddingBottom: 0 }
 
 const tituloAcima: CSSProperties = { fontWeight: 'bold', fontSize: '10pt', padding: '0 0 1px 10mm', lineHeight: 1.3 }
 
@@ -555,7 +558,8 @@ export function SecaoTexto({ titulo, children, alturaMinima = '22mm', estilo = '
       {estilo === 'titulo' && primeiro && <div data-secao-titulo="" style={tituloAcima}>{titulo}</div>}
       <table style={tabela}>
         {estilo === 'faixa' && primeiro && <thead><tr data-faixa=""><th style={faixa}>{titulo}</th></tr></thead>}
-        <tbody><tr><td style={{ ...celulaCampo, height: ultimo ? alturaMinima : undefined }}>{conteudo}</td></tr></tbody>
+        {estilo === 'interno' && primeiro && <thead><tr data-faixa=""><th style={tituloInterno}>{titulo}</th></tr></thead>}
+        <tbody><tr><td style={{ ...celulaCampo, height: ultimo ? alturaMinima : undefined, ...(estilo === 'interno' && primeiro ? { borderTop: 'none' } : {}) }}>{conteudo}</td></tr></tbody>
       </table>
     </div>
   )
