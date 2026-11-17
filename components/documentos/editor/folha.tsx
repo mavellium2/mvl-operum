@@ -160,6 +160,16 @@ function linhasDe(children: ReactNode): ReactElement[] {
   return blocosDe(children)
 }
 
+/**
+ * Linhas de tabela que andam juntas na paginação (ex.: duas linhas com uma célula
+ * em `rowSpan`): a fatia de linhas trata o grupo como um bloco só. As linhas
+ * seguintes à primeira levam `data-continua`, e a medição soma a altura delas
+ * à da primeira.
+ */
+export function LinhasJuntas({ children }: { children: ReactNode }) {
+  return <>{blocosDe(children).map((linha, i) => (i === 0 ? linha : cloneElement(linha as ReactElement<Record<string, unknown>>, { 'data-continua': '' })))}</>
+}
+
 /** O bloco é uma seção de texto com um único campo de texto que pode continuar na folha seguinte. */
 function textoDividivel(bloco: ReactElement): boolean {
   if (bloco.type !== SecaoTexto) return false
@@ -400,7 +410,11 @@ function medirLinhas(pecas: HTMLElement[]) {
       const faixaH = cab.filter(r => r.dataset.faixa !== undefined).reduce((s, r) => s + r.offsetHeight, 0)
       const colH = cab.filter(r => r.dataset.faixa === undefined).reduce((s, r) => s + r.offsetHeight, 0)
       if (n === 0) { titulo = tituloAcima + faixaH; colunas = colH } else if (!colunas) colunas = colH
-      linhas.push(...[...(corpo.tBodies[0]?.rows ?? [])].map(r => r.offsetHeight))
+      for (const r of corpo.tBodies[0]?.rows ?? []) {
+        // Linha de um grupo (LinhasJuntas): soma à anterior, que é o mesmo bloco na fatia.
+        if (r.dataset.continua !== undefined && linhas.length) linhas[linhas.length - 1] += r.offsetHeight
+        else linhas.push(r.offsetHeight)
+      }
       if (n === pecas.length - 1) {
         rodape = corpo.tFoot?.offsetHeight ?? 0
         extra = Math.max(0, secao.offsetHeight - tituloAcima - corpo.offsetHeight)

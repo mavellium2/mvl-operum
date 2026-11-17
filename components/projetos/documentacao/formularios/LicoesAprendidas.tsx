@@ -1,12 +1,12 @@
 'use client'
 
-import { CampoTexto, Folha, SecaoTabela, SecaoTexto, useEditorFolha } from '@/components/documentos/editor/folha'
+import { CampoTexto, Folha, LinhasJuntas, SecaoTabela, SecaoTexto, useEditorFolha } from '@/components/documentos/editor/folha'
 import {
   ASPECTOS_LICOES, PERGUNTAS_LICOES, type CabecalhoFormulario, type IdAspecto, type IdPergunta, type LicoesConteudo, type RespostaAspecto,
 } from '@/lib/validation/formulariosGP'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
 import FormularioDocumento, { type RenderFormulario } from './FormularioDocumento'
-import { celulaGP, celulaGPCampo, FONTE_FORMULARIO, QuadroFormulario, tabelaGP, TituloFormulario } from './QuadroFormulario'
+import { celulaGP, celulaGPCampo, FONTE_FORMULARIO, QuadroFormulario, TituloFormulario } from './QuadroFormulario'
 
 export const TITULO_LICOES = 'Formulário de Lições Aprendidas'
 export const DOCUMENTO_LICOES = 'Lições Aprendidas'
@@ -31,7 +31,6 @@ export function licoesNormalizado(salvo: LicoesConteudo): Licoes {
 }
 
 const cinzaAspecto = '#e7e6e6'
-const borda = '1px solid #000'
 /** Aspectos com um comentário só, como no modelo: o comentário do 3 vale para o 4. */
 const COMENTARIO_JUNTO: [IdAspecto, IdAspecto] = ['a3', 'a4']
 
@@ -78,54 +77,44 @@ export function FolhasLicoes({ conteudo, sistema, versaoPadrao, alterar, edicao 
               <MarcaSimNao key="n" id={`licoes-${id}`} rotulo={`${n}. Não`} marcado={resp.sim === false} onMarcar={alterar && (() => responder(id, { sim: false }))} />,
             ]
           }
-          const comentario = (
-            <td style={celulaGPCampo}>
+          const comentario = (linhas = 1) => (
+            <td rowSpan={linhas > 1 ? linhas : undefined} style={celulaGPCampo}>
               {'guia' in a && <div style={{ padding: '1px 5px 0' }}>{a.guia}</div>}
               <CampoTexto id={`licoes-${a.id}-comentario`} rotulo={`Comentário do aspecto ${i + 1}${a.id === COMENTARIO_JUNTO[0] ? ` e ${i + 2}` : ''}`} ajuda={a.texto} pergunta="comentário" valor={r.comentario ?? ''} onChange={v => responder(a.id, { comentario: v })} alinhamento="left" max={5000} compacto />
             </td>
           )
+          const aspecto = (id: IdAspecto, texto: string, n: number) => {
+            const [sim, nao] = marcas(id, n)
+            return [
+              <td key="a" style={{ ...celulaGP, background: cinzaAspecto, paddingLeft: '4mm', textIndent: '-3mm' }}>{`${n}. ${texto}`}</td>,
+              <td key="s" style={{ ...celulaGPCampo, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{sim}</td>,
+              <td key="n" style={{ ...celulaGPCampo, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{nao}</td>,
+            ]
+          }
           if (a.id === COMENTARIO_JUNTO[0]) {
-            // Aspectos 3 e 4 têm um comentário só, como no modelo. Ficam numa linha da tabela
-            // (com os dois aspectos dentro) para a paginação nunca separar o par.
+            // Aspectos 3 e 4 têm um comentário só, como no modelo: a célula ocupa as duas
+            // linhas (rowSpan, também no Word) e a paginação nunca separa o par.
             const proximo = ASPECTOS_LICOES[i + 1]
-            const par: [IdAspecto, string, number][] = [[a.id, a.texto, i + 1], [proximo.id, proximo.texto, i + 2]]
             return (
-              <tr key={a.id} data-testid="licoes-aspectos-3-4" style={{ breakInside: 'avoid' }}>
-                <td colSpan={3} style={{ ...celulaGPCampo, background: cinzaAspecto, height: '1px' }}>
-                  <table style={{ ...tabelaGP, height: '100%' }}>
-                    <colgroup><col style={{ width: `${(45 / 57) * 100}%` }} /><col style={{ width: `${(6 / 57) * 100}%` }} /><col style={{ width: `${(6 / 57) * 100}%` }} /></colgroup>
-                    <tbody>
-                      {par.map(([id, texto, n], k) => {
-                        const linha = k === 0 ? { borderBottom: borda } : {}
-                        const [sim, nao] = marcas(id, n)
-                        return (
-                          <tr key={id}>
-                            <td style={{ ...celulaGP, border: 'none', ...linha, background: cinzaAspecto, paddingLeft: '4mm', textIndent: '-3mm' }}>{`${n}. ${texto}`}</td>
-                            <td style={{ ...celulaGPCampo, border: 'none', borderLeft: borda, ...linha, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{sim}</td>
-                            <td style={{ ...celulaGPCampo, border: 'none', borderLeft: borda, ...linha, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{nao}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </td>
-                {comentario}
-              </tr>
+              <LinhasJuntas key={a.id}>
+                <tr data-testid="licoes-aspectos-3-4" style={{ breakInside: 'avoid' }}>
+                  {aspecto(a.id, a.texto, i + 1)}
+                  {comentario(2)}
+                </tr>
+                <tr style={{ breakInside: 'avoid' }}>{aspecto(proximo.id, proximo.texto, i + 2)}</tr>
+              </LinhasJuntas>
             )
           }
-          const [sim, nao] = marcas(a.id, i + 1)
           return (
             <tr key={a.id} style={{ breakInside: 'avoid' }}>
-              <td style={{ ...celulaGP, background: cinzaAspecto, paddingLeft: '4mm', textIndent: '-3mm' }}>{`${i + 1}. ${a.texto}`}</td>
-              <td style={{ ...celulaGPCampo, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{sim}</td>
-              <td style={{ ...celulaGPCampo, background: cinzaAspecto, textAlign: 'center', verticalAlign: 'middle' }}>{nao}</td>
-              {comentario}
+              {aspecto(a.id, a.texto, i + 1)}
+              {comentario()}
             </tr>
           )
         })}
       </SecaoTabela>
       {PERGUNTAS_LICOES.map((p, i) => (
-        <SecaoTexto key={p.id} estilo="interno" colado titulo={<span style={{ fontWeight: 'normal' }}>{`${ASPECTOS_LICOES.length + i + 1}. ${p.texto}`}</span>} alturaMinima="16mm">
+        <SecaoTexto key={p.id} estilo="interno" colado titulo={<span style={{ fontWeight: 'normal' }}>{`${ASPECTOS_LICOES.length + i + 1}. ${p.texto}`}</span>} alturaMinima={conteudo.perguntas[p.id]?.trim() ? 'auto' : '16mm'}>
           <CampoTexto id={`licoes-${p.id}`} rotulo={p.texto} ajuda="Resposta da equipe, com exemplos do que aconteceu no projeto." pergunta="resposta da equipe" valor={conteudo.perguntas[p.id] ?? ''} onChange={v => alterar?.(c => ({ ...c, perguntas: { ...c.perguntas, [p.id]: v } }))} alinhamento="justify" max={20000} />
         </SecaoTexto>
       ))}

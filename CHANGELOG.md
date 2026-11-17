@@ -17,6 +17,10 @@ funcionalidade depois disso é uma versão MINOR.
 
 - Os três têm o mesmo cabeçalho dos demais documentos (instituição, nome e gerente do projeto, elaborado por com a função, versão, aprovado pelo gerente, assinatura e data de aprovação), rascunho automático, versões com aprovação, impressão, PDF e Word. As folhas não têm o rodapé com © e o nome do documento.
 
+- **PDF dos documentos com bordas completas:** na pré-visualização e no PDF do Chrome, parte das bordas das tabelas sumia (linhas de 1px abaixo de um pixel na página reduzida). Na impressão das folhas, as bordas passam a 1,5 pt. Vale para todos os documentos da Documentação.
+
+- **Word com células que ocupam duas linhas:** o Word das folhas passa a juntar células na vertical, como no comentário único dos aspectos 3 e 4 das Lições Aprendidas.
+
 ## [1.57.0] — 2026-11-15
 
 - **Início do projeto informado à mão:** em Editar projeto → Propriedades, o campo Início volta a ser editável e não segue mais a data da primeira tarefa. Ex.: projeto que começa em 03/08/2026 com a primeira atividade em 10/08/2026 mantém 03/08/2026. Datas já gravadas não mudam; criar, editar ou excluir tarefas e salvar a Planilha deixam de alterar o início (substitui a regra de 1.34.0, ADR-101).

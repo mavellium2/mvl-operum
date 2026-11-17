@@ -117,15 +117,14 @@ describe('Lições Aprendidas — modelo "20 Aula GP"', () => {
 
   it('13 aspectos com Sim/Não e comentário, guias "Por quê?" e perguntas 14 a 17', () => {
     render(<FolhasLicoes conteudo={conteudo} sistema={sistema} versaoPadrao="1.0" />)
-    // 3 e 4 dividem uma linha (comentário único), então são 12 linhas para 13 aspectos.
     const linhas = [...screen.getByTestId('licoes-aspectos').querySelectorAll(':scope > table > tbody > tr')]
-    expect(linhas).toHaveLength(12)
+    expect(linhas).toHaveLength(13)
     expect([...linhas[0].querySelectorAll('td')].map(td => td.textContent)).toEqual([
       '1. Os produtos/serviços entregues correspondem aos descritos na proposta executiva (termo de abertura)?', 'X', '', 'Conforme o termo.',
     ])
-    expect(linhas[5].querySelectorAll('td')[2].textContent).toBe('X')
-    expect(linhas[5].textContent).toContain('7. Os clientes/usuários estão satisfeitos?')
-    expect(linhas[5].textContent).toContain('Por quê?')
+    expect(linhas[6].querySelectorAll('td')[2].textContent).toBe('X')
+    expect(linhas[6].textContent).toContain('7. Os clientes/usuários estão satisfeitos?')
+    expect(linhas[6].textContent).toContain('Por quê?')
     expect(linhas[2].textContent).toContain('Quais foram as causas dos desvios?')
     const texto = screen.getByTestId('licoes-folha').textContent ?? ''
     for (const p of ['14. O que faríamos da mesma forma?', '15. O que faríamos de maneira diferente?', '16. O que sabemos hoje, e que não sabíamos antes do projeto?', '17. Que recomendações devemos incluir para melhorar os próximos projetos?']) expect(texto).toContain(p)
@@ -152,14 +151,26 @@ describe('Lista de entregas — tamanho das caixas', () => {
 })
 
 describe('Lições Aprendidas — aspectos 3 e 4 com um comentário só', () => {
-  it('uma linha da tabela com os dois aspectos, Sim/Não de cada um e um único campo de comentário', () => {
+  it('duas linhas (uma por aspecto, cada uma com Sim/Não) e um único comentário em rowSpan, que vai igual para o Word', () => {
     render(editavel(<FolhasLicoes conteudo={{ cabecalho: {}, aspectos: {}, perguntas: {} }} sistema={sistema} versaoPadrao="1.0" alterar={() => {}} />))
-    const par = screen.getByTestId('licoes-aspectos-3-4')
-    expect(par.textContent).toContain('3. Houve desvios entre os prazos')
-    expect(par.textContent).toContain('4. Houve desvios entre os custos')
-    expect(within(par).getAllByRole('radio')).toHaveLength(4)
-    expect(within(par).getByLabelText('Comentário do aspecto 3 e 4')).toBeInTheDocument()
+    const tres = screen.getByTestId('licoes-aspectos-3-4')
+    const quatro = tres.nextElementSibling as HTMLTableRowElement
+    expect(tres.textContent).toContain('3. Houve desvios entre os prazos')
+    expect(quatro.textContent).toContain('4. Houve desvios entre os custos')
+    expect(within(tres).getAllByRole('radio')).toHaveLength(2)
+    expect(within(quatro).getAllByRole('radio')).toHaveLength(2)
+    const comentario = within(tres).getByLabelText('Comentário do aspecto 3 e 4').closest('td') as HTMLTableCellElement
+    expect(comentario.rowSpan).toBe(2)
+    expect(quatro.cells).toHaveLength(3)
+    expect(quatro.dataset.continua).toBe('')
     expect(screen.queryByLabelText('Comentário do aspecto 4')).toBeNull()
+  })
+
+  it('perguntas 14 a 17: vazias guardam espaço; respondidas acompanham o texto', () => {
+    render(<FolhasLicoes conteudo={{ cabecalho: {}, aspectos: {}, perguntas: { p14: 'Igual' } }} sistema={sistema} versaoPadrao="1.0" />)
+    const caixa = (texto: string) => (screen.getByText(texto).closest('table') as HTMLTableElement).tBodies[0].rows[0].cells[0]
+    expect(caixa('14. O que faríamos da mesma forma?').style.height).toBe('auto')
+    expect(caixa('15. O que faríamos de maneira diferente?').style.height).toBe('16mm')
   })
 
   it('comentário antigo do aspecto 4 passa para o comentário único', () => {
