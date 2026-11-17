@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { EditorFolhaProvider } from '@/components/documentos/editor/folha'
-import { FolhasEscopo, escopoInicial } from '@/components/projetos/documentacao/formularios/DeclaracaoEscopo'
+import { FolhasEscopo, escopoInicial, fonteDasCaixas } from '@/components/projetos/documentacao/formularios/DeclaracaoEscopo'
 import { FolhasRiscos, riscosNormalizado } from '@/components/projetos/documentacao/formularios/FormulariosRiscos'
 import { FolhasLicoes } from '@/components/projetos/documentacao/formularios/LicoesAprendidas'
 import type { DadosFormularios } from '@/components/projetos/documentacao/formularios/FormularioDocumento'
@@ -38,14 +38,33 @@ describe('Declaração do Escopo — modelo "14 Aula GP"', () => {
     const ordem = ['Justificativa do projeto', 'Objetivo(s) do projeto', 'Descrição do(s) produto(s) ou serviço(s) do projeto', 'Lista de entregas do projeto', 'Ligações com outros projetos', 'Estratégia de condução do projeto', 'Responsabilidades dos setores envolvidos']
     expect(ordem.map(t => texto.indexOf(t))).toEqual([...ordem.map(t => texto.indexOf(t))].sort((a, b) => a - b))
     const entregas = within(screen.getByTestId('escopo-entregas'))
-    expect(entregas.getByText('1. Site para Doação')).toBeInTheDocument()
+    expect(entregas.getByText('1 Site para Doação')).toBeInTheDocument()
     expect(entregas.getByText('1.1 Planejamento')).toBeInTheDocument()
     expect(entregas.getByText('1.2 Arquitetura')).toBeInTheDocument()
   })
 
-  it('sem EAP, a Lista de entregas orienta a montar a EAP', () => {
-    render(<FolhasEscopo conteudo={escopoInicial({ ...sistema, entregas: { raiz: null, itens: [] } }, [])} sistema={{ ...sistema, entregas: { raiz: null, itens: [] } }} versaoPadrao="1.0" />)
-    expect(screen.getByText(/Monte a EAP do projeto/)).toBeInTheDocument()
+  it('sem EAP, a edição mostra um exemplo e o documento fica em branco', () => {
+    const semEap = { ...sistema, entregas: { raiz: null, itens: [] } }
+    const conteudo = escopoInicial(semEap, [])
+    const { unmount } = render(editavel(<FolhasEscopo conteudo={conteudo} sistema={semEap} versaoPadrao="1.0" />))
+    const exemplo = within(screen.getByTestId('escopo-entregas-exemplo'))
+    expect(exemplo.getByText(/Monte a EAP do projeto/)).toBeInTheDocument()
+    expect(exemplo.getByText('1.4 Organizar')).toBeInTheDocument()
+    unmount()
+    render(<FolhasEscopo conteudo={conteudo} sistema={semEap} versaoPadrao="1.0" />)
+    expect(screen.queryByTestId('escopo-entregas-exemplo')).toBeNull()
+  })
+
+  it('campos vazios mostram a instrução do modelo entre < >', () => {
+    const vazio = { ...escopoInicial(sistema, []), justificativa: '', objetivos: '', descricaoProduto: '' }
+    render(editavel(<FolhasEscopo conteudo={vazio} sistema={sistema} versaoPadrao="1.0" />))
+    const dica = (rotulo: string) => screen.getByLabelText(rotulo).getAttribute('placeholder')
+    expect(dica('Justificativa do projeto')).toBe('<citar a razão pela qual o projeto é necessário, os objetivos estratégicos associados, e os benefícios que o projeto trará>')
+    expect(dica('Objetivo(s) do projeto')).toMatch(/^<descrever o\(s\) objetivo\(s\) do projeto, ou seja/)
+    expect(dica('Descrição do(s) produto(s) ou serviço(s) do projeto')).toBe('<citar e descrever os produtos e serviços que serão entregues pelo projeto>')
+    expect(dica('Ligações com outros projetos')).toBe('<caso haja, colocar a interdependência entre os projetos da organização>')
+    expect(dica('Estratégia de condução do projeto')).toBe('<descrever qual a estratégia a ser utilizada para a condução do projeto (com sucesso)>')
+    expect(dica('Responsabilidades dos setores envolvidos')).toBe('<citar o que cada setor do projeto é responsável para a produção do escopo do projeto>')
   })
 })
 
@@ -108,5 +127,15 @@ describe('Lições Aprendidas — modelo "20 Aula GP"', () => {
     render(editavel(<FolhasLicoes conteudo={c} sistema={sistema} versaoPadrao="1.0" alterar={alterar as never} edicao={{ projetoId: 'p', membros }} />))
     fireEvent.click(screen.getByRole('radio', { name: '1. Não' }))
     expect(c.aspectos.a1).toEqual({ sim: false, comentario: 'Conforme o termo.' })
+  })
+})
+
+describe('Lista de entregas — tamanho das caixas', () => {
+  const itens = (titulos: string[]) => titulos.map((titulo, i) => ({ codigo: `1.${i + 1}`, titulo }))
+  it('poucas entregas usam a fonte cheia; muitas, ou palavras longas, diminuem a fonte', () => {
+    expect(fonteDasCaixas(itens(['Editar', 'Organizar']))).toBe(9)
+    expect(fonteDasCaixas(itens(Array(6).fill('Ajuda')))).toBe(8)
+    expect(fonteDasCaixas(itens([...Array(5).fill('Ajuda'), 'Desenvolvimento']))).toBeLessThan(8)
+    expect(fonteDasCaixas(itens(Array(12).fill('Desenvolvimento')))).toBe(4.5)
   })
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { CampoTexto, Folha, SecaoTexto } from '@/components/documentos/editor/folha'
+import { CampoTexto, Folha, SecaoTexto, useEditorFolha } from '@/components/documentos/editor/folha'
 import type { CabecalhoFormulario, EscopoConteudo } from '@/lib/validation/formulariosGP'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
 import FormularioDocumento, { type DadosFormularios, type RenderFormulario } from './FormularioDocumento'
@@ -37,67 +37,124 @@ export function escopoNormalizado(salvo: EscopoConteudo): Escopo {
   }
 }
 
-const SECOES: { campo: CampoEscopo; titulo: string; ajuda: string; pergunta: string }[] = [
-  { campo: 'justificativa', titulo: 'Justificativa do projeto', ajuda: 'A razão pela qual o projeto é necessário, os objetivos estratégicos associados e os benefícios que ele trará. Vem do Termo de Abertura.', pergunta: 'por que o projeto é necessário e que benefícios trará?' },
-  { campo: 'objetivos', titulo: 'Objetivo(s) do projeto', ajuda: 'O que se quer alcançar com os resultados do projeto, relacionado aos objetivos estratégicos. Vem do Termo de Abertura.', pergunta: 'o que se quer alcançar com o projeto?' },
-  { campo: 'descricaoProduto', titulo: 'Descrição do(s) produto(s) ou serviço(s) do projeto', ajuda: 'Os produtos e serviços que serão entregues pelo projeto. Vem do Termo de Abertura.', pergunta: 'quais produtos ou serviços serão entregues?' },
+type Secao = { campo: CampoEscopo; titulo: string; ajuda: string; dica: string }
+
+/** Seções de texto; a dica de cada uma é a instrução do modelo "14 Aula GP", entre < >. */
+const SECOES: Secao[] = [
+  { campo: 'justificativa', titulo: 'Justificativa do projeto', ajuda: 'A razão pela qual o projeto é necessário, os objetivos estratégicos associados e os benefícios que ele trará. Vem do Termo de Abertura.', dica: '<citar a razão pela qual o projeto é necessário, os objetivos estratégicos associados, e os benefícios que o projeto trará>' },
+  { campo: 'objetivos', titulo: 'Objetivo(s) do projeto', ajuda: 'O que se quer alcançar com os resultados do projeto, relacionado aos objetivos estratégicos. Vem do Termo de Abertura.', dica: '<descrever o(s) objetivo(s) do projeto, ou seja, o que se quer alcançar com os resultados do projeto, e relacioná-lo(s) com o(s) objetivo(s) estratégico(s) da empresa>' },
+  { campo: 'descricaoProduto', titulo: 'Descrição do(s) produto(s) ou serviço(s) do projeto', ajuda: 'Os produtos e serviços que serão entregues pelo projeto. Vem do Termo de Abertura.', dica: '<citar e descrever os produtos e serviços que serão entregues pelo projeto>' },
 ]
-const SECOES_FIM: typeof SECOES = [
-  { campo: 'ligacoes', titulo: 'Ligações com outros projetos', ajuda: 'A interdependência com outros projetos da organização. Se não houver, escreva que não há ligação.', pergunta: 'há interdependência com outros projetos?' },
-  { campo: 'estrategia', titulo: 'Estratégia de condução do projeto', ajuda: 'A estratégia para conduzir o projeto com sucesso: divisão de funções, comunicação, reuniões, acompanhamento.', pergunta: 'como o projeto será conduzido?' },
-  { campo: 'responsabilidades', titulo: 'Responsabilidades dos setores envolvidos', ajuda: 'O que cada pessoa ou setor faz para produzir o escopo. Uma linha por pessoa: "Nome – Função: responsabilidades".', pergunta: 'pelo que cada setor ou pessoa é responsável?' },
+const SECOES_FIM: Secao[] = [
+  { campo: 'ligacoes', titulo: 'Ligações com outros projetos', ajuda: 'A interdependência com outros projetos da organização. Se não houver, escreva que não há ligação.', dica: '<caso haja, colocar a interdependência entre os projetos da organização>' },
+  { campo: 'estrategia', titulo: 'Estratégia de condução do projeto', ajuda: 'A estratégia para conduzir o projeto com sucesso: divisão de funções, comunicação, reuniões, acompanhamento.', dica: '<descrever qual a estratégia a ser utilizada para a condução do projeto (com sucesso)>' },
+  { campo: 'responsabilidades', titulo: 'Responsabilidades dos setores envolvidos', ajuda: 'O que cada pessoa ou setor faz para produzir o escopo. Uma linha por pessoa: "Nome – Função: responsabilidades".', dica: '<citar o que cada setor do projeto é responsável para a produção do escopo do projeto>' },
 ]
 
-/** Caixa de entrega: azul da EAP, texto branco centralizado. */
-const caixaEntrega = { ...celulaGP, background: '#4472c4', color: '#fff', textAlign: 'center' as const, verticalAlign: 'middle' as const, fontSize: '8pt', lineHeight: 1.2, padding: '3px 4px' }
+type NoEntrega = { codigo: string; titulo: string }
+
+/** Exemplo mostrado só na edição enquanto o projeto não tem EAP (como o exemplo do WBSTool). */
+const EXEMPLO_ENTREGAS: { raiz: NoEntrega; itens: NoEntrega[] } = {
+  raiz: { codigo: '1', titulo: 'Nome do projeto (exemplo)' },
+  itens: [
+    { codigo: '1.1', titulo: 'Atividades iniciais' },
+    { codigo: '1.2', titulo: 'Editar' },
+    { codigo: '1.3', titulo: 'Elemento' },
+    { codigo: '1.4', titulo: 'Organizar' },
+    { codigo: '1.5', titulo: 'Download' },
+    { codigo: '1.6', titulo: 'Ajuda' },
+  ],
+}
+
+/** Largura útil da coluna das entregas na folha A4 (82% de ~190 mm, menos margens). */
+const LARGURA_ENTREGAS_MM = 150
+const PT_EM_MM = 0.3528
+/** Largura média de um caractere em Calibri/Arial, em "em" (com folga para letras largas). */
+const LARGURA_CARACTERE_EM = 0.58
 
 /**
- * Lista de entregas: só os níveis 1 e 2 da EAP (instrução do professor), em
- * caixas como a EAP gráfica: o projeto em cima e as entregas lado a lado.
+ * Fonte das caixas do nível 2: diminui com a quantidade e com a palavra mais
+ * longa, para cada palavra caber inteira na largura da caixa (quebra só nos espaços).
+ */
+export function fonteDasCaixas(itens: NoEntrega[]): number {
+  const n = Math.max(itens.length, 1)
+  const base = n <= 4 ? 9 : n <= 6 ? 8 : n <= 8 ? 7 : 6.5
+  const larguraCaixaMm = LARGURA_ENTREGAS_MM / n - 3
+  const maiorPalavra = Math.max(1, ...itens.flatMap(i => `${i.codigo} ${i.titulo}`.split(/\s+/)).map(p => p.length))
+  const cabe = larguraCaixaMm / (maiorPalavra * LARGURA_CARACTERE_EM * PT_EM_MM)
+  return Math.max(4.5, Math.min(base, Math.floor(cabe * 2) / 2))
+}
+const linhaEap = '1px solid #2f528f'
+
+function CaixaEntrega({ no, fonte, largura }: { no: NoEntrega; fonte: string; largura?: string }) {
+  return (
+    <div style={{
+      display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', width: largura, minHeight: '10mm',
+      margin: '0 auto', padding: '2px 3px', border: linhaEap, borderRadius: '2mm', background: '#4472c4', color: '#fff',
+      fontFamily: FONTE_FORMULARIO, fontSize: fonte, lineHeight: 1.15, textAlign: 'center',
+      overflowWrap: 'anywhere', hyphens: 'auto', wordBreak: 'break-word',
+    }}>{`${no.codigo} ${no.titulo}`}</div>
+  )
+}
+
+/**
+ * Árvore com o nível 1 (projeto) em cima e o nível 2 lado a lado, ligados por
+ * linhas como numa EAP gráfica. As caixas dividem a largura por igual e a fonte
+ * diminui com a quantidade, então nenhum texto sai da caixa.
+ */
+function ArvoreEntregas({ raiz, itens }: { raiz: NoEntrega; itens: NoEntrega[] }) {
+  const n = itens.length
+  const fonte = `${fonteDasCaixas(itens)}pt`
+  return (
+    <div lang="pt-BR" style={{ padding: '3mm 1mm 3mm' }}>
+      <CaixaEntrega no={raiz} fonte={n > 8 ? '8pt' : '9pt'} largura="55%" />
+      {n > 0 && <>
+        <div style={{ width: 0, height: '3mm', margin: '0 auto', borderLeft: linhaEap }} />
+        <div style={{ display: 'flex' }}>
+          {itens.map((item, i) => (
+            <div key={item.codigo} style={{ flex: '1 1 0', minWidth: 0, position: 'relative', display: 'flex', flexDirection: 'column', padding: '3mm 1mm 0' }}>
+              {/* Linha horizontal do meio da primeira caixa ao meio da última, e o ramo de cada caixa. */}
+              {n > 1 && <div style={{ position: 'absolute', top: 0, left: i === 0 ? '50%' : 0, right: i === n - 1 ? '50%' : 0, borderTop: linhaEap }} />}
+              <div style={{ position: 'absolute', top: 0, left: '50%', height: '3mm', borderLeft: linhaEap }} />
+              <CaixaEntrega no={item} fonte={fonte} largura="100%" />
+            </div>
+          ))}
+        </div>
+      </>}
+    </div>
+  )
+}
+
+/**
+ * Lista de entregas: só os níveis 1 e 2 da EAP (instrução do professor). Sem
+ * EAP, a edição mostra um exemplo esmaecido; o PDF e o Word ficam em branco.
  */
 function ListaEntregas({ entregas }: { entregas: DadosFormularios['entregas'] }) {
-  const n = Math.max(entregas.itens.length, 1)
-  const rotulo = <strong>Lista de entregas do projeto</strong>
-  if (!entregas.raiz) {
-    return (
-      <table data-testid="escopo-entregas" style={{ ...tabelaGP, marginTop: -1 }}>
-        <colgroup><col style={{ width: '18%' }} /><col /></colgroup>
-        <tbody><tr>
-          <td style={{ ...celulaGP, verticalAlign: 'middle' }}>{rotulo}</td>
-          <td style={{ ...celulaGP, color: '#6b7280', fontStyle: 'italic' }}>Monte a EAP do projeto: o nível 1 e o nível 2 aparecem aqui.</td>
-        </tr></tbody>
-      </table>
-    )
-  }
-  const largura = `${82 / n}%`
+  const { editavel } = useEditorFolha()
+  const exemplo = !entregas.raiz
   return (
     <table data-testid="escopo-entregas" style={{ ...tabelaGP, marginTop: -1 }}>
-      <colgroup><col style={{ width: '18%' }} />{Array.from({ length: n }, (_, i) => <col key={i} style={{ width: largura }} />)}</colgroup>
-      <tbody>
-        <tr>
-          <td rowSpan={2} style={{ ...celulaGP, verticalAlign: 'middle' }}>{rotulo}</td>
-          <td colSpan={n} style={{ ...celulaGP, textAlign: 'center', borderBottom: 'none', padding: '4px 0 6px' }}>
-            <span style={{ display: 'inline-block', ...caixaEntrega, border: '1px solid #2f528f', minWidth: '40%' }}>{`${entregas.raiz.codigo}. ${entregas.raiz.titulo}`}</span>
-          </td>
-        </tr>
-        <tr>
-          {entregas.itens.length === 0
-            ? <td style={{ ...celulaGP, borderTop: 'none', color: '#6b7280', fontStyle: 'italic', textAlign: 'center' }}>Sem entregas no nível 2 da EAP.</td>
-            : entregas.itens.map(item => (
-              <td key={item.codigo} style={{ ...celulaGP, borderTop: 'none', borderLeft: 'none', borderRight: 'none', padding: '0 2px 6px', verticalAlign: 'top' }}>
-                <div style={{ ...caixaEntrega, border: '1px solid #2f528f', minHeight: '12mm', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{`${item.codigo} ${item.titulo}`}</div>
-              </td>
-            ))}
-        </tr>
-      </tbody>
+      <colgroup><col style={{ width: '18%' }} /><col /></colgroup>
+      <tbody><tr>
+        <td style={{ ...celulaGP, verticalAlign: 'middle' }}><strong>Lista de entregas do projeto</strong></td>
+        <td style={{ ...celulaGP, padding: 0 }}>
+          {!exemplo && entregas.raiz && <ArvoreEntregas raiz={entregas.raiz} itens={entregas.itens} />}
+          {exemplo && editavel && (
+            <div data-testid="escopo-entregas-exemplo">
+              <div style={{ opacity: 0.45 }}><ArvoreEntregas {...EXEMPLO_ENTREGAS} /></div>
+              <div style={{ padding: '0 5px 2px', color: '#6b7280', fontStyle: 'italic', fontSize: '9pt' }}>Exemplo. Monte a EAP do projeto: o nível 1 e o nível 2 aparecem aqui.</div>
+            </div>
+          )}
+        </td>
+      </tr></tbody>
     </table>
   )
 }
 
 export function FolhasEscopo({ conteudo, sistema, versaoPadrao, alterar, edicao }: RenderFormulario<Escopo>) {
-  const secao = ({ campo, titulo, ajuda, pergunta }: (typeof SECOES)[number]): ReactNode => (
+  const secao = ({ campo, titulo, ajuda, dica }: Secao): ReactNode => (
     <SecaoTexto key={campo} estilo="interno" colado titulo={titulo} alturaMinima="auto">
-      <CampoTexto id={`escopo-${campo}`} rotulo={titulo} ajuda={ajuda} pergunta={pergunta} valor={conteudo[campo]} onChange={v => alterar?.(c => ({ ...c, [campo]: v }))} alinhamento="justify" max={20000} />
+      <CampoTexto id={`escopo-${campo}`} rotulo={titulo} ajuda={ajuda} dica={dica} valor={conteudo[campo]} onChange={v => alterar?.(c => ({ ...c, [campo]: v }))} alinhamento="justify" max={20000} />
     </SecaoTexto>
   )
   return (

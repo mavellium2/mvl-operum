@@ -751,7 +751,7 @@ export interface Fragmento { de: number; ate: number; primeiro: boolean; ultimo:
  * orienta o preenchimento. Um texto longo continua na folha seguinte
  * (`fragmento`): cada folha edita o seu pedaço e o valor completo é um só.
  */
-export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max = 2000, linha = false, alinhamento, preencher = true, celulaDeTabela = false, compacto = false, fragmento }: CampoBase & {
+export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max = 2000, linha = false, alinhamento, preencher = true, celulaDeTabela = false, compacto = false, dica, fragmento }: CampoBase & {
   pergunta?: string
   valor: string
   onChange: (valor: string) => void
@@ -765,6 +765,8 @@ export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max =
   celulaDeTabela?: boolean
   /** Menos espaço interno (tabelas densas, como a das partes interessadas). */
   compacto?: boolean
+  /** Texto exato mostrado com o campo vazio (ex.: a instrução "<citar…>" do modelo). Tem prioridade sobre `pergunta`. */
+  dica?: string
   /** Pedaço do texto mostrado nesta folha (definido pela paginação). */
   fragmento?: Fragmento
 }) {
@@ -804,7 +806,7 @@ export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max =
         rows={1}
         value={parte}
         maxLength={max ? Math.max(0, max - (valor.length - parte.length)) : undefined}
-        placeholder={primeiro ? (pergunta ? (linha || celulaDeTabela ? pergunta : `Clique para escrever: ${pergunta}`) : 'Clique para escrever') : undefined}
+        placeholder={primeiro ? dica ?? (pergunta ? (linha || celulaDeTabela ? pergunta : `Clique para escrever: ${pergunta}`) : 'Clique para escrever') : undefined}
         tabIndex={medindo ? -1 : undefined}
         onChange={e => mudar(e.target.value, e.target.selectionStart ?? e.target.value.length)}
         onKeyDown={e => {

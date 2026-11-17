@@ -9,7 +9,7 @@ funcionalidade depois disso é uma versão MINOR.
 
 ## [1.58.0] — 2026-11-17
 
-- **Declaração do Escopo:** novo documento na Documentação, no modelo "14 Aula GP". Justificativa, Objetivos e Descrição do produto partem do Termo de Abertura; a Lista de entregas mostra os níveis 1 e 2 da EAP em caixas; Responsabilidades já vem com cada membro e sua função. Tudo editável na folha.
+- **Declaração do Escopo:** novo documento na Documentação, no modelo "14 Aula GP". Justificativa, Objetivos e Descrição do produto partem do Termo de Abertura; a Lista de entregas mostra os níveis 1 e 2 da EAP em caixas ligadas como numa EAP gráfica, com a fonte reduzida para o texto caber mesmo com muitas entregas (sem EAP, a edição mostra um exemplo); Responsabilidades já vem com cada membro e sua função. Campos vazios mostram a instrução do modelo (ex.: "<citar a razão pela qual o projeto é necessário…>"). Tudo editável na folha.
 
 - **Formulários de Riscos:** novo documento no modelo "15 Aula GP", com vários formulários (um por folha), como as Atas. Cada risco tem as quatro etapas: identificação, avaliação de impacto e probabilidade (1 a 5), resposta com responsável e reavaliação, e acompanhamento. O botão Adicionar inclui um risco novo.
 

@@ -48,6 +48,8 @@ export function TituloFormulario({ titulo, logoUrl }: { titulo: string; logoUrl?
             : null}
       </div>
       <h1 style={{ flex: 1, margin: 0, textAlign: 'center', fontFamily: 'Arial, Arimo, Helvetica, sans-serif', fontSize: '15pt', fontWeight: 'bold', lineHeight: 1.2 }}>{titulo}</h1>
+      {/* Espaço do mesmo tamanho do logo: o título fica no centro da folha, não do que sobra ao lado do logo. */}
+      <div aria-hidden="true" style={{ width: '32mm', flexShrink: 0 }} />
     </div>
   )
 }
