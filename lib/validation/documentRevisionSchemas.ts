@@ -6,7 +6,7 @@ import { EAP_LIMITS, SaveEapDocumentSchema } from './eapSchemas'
 import { recomputeNodeCodes } from '@/lib/eapCode'
 import { safeAvatarUrl } from './avatarUrl'
 import type { EapNode } from '@/types/eap'
-import { escopoSchema, licoesSchema, riscosSchema } from './formulariosGP'
+import { escopoSchema, licoesSchema, riscoSchema } from './formulariosGP'
 
 export const tipoDocumento = z.enum(['CHARTER', 'STAKEHOLDER', 'EAP', 'ATA', 'CAPA', 'ESCOPO', 'RISCOS', 'LICOES'])
 export type TipoDocumento = z.infer<typeof tipoDocumento>
@@ -153,7 +153,7 @@ export type CapaConteudo = z.infer<typeof capaSchema>
 export function validarDocumento(type: TipoDocumento, payload: unknown) {
   if (type === 'CAPA') return capaSchema.parse(payload)
   if (type === 'ESCOPO') return escopoSchema.parse(payload)
-  if (type === 'RISCOS') return riscosSchema.parse(payload)
+  if (type === 'RISCOS') return riscoSchema.parse(payload)
   if (type === 'LICOES') return licoesSchema.parse(payload)
   if (type === 'CHARTER') return charterSchema.parse(payload)
   if (type === 'STAKEHOLDER') return stakeholderSchema.parse(payload)
@@ -168,14 +168,17 @@ export const metaDocumento = z.object({
   aprovadoPor: z.string().max(300).default(''),
   dataAprovacao: z.string().max(50).default(''),
 })
+/** Documentos com um registro por recurso (cada ata, cada risco): `resourceId` obrigatório ao gravar. */
+export const documentoPorRecurso = (type: TipoDocumento) => type === 'ATA' || type === 'RISCOS'
+
 export function validarRecurso(
   type: TipoDocumento,
   resourceId: string,
   writing = false,
 ) {
   z.string().max(64).parse(resourceId)
-  if (type !== 'ATA' && resourceId)
+  if (!documentoPorRecurso(type) && resourceId)
     throw new DocumentRevisionError('Este documento não admite resourceId')
-  if (type === 'ATA' && writing && !resourceId)
-    throw new DocumentRevisionError('Identificação da ata obrigatória')
+  if (documentoPorRecurso(type) && writing && !resourceId)
+    throw new DocumentRevisionError(type === 'ATA' ? 'Identificação da ata obrigatória' : 'Identificação do risco obrigatória')
 }

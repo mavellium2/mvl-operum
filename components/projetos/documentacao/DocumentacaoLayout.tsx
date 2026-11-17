@@ -9,7 +9,7 @@ import DocumentoAtas, { type AtaListItem } from './DocumentoAtas'
 import EapDocument from './EapDocument'
 import CapaDocumento from './CapaDocumento'
 import DeclaracaoEscopo from './formularios/DeclaracaoEscopo'
-import FormulariosRiscos from './formularios/FormulariosRiscos'
+import DocumentoRiscos, { type RiscoListItem } from './formularios/DocumentoRiscos'
 import LicoesAprendidas from './formularios/LicoesAprendidas'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import Drawer from '@/components/ui/Drawer'
@@ -23,7 +23,7 @@ const DOCUMENT_MAP = {
   eap: EapDocument,
   atas: DocumentoAtas,
   escopo: DeclaracaoEscopo,
-  riscos: FormulariosRiscos,
+  riscos: DocumentoRiscos,
   licoes: LicoesAprendidas,
 } as const
 
@@ -32,6 +32,8 @@ type DocType = keyof typeof DOCUMENT_MAP
 interface Props {
   projetoId: string
   atas: AtaListItem[]
+  /** Formulários de Riscos (um documento por risco, como as Atas). */
+  riscos?: RiscoListItem[]
   gerente: boolean
   /** Membros da equipe — responsáveis/aprovadores dos documentos devem ser membros */
   membros?: MembroEquipeOption[]
@@ -39,7 +41,7 @@ interface Props {
   cadastroStakeholders?: CadastroStakeholders | null
 }
 
-export default function DocumentacaoLayout({ projetoId, atas, gerente, membros = [], cadastroStakeholders = null }: Props) {
+export default function DocumentacaoLayout({ projetoId, atas, riscos = [], gerente, membros = [], cadastroStakeholders = null }: Props) {
   const searchParams = useSearchParams()
 
   const raw = searchParams.get('doc') ?? 'stakeholder'
@@ -81,7 +83,7 @@ export default function DocumentacaoLayout({ projetoId, atas, gerente, membros =
         ) : activeDoc === 'escopo' ? (
           <DeclaracaoEscopo key={publication} membros={membros} />
         ) : activeDoc === 'riscos' ? (
-          <FormulariosRiscos key={publication} membros={membros} />
+          <DocumentoRiscos key={`${publication}-${searchParams.get('risco') ?? ''}`} projetoId={projetoId} riscos={riscos} membros={membros} />
         ) : activeDoc === 'licoes' ? (
           <LicoesAprendidas key={publication} membros={membros} />
         ) : activeDoc === 'eap' ? (

@@ -54,8 +54,12 @@ interface Props<T> {
   /** Normaliza um conteúdo salvo (versões antigas, campos faltando). */
   normalizar?: (salvo: T, sistema: DadosFormularios, membros: MembroEquipeOption[]) => T
   render: (r: RenderFormulario<T>) => ReactNode
-  /** Botão "Adicionar" no grupo Edição (ex.: novo formulário de risco). */
+  /** Botão "Adicionar" no grupo Edição. */
   adicionar?: (alterar: (fn: (atual: T) => T) => void) => void
+  /** Documento de um recurso (cada risco, como cada ata): rascunho, versões e histórico só dele. */
+  resourceId?: string
+  /** Aviso fixo acima da folha (ex.: voltar à lista de riscos). */
+  topo?: ReactNode
 }
 
 /**
@@ -63,14 +67,14 @@ interface Props<T> {
  * com aprovação do gerente, impressão, PDF e Word idêntico à folha — o mesmo
  * fluxo da Capa e do Termo.
  */
-export default function FormularioDocumento<T>({ tipo, documento, titulo, arquivo, membros, inicial, normalizar, render, adicionar }: Props<T>) {
+export default function FormularioDocumento<T>({ tipo, documento, titulo, arquivo, membros, inicial, normalizar, render, adicionar, resourceId = '', topo }: Props<T>) {
   const { projetoId } = useParams<{ projetoId: string }>()
   const permissions = useProjectPermissions()
   const canEdit = permissions.has('documentos:editar')
   const { toast } = useToast()
   const printRef = useRef<HTMLDivElement>(null)
-  const { versoes, vigente, pendentes } = useVersoesDocumento(projetoId, tipo)
-  const rascunho = useRascunhoDocumento(projetoId, tipo)
+  const { versoes, vigente, pendentes } = useVersoesDocumento(projetoId, tipo, resourceId)
+  const rascunho = useRascunhoDocumento(projetoId, tipo, resourceId)
 
   const [sistema, setSistema] = useState<DadosFormularios | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -138,7 +142,7 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
       const versao = cab?.versao?.trim() || proximaVersao(vigente?.versao)
       const r = await fetchWithSession(`/api/projects/${projetoId}/revisions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: tipo, payload: conteudo, meta: { commitTitle: tituloAlteracao.trim(), versao, elaboradoPor: cab?.elaboradoPor ?? '', aprovadoPor: '', dataAprovacao: '' } }),
+        body: JSON.stringify({ type: tipo, resourceId, payload: conteudo, meta: { commitTitle: tituloAlteracao.trim(), versao, elaboradoPor: cab?.elaboradoPor ?? '', aprovadoPor: '', dataAprovacao: '' } }),
       })
       if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error ?? `Não foi possível salvar ${documento}`)
       const data = await r.json()
@@ -148,7 +152,7 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
       setTituloAlteracao('')
       window.dispatchEvent(new CustomEvent('operum:document-version', { detail: { projetoId } }))
       if (data.status === 'APPROVED') {
-        window.dispatchEvent(new CustomEvent('operum:document-published', { detail: { projetoId, type: tipo } }))
+        window.dispatchEvent(new CustomEvent('operum:document-published', { detail: { projetoId, type: tipo, resourceId } }))
         toast(`${documento}: versão salva e publicada.`)
       } else toast(`${documento}: versão enviada para aprovação. A versão vigente foi preservada.`)
     } catch (e) {
@@ -183,8 +187,8 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
         }}
         onSalvar={() => setSalvarAberto(true)}
         podeSalvar={editavel}
-        onHistorico={() => abrirPropostas(projetoId)}
-        pendentes={{ total: pendentes, onRevisar: () => abrirPropostas(projetoId) }}
+        onHistorico={() => abrirPropostas(projetoId, resourceId)}
+        pendentes={{ total: pendentes, onRevisar: () => abrirPropostas(projetoId, resourceId) }}
         onImprimir={() => handlePrint()}
         onPdf={() => handlePrint()}
         onWord={() => void exportarWord()}
@@ -196,6 +200,7 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
           descartar: async () => { autosave.reset(payload); await rascunho.descartar() },
         }}
         avisos={<>
+          {topo}
           {autosave.status === 'error' && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               Falha ao salvar o rascunho. Seu texto foi preservado.

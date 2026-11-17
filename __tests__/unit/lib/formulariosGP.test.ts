@@ -2,12 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { tipoDocumento, validarDocumento, validarRecurso } from '@/lib/validation/documentRevisionSchemas'
 
 describe('formulários de GP como documentos versionados', () => {
-  it('ESCOPO, RISCOS e LICOES são tipos de documento sem resourceId', () => {
-    for (const t of ['ESCOPO', 'RISCOS', 'LICOES'] as const) {
+  it('ESCOPO e LICOES são documentos únicos (sem resourceId)', () => {
+    for (const t of ['ESCOPO', 'LICOES'] as const) {
       expect(tipoDocumento.parse(t)).toBe(t)
       expect(() => validarRecurso(t, 'x')).toThrow()
       expect(() => validarRecurso(t, '', true)).not.toThrow()
     }
+  })
+
+  it('RISCOS é um documento por risco, como a ATA: gravar exige o id do risco', () => {
+    expect(tipoDocumento.parse('RISCOS')).toBe('RISCOS')
+    expect(() => validarRecurso('RISCOS', 'r1', true)).not.toThrow()
+    expect(() => validarRecurso('RISCOS', '')).not.toThrow()
+    expect(() => validarRecurso('RISCOS', '', true)).toThrow('Identificação do risco obrigatória')
   })
 
   it('Declaração do Escopo: cabeçalho e seções; recusa campo desconhecido', () => {
@@ -16,12 +23,11 @@ describe('formulários de GP como documentos versionados', () => {
     expect(() => validarDocumento('ESCOPO', { extra: 'x' })).toThrow()
   })
 
-  it('Riscos: vários formulários, escala de 1 a 5', () => {
-    const riscos = { riscos: [{ id: 'a', numero: '01', impacto: 4, probabilidade: 2, impactoReavaliado: 3, respostasNaWbs: true }, { id: 'b' }] }
-    expect(validarDocumento('RISCOS', riscos)).toEqual(riscos)
-    expect(() => validarDocumento('RISCOS', { riscos: [{ id: 'a', impacto: 6 }] })).toThrow()
-    expect(() => validarDocumento('RISCOS', { riscos: [{ id: '' }] })).toThrow()
-    expect(() => validarDocumento('RISCOS', { riscos: Array.from({ length: 101 }, (_, i) => ({ id: `r${i}` })) })).toThrow()
+  it('Risco: um formulário por documento, escala de 1 a 5', () => {
+    const risco = { cabecalho: { elaboradoPor: 'Enzo' }, denominacao: 'Dependência', impacto: 4, probabilidade: 2, impactoReavaliado: 3, respostasNaWbs: true }
+    expect(validarDocumento('RISCOS', risco)).toEqual(risco)
+    expect(() => validarDocumento('RISCOS', { impacto: 6 })).toThrow()
+    expect(() => validarDocumento('RISCOS', { riscos: [] })).toThrow()
   })
 
   it('Lições aprendidas: aspectos 1 a 13 (Sim/Não) e perguntas 14 a 17', () => {

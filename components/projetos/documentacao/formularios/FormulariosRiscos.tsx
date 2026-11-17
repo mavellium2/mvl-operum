@@ -1,9 +1,8 @@
 'use client'
 
 import type { CSSProperties, ReactNode } from 'react'
-import GlassButton from '@/components/ui/GlassButton'
-import { CampoData, CampoPessoa, CampoTexto, Folha, useEditorFolha } from '@/components/documentos/editor/folha'
-import type { Risco, RiscosConteudo } from '@/lib/validation/formulariosGP'
+import { CampoAutomatico, CampoData, CampoPessoa, CampoTexto, Folha, useEditorFolha } from '@/components/documentos/editor/folha'
+import type { Risco } from '@/lib/validation/formulariosGP'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
 import FormularioDocumento, { type RenderFormulario } from './FormularioDocumento'
 import { celulaGP, celulaGPCampo, Escolha, FONTE_FORMULARIO, nomeEFuncao, QuadroFormulario, tabelaGP, TituloFormulario } from './QuadroFormulario'
@@ -11,22 +10,16 @@ import { celulaGP, celulaGPCampo, Escolha, FONTE_FORMULARIO, nomeEFuncao, Quadro
 export const TITULO_RISCOS = 'Formulário para Gerenciamento de Riscos'
 export const DOCUMENTO_RISCOS = 'Formulários de Riscos'
 
-type Riscos = { riscos: Risco[] }
-
 const IMPACTO = { 5: 'alto', 4: 'médio/alto', 3: 'médio', 2: 'médio/baixo', 1: 'baixo' } as const
 const PROBABILIDADE = { 5: 'alta', 4: 'média/alta', 3: 'média', 2: 'média/baixa', 1: 'baixa' } as const
 type Escala = keyof typeof IMPACTO
 const NIVEIS: Escala[] = [5, 4, 3, 2, 1]
 
-const novoId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `r${Date.now()}${Math.random().toString(36).slice(2, 8)}`)
-const numeroPadrao = (i: number) => String(i + 1).padStart(2, '0')
+/** "01", "02"… como no modelo. */
+export const numeroRisco = (n: number) => String(n).padStart(2, '0')
 
-export function novoRisco(indice: number): Risco {
-  return { id: novoId(), cabecalho: {}, numero: numeroPadrao(indice) }
-}
-
-export const riscosInicial = (): Riscos => ({ riscos: [novoRisco(0)] })
-export const riscosNormalizado = (salvo: RiscosConteudo): Riscos => ({ riscos: salvo.riscos?.length ? salvo.riscos : [novoRisco(0)] })
+export const riscoInicial = (): Risco => ({ cabecalho: {} })
+export const riscoNormalizado = (salvo: Risco): Risco => ({ ...salvo, cabecalho: salvo.cabecalho ?? {} })
 
 const etapa: CSSProperties = { fontWeight: 'bold', fontSize: '10pt', padding: '3mm 0 1px 6mm', fontFamily: FONTE_FORMULARIO }
 const B = ({ children }: { children: ReactNode }) => <strong>{children}</strong>
@@ -68,26 +61,14 @@ function MarcaWbs({ id, marcado, onMudar }: { id: string; marcado: boolean; onMu
   )
 }
 
-/** Um formulário de risco (uma folha), no modelo "15 Aula GP". */
-function FolhaRisco({ risco, indice, total, sistema, versaoPadrao, mudar, remover, edicao }: Omit<RenderFormulario<Riscos>, 'conteudo' | 'alterar'> & {
-  risco: Risco; indice: number; total: number
-  mudar?: (parcial: Partial<Risco>) => void
-  remover?: () => void
-}) {
-  const p = `risco-${risco.id}`
+/** Um formulário de risco (uma folha), no modelo "15 Aula GP". O Nº vem do cadastro do risco. */
+export function FolhaRisco({ conteudo: risco, numero, sistema, versaoPadrao, alterar, edicao }: RenderFormulario<Risco> & { numero: number }) {
+  const p = 'risco'
+  const mudar = alterar && ((parcial: Partial<Risco>) => alterar(r => ({ ...r, ...parcial })))
   const campo = (c: keyof Risco) => (v: string) => mudar?.({ [c]: v })
   const responsavel = nomeEFuncao(risco.responsavel, risco.responsavelFuncao)
   return (
-    <div data-risco={risco.id}>
-      {remover && (
-        <div className="mb-2 flex items-center justify-between gap-2 print:hidden">
-          <span className="text-xs font-medium text-slate-500">Risco {indice + 1} de {total}</span>
-          <GlassButton variant="ghost" type="button" onClick={remover} disabled={total <= 1} title={total <= 1 ? 'O documento precisa de ao menos um risco.' : undefined}>
-            Remover este risco
-          </GlassButton>
-        </div>
-      )}
-      <Folha data-testid="risco-folha" rodape={`© ${TITULO_RISCOS}`} numerar={false} style={{ fontFamily: FONTE_FORMULARIO, fontSize: '10pt', gap: 0 }}>
+      <Folha data-testid="risco-folha" style={{ fontFamily: FONTE_FORMULARIO, fontSize: '10pt', gap: 0 }}>
         <TituloFormulario titulo={TITULO_RISCOS} logoUrl={sistema.logoUrl} />
         <div style={{ height: '4mm' }} />
         <QuadroFormulario prefixoId={p} sistema={sistema} cabecalho={risco.cabecalho ?? {}} versaoPadrao={versaoPadrao}
@@ -102,7 +83,7 @@ function FolhaRisco({ risco, indice, total, sistema, versaoPadrao, mudar, remove
                 <div className="flex items-start" style={{ paddingLeft: 5 }}><B>Denominação do risco:</B>&nbsp;<div style={{ flex: 1 }}><CampoTexto id={`${p}-denominacao`} rotulo="Denominação do risco" ajuda="Nome curto do risco (ex.: Atualização de alguma dependência do projeto)." pergunta="nome do risco" valor={risco.denominacao ?? ''} onChange={campo('denominacao')} max={500} linha compacto /></div></div>
               </td>
               <td style={celulaGPCampo}>
-                <div className="flex items-start" style={{ paddingLeft: 5 }}><B>Risco Nº</B>&nbsp;<div style={{ flex: 1 }}><CampoTexto id={`${p}-numero`} rotulo="Número do risco" ajuda="Número do risco no projeto (01, 02…)." pergunta={numeroPadrao(indice)} valor={risco.numero ?? ''} onChange={campo('numero')} max={20} linha compacto /></div></div>
+                <CampoAutomatico padding="1px 5px"><B>Risco Nº</B> {numeroRisco(numero)}</CampoAutomatico>
               </td>
             </tr>
             <tr>
@@ -185,40 +166,22 @@ function FolhaRisco({ risco, indice, total, sistema, versaoPadrao, mudar, remove
           </tbody>
         </table>
       </Folha>
-    </div>
   )
 }
 
-export function FolhasRiscos({ conteudo, alterar, ...resto }: RenderFormulario<Riscos>) {
-  const total = conteudo.riscos.length
-  return (
-    <div data-testid="riscos-folhas" style={{ display: 'flex', flexDirection: 'column', gap: '8mm' }}>
-      {conteudo.riscos.map((risco, i) => (
-        <FolhaRisco key={risco.id} risco={risco} indice={i} total={total} {...resto}
-          mudar={alterar && (parcial => alterar(c => ({ riscos: c.riscos.map(r => (r.id === risco.id ? { ...r, ...parcial } : r)) })))}
-          remover={alterar && (() => alterar(c => (c.riscos.length > 1 ? { riscos: c.riscos.filter(r => r.id !== risco.id) } : c)))} />
-      ))}
-    </div>
-  )
-}
-
-const renderizar = (r: RenderFormulario<Riscos>) => <FolhasRiscos {...r} />
-const normalizar = (salvo: Riscos) => riscosNormalizado(salvo)
-const adicionar = (alterar: (fn: (c: Riscos) => Riscos) => void) => {
-  alterar(c => ({ riscos: [...c.riscos, novoRisco(c.riscos.length)] }))
-  requestAnimationFrame(() => document.querySelector('[data-risco]:last-of-type')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-}
+const normalizar = (salvo: Risco) => riscoNormalizado(salvo)
 
 /**
- * Formulários de Riscos: como as Atas, vários formulários no mesmo documento
- * (um por folha), cada um com quem elaborou e o responsável pelo risco.
- * "Adicionar" (grupo Edição) inclui um risco novo.
+ * Editor de um formulário de risco. Como as Atas, cada risco é um documento:
+ * rascunho, versões, aprovação, histórico e Word são só dele.
  */
-export default function FormulariosRiscos({ membros = [] }: { membros?: MembroEquipeOption[] }) {
+export function FormularioRisco({ riscoId, numero, membros = [], topo }: { riscoId: string; numero: number; membros?: MembroEquipeOption[]; topo?: ReactNode }) {
   return (
-    <FormularioDocumento<Riscos>
-      tipo="RISCOS" documento={DOCUMENTO_RISCOS} titulo={TITULO_RISCOS} arquivo="formularios-de-riscos.docx"
-      membros={membros} inicial={riscosInicial} normalizar={normalizar} render={renderizar} adicionar={adicionar}
+    <FormularioDocumento<Risco>
+      key={riscoId}
+      tipo="RISCOS" resourceId={riscoId} documento={`Risco ${numeroRisco(numero)}`} titulo={TITULO_RISCOS} arquivo={`formulario-de-risco-${numeroRisco(numero)}.docx`}
+      membros={membros} inicial={riscoInicial} normalizar={normalizar} topo={topo}
+      render={r => <FolhaRisco {...r} numero={numero} />}
     />
   )
 }

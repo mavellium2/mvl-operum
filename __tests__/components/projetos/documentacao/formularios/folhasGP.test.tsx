@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { EditorFolhaProvider } from '@/components/documentos/editor/folha'
 import { FolhasEscopo, escopoInicial, fonteDasCaixas } from '@/components/projetos/documentacao/formularios/DeclaracaoEscopo'
-import { FolhasRiscos, riscosNormalizado } from '@/components/projetos/documentacao/formularios/FormulariosRiscos'
+import { FolhaRisco, riscoNormalizado } from '@/components/projetos/documentacao/formularios/FormulariosRiscos'
 import { FolhasLicoes } from '@/components/projetos/documentacao/formularios/LicoesAprendidas'
 import type { DadosFormularios } from '@/components/projetos/documentacao/formularios/FormularioDocumento'
 
@@ -68,38 +68,36 @@ describe('Declaração do Escopo — modelo "14 Aula GP"', () => {
   })
 })
 
-describe('Formulários de Riscos — modelo "15 Aula GP", vários por documento', () => {
-  const risco = { id: 'a', numero: '01', denominacao: 'Atualização de dependência', impacto: 4, probabilidade: 2, impactoReavaliado: 3, probabilidadeReavaliada: 1, responsavel: 'Enzo', responsavelFuncao: 'Revisor', respostasNaWbs: true }
+describe('Formulário de Risco — modelo "15 Aula GP", um documento por risco', () => {
+  const risco = { denominacao: 'Atualização de dependência', impacto: 4, probabilidade: 2, impactoReavaliado: 3, probabilidadeReavaliada: 1, responsavel: 'Enzo', responsavelFuncao: 'Revisor', respostasNaWbs: true }
 
-  it('uma folha por risco, com as quatro etapas e as escalas marcadas como no modelo', () => {
-    render(<FolhasRiscos conteudo={{ riscos: [risco, { id: 'b', numero: '02' }] }} sistema={sistema} versaoPadrao="1.0" />)
-    const folhas = screen.getAllByTestId('risco-folha')
-    expect(folhas).toHaveLength(2)
-    const t = folhas[0].textContent ?? ''
+  it('uma folha com o Nº do cadastro, as quatro etapas e as escalas marcadas como no modelo; sem rodapé ©', () => {
+    render(<FolhaRisco conteudo={risco} numero={3} sistema={sistema} versaoPadrao="1.0" />)
+    const folha = screen.getByTestId('risco-folha')
+    const t = folha.textContent ?? ''
     for (const e of ['1ª Etapa: Identificação do Risco', '2ª Etapa: Avaliação do Risco', '3ª Etapa: Desenvolvimento da Resposta', '4ª Etapa: Acompanhamento do Risco']) expect(t).toContain(e)
+    expect(t).toContain('Risco Nº 03')
     expect(t).toContain('● 4 (médio/alto)')
     expect(t).toContain('● 2 (média/baixa)')
     expect(t).toContain('3 – Médio')
     expect(t).toContain('1 – Baixa')
     expect(t).toContain('Enzo – Revisor')
     expect(t).toContain('☒')
-    expect(folhas[1].textContent).toContain('☐')
+    expect(t).not.toContain('©')
   })
 
-  it('na edição: marca a escala e remove um risco (sempre fica ao menos um)', () => {
-    let conteudo = { riscos: [risco, { id: 'b', numero: '02' }] }
+  it('na edição: marca a escala e o Nº não é editável', () => {
+    let conteudo: typeof risco = { ...risco }
     const alterar = vi.fn((fn: (c: typeof conteudo) => typeof conteudo) => { conteudo = fn(conteudo) })
-    const { rerender } = render(editavel(<FolhasRiscos conteudo={conteudo} sistema={sistema} versaoPadrao="1.0" alterar={alterar as never} edicao={{ projetoId: 'p', membros }} />))
-    fireEvent.click(screen.getAllByRole('radio', { name: 'Impacto 5 (alto)' })[1])
-    expect(conteudo.riscos[1]).toMatchObject({ impacto: 5 })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Remover este risco' })[0])
-    expect(conteudo.riscos.map(r => r.id)).toEqual(['b'])
-    rerender(editavel(<FolhasRiscos conteudo={conteudo} sistema={sistema} versaoPadrao="1.0" alterar={alterar as never} edicao={{ projetoId: 'p', membros }} />))
-    expect(screen.getByRole('button', { name: 'Remover este risco' })).toBeDisabled()
+    render(editavel(<FolhaRisco conteudo={conteudo} numero={1} sistema={sistema} versaoPadrao="1.0" alterar={alterar as never} edicao={{ projetoId: 'p', membros }} />))
+    fireEvent.click(screen.getByRole('radio', { name: 'Impacto 5 (alto)' }))
+    expect(conteudo).toMatchObject({ impacto: 5, denominacao: 'Atualização de dependência' })
+    expect(screen.queryByLabelText('Número do risco')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Remover este risco' })).toBeNull()
   })
 
-  it('documento salvo sem riscos volta com um formulário vazio', () => {
-    expect(riscosNormalizado({}).riscos).toHaveLength(1)
+  it('risco salvo sem cabeçalho volta com cabeçalho vazio', () => {
+    expect(riscoNormalizado({ denominacao: 'X' })).toEqual({ denominacao: 'X', cabecalho: {} })
   })
 })
 

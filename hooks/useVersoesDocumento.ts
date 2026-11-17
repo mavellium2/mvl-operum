@@ -50,7 +50,7 @@ export function useVersoesDocumento(projetoId: string | undefined, tipo: 'CHARTE
 
 export const ROTULO_STATUS: Record<string, string> = { PENDING: 'pendente', APPROVED: 'aprovada', REJECTED: 'rejeitada' }
 
-/** Abre o painel "Propostas e registro" do documento (DocumentacaoLayout). */
-export function abrirPropostas(projetoId: string) {
-  window.dispatchEvent(new CustomEvent('operum:revisar-propostas', { detail: { projetoId } }))
+/** Abre o painel "Propostas e registro" do documento (DocumentacaoLayout); com `resourceId`, só daquele recurso (ata, risco). */
+export function abrirPropostas(projetoId: string, resourceId = '') {
+  window.dispatchEvent(new CustomEvent('operum:revisar-propostas', { detail: { projetoId, ...(resourceId ? { resourceId } : {}) } }))
 }

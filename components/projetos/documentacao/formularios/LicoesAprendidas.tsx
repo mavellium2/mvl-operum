@@ -38,7 +38,7 @@ export function FolhasLicoes({ conteudo, sistema, versaoPadrao, alterar, edicao 
   const responder = (id: IdAspecto, parcial: RespostaAspecto) =>
     alterar?.(c => ({ ...c, aspectos: { ...c.aspectos, [id]: { ...c.aspectos[id], ...parcial } } }))
   return (
-    <Folha data-testid="licoes-folha" rodape={`© ${TITULO_LICOES}`} style={{ fontFamily: FONTE_FORMULARIO, fontSize: '10pt', gap: 0 }}>
+    <Folha data-testid="licoes-folha" style={{ fontFamily: FONTE_FORMULARIO, fontSize: '10pt', gap: 0 }}>
       <TituloFormulario titulo={TITULO_LICOES} logoUrl={sistema.logoUrl} />
       <div style={{ height: '4mm' }} />
       <QuadroFormulario testId="licoes-quadro" prefixoId="licoes" sistema={sistema} cabecalho={conteudo.cabecalho} versaoPadrao={versaoPadrao}

@@ -44,9 +44,7 @@ const escala = z.number().int().min(1).max(5).nullable()
 
 export const riscoSchema = z
   .object({
-    id: z.string().min(1).max(64),
     cabecalho: cabecalhoFormularioSchema.optional(),
-    numero: texto(20).optional(),
     denominacao: texto(500).optional(),
     descricao: texto().optional(),
     impacto: escala.optional(),
@@ -65,13 +63,8 @@ export const riscoSchema = z
     registrosAdicionais: texto(500).optional(),
   })
   .strict()
+/** Conteúdo de um formulário de risco (cada risco é um documento, como as Atas; o Nº vem do cadastro `Risco`). */
 export type Risco = z.infer<typeof riscoSchema>
-
-export const riscosSchema = z
-  .object({ riscos: z.array(riscoSchema).max(100) })
-  .partial()
-  .strict()
-export type RiscosConteudo = z.infer<typeof riscosSchema>
 
 /** Aspectos 1 a 13 (Sim/Não + comentário) e perguntas abertas 14 a 17 do modelo. */
 export const ASPECTOS_LICOES = [
