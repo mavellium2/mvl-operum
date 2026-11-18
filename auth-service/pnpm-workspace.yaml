@@ -28,3 +28,9 @@ allowBuilds:
   '@prisma/engines': true
   bcrypt: true
   prisma: true
+# GHSA-fc5q-39xc-vjpf (picomatch <=4.0.7, ReDoS com extglobs repetidas): sem versão
+# corrigida publicada. Só chega à produção sem compilar padrões vindos de usuário
+# (ADR-106). Exceção apenas deste aviso; remover quando sair versão corrigida.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-fc5q-39xc-vjpf

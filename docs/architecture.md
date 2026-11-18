@@ -984,6 +984,10 @@ A Server Action resolve as permissões e passa o contexto obrigatório a `servic
 
 O advisory que motivou o patch (GHSA-vfj7-8cjw-p6xm / CVE-2026-93687) foi retirado pelo GitHub em 23/10/2026. Desde a 1.39.x não há exceção no `pnpm audit` nem regra do Trivy para ele; o patch fica como defesa extra até o `braces` ser atualizado (ADR-062, que substitui em parte o ADR-011 e o ADR-013). O `.trivyignore-gateway.yaml` mantém só a exceção do picomatch, igual ao `.trivyignore` dos demais serviços.
 
+### Exceção do picomatch sem correção (ADR-106)
+
+O GHSA-fc5q-39xc-vjpf / CVE-2026-112366 (picomatch <=4.0.7, ReDoS com extglobs repetidas) não tem versão corrigida publicada. A raiz e os sete serviços registram só esse aviso em `auditConfig.ignoreGhsas` do `pnpm-workspace.yaml`, e os scans de imagem o ignoram em `.trivyignore` e `.trivyignore-gateway.yaml` com expiração em 31/01/2027. Em produção ele só aparece no gateway (`http-proxy-middleware` → `micromatch`, sem `pathFilter` glob: as rotas usam `pathRewrite` com regex) e no notification-service (dependência direta que só fixa o override `>=4.0.4`, sem uso em `src`); nos demais casos é ferramenta de build e teste. Nenhum padrão glob vem de usuário. O `pnpm audit --audit-level=high` continua bloqueando qualquer outro aviso alto.
+
 ### URLs de avatar/logo no navegador
 
 `safeAvatarUrl` aceita somente URL http(s) absoluta ou caminho iniciado por uma única barra, rejeitando HTML, caracteres de controle, esquemas executáveis e barras invertidas. A URL de saída codifica metacaracteres sem alterar parâmetros ou escapes existentes das URLs assinadas. `UserAvatar` aplica a validação antes de renderizar `src`; valor inválido usa iniciais. `AvatarUpload` usa a mesma validação para a opção Visualizar e abre a imagem com `noopener,noreferrer`. Isso complementa a validação antes da persistência e protege dados históricos e estado do formulário; ver ADR-012.

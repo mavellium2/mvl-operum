@@ -10,3 +10,9 @@ overrides:
   vite: "8.3.3"
   proxy-addr: ">=2.0.8"
   source-map-js: ">=1.2.2"
+# GHSA-fc5q-39xc-vjpf (picomatch <=4.0.7, ReDoS com extglobs repetidas): sem versão
+# corrigida publicada. Só chega à produção sem compilar padrões vindos de usuário
+# (ADR-106). Exceção apenas deste aviso; remover quando sair versão corrigida.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-fc5q-39xc-vjpf

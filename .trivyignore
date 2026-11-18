@@ -5,3 +5,10 @@
 # Trivy misidentifies chokidar@4.0.3 as picomatch@4.0.3 when parsing
 # the pnpm lockfile.
 CVE-2026-33671
+
+# CVE-2026-112366 / GHSA-fc5q-39xc-vjpf: picomatch <=4.0.7, ReDoS com extglobs
+# repetidas, sem versão corrigida publicada. Nas imagens, só o gateway
+# (http-proxy-middleware, sem pathFilter glob) e o notification-service (sem uso
+# no código) o carregam; nenhum padrão vem de usuário (ADR-106). Expira em
+# 31/01/2027 para forçar a revisão se a correção não sair antes.
+CVE-2026-112366 exp:2027-01-31
