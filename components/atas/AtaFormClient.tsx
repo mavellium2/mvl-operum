@@ -11,7 +11,8 @@ import { CopiaParaImpressao } from '@/components/documentos/editor/folha'
 import Drawer from '@/components/ui/Drawer'
 import { useDesfazer } from '@/hooks/useDesfazer'
 import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
-import { ROTULO_STATUS, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { useVoltarVersao } from '@/hooks/useVoltarVersao'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import HistoricoDocumento from '@/components/projetos/documentacao/HistoricoDocumento'
@@ -75,6 +76,15 @@ export function semRepetir(lista: string[]): string[] {
   })
 }
 
+
+/** Conteúdo salvo de uma ata (rascunho ou versão), como vai para o servidor. */
+type ConteudoAta = {
+  local?: string | null; data?: string | null; elaboradoPor?: string; elaboradoPorUserId?: string | null; aprovadoPor?: string | null; aprovadoPorUserId?: string | null
+  assuntosTratados?: string | null; decisoesTomadas?: string | null; observacoes?: string | null; copiasPara?: string[]
+  presentes?: { nome: string; setorEmpresa?: string | null; userId?: string | null }[]
+  acoes?: { acao: string; prazo?: string | null; responsavel?: string | null; responsavelUserId?: string | null }[]
+  anexos?: { nome: string; url?: string | null }[]
+}
 
 export default function AtaFormClient({ projetoId, ataId, mode, members, emailsSugeridos = [], initial, nomeProjeto = '', numero, instituicaoProjeto, logoUrl = null, gerenteProjeto, assinaturaGerenteUrl }: Props) {
   const permissions = useProjectPermissions()
@@ -274,50 +284,41 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
   useEffect(() => { estadoAtualRef.current = estadoAtual })
   useEffect(() => { if (carregamentos > 0) setBase(estadoAtualRef.current) }, [carregamentos])
 
+  /** Coloca um conteúdo salvo (rascunho ou versão) nos campos do editor. */
+  const aplicarConteudo = useCallback((salvo: ConteudoAta) => {
+    setLocal(salvo.local ?? ''); setData(salvo.data ? toDateOnly(salvo.data) : '')
+    setElaboradoPor(salvo.elaboradoPor ?? ''); setElaboradoPorUserId(salvo.elaboradoPorUserId ?? null)
+    setAprovadoPor(salvo.aprovadoPor ?? ''); setAprovadoPorUserId(salvo.aprovadoPorUserId ?? null)
+    setAssuntos(salvo.assuntosTratados ?? ''); setDecisoes(salvo.decisoesTomadas ?? ''); setObservacoes(salvo.observacoes ?? '')
+    setCopias(semRepetir(salvo.copiasPara ?? []))
+    setPresentes((salvo.presentes ?? []).map(p => ({ nome: p.nome, setorEmpresa: p.setorEmpresa ?? '', userId: p.userId ?? '' })))
+    setAcoes((salvo.acoes ?? []).map(x => ({ acao: x.acao, prazo: x.prazo ? toDateOnly(x.prazo) : '', responsavel: x.responsavel ?? '', responsavelUserId: x.responsavelUserId ?? '' })))
+    setAnexos((salvo.anexos ?? []).map(x => ({ nome: x.nome, url: x.url ?? '' })))
+  }, [])
+
   // "Salvar mais tarde": rascunho privado da ata (só de atas já criadas).
   const rascunho = useRascunhoDocumento(projetoId, 'ATA', ataId ?? '')
   const [rascunhoRestaurado, setRascunhoRestaurado] = useState(false)
   useEffect(() => {
     if (!ataId || !canEdit) return
     let ativo = true
-    void rascunho.recuperar<{
-      local?: string | null; data?: string | null; elaboradoPor?: string; elaboradoPorUserId?: string | null; aprovadoPor?: string | null; aprovadoPorUserId?: string | null
-      assuntosTratados?: string | null; decisoesTomadas?: string | null; observacoes?: string | null; copiasPara?: string[]
-      presentes?: { nome: string; setorEmpresa?: string | null; userId?: string | null }[]
-      acoes?: { acao: string; prazo?: string | null; responsavel?: string | null; responsavelUserId?: string | null }[]
-      anexos?: { nome: string; url?: string | null }[]
-    }>().then(salvo => {
+    void rascunho.recuperar<ConteudoAta>().then(salvo => {
       if (!ativo || !salvo) return
-      setLocal(salvo.local ?? ''); setData(salvo.data ? toDateOnly(salvo.data) : '')
-      setElaboradoPor(salvo.elaboradoPor ?? ''); setElaboradoPorUserId(salvo.elaboradoPorUserId ?? null)
-      setAprovadoPor(salvo.aprovadoPor ?? ''); setAprovadoPorUserId(salvo.aprovadoPorUserId ?? null)
-      setAssuntos(salvo.assuntosTratados ?? ''); setDecisoes(salvo.decisoesTomadas ?? ''); setObservacoes(salvo.observacoes ?? '')
-      setCopias(semRepetir(salvo.copiasPara ?? []))
-      setPresentes((salvo.presentes ?? []).map(p => ({ nome: p.nome, setorEmpresa: p.setorEmpresa ?? '', userId: p.userId ?? '' })))
-      setAcoes((salvo.acoes ?? []).map(x => ({ acao: x.acao, prazo: x.prazo ? toDateOnly(x.prazo) : '', responsavel: x.responsavel ?? '', responsavelUserId: x.responsavelUserId ?? '' })))
-      setAnexos((salvo.anexos ?? []).map(x => ({ nome: x.nome, url: x.url ?? '' })))
+      aplicarConteudo(salvo)
       setCarregamentos(n => n + 1)
       setRascunhoRestaurado(true)
     })
     return () => { ativo = false }
-  }, [ataId, canEdit, rascunho])
+  }, [ataId, canEdit, rascunho, aplicarConteudo])
 
   const { versoes, vigente, pendentes } = useVersoesDocumento(projetoId, 'ATA', ataId ?? '')
-  const [versaoSelecionada, setVersaoSelecionada] = useState<string | null>(null)
-  const versaoAberta = versaoSelecionada ? versoes.find(v => v.id === versaoSelecionada) ?? null : null
-  const conteudoVersao = versaoAberta?.payload as (Partial<AtaExportData> & { data?: string | null; acoes?: { prazo?: string | null }[] }) | null | undefined
-  const dadosExibidos: AtaExportData = conteudoVersao
-    ? {
-      ...dadosDocumento,
-      ...conteudoVersao,
-      data: conteudoVersao.data ? new Date(conteudoVersao.data) : null,
-      presentes: (conteudoVersao.presentes ?? []) as AtaExportData['presentes'],
-      acoes: ((conteudoVersao.acoes ?? []) as { acao: string; prazo?: string | null; responsavel?: string | null }[]).map(x => ({ acao: x.acao, responsavel: x.responsavel ?? null, prazo: x.prazo ? new Date(x.prazo) : null })),
-      anexos: (conteudoVersao.anexos ?? []) as AtaExportData['anexos'],
-      copiasPara: (conteudoVersao.copiasPara ?? []) as string[],
-    }
-    : dadosDocumento
-  const editavel = canEdit && !versaoAberta && !saving
+  // Voltar para uma versão: o conteúdo dela vira o rascunho editável; salvar cria a próxima versão.
+  const voltar = useVoltarVersao({
+    versoes, vigente, podeEditar: canEdit, alteracoesPendentes: alterado,
+    aplicar: salvo => { if (salvo) aplicarConteudo(salvo as ConteudoAta) },
+  })
+  const dadosExibidos: AtaExportData = dadosDocumento
+  const editavel = canEdit && !saving
 
   const edicao: EdicaoAta = {
     projetoId,
@@ -397,15 +398,9 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
         editarProjetoHref={permissions.has('projeto:editar') ? `/projetos/${projetoId}/configuracoes` : undefined}
         documento="Ata de Reunião"
         editavel={editavel}
-        status={!canEdit || versaoAberta ? 'leitura' : saving ? 'salvando' : alterado ? 'pendente' : 'salvo'}
-        mensagemStatus={!canEdit || versaoAberta ? undefined : saving ? 'Salvando…' : alterado ? 'Alterações ainda não salvas — use “Salvar versão”' : 'Tudo salvo'}
-        versao={ataId ? {
-          rotulo: versaoAberta ? `${versaoAberta.versao ?? '—'} · ${ROTULO_STATUS[versaoAberta.status] ?? ''}` : vigente ? `${vigente.versao ?? '1.0'} · vigente` : 'Rascunho',
-          rotuloAtual: 'Ata atual (editável)',
-          selecionada: versaoSelecionada,
-          opcoes: versoes.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao ?? '—'} · ${v.id === vigente?.id ? 'vigente' : ROTULO_STATUS[v.status] ?? ''}`, detalhe: v.commitTitle })),
-          onSelecionar: setVersaoSelecionada,
-        } : undefined}
+        status={!canEdit ? 'leitura' : saving ? 'salvando' : alterado ? 'pendente' : 'salvo'}
+        mensagemStatus={!canEdit ? undefined : saving ? 'Salvando…' : alterado ? 'Alterações ainda não salvas — use “Salvar versão”' : 'Tudo salvo'}
+        versao={ataId ? voltar.seletor : undefined}
         onSalvar={() => void salvar()}
         podeSalvar={editavel}
         onHistorico={ataId ? () => setHistoricoAberto(true) : undefined}
@@ -416,25 +411,21 @@ export default function AtaFormClient({ projetoId, ataId, mode, members, emailsS
         desfazer={historicoEdicao}
         onAdicionarLinha={() => setAcoes(prev => [...prev, { acao: '', prazo: '', responsavel: '', responsavelUserId: '' }])}
         saida={{
-          pendente: canEdit && alterado && !versaoAberta && !saving,
+          pendente: canEdit && alterado && !saving,
           salvar: () => void salvar(),
           // Ata nova ainda não existe no servidor: só dá para salvar (criar) ou descartar.
           salvarDepois: ataId ? () => rascunho.guardar(montarPayload()) : undefined,
           descartar: () => (ataId ? rascunho.descartar() : undefined),
         }}
         avisos={<>
-          {rascunhoRestaurado && !versaoAberta && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve para enviá-lo à aprovação.</p>}
+          {rascunhoRestaurado && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve para enviá-lo à aprovação.</p>}
           {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-          {versaoAberta && (
-            <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
-              Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
-              <OperumButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar à ata atual</OperumButton>
-            </div>
-          )}
         </>}
       >
         <AtaDocument data={dadosExibidos} edicao={edicao} />
       </EditorDocumento>
+
+      {voltar.dialogo}
 
       {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
       <CopiaParaImpressao>

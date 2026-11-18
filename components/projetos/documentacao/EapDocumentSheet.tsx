@@ -11,7 +11,7 @@ import EapGraficaDaAba, { type ArvoreDaAba } from './EapGraficaDaAba'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import { PAGE_NUMBER_MARGIN_MM } from '@/lib/printPageStyle'
 import {
-  CampoAutomatico, ListaPaginada, CampoData, CampoPessoa, CampoTexto, EditorFolhaProvider, FOLHA_MARGEM_MM, Folha, useEditorFolha,
+  CampoAutomatico, ListaPaginada, CampoData, CampoPessoa, EditorFolhaProvider, FOLHA_MARGEM_MM, Folha, useEditorFolha,
 } from '@/components/documentos/editor/folha'
 
 export const TITULO_EAP = 'Estrutura Analítica do Projeto — EAP'
@@ -29,7 +29,6 @@ export interface EdicaoEap {
   membros: MembroEquipeOption[]
   onCriarMembro: (membro: MembroEquipeOption) => void
   onElaboradoPor: (membro: MembroEquipeOption | null) => void
-  onVersao: (versao: string) => void
   onDataAprovacao: (data: string) => void
   /** Link "Editar na EAP/WBS" do aviso de campo automático. */
   linkWbs: string
@@ -135,9 +134,8 @@ function QuadroEap({ metadata, instituicao, assinaturaUrl, edicao, testId }: { m
             />
           </td>
           <td style={{ ...celEapCampo, fontWeight: 'normal' }}>
-            {editavel
-              ? <div className="flex items-start" style={{ paddingLeft: 5 }}><RotuloItalico>Versão:</RotuloItalico>&nbsp;<div className="flex-1"><CampoTexto id="eap-versao" rotulo="Versão" ajuda="Número desta versão do documento (ex.: 1.0, 1.1)." pergunta="1.0" valor={metadata.version ?? ''} onChange={ed?.onVersao ?? nada} max={20} linha compacto /></div></div>
-              : <div style={{ padding: '1px 5px' }}><RotuloItalico>Versão:</RotuloItalico> {metadata.version || '1.0'}</div>}
+            {/* Automática: o número que esta versão tem (ou recebe ao ser salva), v1.0.1, v1.0.2… */}
+            <CampoAutomatico padding="1px 5px"><RotuloItalico>Versão:</RotuloItalico> {metadata.version}</CampoAutomatico>
           </td>
         </tr>
         <tr><td colSpan={3} style={celEapCampo}><CampoAutomatico padding="1px 5px">Aprovado por: {aprovador}</CampoAutomatico></td></tr>

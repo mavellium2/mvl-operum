@@ -11,7 +11,8 @@ import GlassButton from '@/components/ui/GlassButton'
 import { Input } from '@/components/ui/Field'
 import { useToast } from '@/components/ui/Toast'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
-import { abrirPropostas, ROTULO_STATUS, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { abrirPropostas, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { useVoltarVersao } from '@/hooks/useVoltarVersao'
 import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
 import { useAutosave } from '@/hooks/useAutosave'
 import { fetchWithSession } from '@/lib/clientFetch'
@@ -141,7 +142,6 @@ export default function CapaDocumento() {
   const [capa, setCapa] = useState<Capa>(VAZIA)
   const [base, setBase] = useState<string | null>(null)
   const [pronto, setPronto] = useState(false)
-  const [versaoAberta, setVersaoAberta] = useState<string | null>(null)
   const [salvarAberto, setSalvarAberto] = useState(false)
   const [titulo, setTitulo] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -163,7 +163,7 @@ export default function CapaDocumento() {
     const inicial: Capa | null = base ? JSON.parse(base) : null
     const draft = inicial ? alteracoesCapa(JSON.parse(valor), inicial) : JSON.parse(valor)
     if (!await rascunho.guardar(draft)) throw new Error('Não foi possível salvar o rascunho')
-  }, { delay: 1200, enabled: canEdit && pronto && !versaoAberta })
+  }, { delay: 1200, enabled: canEdit && pronto })
   const autosaveReset = useRef<((v: string) => void) | null>(null)
   useEffect(() => { autosaveReset.current = autosave.reset }, [autosave.reset])
 
@@ -188,6 +188,13 @@ export default function CapaDocumento() {
 
   const alterarCampo = useCallback((campo: CampoCapa, valor: string) => setCapa(c => ({ ...c, [campo]: valor })), [])
 
+  // Voltar para uma versão: o conteúdo dela vira o rascunho editável; salvar cria a próxima versão.
+  const voltar = useVoltarVersao({
+    versoes, vigente, podeEditar: canEdit,
+    alteracoesPendentes: base !== null && payload !== base,
+    aplicar: salvo => { if (sistema) setCapa(conteudoCapa(sistema.padrao, salvo as CapaConteudo)) },
+  })
+
   const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: `Capa - ${sistema?.nomeProjeto ?? 'Projeto'}`, pageStyle: printFolhasStyle() })
 
   async function exportarWord() {
@@ -207,7 +214,7 @@ export default function CapaDocumento() {
     if (!canEdit || salvando || !titulo.trim()) return
     setSalvando(true)
     try {
-      const versao = proximaVersao(vigente?.versao)
+      const versao = voltar.proxima
       const r = await fetchWithSession(`/api/projects/${projetoId}/revisions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'CAPA', payload: capa, meta: { commitTitle: titulo.trim(), versao, elaboradoPor: '', aprovadoPor: '', dataAprovacao: '' } }),
@@ -231,10 +238,9 @@ export default function CapaDocumento() {
   if (erro) return <div role="alert" className="m-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{erro}</div>
   if (!sistema || !pronto) return <div role="status" className="m-6 text-sm text-slate-500">Carregando a capa…</div>
 
-  const aberta = versaoAberta ? versoes.find(v => v.id === versaoAberta) : null
-  const exibida = aberta ? conteudoCapa(sistema.padrao, aberta.payload as CapaConteudo) : capa
-  const editavel = canEdit && !aberta && !salvando
-  const status: StatusSalvamento = !canEdit || aberta ? 'leitura'
+  const exibida = capa
+  const editavel = canEdit && !salvando
+  const status: StatusSalvamento = !canEdit ? 'leitura'
     : autosave.status === 'saving' ? 'salvando' : autosave.status === 'error' ? 'erro' : autosave.status === 'pending' ? 'pendente' : 'salvo'
   const folha = { nomeProjeto: sistema.nomeProjeto, logoUrl: sistema.logoUrl, integrantes: sistema.integrantes }
 
@@ -245,13 +251,7 @@ export default function CapaDocumento() {
         documento="Capa"
         editavel={editavel}
         status={status}
-        versao={{
-          rotulo: aberta ? `${aberta.versao ?? '—'} · ${ROTULO_STATUS[aberta.status] ?? ''}` : vigente ? `${vigente.versao} · vigente` : 'Rascunho',
-          rotuloAtual: vigente ? `Rascunho sobre a ${vigente.versao} (editável)` : 'Rascunho (editável)',
-          selecionada: versaoAberta,
-          opcoes: versoes.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao ?? '—'} · ${v.id === vigente?.id ? 'vigente' : ROTULO_STATUS[v.status] ?? ''}`, detalhe: v.commitTitle })),
-          onSelecionar: setVersaoAberta,
-        }}
+        versao={voltar.seletor}
         onSalvar={() => setSalvarAberto(true)}
         podeSalvar={editavel}
         onHistorico={() => abrirPropostas(projetoId)}
@@ -260,7 +260,7 @@ export default function CapaDocumento() {
         onPdf={() => handlePrint()}
         onWord={() => void exportarWord()}
         saida={{
-          pendente: canEdit && !aberta && base !== null && payload !== base,
+          pendente: canEdit && base !== null && payload !== base,
           salvar: () => setSalvarAberto(true),
           salvarDepois: () => autosave.flush(),
           descartar: async () => { autosave.reset(payload); await rascunho.descartar() },
@@ -272,16 +272,11 @@ export default function CapaDocumento() {
               <GlassButton variant="default" type="button" onClick={() => void autosave.flush()} className="ml-2 underline">Tentar salvar novamente</GlassButton>
             </div>
           )}
-          {aberta && (
-            <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
-              Versão {aberta.versao} · {ROTULO_STATUS[aberta.status]} — somente leitura.
-              <GlassButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoAberta(null)}>Voltar ao rascunho</GlassButton>
-            </div>
-          )}
         </>}
       >
         <CapaFolha capa={exibida} {...folha} onCampo={editavel ? alterarCampo : undefined} />
       </EditorDocumento>
+      {voltar.dialogo}
       <CopiaParaImpressao>
         <CapaFolha ref={printRef} capa={exibida} {...folha} />
       </CopiaParaImpressao>
@@ -299,12 +294,5 @@ export default function CapaDocumento() {
       </Modal>
     </>
   )
-}
-
-/** 1.0 → 1.1; sem versão vigente, 1.0. */
-export function proximaVersao(atual?: string | null): string {
-  if (!atual) return '1.0'
-  const [maior, menor] = atual.split('.').map(n => Number.parseInt(n, 10))
-  return Number.isFinite(maior) ? `${maior}.${(Number.isFinite(menor) ? menor : 0) + 1}` : '1.0'
 }
 

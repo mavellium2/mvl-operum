@@ -1308,6 +1308,18 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Referências:** `prisma/schema.prisma` (`Risco`), `services/documentRevisionService.ts` (`criarRisco`, `excluirRisco`, `listarRiscos`, `validarRisco`), `app/actions/riscos.ts`, `components/projetos/documentacao/formularios/DocumentoRiscos.tsx` e `FormulariosRiscos.tsx`, `__tests__/integration/documentRevision.postgres.test.ts`.
 - **Revisar quando:** outro módulo precisar consultar os campos dos riscos (ex.: matriz de riscos do projeto), o que pediria guardá-los em colunas.
 
+## ADR-105 — Voltar para uma versão vira rascunho; versões numeradas pelo servidor
+
+- **Data:** 2026-11-18.
+- **Status:** implementada (1.59.0).
+- **Contexto:** o usuário pediu que, em todos os documentos, voltar para uma versão funcione como em Editar projeto: a pessoa passa a estar naquela versão, pode editar, e ao salvar cria uma versão nova. Antes, escolher uma versão no seletor só abria a folha para leitura. Também pediu a numeração v1.0.1, v1.0.2 … v1.0.99, v1.1.0, em vez do número digitado no campo "Versão".
+- **Escolha:** escolher uma versão (com confirmação) aplica o conteúdo dela ao rascunho editável do usuário; salvar cria a próxima versão pelo fluxo existente de proposta e aprovação. O servidor numera as versões em sequência por documento (tipo + recurso), no formato de `rotuloVersaoPlanilha`, dentro da transação que já bloqueia o projeto, e grava o rótulo no conteúdo. O campo "Versão" das folhas passa a ser automático.
+- **Justificativa:** em Editar projeto, restaurar ativa a versão diretamente porque não há aprovação; nos documentos, ativar uma versão antiga sem passar pelo gerente quebraria a regra de aprovação (a versão vigente só muda por aprovação). Levar a versão ao rascunho dá o mesmo resultado para quem edita e preserva o fluxo. Numerar no servidor evita números repetidos em salvamentos simultâneos e números digitados fora de ordem.
+- **Alternativas consideradas:** ativar a versão escolhida como vigente na hora, como em Editar projeto (pularia a aprovação); manter a visualização somente leitura com um botão "Restaurar" separado (dois passos para o mesmo objetivo, e o pedido foi que escolher a versão já levasse a ela); numerar no cliente (concorrência e versões digitadas).
+- **Consequências:** versões antigas não podem mais ser abertas só para leitura pelo seletor; para ver uma, é preciso levá-la ao rascunho (o rascunho atual não salvo é substituído, com aviso na confirmação). Rótulos antigos continuam como estão. O `meta.versao` enviado pelo cliente deixa de ter efeito. Na EAP com a aba EAP/WBS montada, a parte gráfica continua seguindo a aba.
+- **Referências:** `lib/versaoDocumento.ts`, `hooks/useVoltarVersao.tsx`, `services/documentRevisionService.ts` (`submeterDocumento`), editores em `components/projetos/documentacao/`, `components/projetos/DocumentoStakeholders.tsx` e `components/atas/AtaFormClient.tsx`; testes em `__tests__/hooks/useVoltarVersao.test.tsx`, `__tests__/unit/lib/versaoDocumento.test.ts` e `__tests__/integration/documentRevision.postgres.test.ts`.
+- **Revisar quando:** for preciso consultar uma versão antiga sem levá-la ao rascunho (ex.: comparação lado a lado).
+
 ## ADR-106 — Exceção temporária do picomatch no audit e no Trivy
 
 - **Data:** 2026-11-18.
@@ -1319,3 +1331,4 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** o audit e o Trivy continuam bloqueando qualquer outro aviso alto. Se algum código passar a compilar padrões glob vindos de usuário (filtros, buscas, `pathFilter` no gateway), a exceção deixa de valer e é preciso aplicar patch ou trocar a biblioteca.
 - **Revisar quando:** sair versão corrigida do picomatch (atualizar, remover as exceções e repetir audit, instalação congelada e Trivy) ou em 31/01/2027, quando a exceção do Trivy expira.
 - **Referências:** [advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf), `pnpm-workspace.yaml` (raiz e serviços), `.trivyignore`, `.trivyignore-gateway.yaml`, `api-gateway/src/app.ts`, `notification-service/package.json`.
+

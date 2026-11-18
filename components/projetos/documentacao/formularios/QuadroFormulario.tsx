@@ -3,7 +3,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { linhaOuAviso } from '@/lib/linhaInstitucional'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
-import { CampoAutomatico, CampoData, CampoPessoa, CampoTexto, useEditorFolha } from '@/components/documentos/editor/folha'
+import { CampoAutomatico, CampoData, CampoPessoa, useEditorFolha } from '@/components/documentos/editor/folha'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
 import type { CabecalhoFormulario } from '@/lib/validation/formulariosGP'
 
@@ -62,7 +62,7 @@ export function TituloFormulario({ titulo, logoUrl }: { titulo: string; logoUrl?
 export function QuadroFormulario({ sistema, cabecalho, versaoPadrao, edicao, prefixoId = 'form', testId }: {
   sistema: SistemaFormulario
   cabecalho: CabecalhoFormulario
-  /** Versão exibida quando o campo está vazio (ex.: a vigente). */
+  /** Versão do documento (automática: a que o rascunho recebe ao ser salvo). */
   versaoPadrao: string
   edicao?: EdicaoQuadro
   /** Prefixo dos ids dos campos (mais de um quadro na mesma tela, como nos Riscos). */
@@ -93,9 +93,8 @@ export function QuadroFormulario({ sistema, cabecalho, versaoPadrao, edicao, pre
             ) : elaborado}
           </td>
           <td style={celulaGPCampo}>
-            {editavel
-              ? <div className="flex items-start" style={{ paddingLeft: 5 }}><B>Versão:</B>&nbsp;<div className="flex-1"><CampoTexto id={`${prefixoId}-versao`} rotulo="Versão" ajuda="Número desta versão do documento (ex.: 1.0, 1.1)." pergunta={versaoPadrao} valor={cabecalho.versao ?? ''} onChange={v => mudar({ versao: v })} max={20} linha compacto /></div></div>
-              : <div style={{ padding: '1px 5px' }}><B>Versão:</B> {cabecalho.versao?.trim() || versaoPadrao}</div>}
+            {/* Automática: o número que esta versão tem (ou recebe ao ser salva), v1.0.1, v1.0.2… */}
+            <CampoAutomatico padding="1px 5px"><B>Versão:</B> {versaoPadrao}</CampoAutomatico>
           </td>
         </tr>
         <tr><td colSpan={3} style={celulaGPCampo}><CampoAutomatico padding="1px 5px"><B>Aprovado por:</B> {gerente}{gerente ? ' - Gerente' : ''}</CampoAutomatico></td></tr>

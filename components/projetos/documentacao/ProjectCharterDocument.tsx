@@ -53,7 +53,6 @@ export interface EdicaoTermo {
   onCampo: (campo: CampoTermo, valor: string) => void
   elaboradoPorUserId: string | null
   onElaboradoPor: (membro: MembroEquipeOption | null) => void
-  onVersao: (versao: string) => void
   dataAprovacaoRaw: string
   onDataAprovacao: (data: string) => void
   onFase: (id: string, campo: keyof Omit<MacroFase, 'id'>, valor: string) => void
@@ -168,9 +167,8 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
                 />
               </td>
               <td style={celulaModeloCampo}>
-                {editavel
-                  ? <div className="flex items-start" style={{ paddingLeft: 5 }}><B>Versão:</B>&nbsp;<div className="flex-1"><CampoTexto id="versao" rotulo="Versão" ajuda="Número desta versão do documento (ex.: 1.0, 1.1)." pergunta="1.0" valor={versao} onChange={ed?.onVersao ?? nada} max={20} linha compacto /></div></div>
-                  : <div style={{ padding: '1px 5px' }}><B>Versão:</B> {versao}</div>}
+                {/* Automática: o número que esta versão tem (ou recebe ao ser salva), v1.0.1, v1.0.2… */}
+                <CampoAutomatico padding="1px 5px"><B>Versão:</B> {versao}</CampoAutomatico>
               </td>
             </tr>
             <tr><td colSpan={3} style={celulaModeloCampo}><CampoAutomatico padding="1px 5px"><B>Aprovado por:</B> {aprovador}{aprovador ? ' - Gerente' : ''}</CampoAutomatico></td></tr>
