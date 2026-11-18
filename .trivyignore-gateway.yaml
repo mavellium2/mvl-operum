@@ -2,3 +2,7 @@ vulnerabilities:
   # Mesma exceção picomatch já existente em .trivyignore.
   - id: CVE-2026-33671
     statement: Falso positivo de identificação do picomatch já registrado em .trivyignore.
+  # picomatch <=4.0.7 (GHSA-fc5q-39xc-vjpf), sem versão corrigida (ADR-106).
+  - id: CVE-2026-112366
+    statement: O gateway só usa o picomatch via http-proxy-middleware sem pathFilter glob; nenhum padrão vem de usuário.
+    expired_at: 2027-01-31

@@ -60,3 +60,9 @@ patchedDependencies:
 # Patch de profundidade mantido como defesa extra (ADR-062): o advisory
 # GHSA-vfj7-8cjw-p6xm foi retirado em 23/10/2026, então o audit não precisa mais
 # de exceção. Os testes de __tests__/unit/security/bracesPatch.test.ts validam o limite.
+# GHSA-fc5q-39xc-vjpf (picomatch <=4.0.7, ReDoS com extglobs repetidas): sem versão
+# corrigida publicada. Só chega à produção sem compilar padrões vindos de usuário
+# (ADR-106). Exceção apenas deste aviso; remover quando sair versão corrigida.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-fc5q-39xc-vjpf
