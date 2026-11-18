@@ -33,6 +33,8 @@ const nextConfig: NextConfig = {
 
   // Limit concurrent workers to avoid OOM in memory-constrained environments.
   experimental: {
+    // Atualizações do Next feitas por agente seguem só correções de segurança.
+    agentUpgrade: "security",
     cpus: 2,
     serverActions: {
       bodySizeLimit: '10mb',

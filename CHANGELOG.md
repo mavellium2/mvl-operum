@@ -13,6 +13,11 @@ funcionalidade depois disso é uma versão MINOR.
 
 - **Numeração automática das versões:** cada documento numera as próprias versões em sequência, no formato do histórico da planilha: v1.0.1, v1.0.2 … v1.0.99, v1.1.0. O número é dado pelo servidor ao salvar e aparece no campo "Versão" das folhas, que deixa de ser digitado. Versões antigas ("1.0", "1.1") mantêm o rótulo e contam na sequência (um documento com duas versões antigas segue em v1.0.3).
 
+## [1.58.1] — 2026-11-17
+
+- **Segurança:** Next.js atualizado de 16.4.2 para 16.4.6, que corrige um aviso de segurança publicado para a versão instalada. Sem mudança de comportamento; testes e build de produção passam. `experimental.agentUpgrade: "security"` em `next.config.ts` limita as próximas atualizações automáticas do Next a correções de segurança.
+
+
 ## [1.58.0] — 2026-11-17
 
 - **Declaração do Escopo:** novo documento na Documentação, no modelo "14 Aula GP". Justificativa, Objetivos e Descrição do produto partem do Termo de Abertura; a Lista de entregas mostra os níveis 1 e 2 da EAP em caixas ligadas como numa EAP gráfica, com a fonte reduzida para o texto caber mesmo com muitas entregas (sem EAP, a edição mostra um exemplo); Responsabilidades já vem com cada membro e sua função. Campos vazios mostram a instrução do modelo (ex.: "<citar a razão pela qual o projeto é necessário…>"). Tudo editável na folha.
