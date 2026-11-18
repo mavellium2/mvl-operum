@@ -130,18 +130,21 @@ it('edita direto na folha e a cópia usada no PDF mostra o mesmo texto', async (
   fireEvent.keyDown(field, { key: 'z', ctrlKey: true })
   await waitFor(() => expect(screen.getByDisplayValue('Vigente')).toBeInTheDocument())
 })
-it('abre um snapshot histórico sem substituir conteúdo ou cabeçalho pelos atuais', async () => {
+it('voltar para uma versão leva o texto dela ao rascunho, editável, e o salvamento vira a próxima versão', async () => {
   const version = { id: 'v1', status: 'APPROVED', versao: '1', commitTitle: 'Inicial', elaboradoPor: 'Autor', aprovadoPor: 'Gerente', createdAt: '2026-10-01', payload: { justificativa: 'Texto histórico', documentContext: { nomeProjeto: 'Nome histórico', gerenteProjeto: 'Gerente', membros: [] } }, changes: [] }
   vi.mocked(fetchWithSession).mockImplementation(async url => String(url).includes('/revisions') ? Response.json(null) : String(url).includes('/versions') ? Response.json([version]) : Response.json(published))
   render(<ProjectCharter />)
   await screen.findByDisplayValue('Vigente')
   fireEvent.click(screen.getByRole('button', { name: 'Histórico de versões' }))
-  fireEvent.click(await screen.findByRole('button', { name: 'Abrir documento desta versão' }))
-  expect(screen.getAllByText('Texto histórico').length).toBeGreaterThan(0)
-  expect(screen.getAllByText('Nome histórico').length).toBeGreaterThan(0)
+  fireEvent.click(await screen.findByRole('button', { name: 'Voltar para esta versão' }))
+  // Confirmação: o conteúdo da versão vira o rascunho; nenhuma versão é apagada.
+  expect(await screen.findByText(/Nenhuma versão é apagada/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Voltar para esta versão' }))
+  expect(await screen.findByDisplayValue('Texto histórico')).toBeInTheDocument()
   expect(screen.queryByDisplayValue('Vigente')).not.toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Voltar ao rascunho' }))
-  expect(screen.getByDisplayValue('Vigente')).toBeInTheDocument()
+  // Uma versão antiga ("1") conta na sequência: o rascunho será salvo como v1.0.2.
+  expect(screen.getAllByText('v1.0.2').length).toBeGreaterThan(0)
+  expect(screen.queryByText(/somente leitura/)).not.toBeInTheDocument()
 })
 
 it('a folha atual usa a assinatura do perfil do gerente sem exigir abrir o histórico', async () => {

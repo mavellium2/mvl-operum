@@ -11,13 +11,13 @@ import GlassButton from '@/components/ui/GlassButton'
 import { Input } from '@/components/ui/Field'
 import { useToast } from '@/components/ui/Toast'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
-import { abrirPropostas, ROTULO_STATUS, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { abrirPropostas, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { useVoltarVersao } from '@/hooks/useVoltarVersao'
 import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
 import { useAutosave } from '@/hooks/useAutosave'
 import { fetchWithSession } from '@/lib/clientFetch'
 import { printFolhasStyle } from '@/lib/printPageStyle'
 import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
-import { proximaVersao } from '../CapaDocumento'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
 import type { EdicaoQuadro, SistemaFormulario } from './QuadroFormulario'
 
@@ -80,7 +80,6 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
   const [erro, setErro] = useState<string | null>(null)
   const [conteudo, setConteudo] = useState<T | null>(null)
   const [base, setBase] = useState<string | null>(null)
-  const [versaoAberta, setVersaoAberta] = useState<string | null>(null)
   const [salvarAberto, setSalvarAberto] = useState(false)
   const [tituloAlteracao, setTituloAlteracao] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -98,7 +97,7 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
   const payload = conteudo === null ? '' : JSON.stringify(conteudo)
   const autosave = useAutosave(payload, async valor => {
     if (!await rascunho.guardar(JSON.parse(valor))) throw new Error('Não foi possível salvar o rascunho')
-  }, { delay: 1200, enabled: canEdit && conteudo !== null && !versaoAberta })
+  }, { delay: 1200, enabled: canEdit && conteudo !== null })
   const autosaveReset = useRef<((v: string) => void) | null>(null)
   useEffect(() => { autosaveReset.current = autosave.reset }, [autosave.reset])
 
@@ -123,6 +122,13 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
 
   const alterar = useCallback((fn: (atual: T) => T) => setConteudo(c => (c === null ? c : fn(c))), [])
 
+  // Voltar para uma versão: o conteúdo dela vira o rascunho editável; salvar cria a próxima versão.
+  const voltar = useVoltarVersao({
+    versoes, vigente, podeEditar: canEdit,
+    alteracoesPendentes: base !== null && payload !== base,
+    aplicar: salvo => { if (sistema) setConteudo(ajustar(salvo as T, sistema)) },
+  })
+
   const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: `${titulo} - ${sistema?.nomeProjeto ?? 'Projeto'}`, pageStyle: printFolhasStyle() })
 
   async function exportarWord() {
@@ -138,8 +144,8 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
     if (!canEdit || salvando || !tituloAlteracao.trim() || conteudo === null) return
     setSalvando(true)
     try {
-      const cab = (conteudo as { cabecalho?: { elaboradoPor?: string; versao?: string } }).cabecalho
-      const versao = cab?.versao?.trim() || proximaVersao(vigente?.versao)
+      const cab = (conteudo as { cabecalho?: { elaboradoPor?: string } }).cabecalho
+      const versao = voltar.proxima
       const r = await fetchWithSession(`/api/projects/${projetoId}/revisions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: tipo, resourceId, payload: conteudo, meta: { commitTitle: tituloAlteracao.trim(), versao, elaboradoPor: cab?.elaboradoPor ?? '', aprovadoPor: '', dataAprovacao: '' } }),
@@ -163,12 +169,12 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
   if (erro) return <div role="alert" className="m-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{erro}</div>
   if (!sistema || conteudo === null) return <div role="status" className="m-6 text-sm text-slate-500">Carregando {documento}…</div>
 
-  const aberta = versaoAberta ? versoes.find(v => v.id === versaoAberta) : null
-  const exibido = aberta?.payload ? ajustar(aberta.payload as T, sistema) : conteudo
-  const editavel = canEdit && !aberta && !salvando
-  const status: StatusSalvamento = !canEdit || aberta ? 'leitura'
+  const exibido = conteudo
+  const editavel = canEdit && !salvando
+  const status: StatusSalvamento = !canEdit ? 'leitura'
     : autosave.status === 'saving' ? 'salvando' : autosave.status === 'error' ? 'erro' : autosave.status === 'pending' ? 'pendente' : 'salvo'
-  const versaoPadrao = aberta?.versao ?? vigente?.versao ?? '1.0'
+  // O campo "Versão" mostra o número que este rascunho recebe ao ser salvo.
+  const versaoPadrao = voltar.proxima
   const comum = { sistema, versaoPadrao }
 
   return (
@@ -178,13 +184,7 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
         documento={documento}
         editavel={editavel}
         status={status}
-        versao={{
-          rotulo: aberta ? `${aberta.versao ?? '—'} · ${ROTULO_STATUS[aberta.status] ?? ''}` : vigente ? `${vigente.versao} · vigente` : 'Rascunho',
-          rotuloAtual: vigente ? `Rascunho sobre a ${vigente.versao} (editável)` : 'Rascunho (editável)',
-          selecionada: versaoAberta,
-          opcoes: versoes.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao ?? '—'} · ${v.id === vigente?.id ? 'vigente' : ROTULO_STATUS[v.status] ?? ''}`, detalhe: v.commitTitle })),
-          onSelecionar: setVersaoAberta,
-        }}
+        versao={voltar.seletor}
         onSalvar={() => setSalvarAberto(true)}
         podeSalvar={editavel}
         onHistorico={() => abrirPropostas(projetoId, resourceId)}
@@ -194,7 +194,7 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
         onWord={() => void exportarWord()}
         onAdicionarLinha={editavel && adicionar ? () => adicionar(alterar) : undefined}
         saida={{
-          pendente: canEdit && !aberta && base !== null && payload !== base,
+          pendente: canEdit && base !== null && payload !== base,
           salvar: () => setSalvarAberto(true),
           salvarDepois: () => autosave.flush(),
           descartar: async () => { autosave.reset(payload); await rascunho.descartar() },
@@ -207,16 +207,11 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
               <GlassButton variant="default" type="button" onClick={() => void autosave.flush()} className="ml-2 underline">Tentar salvar novamente</GlassButton>
             </div>
           )}
-          {aberta && (
-            <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
-              Versão {aberta.versao} · {ROTULO_STATUS[aberta.status]} — somente leitura.
-              <GlassButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoAberta(null)}>Voltar ao rascunho</GlassButton>
-            </div>
-          )}
         </>}
       >
         {render({ ...comum, conteudo: exibido, ...(editavel ? { alterar, edicao: { projetoId, membros } } : {}) })}
       </EditorDocumento>
+      {voltar.dialogo}
       <CopiaParaImpressao>
         <div ref={printRef}>{render({ ...comum, conteudo: exibido })}</div>
       </CopiaParaImpressao>

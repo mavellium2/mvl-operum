@@ -8,7 +8,8 @@ import { printFolhasStyle } from '@/lib/printPageStyle'
 import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
 import { CopiaParaImpressao } from '@/components/documentos/editor/folha'
 import Tooltip from '@/components/ui/Tooltip'
-import { abrirPropostas, ROTULO_STATUS, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { abrirPropostas, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { useVoltarVersao } from '@/hooks/useVoltarVersao'
 import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
@@ -103,7 +104,6 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
-  const [versaoSelecionada, setVersaoSelecionada] = useState<string | null>(null)
   const { versoes, vigente, pendentes } = useVersoesDocumento(projetoId, 'EAP')
   /** Alterações ainda não enviadas com "Salvar versão" (indicador da barra). */
   const [alterado, setAlterado] = useState(false)
@@ -341,6 +341,22 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  // Voltar para uma versão: os dados e a estrutura salvos nela viram o rascunho editável
+  // (com desfazer); salvar cria a próxima versão. Com a aba EAP/WBS montada, a EAP
+  // gráfica continua sendo a da aba.
+  const voltar = useVoltarVersao({
+    versoes, vigente, podeEditar: canEdit, alteracoesPendentes: alterado,
+    aplicar: salvo => {
+      const { nodes: nosSalvos, ...meta } = (salvo ?? {}) as Partial<EapDocumentMetadata> & { nodes?: EapNode[] }
+      setPast(prev => [...prev.slice(-99), { metadata, nodes }])
+      setFuture([])
+      setMetadata(prev => ({ ...prev, ...meta }))
+      if (Array.isArray(nosSalvos)) setNodes(nosSalvos)
+      setEditingNodeId(null)
+      setAlterado(true)
+    },
+  })
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center bg-[#eef0f3] p-16">
@@ -373,12 +389,10 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
     setAlterado(true)
   }
 
-  // Versão aberta pelo seletor: só leitura, com a estrutura salva nela.
-  const versaoAberta = versaoSelecionada ? versoes.find(v => v.id === versaoSelecionada) ?? null : null
-  const conteudoVersao = versaoAberta?.payload as (Partial<EapDocumentMetadata> & { nodes?: EapNode[] }) | null | undefined
-  const metaExibida: EapDocumentMetadata = conteudoVersao ? { ...metadata, ...conteudoVersao } : metadata
-  const nosExibidos = conteudoVersao?.nodes ?? nodes
-  const editavel = canEdit && !versaoAberta && !saving
+  // O campo "Versão" mostra o número que este rascunho recebe ao ser salvo.
+  const metaExibida: EapDocumentMetadata = { ...metadata, version: voltar.proxima }
+  const nosExibidos = nodes
+  const editavel = canEdit && !saving
 
   return (
     <>
@@ -387,15 +401,9 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
         documento="EAP"
         paisagem
         editavel={editavel}
-        status={!canEdit || versaoAberta ? 'leitura' : saving ? 'salvando' : alterado ? 'pendente' : 'salvo'}
-        mensagemStatus={!canEdit || versaoAberta ? undefined : saving ? 'Salvando…' : alterado ? 'Alterações ainda não salvas — use “Salvar versão”' : 'Tudo salvo'}
-        versao={{
-          rotulo: versaoAberta ? `${versaoAberta.versao ?? '—'} · ${ROTULO_STATUS[versaoAberta.status] ?? ''}` : `${metadata.version || '1.0'} · ${vigente ? 'vigente' : 'rascunho'}`,
-          rotuloAtual: 'Documento atual (editável)',
-          selecionada: versaoSelecionada,
-          opcoes: versoes.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao ?? '—'} · ${v.id === vigente?.id ? 'vigente' : ROTULO_STATUS[v.status] ?? ''}`, detalhe: v.commitTitle })),
-          onSelecionar: setVersaoSelecionada,
-        }}
+        status={!canEdit ? 'leitura' : saving ? 'salvando' : alterado ? 'pendente' : 'salvo'}
+        mensagemStatus={!canEdit ? undefined : saving ? 'Salvando…' : alterado ? 'Alterações ainda não salvas — use “Salvar versão”' : 'Tudo salvo'}
+        versao={voltar.seletor}
         onSalvar={() => void handleSave()}
         podeSalvar={editavel}
         onHistorico={() => abrirPropostas(projetoId)}
@@ -407,7 +415,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
         onAdicionarLinha={!origemWbs ? handleAddItem : undefined}
         paginas={{ total: totalPaginas, seletor: '[data-folha]' }}
         saida={{
-          pendente: canEdit && alterado && !versaoAberta,
+          pendente: canEdit && alterado,
           salvar: () => void handleSave(),
           salvarDepois: () => rascunho.guardar({ ...metadata, nodes }),
           descartar: () => rascunho.descartar(),
@@ -432,13 +440,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
               A aba <strong>EAP/WBS</strong> ainda não foi montada; o documento usa a estrutura do modelo (clique num bloco para editá-lo). <Link href={`/projetos/${projetoId}/wbs`} className="font-semibold underline">Montar a EAP/WBS</Link>.
             </div>
           )}
-          {rascunhoRestaurado && !versaoAberta && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve uma versão para enviá-lo à aprovação.</p>}
-          {versaoAberta && (
-            <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
-              Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
-              <OperumButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar ao documento atual</OperumButton>
-            </div>
-          )}
+          {rascunhoRestaurado && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve uma versão para enviá-lo à aprovação.</p>}
         </>}
       >
         <div className="[&_[data-folha]]:shadow-[0_1px_3px_rgba(15,23,42,0.12)]">
@@ -448,8 +450,8 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
             instituicao={instituicao}
             logoUrl={logoUrl}
             assinaturaUrl={assinaturaUrl}
-            // Documento atual: EAP gráfica igual à aba. Versões antigas usam a estrutura salva nelas.
-            arvore={!versaoAberta && origemWbs ? arvore : null}
+            // EAP gráfica igual à aba quando ela está montada.
+            arvore={origemWbs ? arvore : null}
             interactive={editavel && !origemWbs}
             selectedId={selectedId}
             onSelectBlock={id => editavel && openBlock(id)}
@@ -459,13 +461,14 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
               membros: todosMembros,
               onCriarMembro: registrarCriado,
               onElaboradoPor: m => updateMembro('preparedBy', 'preparedByUserId', m),
-              onVersao: v => updateMetadata('version', v),
               onDataAprovacao: v => updateMetadata('approvalDate', v || null),
               linkWbs: `/projetos/${projetoId}/wbs`,
             }}
           />
         </div>
       </EditorDocumento>
+
+      {voltar.dialogo}
 
       {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
       <CopiaParaImpressao>
@@ -476,7 +479,7 @@ export default function EapDocument({ membros = [] }: { membros?: MembroEquipeOp
           instituicao={instituicao}
           logoUrl={logoUrl}
           assinaturaUrl={assinaturaUrl}
-          arvore={!versaoAberta && origemWbs ? arvore : null}
+          arvore={origemWbs ? arvore : null}
         />
       </CopiaParaImpressao>
 

@@ -18,6 +18,7 @@ import { getOrCreateDocument } from './eapService'
 import { registrarAcao } from './auditoriaService'
 import { AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
 import { riscoSchema, type Risco } from '@/lib/validation/formulariosGP'
+import { comVersaoNoConteudo, proximaVersaoDocumento } from '@/lib/versaoDocumento'
 export {
   tipoDocumento,
   metaDocumento,
@@ -421,12 +422,21 @@ export async function submeterDocumento(
   const executar = async (tx: Prisma.TransactionClient) => {
     // Serializa aprovação/submissão e define uma ordem inequívoca de vigência.
     await bloquearProjeto(tx, s, projectId)
-    const content =
+    const base =
       documentType === 'CHARTER'
         ? (JSON.parse(
             JSON.stringify(await snapshotTermo(tx, projectId, proposed)),
           ) as Prisma.InputJsonValue)
         : proposed
+    // Versão automática e sequencial por documento (v1.0.1, v1.0.2 … v1.1.0), calculada
+    // com o projeto bloqueado: duas gravações simultâneas não repetem o número.
+    const anteriores = await tx.documentVersion.findMany({
+      where: { projectId, documentType, resourceId },
+      select: { versao: true },
+    })
+    const rotulo = proximaVersaoDocumento(anteriores.map((v) => v.versao))
+    metadata.versao = rotulo
+    const content = comVersaoNoConteudo(documentType, base as Record<string, unknown>, rotulo) as Prisma.InputJsonValue
     if (documentType === 'ATA')
       await validarAta(tx, s, projectId, resourceId, content)
     if (documentType === 'RISCOS')

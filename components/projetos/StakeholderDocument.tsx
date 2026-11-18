@@ -56,7 +56,6 @@ export interface EdicaoStakeholders {
   onCriarMembro: (membro: MembroEquipeOption) => void
   elaboradoPorUserId: string | null
   onElaboradoPor: (membro: MembroEquipeOption | null) => void
-  onVersao: (versao: string) => void
   dataAprovacaoRaw: string
   onDataAprovacao: (data: string) => void
   onCelula: (indice: number, campo: CampoStakeholder, valor: string) => void
@@ -144,9 +143,8 @@ const StakeholderDocument = forwardRef<HTMLDivElement, Props>(
             <tr>
               <td style={celCampo}><CampoAutomatico padding="0 4px" origem="Automático: o aprovador é sempre o gerente do projeto"><B>Aprovado por:</B> {aprovador}</CampoAutomatico></td>
               <td style={celCampo}>
-                {editavel
-                  ? <div className="flex items-start" style={{ paddingLeft: 4 }}><B>Versão:</B>&nbsp;<div className="flex-1"><CampoTexto compacto id="ds-versao" rotulo="Versão" ajuda="Número desta versão do documento (ex.: 1.0, 1.1)." pergunta="1.0" valor={header.versao} onChange={ed?.onVersao ?? nada} max={20} linha /></div></div>
-                  : <div style={{ padding: '0 4px' }}><B>Versão:</B> {header.versao}</div>}
+                {/* Automática: o número que esta versão tem (ou recebe ao ser salva), v1.0.1, v1.0.2… */}
+                <CampoAutomatico padding="0 4px"><B>Versão:</B> {header.versao}</CampoAutomatico>
               </td>
             </tr>
             <tr>

@@ -7,6 +7,12 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.59.0] — 2026-11-18
+
+- **Voltar para uma versão nos documentos:** em todos os documentos da Documentação (Capa, Partes Interessadas, Termo de Abertura, EAP, Atas, Declaração do Escopo, Formulários de Riscos e Lições Aprendidas), escolher uma versão no seletor "Versão" da barra (ou "Voltar para esta versão" no histórico do Termo) leva o conteúdo dela para o rascunho, editável, depois de uma confirmação. Ao salvar, vira uma versão nova e segue para aprovação como qualquer outra; nenhuma versão é apagada. Antes, a versão escolhida só podia ser vista e baixada.
+
+- **Numeração automática das versões:** cada documento numera as próprias versões em sequência, no formato do histórico da planilha: v1.0.1, v1.0.2 … v1.0.99, v1.1.0. O número é dado pelo servidor ao salvar e aparece no campo "Versão" das folhas, que deixa de ser digitado. Versões antigas ("1.0", "1.1") mantêm o rótulo e contam na sequência (um documento com duas versões antigas segue em v1.0.3).
+
 ## [1.58.0] — 2026-11-17
 
 - **Declaração do Escopo:** novo documento na Documentação, no modelo "14 Aula GP". Justificativa, Objetivos e Descrição do produto partem do Termo de Abertura; a Lista de entregas mostra os níveis 1 e 2 da EAP em caixas ligadas como numa EAP gráfica, com a fonte reduzida para o texto caber mesmo com muitas entregas (sem EAP, a edição mostra um exemplo); Responsabilidades já vem com cada membro e sua função. Campos vazios mostram a instrução do modelo (ex.: "<citar a razão pela qual o projeto é necessário…>"). Tudo editável na folha.

@@ -11,7 +11,9 @@ import EditorDocumento from '@/components/documentos/editor/EditorDocumento'
 import ProjetoStakeholdersClient from '@/components/projetos/ProjetoStakeholdersClient'
 import { useDesfazer } from '@/hooks/useDesfazer'
 import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
-import { abrirPropostas, ROTULO_STATUS, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { abrirPropostas, useVersoesDocumento } from '@/hooks/useVersoesDocumento'
+import { useVoltarVersao } from '@/hooks/useVoltarVersao'
+import { exibirVersao } from '@/lib/versaoDocumento'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
@@ -127,7 +129,6 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
   const rascunho = useRascunhoDocumento(projetoId, 'STAKEHOLDER')
   const [rascunhoRestaurado, setRascunhoRestaurado] = useState(false)
   const [painel, setPainel] = useState<null | 'interno' | 'externo'>(null)
-  const [versaoSelecionada, setVersaoSelecionada] = useState<string | null>(null)
   const { versoes, vigente, pendentes } = useVersoesDocumento(projetoId, 'STAKEHOLDER')
 
   // Desfazer/refazer: quadro + linhas da tabela.
@@ -404,14 +405,28 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
       : null,
   ].filter(Boolean) as string[]
 
-  // Versão aberta pelo seletor: só leitura, com o conteúdo salvo nela.
-  const versaoAberta = versaoSelecionada ? versoes.find(v => v.id === versaoSelecionada) ?? null : null
-  const conteudoVersao = versaoAberta?.payload as Partial<DocumentData> | null | undefined
-  const headerExibido: ProjetoHeader | null = conteudoVersao?.header && mergedHeader
-    ? { ...mergedHeader, ...conteudoVersao.header, dataAprovacao: formatDateBR(conteudoVersao.header.dataAprovacao, '') }
-    : mergedHeader
-  const linhasExibidas = conteudoVersao?.stakeholders ?? data?.stakeholders ?? []
-  const editavel = canEdit && !versaoAberta && !savingVersion && !!data
+  // Voltar para uma versão: o quadro e a tabela dela viram o rascunho editável; salvar cria a próxima versão.
+  const voltar = useVoltarVersao({
+    versoes, vigente, podeEditar: canEdit, alteracoesPendentes: alterado,
+    aplicar: salvo => {
+      const v = salvo as Partial<DocumentData>
+      if (!v.header || !Array.isArray(v.stakeholders)) return
+      const atuais = todosMembrosRef.current
+      const h = v.header
+      setEditable(prev => ({
+        ...prev,
+        elaboradoPor: h.elaboradoPor ?? '',
+        elaboradoPorUserId: atuais.find(m => m.name === h.elaboradoPor)?.id ?? null,
+        dataAprovacaoRaw: toDateInputValue(h.dataAprovacao),
+      }))
+      setData(prev => prev ? { ...prev, stakeholders: v.stakeholders ?? prev.stakeholders, cadastrosExcluidos: v.cadastrosExcluidos } : prev)
+      setAlterado(true)
+    },
+  })
+  // O campo "Versão" mostra o número que este rascunho recebe ao ser salvo.
+  const headerExibido: ProjetoHeader | null = mergedHeader ? { ...mergedHeader, versao: voltar.proxima } : null
+  const linhasExibidas = data?.stakeholders ?? []
+  const editavel = canEdit && !savingVersion && !!data
   const alterarLinhas = (fn: (linhas: Stakeholder[]) => Stakeholder[]) => {
     setData(prev => prev ? { ...prev, stakeholders: fn(prev.stakeholders) } : prev)
     setAlterado(true)
@@ -422,7 +437,6 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
     onCriarMembro: registrarCriado,
     elaboradoPorUserId: editable.elaboradoPorUserId,
     onElaboradoPor: m => { handleSelectElaborado(m); setAlterado(true) },
-    onVersao: v => { update('versao', v); setAlterado(true) },
     dataAprovacaoRaw: editable.dataAprovacaoRaw,
     onDataAprovacao: v => { update('dataAprovacaoRaw', v); setAlterado(true) },
     onCelula: (indice, campo, valor) => alterarLinhas(linhas => linhas.map((row, i) => i === indice
@@ -504,15 +518,9 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
         documento="Partes Interessadas"
         paisagem
         editavel={editavel}
-        status={!canEdit || versaoAberta ? 'leitura' : savingVersion ? 'salvando' : alterado ? 'pendente' : 'salvo'}
-        mensagemStatus={!canEdit || versaoAberta ? undefined : alterado ? 'Alterações ainda não salvas — use “Salvar versão”' : 'Tudo salvo'}
-        versao={{
-          rotulo: versaoAberta ? `${versaoAberta.versao ?? '—'} · ${ROTULO_STATUS[versaoAberta.status] ?? ''}` : `${editable.versao || '1.0'} · ${vigente ? 'vigente' : 'rascunho'}`,
-          rotuloAtual: 'Documento atual (editável)',
-          selecionada: versaoSelecionada,
-          opcoes: versoes.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao ?? '—'} · ${v.id === vigente?.id ? 'vigente' : ROTULO_STATUS[v.status] ?? ''}`, detalhe: v.commitTitle })),
-          onSelecionar: setVersaoSelecionada,
-        }}
+        status={!canEdit ? 'leitura' : savingVersion ? 'salvando' : alterado ? 'pendente' : 'salvo'}
+        mensagemStatus={!canEdit ? undefined : alterado ? 'Alterações ainda não salvas — use “Salvar versão”' : 'Tudo salvo'}
+        versao={voltar.seletor}
         onSalvar={openCommitModal}
         podeSalvar={editavel}
         onHistorico={() => setHistoryOpen(true)}
@@ -523,17 +531,12 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
         desfazer={historicoEdicao}
         onAdicionarLinha={cadastro ? () => setMenuAberto(true) : edicao.onAdicionar}
         saida={{
-          pendente: canEdit && alterado && !versaoAberta,
+          pendente: canEdit && alterado,
           salvar: openCommitModal,
           salvarDepois: () => rascunho.guardar(payloadDocumento()),
           descartar: () => rascunho.descartar(),
         }}
-        avisos={versaoAberta ? (
-          <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
-            Versão {versaoAberta.versao ?? '—'} · {ROTULO_STATUS[versaoAberta.status] ?? versaoAberta.status} — somente leitura.
-            <OperumButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setVersaoSelecionada(null)}>Voltar ao documento atual</OperumButton>
-          </div>
-        ) : canEdit && rascunhoRestaurado ? (
+        avisos={canEdit && rascunhoRestaurado ? (
           <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">Seu rascunho foi restaurado. Salve uma versão para enviá-lo à aprovação.</p>
         ) : null}
       >
@@ -553,6 +556,8 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
           painel={{ modo: painel, onFechar: () => setPainel(null), onAlterado: () => void incluirNovosDoCadastro() }}
         />
       )}
+
+      {voltar.dialogo}
 
       {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
       <CopiaParaImpressao>
@@ -640,7 +645,7 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
                           hour: '2-digit', minute: '2-digit',
                         })}
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5">v{v.versao}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{exibirVersao(v.versao)}</p>
                     </div>
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${STATUS_BADGE[v.status]}`}>
                       {STATUS_LABEL[v.status]}

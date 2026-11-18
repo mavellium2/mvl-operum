@@ -8,6 +8,8 @@ import { useProjectPermissions } from '@/components/permissoes/ProjectPermission
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { useDesfazer } from '@/hooks/useDesfazer'
+import { useVoltarVersao } from '@/hooks/useVoltarVersao'
+import { exibirVersao } from '@/lib/versaoDocumento'
 import { useRascunhoDocumento } from '@/hooks/useRascunhoDocumento'
 import EditorDocumento, { type StatusSalvamento } from '@/components/documentos/editor/EditorDocumento'
 import { CopiaParaImpressao } from '@/components/documentos/editor/folha'
@@ -156,7 +158,6 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
   // Versioning
   const [versions, setVersions] = useState<DocumentVersion[]>([])
   const [isManager, setIsManager] = useState(false)
-  const [selectedVersion, setSelectedVersion] = useState<DocumentVersion | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historySearch, setHistorySearch] = useState('')
   const debouncedSearch = useDebounce(historySearch, 300)
@@ -428,7 +429,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
   const estadoEdicao = useMemo(() => ({ fields, fases, versionMeta }), [fields, fases, versionMeta])
   const aplicarEstado = useCallback((e: typeof estadoEdicao) => { setFields(e.fields); setFases(e.fases); setVersionMeta(e.versionMeta) }, [])
   // O histórico começa depois de carregar o documento, o rascunho e o quadro da versão vigente.
-  const historicoEdicao = useDesfazer(estadoEdicao, aplicarEstado, { ativo: draftReady && !selectedVersion, chave: `${draftReady}-${metaCarregada}` })
+  const historicoEdicao = useDesfazer(estadoEdicao, aplicarEstado, { ativo: draftReady, chave: `${draftReady}-${metaCarregada}` })
 
   // Alterações desta sessão que ainda não viraram versão (aviso ao sair do documento).
   const estadoAtual = JSON.stringify(estadoEdicao)
@@ -437,6 +438,30 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
   useEffect(() => { estadoAtualRef.current = estadoAtual })
   useEffect(() => { if (draftReady) setBase(estadoAtualRef.current) }, [draftReady, metaCarregada])
   const rascunho = useRascunhoDocumento(projetoId, 'CHARTER')
+
+  // Voltar para uma versão: os textos, as macrofases e o quadro dela viram o rascunho
+  // editável (com desfazer); salvar cria a próxima versão.
+  const vigente = versions.filter(v => v.status === 'APPROVED').sort((a, b) => new Date(b.approvedAt ?? b.createdAt).getTime() - new Date(a.approvedAt ?? a.createdAt).getTime())[0] ?? null
+  const voltar = useVoltarVersao({
+    versoes: versions, vigente, podeEditar: canEdit,
+    alteracoesPendentes: base !== null && estadoAtual !== base,
+    aplicar: (salvo, versao) => {
+      const v = (salvo ?? {}) as NonNullable<DocumentVersion['payload']>
+      const textos = Object.fromEntries(Object.entries(v).filter(([k, x]) => k in savedFields.current && typeof x === 'string'))
+      setFields(f => ({ ...f, ...textos }))
+      if (Array.isArray(v.macroFases)) setFases(v.macroFases)
+      const origem = versions.find(x => x.id === versao.id)
+      if (origem) {
+        const atuais = todosMembrosRef.current
+        setVersionMeta(m => ({
+          ...m,
+          elaboradoPor: origem.elaboradoPor,
+          elaboradoPorUserId: atuais.find(x => x.name === origem.elaboradoPor)?.id ?? null,
+          dataAprovacaoRaw: toDateInputValue(origem.dataAprovacao),
+        }))
+      }
+    },
+  })
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -467,24 +492,23 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
       : null,
   ].filter(Boolean) as string[]
 
-  const context = selectedVersion ? selectedVersion.payload?.documentContext : {
+  const context = {
     nomeProjeto: data?.project.name ?? '', logoUrl: data?.project.logoUrl,
     gerenteProjeto: data?.gerenteProjeto ?? '', gerenteSignatureUrl: data?.gerente?.signatureUrl, membros: data?.membros ?? [],
   }
-  const content = selectedVersion ? selectedVersion.payload : fields
+  const content = fields
   const documentProps: CharterDocumentProps = {
-    nomeProjeto: context?.nomeProjeto ?? 'Nome não registrado nesta versão',
-    logoUrl: context?.logoUrl, gerenteProjeto: context?.gerenteProjeto ?? '',
-    // O documento atual usa a assinatura do perfil do gerente; versões abertas pelo histórico
-    // preservam a imagem registrada na aprovação (sem preencher propostas ainda pendentes).
-    gerenteSignatureUrl: selectedVersion ? (selectedVersion.status === 'APPROVED' ? context?.gerenteSignatureUrl || data?.gerente?.signatureUrl || null : null) : data?.gerente?.signatureUrl ?? null,
-    membros: context?.membros ?? [], fases: selectedVersion ? selectedVersion.payload?.macroFases ?? [] : fases,
-    elaboradoPor: selectedVersion?.elaboradoPor ?? versionMeta.elaboradoPor,
-    aprovadoPor: selectedVersion?.aprovadoPor ?? versionMeta.aprovadoPor,
-    versao: selectedVersion?.versao ?? versionMeta.versao,
-    dataAprovacao: formatDateBR(selectedVersion?.dataAprovacao ?? versionMeta.dataAprovacaoRaw, ''),
+    nomeProjeto: context.nomeProjeto,
+    logoUrl: context.logoUrl, gerenteProjeto: context.gerenteProjeto,
+    gerenteSignatureUrl: data?.gerente?.signatureUrl ?? null,
+    membros: context.membros, fases,
+    elaboradoPor: versionMeta.elaboradoPor,
+    aprovadoPor: versionMeta.aprovadoPor,
+    // O campo "Versão" mostra o número que este rascunho recebe ao ser salvo.
+    versao: voltar.proxima,
+    dataAprovacao: formatDateBR(versionMeta.dataAprovacaoRaw, ''),
     // Linha institucional: automática, do cadastro do projeto (versões antigas guardaram a digitada).
-    categoria: (selectedVersion ? content?.categoria : data?.instituicao) || content?.categoria || '',
+    categoria: data?.instituicao || content.categoria || '',
     justificativa: content?.justificativa ?? '',
     objetivos: content?.objetivos ?? '', metodologia: content?.metodologia ?? '',
     descricaoProduto: content?.descricaoProduto ?? '', premissas: content?.premissas ?? '',
@@ -501,7 +525,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     }
   }
 
-  const editavel = canEdit && draftReady && !selectedVersion && !savingVersion
+  const editavel = canEdit && draftReady && !savingVersion
   const edicao: EdicaoTermo = {
     projetoId,
     membros: todosMembros,
@@ -509,15 +533,13 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     onCampo: (campo, valor) => setFields(f => ({ ...f, [campo]: valor })),
     elaboradoPorUserId: versionMeta.elaboradoPorUserId,
     onElaboradoPor: handleSelectElaborado,
-    onVersao: v => setVersionMeta(m => ({ ...m, versao: v })),
     dataAprovacaoRaw: versionMeta.dataAprovacaoRaw,
     onDataAprovacao: v => setVersionMeta(m => ({ ...m, dataAprovacaoRaw: v })),
     onFase: handleFaseChange,
 
   }
-  const vigente = versions.filter(v => v.status === 'APPROVED').sort((a, b) => new Date(b.approvedAt ?? b.createdAt).getTime() - new Date(a.approvedAt ?? a.createdAt).getTime())[0]
   const pendentes = versions.filter(v => v.status === 'PENDING').length
-  const statusSalvamento: StatusSalvamento = !canEdit || selectedVersion ? 'leitura'
+  const statusSalvamento: StatusSalvamento = !canEdit ? 'leitura'
     : draftAutosave.status === 'saving' ? 'salvando'
     : draftAutosave.status === 'error' ? 'erro'
     : draftAutosave.status === 'pending' ? 'pendente' : 'salvo'
@@ -529,15 +551,9 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
         documento="Termo de Abertura"
         editavel={editavel}
         status={statusSalvamento}
-        versao={{
-          rotulo: selectedVersion ? `${selectedVersion.versao} · ${STATUS_LABEL[selectedVersion.status].toLowerCase()}` : vigente ? `${vigente.versao} · vigente` : 'Rascunho',
-          rotuloAtual: vigente ? `Rascunho sobre a ${vigente.versao} (editável)` : 'Rascunho (editável)',
-          selecionada: selectedVersion?.id ?? null,
-          opcoes: versions.filter(v => v.payload).map(v => ({ id: v.id, rotulo: `${v.versao} · ${v.id === vigente?.id ? 'vigente' : STATUS_LABEL[v.status].toLowerCase()}`, detalhe: v.commitTitle })),
-          onSelecionar: id => setSelectedVersion(versions.find(v => v.id === id) ?? null),
-        }}
+        versao={voltar.seletor}
         onSalvar={openCommitModal}
-        podeSalvar={canEdit && draftReady && !savingVersion && !selectedVersion}
+        podeSalvar={canEdit && draftReady && !savingVersion}
         onHistorico={() => setHistoryOpen(true)}
         pendentes={{ total: pendentes, onRevisar: () => window.dispatchEvent(new CustomEvent('operum:revisar-propostas', { detail: { projetoId } })) }}
         onImprimir={() => handlePrint()}
@@ -545,7 +561,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
         onWord={() => void exportWord()}
         desfazer={historicoEdicao}
         saida={{
-          pendente: canEdit && draftReady && !selectedVersion && base !== null && estadoAtual !== base,
+          pendente: canEdit && draftReady && base !== null && estadoAtual !== base,
           salvar: openCommitModal,
           // O Termo já guarda o rascunho sozinho: "salvar mais tarde" só garante o último texto.
           salvarDepois: () => draftAutosave.flush(),
@@ -571,17 +587,12 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
               <FormActions as="span" compact><OperumButton variant="default" type="button" onClick={() => void draftAutosave.flush()} className="ml-2 underline">Tentar salvar novamente</OperumButton></FormActions>
             </div>
           )}
-          {selectedVersion && (
-            <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
-              Versão {selectedVersion.versao} · {STATUS_LABEL[selectedVersion.status]} — somente leitura.
-              {!context && <span role="alert">Esta versão antiga não registrou cabeçalho e equipe. Os dados atuais não substituem o histórico.</span>}
-              <OperumButton variant="default" type="button" className="ml-auto font-medium text-blue-700 underline" onClick={() => setSelectedVersion(null)}>Voltar ao rascunho</OperumButton>
-            </div>
-          )}
         </>}
       >
         <ProjectCharterDocument {...documentProps} edicao={edicao} />
       </EditorDocumento>
+
+      {voltar.dialogo}
 
       {/* Cópia só de leitura usada pela impressão/PDF (mesma folha, sem os controles). */}
       <CopiaParaImpressao>
@@ -653,9 +664,9 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
                     </span>
                   </div>
                   <div className="text-xs text-slate-500">
-                    v{v.versao} · {v.author?.name ?? 'Desconhecido'} · {new Date(v.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {exibirVersao(v.versao)} · {v.author?.name ?? 'Desconhecido'} · {new Date(v.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  <OperumButton variant="default" type="button" disabled={!v.payload} className="text-left text-sm text-blue-700 disabled:opacity-50" onClick={() => { setSelectedVersion(v); setHistoryOpen(false) }}>Abrir documento desta versão</OperumButton>
+                  {canEdit && <OperumButton variant="default" type="button" disabled={!v.payload} className="text-left text-sm text-blue-700 disabled:opacity-50" onClick={() => { voltar.seletor.onSelecionar(v.id); setHistoryOpen(false) }}>Voltar para esta versão</OperumButton>}
                   <details><summary className="text-xs cursor-pointer">Alterações desta versão</summary>
                     {v.changes ? v.changes.length ? v.changes.map(change => <div key={change.field} className="my-2 text-xs"><strong>{change.field}</strong><p>Antes</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap">{JSON.stringify(change.before, null, 2)}</pre><p>Depois</p><pre className="max-h-40 overflow-auto whitespace-pre-wrap">{JSON.stringify(change.after, null, 2)}</pre></div>) : <p>Sem alterações de conteúdo.</p> : <p>Diff não registrado nesta versão antiga.</p>}
                   </details>
