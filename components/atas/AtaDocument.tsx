@@ -171,10 +171,10 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
       {ed?.avisoPresente && <p role="alert" className="font-sans text-sm text-amber-700">{ed.avisoPresente}</p>}
 
       <SecaoTexto colado titulo={secao(2, 'Assuntos tratados')}>
-        <CampoTexto id="ata-assuntos" rotulo="Assuntos tratados" ajuda="O que foi discutido na reunião." pergunta="quais assuntos foram tratados?" valor={d.assuntosTratados ?? ''} onChange={v => edicao?.onTexto('assuntosTratados', v)} max={10000} />
+        <CampoTexto formatavel id="ata-assuntos" rotulo="Assuntos tratados" ajuda="O que foi discutido na reunião." pergunta="quais assuntos foram tratados?" valor={d.assuntosTratados ?? ''} onChange={v => edicao?.onTexto('assuntosTratados', v)} max={10000} />
       </SecaoTexto>
       <SecaoTexto colado titulo={secao(3, 'Decisões tomadas')}>
-        <CampoTexto id="ata-decisoes" rotulo="Decisões tomadas" ajuda="O que ficou decidido." pergunta="o que foi decidido?" valor={d.decisoesTomadas ?? ''} onChange={v => edicao?.onTexto('decisoesTomadas', v)} max={10000} />
+        <CampoTexto formatavel id="ata-decisoes" rotulo="Decisões tomadas" ajuda="O que ficou decidido." pergunta="o que foi decidido?" valor={d.decisoesTomadas ?? ''} onChange={v => edicao?.onTexto('decisoesTomadas', v)} max={10000} />
       </SecaoTexto>
 
       <SecaoTabela
@@ -231,7 +231,7 @@ export default forwardRef<HTMLDivElement, { data: AtaExportData; edicao?: Edicao
           <div style={{ paddingLeft: 6, fontWeight: 'bold' }}>
             <div style={{ padding: '2px 0' }}>Obs:</div>
             <div style={{ marginLeft: -6 }}>
-              <CampoTexto id="ata-observacoes" rotulo="Observações" ajuda="Observações gerais da ata (opcional)." pergunta="alguma observação?" valor={d.observacoes ?? ''} onChange={v => edicao?.onTexto('observacoes', v)} max={5000} preencher={false} />
+              <CampoTexto formatavel id="ata-observacoes" rotulo="Observações" ajuda="Observações gerais da ata (opcional)." pergunta="alguma observação?" valor={d.observacoes ?? ''} onChange={v => edicao?.onTexto('observacoes', v)} max={5000} preencher={false} />
             </div>
           </div>
         }

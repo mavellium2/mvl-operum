@@ -80,7 +80,7 @@ export function FolhasLicoes({ conteudo, sistema, versaoPadrao, alterar, edicao 
           const comentario = (linhas = 1) => (
             <td rowSpan={linhas > 1 ? linhas : undefined} style={celulaGPCampo}>
               {'guia' in a && <div style={{ padding: '1px 5px 0' }}>{a.guia}</div>}
-              <CampoTexto id={`licoes-${a.id}-comentario`} rotulo={`Comentário do aspecto ${i + 1}${a.id === COMENTARIO_JUNTO[0] ? ` e ${i + 2}` : ''}`} ajuda={a.texto} pergunta="comentário" valor={r.comentario ?? ''} onChange={v => responder(a.id, { comentario: v })} alinhamento="left" max={5000} compacto />
+              <CampoTexto formatavel id={`licoes-${a.id}-comentario`} rotulo={`Comentário do aspecto ${i + 1}${a.id === COMENTARIO_JUNTO[0] ? ` e ${i + 2}` : ''}`} ajuda={a.texto} pergunta="comentário" valor={r.comentario ?? ''} onChange={v => responder(a.id, { comentario: v })} alinhamento="left" max={5000} compacto />
             </td>
           )
           const aspecto = (id: IdAspecto, texto: string, n: number) => {
@@ -115,7 +115,7 @@ export function FolhasLicoes({ conteudo, sistema, versaoPadrao, alterar, edicao 
       </SecaoTabela>
       {PERGUNTAS_LICOES.map((p, i) => (
         <SecaoTexto key={p.id} estilo="interno" colado titulo={<span style={{ fontWeight: 'normal' }}>{`${ASPECTOS_LICOES.length + i + 1}. ${p.texto}`}</span>} alturaMinima={conteudo.perguntas[p.id]?.trim() ? 'auto' : '16mm'}>
-          <CampoTexto id={`licoes-${p.id}`} rotulo={p.texto} ajuda="Resposta da equipe, com exemplos do que aconteceu no projeto." pergunta="resposta da equipe" valor={conteudo.perguntas[p.id] ?? ''} onChange={v => alterar?.(c => ({ ...c, perguntas: { ...c.perguntas, [p.id]: v } }))} alinhamento="justify" max={20000} />
+          <CampoTexto formatavel id={`licoes-${p.id}`} rotulo={p.texto} ajuda="Resposta da equipe, com exemplos do que aconteceu no projeto." pergunta="resposta da equipe" valor={conteudo.perguntas[p.id] ?? ''} onChange={v => alterar?.(c => ({ ...c, perguntas: { ...c.perguntas, [p.id]: v } }))} alinhamento="justify" max={20000} />
         </SecaoTexto>
       ))}
     </Folha>

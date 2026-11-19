@@ -311,9 +311,15 @@ function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
         atual = null
       }
       l.tokens.forEach((t, k) => {
-        const texto = (tab && k === 0 ? '\t' : '') + (k > 0 && t.espacoAntes ? ' ' : '') + t.texto
+        const espaco = k > 0 && t.espacoAntes ? ' ' : ''
+        const texto = (tab && k === 0 ? '\t' : '') + espaco + t.texto
         if (atual && JSON.stringify(atual.e) === JSON.stringify(t.estilo)) atual.texto += texto
-        else { fechar(); atual = { texto, e: t.estilo, quebra: quebra && k === 0 } }
+        else {
+          // Na troca de estilo, o espaço entre as palavras vai para o lado sem sublinhado
+          // (só o sublinhado aparece num espaço): ele começa e termina na palavra, como no Word.
+          if (atual && espaco && t.estilo.sublinhado && !atual.e.sublinhado) { atual.texto += espaco; fechar(); atual = { texto: t.texto, e: t.estilo, quebra: quebra && k === 0 }; return }
+          fechar(); atual = { texto, e: t.estilo, quebra: quebra && k === 0 }
+        }
       })
       fechar()
     })

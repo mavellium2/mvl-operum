@@ -5,6 +5,8 @@ import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import OperumButton from '@/components/ui/GlassButton'
 import { Textarea as OperumTextarea } from '@/components/ui/Field'
 import { Children, Fragment, cloneElement, createContext, forwardRef, isValidElement, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react'
+import { escreverTexto, fatiarTexto, lerTexto, tamanhoSimples, textoSimples } from '@/lib/textoFormatado'
+import { cursorNoTexto, EditorRico, lerDom, posicionarCursor, TextoLeitura } from './textoRico'
 import { ChevronDown, Plus } from 'lucide-react'
 import DateInput from '@/components/ui/DateInput'
 import MembroEquipeSelect, { type MembroEquipeOption } from '@/components/projetos/documentacao/MembroEquipeSelect'
@@ -459,7 +461,8 @@ function medirTexto(pecas: HTMLElement[], bloco: ReactElement) {
     return h
   }
   const campo = blocosDe((bloco.props as { children?: ReactNode }).children)[0]
-  const valor = String((campo.props as { valor?: string }).valor ?? '')
+  // Posições da paginação: as do texto simples (o formato de negrito/alinhamento não conta).
+  const valor = textoSimples(String((campo.props as { valor?: string }).valor ?? ''))
   const alturaMinima = (bloco.props as { alturaMinima?: string }).alturaMinima ?? '22mm'
   const minimo = sondaAltura(primeira, alturaMinima)
   // Espaço da caixa além do texto (padding do campo e bordas), calibrado pelos pedaços na tela.
@@ -467,7 +470,7 @@ function medirTexto(pecas: HTMLElement[], bloco: ReactElement) {
   pecas.forEach((peca, n) => {
     const t = secaoDa(peca)?.querySelector<HTMLElement>('textarea, [data-texto-campo]')
     if (!t) return
-    const trecho = t instanceof HTMLTextAreaElement ? t.value : (t.textContent ?? '')
+    const trecho = t instanceof HTMLTextAreaElement ? t.value : (t.dataset.textoPlano ?? (t.dataset.formatavel !== undefined ? textoSimples(escreverTexto(lerDom(t))) : t.textContent ?? ''))
     const h = (secaoDa(peca)?.offsetHeight ?? 0) - (n === 0 ? titulo : 0)
     // Pedaço esticado pela altura mínima da caixa não serve para calibrar.
     if (h <= minimo + 1) return
@@ -765,7 +768,9 @@ export interface Fragmento { de: number; ate: number; primeiro: boolean; ultimo:
  * orienta o preenchimento. Um texto longo continua na folha seguinte
  * (`fragmento`): cada folha edita o seu pedaço e o valor completo é um só.
  */
-export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max = 2000, linha = false, alinhamento, preencher = true, celulaDeTabela = false, compacto = false, dica, fragmento }: CampoBase & {
+type PropsCampoTexto = CampoBase & {
+  /** Negrito, itálico, sublinhado e alinhamento pela barra de formatação (texto de vários parágrafos). */
+  formatavel?: boolean
   pergunta?: string
   valor: string
   onChange: (valor: string) => void
@@ -783,7 +788,13 @@ export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max =
   dica?: string
   /** Pedaço do texto mostrado nesta folha (definido pela paginação). */
   fragmento?: Fragmento
-}) {
+}
+
+export function CampoTexto(props: PropsCampoTexto) {
+  return props.formatavel && !props.linha && !props.celulaDeTabela ? <CampoTextoFormatado {...props} /> : <CampoTextoSimples {...props} />
+}
+
+function CampoTextoSimples({ id, rotulo, ajuda, pergunta, valor, onChange, max = 2000, linha = false, alinhamento, preencher = true, celulaDeTabela = false, compacto = false, dica, fragmento }: PropsCampoTexto) {
   const { editavel, focar } = useEditorFolha()
   const { medindo, marcarCursor } = useContext(PagCtx)
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -850,19 +861,58 @@ export function CampoTexto({ id, rotulo, ajuda, pergunta, valor, onChange, max =
 }
 
 /** Vai para o pedaço anterior (fim) ou seguinte (começo) do mesmo texto, em outra folha. */
+/** Versão do campo com formatação (negrito, itálico, sublinhado e alinhamento). */
+function CampoTextoFormatado({ id, rotulo, ajuda, pergunta, valor, onChange, max = 2000, alinhamento, preencher = true, compacto = false, dica, fragmento }: PropsCampoTexto) {
+  const { editavel, focar } = useEditorFolha()
+  const { medindo, marcarCursor } = useContext(PagCtx)
+  const doc = useMemo(() => lerTexto(valor), [valor])
+  const total = tamanhoSimples(doc)
+  const de = Math.min(fragmento?.de ?? 0, total)
+  const ate = !fragmento || fragmento.ultimo ? total : Math.min(fragmento.ate, total)
+  const primeiro = !fragmento || fragmento.primeiro
+  const ultimo = !fragmento || fragmento.ultimo
+  useRegistrarLimpar(id, editavel && primeiro ? () => onChange('') : null)
+  const pad = compacto ? '0 3px' : PAD
+  if (!editavel || medindo) {
+    const parte = fatiarTexto(doc, de, ate)
+    return <TextoLeitura doc={parte} alinhamento={alinhamento} plano={textoSimples(valor).slice(de, ate)} padding={pad} />
+  }
+  const info = { id, rotulo, ajuda, max }
+  return (
+    <div {...(primeiro ? { 'data-campo': id, 'data-vazio': total ? undefined : 'true' } : { 'data-campo-continuacao': id })} className={`${preencher ? 'min-h-full' : ''} ${FOCO}`}>
+      <EditorRico
+        id={id} rotulo={rotulo} doc={doc} de={de} ate={ate} primeiro={primeiro} ultimo={ultimo} max={max}
+        pergunta={primeiro ? dica ?? (pergunta ? `Clique para escrever: ${pergunta}` : 'Clique para escrever') : undefined}
+        alinhamento={alinhamento} padding={pad}
+        foco={{ onFocus: el => focar({ ...info, tamanho: valor.length, el: el.closest('td') ?? el }), onBlur: () => focar(null) }}
+        onChange={onChange}
+        onCursor={pos => marcarCursor(id, pos)}
+        onVizinho={direcao => focarVizinho(id, de, direcao)}
+      />
+    </div>
+  )
+}
+
+/** Pedaços visíveis do texto `id` (campo simples ou com formatação), fora da cópia de medição. */
+const pedacosDoTexto = (id: string) => [...document.querySelectorAll<HTMLElement>(`[data-fragmento-de="${CSS.escape(id)}"]`)].filter(t => !t.closest('[data-medicao]'))
+const tamanhoDoPedaco = (el: HTMLElement) => el instanceof HTMLTextAreaElement ? el.value.length : Number(el.dataset.ate) - Number(el.dataset.de)
+function cursorNoPedaco(el: HTMLElement, local: number) {
+  if (el instanceof HTMLTextAreaElement) { if (el.selectionStart !== local || el.selectionEnd !== local) el.setSelectionRange(local, local) }
+  else if (cursorNoTexto(el) !== local) posicionarCursor(el, local)
+}
+
 function focarVizinho(id: string, de: number, direcao: 1 | -1) {
-  const lista = [...document.querySelectorAll<HTMLTextAreaElement>(`textarea[data-fragmento-de="${CSS.escape(id)}"]`)].filter(t => !t.closest('[data-medicao]'))
+  const lista = pedacosDoTexto(id)
   const i = lista.findIndex(t => Number(t.dataset.de) === de)
   const alvo = lista[i + direcao]
   if (!alvo) return
   alvo.focus()
-  const local = direcao === 1 ? 0 : alvo.value.length
-  alvo.setSelectionRange(local, local)
+  cursorNoPedaco(alvo, direcao === 1 ? 0 : tamanhoDoPedaco(alvo))
 }
 
 /** Coloca o foco no pedaço do texto `id` que contém a posição `pos` (folhas visíveis, não a cópia de medição). */
 function focarFragmento(id: string, pos: number): boolean {
-  const lista = [...document.querySelectorAll<HTMLTextAreaElement>(`textarea[data-fragmento-de="${CSS.escape(id)}"]`)].filter(t => !t.closest('[data-medicao]'))
+  const lista = pedacosDoTexto(id)
   if (lista.length === 0) return false
   const alvo = lista.find((t, i) => {
     const de = Number(t.dataset.de), ate = Number(t.dataset.ate)
@@ -871,9 +921,9 @@ function focarFragmento(id: string, pos: number): boolean {
     // Posição entre dois pedaços (quebra de parágrafo escondida na virada da folha): começo do seguinte.
     ?? lista.find(t => Number(t.dataset.de) > pos)
     ?? lista[lista.length - 1]
-  const local = Math.max(0, Math.min(alvo.value.length, pos - Number(alvo.dataset.de)))
+  const local = Math.max(0, Math.min(tamanhoDoPedaco(alvo), pos - Number(alvo.dataset.de)))
   if (document.activeElement !== alvo) alvo.focus({ preventScroll: false })
-  if (alvo.selectionStart !== local || alvo.selectionEnd !== local) alvo.setSelectionRange(local, local)
+  cursorNoPedaco(alvo, local)
   return true
 }
 

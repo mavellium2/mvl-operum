@@ -186,21 +186,21 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
         </table>
 
         <SecaoTexto estilo="titulo" titulo="Justificativa do projeto" alturaMinima="auto">
-          <CampoTexto id="justificativa" rotulo="Justificativa" ajuda="Explique o problema ou a oportunidade que motiva o projeto." pergunta="por que este projeto existe?" valor={justificativa} onChange={campo('justificativa')} alinhamento="justify" max={20000} />
+          <CampoTexto formatavel id="justificativa" rotulo="Justificativa" ajuda="Explique o problema ou a oportunidade que motiva o projeto." pergunta="por que este projeto existe?" valor={justificativa} onChange={campo('justificativa')} alinhamento="justify" max={20000} />
         </SecaoTexto>
 
         <SecaoTexto estilo="titulo" titulo="Objetivo(s) do Projeto" alturaMinima="auto">
-          <CampoTexto id="objetivos" rotulo="Objetivos" ajuda="O que o projeto vai alcançar — de preferência com prazo e custo." pergunta="o que o projeto vai alcançar?" valor={objetivos} onChange={campo('objetivos')} alinhamento="justify" max={20000} />
+          <CampoTexto formatavel id="objetivos" rotulo="Objetivos" ajuda="O que o projeto vai alcançar — de preferência com prazo e custo." pergunta="o que o projeto vai alcançar?" valor={objetivos} onChange={campo('objetivos')} alinhamento="justify" max={20000} />
         </SecaoTexto>
 
         {(editavel || metodologia) && (
           <SecaoTexto estilo="titulo" titulo="Metodologia do Projeto" alturaMinima="auto">
-            <CampoTexto id="metodologia" rotulo="Metodologia" ajuda="Como o trabalho será organizado (etapas, divisão de tarefas, campanha…)." pergunta="como o trabalho será conduzido?" valor={metodologia} onChange={campo('metodologia')} alinhamento="justify" max={20000} />
+            <CampoTexto formatavel id="metodologia" rotulo="Metodologia" ajuda="Como o trabalho será organizado (etapas, divisão de tarefas, campanha…)." pergunta="como o trabalho será conduzido?" valor={metodologia} onChange={campo('metodologia')} alinhamento="justify" max={20000} />
           </SecaoTexto>
         )}
 
         <SecaoTexto estilo="titulo" titulo="Descrição do produto do projeto" alturaMinima="auto">
-          <CampoTexto id="descricao-produto" rotulo="Descrição do produto" ajuda="Descreva o produto, serviço ou resultado entregue no fim do projeto." pergunta="o que será entregue ao final do projeto?" valor={descricaoProduto} onChange={campo('descricaoProduto')} alinhamento="justify" max={20000} />
+          <CampoTexto formatavel id="descricao-produto" rotulo="Descrição do produto" ajuda="Descreva o produto, serviço ou resultado entregue no fim do projeto." pergunta="o que será entregue ao final do projeto?" valor={descricaoProduto} onChange={campo('descricaoProduto')} alinhamento="justify" max={20000} />
         </SecaoTexto>
 
         <SecaoTabela
@@ -287,7 +287,7 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
           <tr>
             <td style={celulaModelo}>Limites de autoridade</td>
             <td style={celulaModeloCampo}>
-              <CampoTexto id="limites-autoridade" rotulo="Limites de autoridade" ajuda="O que o gerente pode decidir sozinho: equipe, orçamento, prazos." pergunta="o que o gerente pode decidir sem consultar ninguém?" valor={limitesAutoridade} onChange={campo('limitesAutoridade')} alinhamento="justify" compacto max={5000} />
+              <CampoTexto formatavel id="limites-autoridade" rotulo="Limites de autoridade" ajuda="O que o gerente pode decidir sozinho: equipe, orçamento, prazos." pergunta="o que o gerente pode decidir sem consultar ninguém?" valor={limitesAutoridade} onChange={campo('limitesAutoridade')} alinhamento="justify" compacto max={5000} />
             </td>
           </tr>
         </SecaoTabela>

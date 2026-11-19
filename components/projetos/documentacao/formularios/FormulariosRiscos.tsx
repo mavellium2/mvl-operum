@@ -95,7 +95,7 @@ export function FolhaRisco({ conteudo: risco, numero, sistema, versaoPadrao, alt
             <tr>
               <td colSpan={2} style={{ ...celulaGPCampo, height: alturaCaixa(risco.descricao, '20mm') }}>
                 <div style={{ padding: '1px 5px 0' }}><B>Descrição do risco:</B></div>
-                <CampoTexto id={`${p}-descricao`} rotulo="Descrição do risco" ajuda="O que pode acontecer e qual o efeito no projeto." pergunta="o que pode acontecer e qual o efeito?" valor={risco.descricao ?? ''} onChange={campo('descricao')} alinhamento="justify" max={20000} />
+                <CampoTexto formatavel id={`${p}-descricao`} rotulo="Descrição do risco" ajuda="O que pode acontecer e qual o efeito no projeto." pergunta="o que pode acontecer e qual o efeito?" valor={risco.descricao ?? ''} onChange={campo('descricao')} alinhamento="justify" max={20000} />
               </td>
             </tr>
           </tbody>
@@ -117,7 +117,7 @@ export function FolhaRisco({ conteudo: risco, numero, sistema, versaoPadrao, alt
             <tr>
               <td colSpan={2} style={{ ...celulaGPCampo, height: alturaCaixa(risco.estrategias, '24mm') }}>
                 <div style={{ padding: '1px 5px 0' }}><B>Estratégias para eliminar ou reduzir este risco (minimizar impacto e/ou probabilidade):</B></div>
-                <CampoTexto id={`${p}-estrategias`} rotulo="Estratégias" ajuda="O que será feito para eliminar o risco ou reduzir o impacto e a probabilidade." pergunta="o que será feito para reduzir o risco?" valor={risco.estrategias ?? ''} onChange={campo('estrategias')} alinhamento="justify" max={20000} />
+                <CampoTexto formatavel id={`${p}-estrategias`} rotulo="Estratégias" ajuda="O que será feito para eliminar o risco ou reduzir o impacto e a probabilidade." pergunta="o que será feito para reduzir o risco?" valor={risco.estrategias ?? ''} onChange={campo('estrategias')} alinhamento="justify" max={20000} />
               </td>
             </tr>
             <tr>
@@ -137,11 +137,11 @@ export function FolhaRisco({ conteudo: risco, numero, sistema, versaoPadrao, alt
             <tr>
               <td style={celulaGPCampo}>
                 <div style={{ padding: '1px 5px 0' }}><B>Impacto reavaliado:</B> <Reavaliacao id={`${p}-impacto-r`} rotulo="Impacto reavaliado" valor={risco.impactoReavaliado} nomes={IMPACTO} onMarcar={mudar && (v => mudar({ impactoReavaliado: v }))} /></div>
-                <CampoTexto id={`${p}-just-impacto`} rotulo="Por que o impacto mudou" ajuda="Explique o impacto depois da resposta ao risco." pergunta="por que o impacto mudou?" valor={risco.justificativaImpacto ?? ''} onChange={campo('justificativaImpacto')} alinhamento="justify" max={5000} compacto />
+                <CampoTexto formatavel id={`${p}-just-impacto`} rotulo="Por que o impacto mudou" ajuda="Explique o impacto depois da resposta ao risco." pergunta="por que o impacto mudou?" valor={risco.justificativaImpacto ?? ''} onChange={campo('justificativaImpacto')} alinhamento="justify" max={5000} compacto />
               </td>
               <td style={celulaGPCampo}>
                 <div style={{ padding: '1px 5px 0' }}><B>Probabilidade reavaliada:</B> <Reavaliacao id={`${p}-prob-r`} rotulo="Probabilidade reavaliada" valor={risco.probabilidadeReavaliada} nomes={PROBABILIDADE} onMarcar={mudar && (v => mudar({ probabilidadeReavaliada: v }))} /></div>
-                <CampoTexto id={`${p}-just-prob`} rotulo="Por que a probabilidade mudou" ajuda="Explique a probabilidade depois da resposta ao risco." pergunta="por que a probabilidade mudou?" valor={risco.justificativaProbabilidade ?? ''} onChange={campo('justificativaProbabilidade')} alinhamento="justify" max={5000} compacto />
+                <CampoTexto formatavel id={`${p}-just-prob`} rotulo="Por que a probabilidade mudou" ajuda="Explique a probabilidade depois da resposta ao risco." pergunta="por que a probabilidade mudou?" valor={risco.justificativaProbabilidade ?? ''} onChange={campo('justificativaProbabilidade')} alinhamento="justify" max={5000} compacto />
               </td>
             </tr>
           </tbody>
@@ -153,7 +153,7 @@ export function FolhaRisco({ conteudo: risco, numero, sistema, versaoPadrao, alt
             <tr>
               <td style={{ ...celulaGPCampo, height: alturaCaixa(risco.ocorrencias, '24mm') }}>
                 <div style={{ padding: '1px 5px 0' }}><B>Ocorrências e alterações:</B></div>
-                <CampoTexto id={`${p}-ocorrencias`} rotulo="Ocorrências e alterações" ajuda="O que aconteceu com o risco ao longo do projeto e o que mudou na resposta." pergunta="o que aconteceu e o que mudou?" valor={risco.ocorrencias ?? ''} onChange={campo('ocorrencias')} alinhamento="justify" max={20000} />
+                <CampoTexto formatavel id={`${p}-ocorrencias`} rotulo="Ocorrências e alterações" ajuda="O que aconteceu com o risco ao longo do projeto e o que mudou na resposta." pergunta="o que aconteceu e o que mudou?" valor={risco.ocorrencias ?? ''} onChange={campo('ocorrencias')} alinhamento="justify" max={20000} />
               </td>
             </tr>
           </tbody>

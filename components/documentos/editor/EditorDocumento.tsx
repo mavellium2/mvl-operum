@@ -10,6 +10,7 @@ import Tooltip from '@/components/ui/Tooltip'
 import Modal from '@/components/ui/Modal'
 import { EditorFolhaProvider, SELETOR_FOCO, type CampoEmFoco } from './folha'
 import { useGuardaSaida, type SaidaDocumento } from './GuardaSaida'
+import { BOTOES_FORMATACAO, formatar, useEstadoFormatacao } from './textoRico'
 
 /**
  * Tela de edição de documento (Penpot, "Tela — Edição de documento"):
@@ -52,12 +53,14 @@ export interface EditorDocumentoProps {
   saida?: SaidaDocumento
 }
 
-function Botao({ rotulo, onClick, disabled, children, contador, ativo }: { rotulo: string; onClick?: () => void; disabled?: boolean; children: ReactNode; contador?: number; ativo?: boolean }) {
+function Botao({ rotulo, onClick, disabled, children, contador, ativo, manterFoco = false }: { rotulo: string; onClick?: () => void; disabled?: boolean; children: ReactNode; contador?: number; ativo?: boolean; /** Não tira o foco nem a seleção do texto (botões de formatação). */ manterFoco?: boolean }) {
   return (
     <Tooltip label={rotulo}>
       <OperumButton variant="custom"
         type="button"
         aria-label={rotulo}
+        aria-pressed={manterFoco ? !!ativo : undefined}
+        onMouseDown={manterFoco ? e => e.preventDefault() : undefined}
         onClick={onClick}
         disabled={disabled || !onClick}
         className={`documento-tool-button relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors disabled:cursor-not-allowed ${ativo ? 'documento-tool-active' : ''}`}
@@ -111,6 +114,8 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
   const [ajudaAberta, setAjudaAberta] = useState(false)
   const [manualAberto, setManualAberto] = useState(false)
   const [versaoAberta, setVersaoAberta] = useState(false)
+  // Barra de formatação: ativa quando um campo de texto com formatação está em foco.
+  const formatacao = useEstadoFormatacao()
   const limpadores = useRef(new Map<string, () => void>())
   const ultimoCampo = useRef<HTMLElement | null>(null)
 
@@ -279,6 +284,16 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
             {onAdicionarLinha && <Botao rotulo="Adicionar linha na tabela" onClick={onAdicionarLinha} disabled={!editavel}><ListPlus className={ICONE} /></Botao>}
             {extrasEdicao}
             {!paginas && <Botao rotulo="Limpar campo" onClick={limparCampo} disabled={!editavel}><Eraser className={ICONE} /></Botao>}
+          </Grupo>
+
+          <Grupo titulo="Formatação">
+            {BOTOES_FORMATACAO.map(({ comando, rotulo, atalho, Icone }) => (
+              <Botao key={comando} manterFoco rotulo={atalho ? `${rotulo} (${atalho})` : rotulo} onClick={() => formatar(comando)}
+                disabled={!editavel || !formatacao.ativo}
+                ativo={formatacao.ativo && (comando === 'bold' ? formatacao.b : comando === 'italic' ? formatacao.i : comando === 'underline' ? formatacao.u : formatacao.a === comando)}>
+                <Icone className={ICONE} />
+              </Botao>
+            ))}
           </Grupo>
 
           {paginas ? (
