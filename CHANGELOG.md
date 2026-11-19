@@ -11,7 +11,7 @@ funcionalidade depois disso é uma versão MINOR.
 
 Ajustes pedidos em 18/11/2026.
 
-- **Canvas do projeto:** adiciona o documento Canvas à área Documentação de todos os projetos. Reproduz a arte-base e a posição dos 13 blocos do DOCX de referência, aproveita nome do projeto, gerente, justificativa, objetivos, descrição do produto e equipe já cadastrados, e usa o fluxo comum de rascunhos, versões, aprovação, histórico e exportação para PDF/Word.
+- **Canvas do projeto:** adiciona o documento Canvas à área Documentação de todos os projetos. O quadro segue os 13 blocos do modelo de referência, aproveita nome do projeto, gerente, justificativa, objetivos, descrição do produto e equipe já cadastrados, e usa o fluxo comum de rascunhos, versões, aprovação, histórico e exportação para PDF/Word.
 
 - **Formatação do texto nos documentos:** a barra do editor ganhou o grupo "Formatação", com negrito, itálico, sublinhado e alinhamento (à esquerda, centralizado, à direita e justificado), como no Word. Os atalhos Ctrl+B, Ctrl+I e Ctrl+U também funcionam. Vale para os textos longos do Termo de Abertura, da Declaração do Escopo, dos Formulários de Riscos, das Lições Aprendidas e das Atas. A formatação sai igual no PDF e no Word. Colar texto de fora traz só o texto, sem estilos nem imagens.
 
@@ -24,6 +24,10 @@ Ajustes pedidos em 18/11/2026.
 - **Fotos e Vídeos e Apresentação e Vídeo:** dois menus novos no projeto para guardar as fotos e os vídeos do projeto e a apresentação e o vídeo da entrega final, na mesma base da tela de Arquivos. O envio vai direto ao armazenamento (vídeos até 1 GB) e mostra o progresso; cada arquivo pode ser aberto, baixado e, por quem tem permissão, excluído.
 
 - **Word das folhas:** o sublinhado e as outras marcas começam e terminam na palavra, sem pegar o espaço vizinho.
+
+## [1.60.1] — 2026-11-19
+
+- **Canvas do projeto:** ajusta a folha para reproduzir a arte-base, os ícones, as posições dos campos e o tamanho de página do DOCX de referência. Retira o título "PROJECT CANVAS" e a versão do cabeçalho do documento.
 
 ## [1.59.0] — 2026-11-18
 
