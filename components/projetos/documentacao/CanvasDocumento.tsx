@@ -1,5 +1,6 @@
 'use client'
 
+import { useLayoutEffect, useRef } from 'react'
 import { CampoTexto, Folha } from '@/components/documentos/editor/folha'
 import PostIt from '@/components/ui/PostIt'
 import { formatDateBR } from '@/lib/date'
@@ -18,13 +19,18 @@ type CampoCanvas = Exclude<keyof Canvas, 'cabecalho'>
  * cada bloco o ícone no canto, o título e o subtítulo ao lado e o post-it
  * embaixo, ocupando o resto. Tudo calculado daqui: nada fica por cima de nada.
  */
-const FOLHA = { largura: 1008, altura: 759 }
-const MARGEM = 10
-const CABECALHO = { topo: 18, altura: 52 }
-const GRADE = { topo: 84, base: FOLHA.altura - MARGEM }
-const LINHAS = [216, 216] // a 3ª linha fica com o resto
-const ICONE = 34
-const TOPO_TEXTO = 58 // do topo do bloco até o post-it
+/** A4 paisagem (297×210 mm), igual aos outros documentos. */
+const FOLHA = { largura: 842, altura: 595 }
+const MARGEM = 8
+const CABECALHO = { topo: 8, altura: 38 }
+const GRADE = { topo: 54, base: FOLHA.altura - MARGEM }
+const LINHAS = [172, 172] // a 3ª linha fica com o resto
+const ICONE = 26
+const TOPO_TEXTO = 34 // do topo do bloco até o post-it
+const RECUO = 4 // folga entre a borda do bloco e o post-it
+/** Fonte dos campos: começa no tamanho base e diminui até o mínimo se o texto não couber. */
+const FONTE_CAMPO = { base: 8, minimo: 4 }
+const FONTE_CABECALHO = { base: 10, minimo: 6 }
 
 type Bloco = { id: CampoCanvas; titulo: string; subtitulo?: string; x: number; y: number; w: number; h: number }
 
@@ -53,9 +59,9 @@ function blocosCanvas(): Bloco[] {
 
 /** Cabeçalho numa linha só: rótulo e post-it de cada campo, alinhados ao centro. */
 const CABECALHO_CAMPOS: { id: 'projeto' | 'solicitante' | 'gerente'; titulo: string; rotulo: number; x: number; w: number }[] = [
-  { id: 'projeto', titulo: 'PROJETO:', rotulo: 70, x: MARGEM, w: 460 },
-  { id: 'solicitante', titulo: 'SOLICITANTE:', rotulo: 104, x: 552, w: 170 },
-  { id: 'gerente', titulo: 'GP:', rotulo: 34, x: 838, w: 160 },
+  { id: 'projeto', titulo: 'PROJETO:', rotulo: 58, x: MARGEM, w: 368 },
+  { id: 'solicitante', titulo: 'SOLICITANTE:', rotulo: 84, x: 388, w: 222 },
+  { id: 'gerente', titulo: 'GP:', rotulo: 26, x: 622, w: 212 },
 ]
 
 const custoBR = (valor: string) => {
@@ -99,21 +105,48 @@ export const CANVAS_INICIAL = (sistema: DadosFormularios, membros: MembroEquipeO
   }
 }
 
+/**
+ * Diminui a fonte do campo até o texto caber na altura do post-it (texto longo
+ * continua inteiro à vista, como pediu o professor). Recalcula ao editar e
+ * quando o tamanho muda; a cópia do PDF e o Word leem o tamanho já ajustado.
+ */
+function useAjustarFonte(valor: string, { base, minimo }: { base: number; minimo: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ajustar = () => {
+      const cabe = (tamanho: number) => { el.style.fontSize = `${tamanho}pt`; return el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1 }
+      if (cabe(base)) return
+      // Busca binária em passos de 0,25 pt entre o mínimo e o tamanho base.
+      let lo = minimo, hi = base
+      while (hi - lo > 0.25) { const meio = (lo + hi) / 2; if (cabe(meio)) lo = meio; else hi = meio }
+      cabe(Math.floor(lo * 4) / 4)
+    }
+    ajustar()
+    const obs = new ResizeObserver(ajustar)
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [valor, base, minimo])
+  return ref
+}
+
 function BlocoCanvas({ bloco, valor, alterar }: { bloco: Bloco; valor: string; alterar?: RenderFormulario<Canvas>['alterar'] }) {
   const { id, titulo, subtitulo, x, y, w, h } = bloco
   const nome = subtitulo ? `${titulo} ${subtitulo}` : titulo
-  const p = { x: x + 8, y: y + TOPO_TEXTO, w: w - 16, h: h - TOPO_TEXTO - 8 }
+  const p = { x: x + RECUO, y: y + TOPO_TEXTO, w: w - 2 * RECUO, h: h - TOPO_TEXTO - RECUO }
+  const campo = useAjustarFonte(valor, FONTE_CAMPO)
   const icone = ICONES_CANVAS.find(i => i.id === id)!
   return (
     <>
-      <IconeCanvas {...icone} x={x + 6} y={y + 7} w={ICONE} h={ICONE} />
-      <h2 className="canvas-template-titulo" style={{ left: `${x + ICONE + 12}pt`, top: `${y + 6}pt`, width: `${w - ICONE - 18}pt`, height: `${TOPO_TEXTO - 10}pt` }}>
+      <IconeCanvas {...icone} x={x + 4} y={y + 4} w={ICONE} h={ICONE} />
+      <h2 className="canvas-template-titulo" style={{ left: `${x + ICONE + 8}pt`, top: `${y + 3}pt`, width: `${w - ICONE - 12}pt`, height: `${TOPO_TEXTO - 4}pt` }}>
         <span className="canvas-template-titulo-principal">{titulo}</span>
         {subtitulo && <span className="canvas-template-subtitulo">{subtitulo}</span>}
       </h2>
-      <PostIt className="canvas-template-postit" placeholder="" style={{ position: 'absolute', left: `${p.x}pt`, top: `${p.y}pt`, width: `${p.w}pt`, height: `${p.h}pt` }} />
+      <PostIt className="canvas-template-postit" placeholder="" foldSize={14} style={{ position: 'absolute', left: `${p.x}pt`, top: `${p.y}pt`, width: `${p.w}pt`, height: `${p.h}pt` }} />
       {/* Campo dentro do post-it, sem invadir a dobra do canto. */}
-      <div className="canvas-template-campo" style={{ left: `${p.x + 5}pt`, top: `${p.y + 5}pt`, width: `${p.w - 10}pt`, height: `${p.h - 16}pt` }}>
+      <div ref={campo} className="canvas-template-campo" style={{ left: `${p.x + 3}pt`, top: `${p.y + 3}pt`, width: `${p.w - 6}pt`, height: `${p.h - 12}pt`, fontSize: `${FONTE_CAMPO.base}pt` }}>
         <CampoTexto id={`canvas-${id}`} rotulo={nome} ajuda={`Conteúdo do bloco ${nome} do Canvas.`}
           dica={`Escreva aqui: ${nome.toLocaleLowerCase('pt-BR')}`} valor={valor}
           onChange={novo => alterar?.(atual => ({ ...atual, [id]: novo }))} max={20000} formatavel />
@@ -126,11 +159,12 @@ function CampoCabecalho({ campo, valor, alterar }: { campo: (typeof CABECALHO_CA
   const { id, titulo, rotulo, x, w } = campo
   const { topo, altura } = CABECALHO
   const p = { x: x + rotulo + 4, w: w - rotulo - 4 }
+  const refTexto = useAjustarFonte(valor, FONTE_CABECALHO)
   return (
     <>
       <strong className="canvas-template-label" style={{ left: `${x}pt`, top: `${topo}pt`, width: `${rotulo}pt`, height: `${altura}pt` }}>{titulo}</strong>
-      <PostIt className="canvas-template-postit" placeholder="" foldSize={12} style={{ position: 'absolute', left: `${p.x}pt`, top: `${topo}pt`, width: `${p.w}pt`, height: `${altura}pt` }} />
-      <div className="canvas-template-campo canvas-template-campo-cabecalho" style={{ left: `${p.x + 4}pt`, top: `${topo + 4}pt`, width: `${p.w - 12}pt`, height: `${altura - 8}pt` }}>
+      <PostIt className="canvas-template-postit" placeholder="" foldSize={10} style={{ position: 'absolute', left: `${p.x}pt`, top: `${topo}pt`, width: `${p.w}pt`, height: `${altura}pt` }} />
+      <div ref={refTexto} className="canvas-template-campo canvas-template-campo-cabecalho" style={{ left: `${p.x + 3}pt`, top: `${topo + 3}pt`, width: `${p.w - 10}pt`, height: `${altura - 6}pt`, fontSize: `${FONTE_CABECALHO.base}pt` }}>
         <CampoTexto id={`canvas-${id}`} rotulo={titulo.replace(':', '')} valor={valor} alinhamento="center"
           onChange={novo => alterar?.(atual => ({ ...atual, [id]: novo }))} max={1000} />
       </div>
@@ -150,7 +184,7 @@ function GradeCanvas({ blocos }: { blocos: Bloco[] }) {
 export function FolhaCanvas({ conteudo, alterar }: RenderFormulario<Canvas>) {
   const blocos = blocosCanvas()
   return (
-    <Folha paisagem fixa data-testid="canvas-folha" style={{ width: '355.6mm', height: '267.7mm', padding: 0, gap: 0, overflow: 'hidden', position: 'relative', fontFamily: 'Arial, sans-serif', fontSize: '8pt', lineHeight: 1.2 }}>
+    <Folha paisagem fixa data-testid="canvas-folha" style={{ padding: 0, gap: 0, overflow: 'hidden', position: 'relative', fontFamily: 'Arial, sans-serif', fontSize: '8pt', lineHeight: 1.2 }}>
       <GradeCanvas blocos={blocos} />
       {CABECALHO_CAMPOS.map(c => <CampoCabecalho key={c.id} campo={c} valor={conteudo[c.id]} alterar={alterar} />)}
       {blocos.map(b => <BlocoCanvas key={b.id} bloco={b} valor={conteudo[b.id]} alterar={alterar} />)}
@@ -168,16 +202,16 @@ export const ESTILO_CANVAS = `
         .canvas-template-grade{position:absolute;left:0;top:0;z-index:0;pointer-events:none}
         .canvas-template-postit{position:absolute;z-index:1;filter:drop-shadow(1px 2px 2px rgb(0 0 0 / 32%))}
         .canvas-template-label,.canvas-template-titulo,.canvas-template-campo{position:absolute;z-index:2;box-sizing:border-box;color:#27313d}
-        .canvas-template-label{display:flex;align-items:center;font:700 13pt/1.05 Arial,sans-serif;white-space:nowrap}
+        .canvas-template-label{display:flex;align-items:center;font:700 10.5pt/1.05 Arial,sans-serif;white-space:nowrap}
         .canvas-template-titulo{display:flex;flex-direction:column;justify-content:center;margin:0;overflow:hidden;text-align:left}
-        .canvas-template-titulo-principal{font:700 12.5pt/1.05 Arial,sans-serif}
-        .canvas-template-subtitulo{font:700 9pt/1.2 Arial,sans-serif;margin-top:1pt}
-        .canvas-template-campo{overflow:hidden;font:8.5pt/1.25 Arial,sans-serif}
-        .canvas-template-campo-cabecalho{display:flex;flex-direction:column;justify-content:center;font-size:11pt}
+        .canvas-template-titulo-principal{font:700 10pt/1.05 Arial,sans-serif}
+        .canvas-template-subtitulo{font:700 7pt/1.2 Arial,sans-serif;margin-top:1pt}
+        .canvas-template-campo{overflow:hidden;font-family:Arial,sans-serif;line-height:1.2}
+        .canvas-template-campo-cabecalho{display:flex;flex-direction:column;justify-content:center}
         .canvas-template-campo-cabecalho [data-texto-campo],.canvas-template-campo-cabecalho [data-campo]{height:auto!important;min-height:0!important}
-        .canvas-template-campo [data-texto-campo]{height:100%;min-height:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+        /* O texto tem a altura do conteúdo (a fonte diminui para caber), sem barra de rolagem. */
+        .canvas-template-campo [data-texto-campo]{height:auto!important;min-height:0;overflow:visible;white-space:pre-wrap;overflow-wrap:anywhere}
         .canvas-template-campo textarea{box-sizing:border-box;width:100%;max-height:100%;overflow:auto!important;border:0!important;background:transparent!important;padding:0!important;font:inherit!important;line-height:inherit!important}
-        @media print{.canvas-template-campo [data-texto-campo],.canvas-template-campo textarea{overflow:hidden!important}}
 `
 
 export default function CanvasDocumento({ membros = [] }: { membros?: MembroEquipeOption[] }) {
@@ -186,7 +220,7 @@ export default function CanvasDocumento({ membros = [] }: { membros?: MembroEqui
       <style>{ESTILO_CANVAS}</style>
       <FormularioDocumento<Canvas>
         tipo="CANVAS" documento="Canvas" titulo="Canvas do Projeto" arquivo="canvas-do-projeto.docx"
-        membros={membros} inicial={CANVAS_INICIAL} normalizar={normalizar} render={r => <FolhaCanvas {...r} />} paisagem pageSize={{ widthMm: 355.6, heightMm: 267.7 }}
+        membros={membros} inicial={CANVAS_INICIAL} normalizar={normalizar} render={r => <FolhaCanvas {...r} />} paisagem
       />
     </>
   )
