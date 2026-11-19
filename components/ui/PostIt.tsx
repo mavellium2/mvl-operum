@@ -5,7 +5,7 @@ export type PostItProps = {
   children?: ReactNode
   width?: CSSProperties['width']
   height?: CSSProperties['height']
-  /** Tamanho do canto dobrado (lado do triângulo). */
+  /** Tamanho fixo do canto dobrado. Sem ele, a dobra acompanha o tamanho do post-it. */
   foldSize?: CSSProperties['width']
   placeholder?: string
   className?: string
@@ -16,13 +16,14 @@ export type PostItProps = {
 /**
  * Cartão amarelo com o canto inferior direito dobrado por cima da folha, como
  * um post-it: a aba aponta para dentro do cartão, em tom mais escuro, com
- * contorno e sombra. Redimensionável sem perder o aspecto (a dobra é SVG).
+ * contorno e sombra. A dobra acompanha o tamanho do cartão (proporcional ao
+ * lado menor) e é SVG, então não perde o aspecto ao redimensionar.
  */
 export default function PostIt({
   children,
   width,
   height,
-  foldSize = 34,
+  foldSize,
   placeholder = 'Escreva aqui...',
   className,
   style,
@@ -34,7 +35,7 @@ export default function PostIt({
   return (
     <div
       className={classes}
-      style={{ ...style, width: width ?? style?.width ?? 240, height: height ?? style?.height ?? 180, '--post-it-fold-size': typeof foldSize === 'number' ? `${foldSize}px` : foldSize } as CSSProperties}
+      style={{ ...style, width: width ?? style?.width ?? 240, height: height ?? style?.height ?? 180, ...(foldSize !== undefined ? { '--post-it-fold-size': typeof foldSize === 'number' ? `${foldSize}px` : foldSize } : {}) } as CSSProperties}
       aria-label={ariaLabel}
     >
       <div className="post-it__face" aria-hidden="true" />

@@ -10,7 +10,7 @@ funcionalidade depois disso é uma versão MINOR.
 ## [1.60.1] — 2026-11-19
 
 - **Canvas do projeto:** ajusta a folha para reproduzir a arte-base, os ícones, as posições dos campos e o tamanho de página do DOCX de referência. Retira o título "PROJECT CANVAS" e a versão do cabeçalho do documento.
-- **Post-it reutilizável:** adiciona um cartão amarelo redimensionável com o canto inferior direito dobrado por cima da folha (aba virada para dentro, em tom mais escuro, com contorno, leve curva e sombra), para compor interfaces de Canvas.
+- **Post-it reutilizável:** adiciona um cartão amarelo redimensionável com o canto inferior direito dobrado por cima da folha (aba virada para dentro, em tom mais escuro, com contorno, leve curva e sombra), para compor interfaces de Canvas. A dobra acompanha o tamanho do post-it (19% do lado menor, entre 10 e 64 px).
 
 ## [1.60.0] — 2026-11-19
 

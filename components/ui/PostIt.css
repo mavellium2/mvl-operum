@@ -1,5 +1,9 @@
 .post-it {
+  /* Dobra proporcional ao cartão: 19% do lado menor (como no modelo, 35px num
+     post-it de 240×180), entre 10px e 64px. Navegador sem cqmin fica nos 34px. */
   --post-it-fold-size: 34px;
+  --post-it-fold-size: clamp(10px, 19cqmin, 64px);
+  container-type: size;
   --post-it-color: #ffffcc;
   --post-it-ink: #292929;
   position: relative;
