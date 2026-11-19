@@ -66,10 +66,16 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     expect(within(dialogo).getByText(/1 de 2/)).toBeInTheDocument()
     expect(within(dialogo).getByRole('link', { name: 'Baixar Visita.mp4' })).toHaveAttribute('href', '/api/projects/p1/arquivos/a1?baixar=1')
     expect(within(dialogo).queryByRole('button', { name: 'Anterior' })).toBeNull()
+    expect(within(dialogo).queryByRole('button', { name: 'Aumentar zoom' })).toBeNull()
 
     fireEvent.click(within(dialogo).getByRole('button', { name: 'Próximo' }))
     dialogo = screen.getByRole('dialog', { name: 'Visualizar Equipe.png' })
     expect(within(dialogo).getByRole('img', { name: 'Equipe.png' })).toHaveAttribute('src', '/api/projects/p1/arquivos/a2')
+    // Zoom só para imagem: + aumenta, o botão do meio volta ao tamanho da tela.
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Aumentar zoom' }))
+    expect(within(dialogo).getByRole('img', { name: 'Equipe.png' }).style.transform).toContain('scale(1.25)')
+    fireEvent.click(within(dialogo).getByRole('button', { name: /^Zoom 125%/ }))
+    expect(within(dialogo).getByRole('img', { name: 'Equipe.png' }).style.transform).toContain('scale(1)')
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
     expect(screen.getByRole('dialog', { name: 'Visualizar Visita.mp4' })).toBeInTheDocument()
 
