@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/Toast'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import { fetchWithSession } from '@/lib/clientFetch'
 import { erroDoArquivo, formatarTamanho, SECOES_ARQUIVOS, tipoDoArquivo, type CategoriaArquivoProjeto } from '@/lib/arquivosProjeto'
+import ZonaSoltarArquivos from '@/components/arquivos/ZonaSoltarArquivos'
 import ListaArquivos, { type CategoriaVisual, type ItemArquivo } from '@/components/arquivos/ListaArquivos'
 
 export interface ArquivoDoProjeto {
@@ -280,6 +281,8 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
         </ul>
       )}
 
+      {/* Arrastar arquivos do computador para cá envia direto (como no Drive). */}
+      <ZonaSoltarArquivos ativa={podeEnviar} destino={secao.titulo} onSoltar={lista => void escolher(lista)} className="min-h-[calc(100vh-10rem)] rounded-2xl">
       <ListaArquivos
         itens={itens}
         tipos={categoria === 'FOTOS_VIDEOS' ? ['imagem', 'video'] : ['apresentacao', 'pdf', 'video']}
@@ -294,6 +297,7 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
           </GlassButton>
         )}
       />
+      </ZonaSoltarArquivos>
 
       {visualizar && (
         <VisualizadorMidia itens={visualizar.itens} indice={visualizar.indice}

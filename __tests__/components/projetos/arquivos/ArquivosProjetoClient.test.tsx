@@ -123,6 +123,24 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     expect(await screen.findByRole('button', { name: 'Adicionar estrela a Equipe.png' })).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('arrastar arquivos mostra o aviso do Drive e soltar envia (tipo errado vira erro)', async () => {
+    com(['documentos:ver', 'documentos:editar'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
+    const zona = screen.getByText('Visita.mp4').closest('.zona-soltar') as HTMLElement
+    const pdf = new File(['x'], 'slides.pdf', { type: 'application/pdf' })
+    const dataTransfer = { types: ['Files'], files: [pdf], dropEffect: '' }
+    fireEvent.dragEnter(zona, { dataTransfer })
+    expect(screen.getByRole('status')).toHaveTextContent('Solte os arquivos para enviar em')
+    expect(screen.getByRole('status')).toHaveTextContent('Fotos e Vídeos')
+    fireEvent.drop(zona, { dataTransfer })
+    expect(screen.queryByText('Solte os arquivos para enviar em')).toBeNull()
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Envie fotos/)
+  })
+
+  it('quem só vê não tem área de soltar', () => {
+    com(['documentos:ver'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
+    expect(screen.getByText('Visita.mp4').closest('.zona-soltar')).toBeNull()
+  })
+
   it('arquivo de tipo errado não chega a ser enviado e mostra o motivo', async () => {
     com(['documentos:ver', 'documentos:editar'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={[]} />)
     const input = screen.getByLabelText('Escolher arquivos para Fotos e Vídeos')
