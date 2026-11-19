@@ -6,6 +6,7 @@ export type PostItProps = {
   width?: CSSProperties['width']
   height?: CSSProperties['height']
   foldSize?: CSSProperties['width']
+  placeholder?: string
   className?: string
   style?: CSSProperties
   ariaLabel?: string
@@ -17,6 +18,7 @@ export default function PostIt({
   width = 240,
   height = 180,
   foldSize = 24,
+  placeholder = 'Escreva aqui...',
   className,
   style,
   ariaLabel,
@@ -31,7 +33,9 @@ export default function PostIt({
     >
       <div className="post-it__face" aria-hidden="true" />
       <div className="post-it__fold" aria-hidden="true" />
-      <div className="post-it__content">{children}</div>
+      <div className="post-it__content">
+        {children ?? <span className="post-it__placeholder">{placeholder}</span>}
+      </div>
     </div>
   )
 }

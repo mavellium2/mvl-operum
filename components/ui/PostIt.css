@@ -43,3 +43,8 @@
   padding: 16px 14px;
   overflow: auto;
 }
+
+.post-it__placeholder {
+  color: #8ca0c5;
+  font: 13px/1.25 Arial, sans-serif;
+}
