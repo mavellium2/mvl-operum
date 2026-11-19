@@ -30,8 +30,16 @@
   inset: auto 0 0 auto;
   width: var(--post-it-fold-size);
   height: var(--post-it-fold-size);
-  background: linear-gradient(135deg, #d8d8a8 0 49%, var(--post-it-ink) 50% 53%, #ffffcc 54% 100%);
+  background: var(--post-it-ink);
   clip-path: polygon(0 100%, 100% 0, 100% 100%);
+}
+
+.post-it__fold::after {
+  position: absolute;
+  inset: 1px 0 0 1px;
+  background: linear-gradient(135deg, #d6d6a6 0 50%, #ffffcc 51% 100%);
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
+  content: '';
 }
 
 .post-it__content {
