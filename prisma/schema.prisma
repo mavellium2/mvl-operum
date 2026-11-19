@@ -115,6 +115,7 @@ model Project {
   projetoFuncoes       ProjetoFuncao[]
   atas                 Ata[]
   riscos               Risco[]
+  arquivos             ArquivoProjeto[]
   sincronizacao        ProjetoSincronizacao?
   eapDocument          EapDocument?
 
@@ -421,6 +422,7 @@ model User {
   atasPresentes         AtaPresente[]
   atasAcoesResponsaveis AtaAcao[]     @relation("AtaAcaoResponsavel")
   atasElaboradas        Ata[]         @relation("AtaElaboradoPor")
+  arquivosEnviados      ArquivoProjeto[] @relation("ArquivoProjetoEnviadoPor")
   atasAprovadas         Ata[]         @relation("AtaAprovadoPor")
 
   @@unique([email, tenantId])
@@ -774,6 +776,34 @@ model DocumentVersion {
 }
 
 // ── Atas de Reunião ───────────────────────────────────────
+
+/// Seções de arquivos do projeto (ajustes de 18/11/2026): fotos e vídeos do
+/// projeto e a apresentação/vídeo da entrega final.
+enum CategoriaArquivoProjeto {
+  FOTOS_VIDEOS
+  APRESENTACAO
+}
+
+/// Arquivo enviado direto ao MinIO por URL assinada; o registro só é criado
+/// depois que o servidor confere o objeto (tamanho, tipo e chave do projeto).
+model ArquivoProjeto {
+  id           String                  @id @default(cuid())
+  tenantId     String
+  projetoId    String
+  categoria    CategoriaArquivoProjeto
+  nome         String
+  tipo         String
+  tamanho      Int
+  chave        String                  @unique
+  enviadoPorId String?
+  createdAt    DateTime                @default(now())
+  deletedAt    DateTime?
+
+  project    Project @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  enviadoPor User?   @relation("ArquivoProjetoEnviadoPor", fields: [enviadoPorId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, projetoId, categoria, deletedAt])
+}
 
 /// Formulário de risco (como a Ata: um documento por risco). Só guarda o número e a
 /// exclusão; o conteúdo vive nas versões do documento RISCOS com resourceId = id.
