@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { Download, Upload } from 'lucide-react'
+import { Download, Star, Upload } from 'lucide-react'
 import GlassButton from '@/components/ui/GlassButton'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import AnimatedTrashButton from '@/components/ui/AnimatedTrashButton'
@@ -23,6 +23,8 @@ export interface ArquivoDoProjeto {
   tamanho: number
   enviadoEm: string
   enviadoPor: string | null
+  /** Estrela pessoal de quem está vendo. */
+  favorito?: boolean
 }
 
 interface Envio { chave: string; nome: string; progresso: number; erro?: string }
@@ -122,6 +124,21 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
     await recarregar()
   }
 
+  /** Estrela pessoal: muda na hora e desfaz se o servidor recusar. */
+  async function favoritar(lista: ArquivoDoProjeto[], favorito: boolean) {
+    const ids = new Set(lista.map(a => a.id))
+    const marcar = (valor: (a: ArquivoDoProjeto) => boolean) => setArquivos(atual => atual.map(a => (ids.has(a.id) ? { ...a, favorito: valor(a) } : a)))
+    const antes = new Map(lista.map(a => [a.id, !!a.favorito]))
+    marcar(() => favorito)
+    const resultados = await Promise.all(lista.map(a =>
+      fetchWithSession(`/api/projects/${projetoId}/arquivos/${a.id}/favorito`, { method: favorito ? 'PUT' : 'DELETE' }).then(r => ({ id: a.id, ok: r.ok }), () => ({ id: a.id, ok: false }))))
+    const falhas = new Set(resultados.filter(r => !r.ok).map(r => r.id))
+    if (falhas.size) {
+      setArquivos(atual => atual.map(a => (falhas.has(a.id) ? { ...a, favorito: antes.get(a.id) } : a)))
+      toast(favorito ? 'Não foi possível adicionar a estrela.' : 'Não foi possível remover a estrela.', 'error')
+    }
+  }
+
   /** Baixa cada arquivo pela rota que confere a sessão; links com `download` não trocam de página nem se cancelam. */
   function baixar(lista: ArquivoDoProjeto[]) {
     lista.forEach((a, i) => setTimeout(() => {
@@ -168,22 +185,41 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
       data: a.enviadoEm,
       previa: href,
       abrir: href,
+      favorito: a.favorito,
+      // Ações da linha (aparecem no hover/foco), como no Drive.
+      acoes: <>
+        <Tooltip label="Baixar">
+          <GlassButton variant="icon" aria-label={`Baixar ${a.nome}`} onClick={() => baixar([a])}><Download className="h-4 w-4" aria-hidden="true" /></GlassButton>
+        </Tooltip>
+        {podeEnviar && <Tooltip label="Renomear"><AnimatedEditButton label={`Renomear ${a.nome}`} onClick={() => abrirRenomear(a)} /></Tooltip>}
+        <Tooltip label={a.favorito ? 'Remover estrela' : 'Adicionar estrela'}>
+          <GlassButton variant="icon" aria-label={`${a.favorito ? 'Remover estrela de' : 'Adicionar estrela a'} ${a.nome}`} aria-pressed={!!a.favorito} onClick={() => void favoritar([a], !a.favorito)}>
+            <Star className={`h-4 w-4 ${a.favorito ? 'fill-amber-400 text-amber-500' : ''}`} aria-hidden="true" />
+          </GlassButton>
+        </Tooltip>
+        {podeExcluir && <Tooltip label="Excluir"><AnimatedTrashButton effect="button" label={`Excluir ${a.nome}`} onDelete={() => setExcluir([a])} /></Tooltip>}
+      </>,
     }
   })
   const doId = (ids: string[]) => arquivos.filter(a => ids.includes(a.id))
   const acoesSelecao = (ids: string[]) => {
-    const nada = ids.length === 0
+    const lista = doId(ids)
+    const plural = ids.length !== 1 ? `${ids.length} selecionados` : lista[0]?.nome ?? ''
+    const todosComEstrela = lista.length > 0 && lista.every(a => a.favorito)
     return <>
       <Tooltip label="Baixar">
-        <GlassButton variant="icon" aria-label={nada ? 'Baixar' : `Baixar ${ids.length} selecionado${ids.length !== 1 ? 's' : ''}`} disabled={nada} onClick={() => baixar(doId(ids))}>
-          <Download className="h-4 w-4" aria-hidden="true" />
-        </GlassButton>
+        <GlassButton variant="icon" aria-label={`Baixar ${plural}`} onClick={() => baixar(lista)}><Download className="h-4 w-4" aria-hidden="true" /></GlassButton>
       </Tooltip>
       {podeEnviar && <Tooltip label={ids.length > 1 ? 'Renomear (escolha um arquivo)' : 'Renomear'}>
-        <AnimatedEditButton label="Renomear" disabled={ids.length !== 1} onClick={() => { const [a] = doId(ids); if (a) abrirRenomear(a) }} />
+        <AnimatedEditButton label="Renomear" disabled={ids.length !== 1} onClick={() => { if (lista[0]) abrirRenomear(lista[0]) }} />
       </Tooltip>}
+      <Tooltip label={todosComEstrela ? 'Remover estrela' : 'Adicionar estrela'}>
+        <GlassButton variant="icon" aria-label={todosComEstrela ? 'Remover estrela' : 'Adicionar estrela'} aria-pressed={todosComEstrela} onClick={() => void favoritar(lista, !todosComEstrela)}>
+          <Star className={`h-4 w-4 ${todosComEstrela ? 'fill-amber-400 text-amber-500' : ''}`} aria-hidden="true" />
+        </GlassButton>
+      </Tooltip>
       {podeExcluir && <Tooltip label="Excluir">
-        <AnimatedTrashButton effect="button" label={nada ? 'Excluir' : `Excluir ${ids.length} selecionado${ids.length !== 1 ? 's' : ''}`} disabled={nada} onDelete={() => setExcluir(doId(ids))} />
+        <AnimatedTrashButton effect="button" label={`Excluir ${plural}`} onDelete={() => setExcluir(lista)} />
       </Tooltip>}
     </>
   }

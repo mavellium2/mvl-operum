@@ -1,0 +1,10 @@
+/* Ações da linha de arquivo aparecem ao passar o mouse ou focar (como no Drive). */
+.acoes-linha-arquivo { opacity: 0; }
+tr:hover .acoes-linha-arquivo,
+tr:focus-within .acoes-linha-arquivo,
+tr[aria-selected='true'] .acoes-linha-arquivo,
+.bloco-arquivo:hover .acoes-linha-arquivo,
+.bloco-arquivo:focus-within .acoes-linha-arquivo { opacity: 1; }
+/* Telas de toque não têm hover: ações sempre visíveis. */
+@media (hover: none) { .acoes-linha-arquivo { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) { .acoes-linha-arquivo { transition: opacity 160ms ease; } }

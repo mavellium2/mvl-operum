@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Grid2x2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Grid2x2, Star } from 'lucide-react'
 import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
 import GlassSegmentedControl from '@/components/ui/GlassSegmentedControl'
+import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import GradeArquivos from './GradeArquivos'
+import './ListaArquivos.css'
 
 /** Categoria usada no ícone e no filtro "Tipo". */
 export type CategoriaVisual = 'imagem' | 'video' | 'pdf' | 'apresentacao' | 'link' | 'outro'
@@ -24,8 +26,10 @@ export interface ItemArquivo {
   extra?: ReactNode
   /** Texto a mais que entra na busca (ex.: título do card). */
   busca?: string
-  /** Ações na linha (sem `selecao`). Com seleção, as ações ficam na barra acima. */
+  /** Ações do arquivo: na coluna "Ações"; com `selecao`, aparecem ao passar o mouse ou focar a linha (como no Drive). */
   acoes?: ReactNode
+  /** Estrela pessoal, mostrada ao lado do nome. */
+  favorito?: boolean
   /** URL da arte (imagem ou vídeo) para a miniatura dos blocos e da lista. */
   previa?: string
   /** Link aberto ao clicar na miniatura do bloco. */
@@ -128,8 +132,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
     if (filtroExtra && !filtroExtra.aceita(a)) return false
     return true
   }), [itens, busca, tipo, filtroExtra])
-  // Com seleção, a coluna da caixa substitui a de ações: o total não muda.
-  const colunas = 5 + (colunaExtra ? 1 : 0)
+  const colunas = 5 + (colunaExtra ? 1 : 0) + (selecao ? 1 : 0)
   const idsVisiveis = new Set(visiveis.map(a => a.id))
   const escolhidos = (selecao?.selecionados ?? []).filter(id => idsVisiveis.has(id))
   const todos = visiveis.length > 0 && escolhidos.length === visiveis.length
@@ -137,6 +140,19 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
     ? [...new Set([...selecao.selecionados, ...visiveis.map(a => a.id)])]
     : selecao.selecionados.filter(id => !idsVisiveis.has(id)))
   const marcar = (id: string, v: boolean) => selecao?.onChange(v ? [...selecao.selecionados, id] : selecao.selecionados.filter(x => x !== id))
+  const ancora = useRef<string | null>(null)
+  /** Clique na linha, como no Drive: seleciona só ela; Ctrl/⌘ alterna; Shift seleciona o intervalo. */
+  function clicarLinha(e: MouseEvent, id: string) {
+    if (!selecao || (e.target as HTMLElement).closest('a, button, input, label')) return
+    if (e.shiftKey && ancora.current) {
+      const ids = visiveis.map(a => a.id)
+      const [de, ate] = [ids.indexOf(ancora.current), ids.indexOf(id)].sort((x, y) => x - y)
+      if (de >= 0) { selecao.onChange(ids.slice(de, ate + 1)); return }
+    }
+    ancora.current = id
+    if (e.ctrlKey || e.metaKey) marcar(id, !selecao.selecionados.includes(id))
+    else selecao.onChange([id])
+  }
   const selecionarTodos = <CaixaSelecao marcado={todos} parcial={escolhidos.length > 0} onChange={marcarTodos} rotulo="Selecionar todos" />
 
   return (
@@ -161,16 +177,22 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
         {filtroExtra?.elemento}
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {selecao && modo === 'blocos' && visiveis.length > 0 && selecionarTodos}
-          <p className="text-sm text-gray-500" aria-live="polite">
-            {selecao && escolhidos.length > 0
-              ? `${escolhidos.length} de ${visiveis.length} selecionado${escolhidos.length !== 1 ? 's' : ''}`
-              : <>{visiveis.length} arquivo{visiveis.length !== 1 ? 's' : ''}{busca || tipo || filtroExtra?.ativo ? ' (filtrado)' : ''}</>}
-          </p>
-          {selecao && <div role="toolbar" aria-label="Ações dos arquivos selecionados" className="flex items-center gap-1">{selecao.acoes(escolhidos)}</div>}
-        </div>
+      <div className="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-3">
+        {selecao && escolhidos.length > 0
+          // Barra de seleção, como no Drive: fechar limpa a seleção; as ações valem para os selecionados.
+          ? <div className="anim-surgir flex min-h-11 flex-1 flex-wrap items-center gap-2 rounded-full bg-slate-100 py-1 pl-1.5 pr-3">
+              <GlassCloseButton label="Limpar seleção" onClick={() => selecao.onChange(selecao.selecionados.filter(id => !idsVisiveis.has(id)))} />
+              <p className="mr-2 text-sm font-medium text-slate-700" aria-live="polite">
+                {escolhidos.length} {escolhidos.length === 1 ? 'item selecionado' : 'itens selecionados'}
+              </p>
+              <div role="toolbar" aria-label="Ações dos arquivos selecionados" className="flex items-center gap-1">{selecao.acoes(escolhidos)}</div>
+            </div>
+          : <div className="flex flex-wrap items-center gap-3">
+              {selecao && modo === 'blocos' && visiveis.length > 0 && selecionarTodos}
+              <p className="text-sm text-gray-500" aria-live="polite">
+                {visiveis.length} arquivo{visiveis.length !== 1 ? 's' : ''}{busca || tipo || filtroExtra?.ativo ? ' (filtrado)' : ''}
+              </p>
+            </div>}
         {visualizacao && (
           <div className="flex flex-wrap items-center gap-3">
             {modo === 'blocos' && (
@@ -195,7 +217,8 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
         )}
       </div>
 
-      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onMarcar={marcar} /> : <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onMarcar={marcar} /> : <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white"
+        onKeyDown={e => { if (selecao && e.key === 'Escape' && escolhidos.length) selecao.onChange([]) }}>
         <table className="w-full text-sm">
           <thead className="border-b border-gray-100 bg-gray-50">
             <tr>
@@ -205,7 +228,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
               <th className="hidden px-4 py-3 text-left text-xs font-medium text-gray-500 lg:table-cell">Enviado por</th>
               <th className="hidden px-4 py-3 text-right text-xs font-medium text-gray-500 sm:table-cell">Tamanho</th>
               <th className="hidden px-4 py-3 text-right text-xs font-medium text-gray-500 lg:table-cell">Data</th>
-              {!selecao && <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Ações</th>}
+              <th className={`px-4 py-3 text-right text-xs font-medium text-gray-500 ${selecao ? 'w-44' : ''}`}><span className={selecao ? 'sr-only' : ''}>Ações</span></th>
             </tr>
           </thead>
           <tbody>
@@ -214,7 +237,9 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
             )}
             {visiveis.map(a => (
               <tr key={a.id} aria-selected={selecao ? escolhidos.includes(a.id) : undefined}
-                className={`border-b border-gray-50 transition-colors last:border-0 ${selecao && escolhidos.includes(a.id) ? 'bg-blue-50/70' : 'hover:bg-gray-50'}`}>
+                onClick={selecao ? e => clicarLinha(e, a.id) : undefined}
+                onDoubleClick={selecao && a.abrir ? e => { if (!(e.target as HTMLElement).closest('a, button, input')) window.open(a.abrir, '_blank', 'noopener,noreferrer') } : undefined}
+                className={`group border-b border-gray-50 transition-colors last:border-0 ${selecao ? 'cursor-default select-none' : ''} ${selecao && escolhidos.includes(a.id) ? 'bg-blue-100/80' : 'hover:bg-gray-50'}`}>
                 {selecao && <td className="w-10 py-3 pl-4"><CaixaSelecao marcado={escolhidos.includes(a.id)} onChange={v => marcar(a.id, v)} rotulo={`Selecionar ${a.nome}`} /></td>}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -226,7 +251,9 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
                       {a.abrir
                         ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" className="block max-w-[260px] truncate font-medium text-gray-900 hover:text-blue-600 hover:underline focus-visible:outline-2 focus-visible:outline-blue-500" title={a.nome}>{a.nome}</a>
                         : <p className="max-w-[260px] truncate font-medium text-gray-900" title={a.nome}>{a.nome}</p>}
-                      <p className="text-xs text-gray-400">{a.subtitulo}</p>
+                      <p className="flex items-center gap-1 text-xs text-gray-400">
+                        {a.favorito && <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-label="Com estrela" />}{a.subtitulo}
+                      </p>
                     </div>
                   </div>
                 </td>
@@ -234,7 +261,10 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
                 <td className="hidden px-4 py-3 text-gray-600 lg:table-cell">{a.enviadoPor ?? '—'}</td>
                 <td className="hidden px-4 py-3 text-right text-gray-600 sm:table-cell">{a.tamanho}</td>
                 <td className="hidden px-4 py-3 text-right text-xs text-gray-400 lg:table-cell">{new Date(a.data).toLocaleDateString('pt-BR')}</td>
-                {!selecao && <td className="px-4 py-3"><div className="flex items-center justify-end gap-1">{a.acoes}</div></td>}
+                <td className="px-4 py-2">
+                  {/* Com seleção, as ações da linha aparecem no hover ou no foco (e sempre em telas de toque). */}
+                  <div className={`flex items-center justify-end gap-1 ${selecao ? 'acoes-linha-arquivo' : ''}`}>{a.acoes}</div>
+                </td>
               </tr>
             ))}
           </tbody>

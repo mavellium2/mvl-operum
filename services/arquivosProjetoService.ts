@@ -77,8 +77,28 @@ export async function listarArquivos(s: SessaoAuthz, projetoId: string, categori
   return prisma.arquivoProjeto.findMany({
     where: { tenantId: s.tenantId, projetoId, categoria, deletedAt: null },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, nome: true, tipo: true, tamanho: true, createdAt: true, enviadoPor: { select: { name: true } } },
-  })
+    select: {
+      id: true, nome: true, tipo: true, tamanho: true, createdAt: true, enviadoPor: { select: { name: true } },
+      // Só a estrela de quem está vendo.
+      favoritos: { where: { userId: s.userId }, select: { userId: true } },
+    },
+  }).then(lista => lista.map(({ favoritos, ...a }) => ({ ...a, favorito: favoritos.length > 0 })))
+}
+
+/** Marca ou tira a estrela pessoal de um arquivo (quem pode ver o arquivo pode favoritá-lo). */
+export async function definirFavorito(s: SessaoAuthz, projetoId: string, id: string, favorito: boolean) {
+  await acesso(s, projetoId, 'documentos:ver')
+  const arquivo = await prisma.arquivoProjeto.findFirst({ where: { id, projetoId, tenantId: s.tenantId, deletedAt: null }, select: { id: true } })
+  if (!arquivo) throw new ArquivoProjetoError('Arquivo não encontrado', 404)
+  if (favorito) {
+    await prisma.arquivoProjetoFavorito.upsert({
+      where: { arquivoId_userId: { arquivoId: id, userId: s.userId } },
+      create: { arquivoId: id, userId: s.userId, tenantId: s.tenantId },
+      update: {},
+    })
+  } else {
+    await prisma.arquivoProjetoFavorito.deleteMany({ where: { arquivoId: id, userId: s.userId } })
+  }
 }
 
 /** URL assinada (5 min) para ver ou baixar; `baixar` força o download com o nome original. */

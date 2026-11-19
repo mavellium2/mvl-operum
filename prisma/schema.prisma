@@ -423,6 +423,7 @@ model User {
   atasAcoesResponsaveis AtaAcao[]     @relation("AtaAcaoResponsavel")
   atasElaboradas        Ata[]         @relation("AtaElaboradoPor")
   arquivosEnviados      ArquivoProjeto[] @relation("ArquivoProjetoEnviadoPor")
+  arquivosFavoritos     ArquivoProjetoFavorito[]
   atasAprovadas         Ata[]         @relation("AtaAprovadoPor")
 
   @@unique([email, tenantId])
@@ -802,8 +803,23 @@ model ArquivoProjeto {
 
   project    Project @relation(fields: [projetoId], references: [id], onDelete: Cascade)
   enviadoPor User?   @relation("ArquivoProjetoEnviadoPor", fields: [enviadoPorId], references: [id], onDelete: SetNull)
+  favoritos  ArquivoProjetoFavorito[]
 
   @@index([tenantId, projetoId, categoria, deletedAt])
+}
+
+/// Estrela pessoal de um arquivo do projeto (como no Drive): cada usuário marca os seus.
+model ArquivoProjetoFavorito {
+  arquivoId String
+  userId    String
+  tenantId  String
+  createdAt DateTime @default(now())
+
+  arquivo ArquivoProjeto @relation(fields: [arquivoId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([arquivoId, userId])
+  @@index([userId, tenantId])
 }
 
 /// Formulário de risco (como a Ata: um documento por risco). Só guarda o número e a

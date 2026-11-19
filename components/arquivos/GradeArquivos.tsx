@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Play } from 'lucide-react'
+import { Play, Star } from 'lucide-react'
 import GlassCard from '@/components/ui/GlassCard'
 import { CaixaSelecao, IconeArquivo, type ItemArquivo } from './ListaArquivos'
 
@@ -57,7 +57,7 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onM
         return (
         <li key={a.id} className="min-w-0">
           <GlassCard as="article" interactive aria-selected={selecionados ? marcado : undefined}
-            className={`group relative flex h-full flex-col overflow-hidden !rounded-2xl p-2 ${marcado ? 'ring-2 ring-blue-500' : ''}`}>
+            className={`bloco-arquivo group relative flex h-full flex-col overflow-hidden !rounded-2xl p-2 ${marcado ? 'ring-2 ring-blue-500' : ''}`}>
             {selecionados && onMarcar && (
               <span className="absolute left-3.5 top-3.5 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-white/90 shadow-sm backdrop-blur-sm">
                 <CaixaSelecao marcado={marcado} onChange={v => onMarcar(a.id, v)} rotulo={`Selecionar ${a.nome}`} />
@@ -73,9 +73,12 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onM
               {a.abrir
                 ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" tabIndex={-1} className="block truncate text-sm font-medium text-slate-900 hover:text-blue-600 hover:underline" title={a.nome}>{a.nome}</a>
                 : <p className="truncate text-sm font-medium text-slate-900" title={a.nome}>{a.nome}</p>}
-              <p className="truncate text-xs text-slate-500">{a.tamanho} · {new Date(a.data).toLocaleDateString('pt-BR')}</p>
+              <p className="flex items-center gap-1 truncate text-xs text-slate-500">
+                {a.favorito && <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" aria-label="Com estrela" />}
+                {a.tamanho} · {new Date(a.data).toLocaleDateString('pt-BR')}
+              </p>
             </div>
-            {a.acoes && <div className="mt-2 flex flex-wrap items-center justify-end gap-1 px-1">{a.acoes}</div>}
+            {a.acoes && <div className={`mt-1 flex flex-wrap items-center justify-end gap-0.5 ${selecionados ? 'acoes-linha-arquivo' : ''}`}>{a.acoes}</div>}
           </GlassCard>
         </li>
         )

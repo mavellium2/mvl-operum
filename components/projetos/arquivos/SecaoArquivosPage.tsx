@@ -24,7 +24,7 @@ export default async function SecaoArquivosPage({ params, categoria }: { params:
         key={categoria}
         projetoId={projetoId}
         categoria={categoria}
-        iniciais={arquivos.map(a => ({ id: a.id, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho, enviadoEm: a.createdAt.toISOString(), enviadoPor: a.enviadoPor?.name ?? null }))}
+        iniciais={arquivos.map(a => ({ id: a.id, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho, enviadoEm: a.createdAt.toISOString(), enviadoPor: a.enviadoPor?.name ?? null, favorito: a.favorito }))}
       />
     </div>
   )

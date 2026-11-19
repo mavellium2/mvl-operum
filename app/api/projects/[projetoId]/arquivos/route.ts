@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: Ctx) {
   try {
     const cat = categoria.parse(new URL(req.url).searchParams.get('categoria'))
     const arquivos = await listarArquivos({ tenantId, role, userId }, projetoId, cat)
-    return NextResponse.json(arquivos.map(a => ({ id: a.id, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho, enviadoEm: a.createdAt.toISOString(), enviadoPor: a.enviadoPor?.name ?? null })))
+    return NextResponse.json(arquivos.map(a => ({ id: a.id, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho, enviadoEm: a.createdAt.toISOString(), enviadoPor: a.enviadoPor?.name ?? null, favorito: a.favorito })))
   } catch (e) { return erroArquivos(e) }
 }
 
