@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { Play, Star } from 'lucide-react'
 import GlassCard from '@/components/ui/GlassCard'
-import { CaixaSelecao, IconeArquivo, type ItemArquivo } from './ListaArquivos'
+import type { MouseEvent } from 'react'
+import { IconeArquivo, type ItemArquivo } from './ListaArquivos'
 
 const duracao = (s: number) => {
   if (!Number.isFinite(s) || s <= 0) return null
@@ -41,11 +42,11 @@ function Miniatura({ item, tamanho }: { item: ItemArquivo; tamanho: number }) {
  * Visualização em blocos (como os ícones do Finder): a arte de cada arquivo,
  * com o nome embaixo. O tamanho do bloco vem do controle deslizante da lista.
  */
-export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onMarcar }: {
+export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onClicar }: {
   itens: ItemArquivo[]; tamanho: number; vazio: string
-  /** Com seleção: ids marcados (sem ela, os blocos não têm caixa). */
+  /** Com seleção: ids marcados; o clique no bloco (fora da arte e dos botões) seleciona. */
   selecionados?: string[]
-  onMarcar?: (id: string, marcado: boolean) => void
+  onClicar?: (e: MouseEvent, id: string) => void
 }) {
   if (itens.length === 0) {
     return <div className="rounded-2xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-400">{vazio}</div>
@@ -57,12 +58,8 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onM
         return (
         <li key={a.id} className="min-w-0">
           <GlassCard as="article" interactive aria-selected={selecionados ? marcado : undefined}
-            className={`bloco-arquivo group relative flex h-full flex-col overflow-hidden !rounded-2xl p-2 ${marcado ? 'ring-2 ring-blue-500' : ''}`}>
-            {selecionados && onMarcar && (
-              <span className="absolute left-3.5 top-3.5 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-white/90 shadow-sm backdrop-blur-sm">
-                <CaixaSelecao marcado={marcado} onChange={v => onMarcar(a.id, v)} rotulo={`Selecionar ${a.nome}`} />
-              </span>
-            )}
+            onClick={onClicar ? e => onClicar(e, a.id) : undefined}
+            className={`bloco-arquivo group relative ${onClicar ? 'cursor-default select-none' : ''} flex h-full flex-col overflow-hidden !rounded-2xl p-2 ${marcado ? 'ring-2 ring-blue-500' : ''}`}>
             {a.abrir
               ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${a.nome}`}
                   className="relative block aspect-[4/3] overflow-hidden rounded-xl bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500">

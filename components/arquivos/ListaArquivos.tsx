@@ -46,13 +46,6 @@ export interface SelecaoArquivos {
   acoes: (ids: string[]) => ReactNode
 }
 
-/** Caixa de seleção nativa (controle permitido fora da base dos campos de texto), com estado parcial. */
-export function CaixaSelecao({ marcado, parcial = false, onChange, rotulo, className = '' }: { marcado: boolean; parcial?: boolean; onChange: (v: boolean) => void; rotulo: string; className?: string }) {
-  const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (ref.current) ref.current.indeterminate = parcial && !marcado }, [parcial, marcado])
-  return <input ref={ref} type="checkbox" checked={marcado} onChange={e => onChange(e.target.checked)} aria-label={rotulo}
-    className={`h-4 w-4 shrink-0 cursor-pointer rounded accent-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${className}`} />
-}
 const TAMANHO_MIN = 120
 const TAMANHO_MAX = 360
 const TAMANHO_PADRAO = 180
@@ -132,16 +125,12 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
     if (filtroExtra && !filtroExtra.aceita(a)) return false
     return true
   }), [itens, busca, tipo, filtroExtra])
-  const colunas = 5 + (colunaExtra ? 1 : 0) + (selecao ? 1 : 0)
+  const colunas = 5 + (colunaExtra ? 1 : 0)
   const idsVisiveis = new Set(visiveis.map(a => a.id))
   const escolhidos = (selecao?.selecionados ?? []).filter(id => idsVisiveis.has(id))
-  const todos = visiveis.length > 0 && escolhidos.length === visiveis.length
-  const marcarTodos = (v: boolean) => selecao?.onChange(v
-    ? [...new Set([...selecao.selecionados, ...visiveis.map(a => a.id)])]
-    : selecao.selecionados.filter(id => !idsVisiveis.has(id)))
   const marcar = (id: string, v: boolean) => selecao?.onChange(v ? [...selecao.selecionados, id] : selecao.selecionados.filter(x => x !== id))
   const ancora = useRef<string | null>(null)
-  /** Clique na linha, como no Drive: seleciona só ela; Ctrl/⌘ alterna; Shift seleciona o intervalo. */
+  /** Clique na linha ou no bloco, como no Drive: seleciona só ela; Ctrl/⌘ alterna; Shift seleciona o intervalo. */
   function clicarLinha(e: MouseEvent, id: string) {
     if (!selecao || (e.target as HTMLElement).closest('a, button, input, label')) return
     if (e.shiftKey && ancora.current) {
@@ -153,7 +142,6 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
     if (e.ctrlKey || e.metaKey) marcar(id, !selecao.selecionados.includes(id))
     else selecao.onChange([id])
   }
-  const selecionarTodos = <CaixaSelecao marcado={todos} parcial={escolhidos.length > 0} onChange={marcarTodos} rotulo="Selecionar todos" />
 
   return (
     <div>
@@ -188,7 +176,6 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
               <div role="toolbar" aria-label="Ações dos arquivos selecionados" className="flex items-center gap-1">{selecao.acoes(escolhidos)}</div>
             </div>
           : <div className="flex flex-wrap items-center gap-3">
-              {selecao && modo === 'blocos' && visiveis.length > 0 && selecionarTodos}
               <p className="text-sm text-gray-500" aria-live="polite">
                 {visiveis.length} arquivo{visiveis.length !== 1 ? 's' : ''}{busca || tipo || filtroExtra?.ativo ? ' (filtrado)' : ''}
               </p>
@@ -217,12 +204,11 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
         )}
       </div>
 
-      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onMarcar={marcar} /> : <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white"
+      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={clicarLinha} /> : <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white"
         onKeyDown={e => { if (selecao && e.key === 'Escape' && escolhidos.length) selecao.onChange([]) }}>
         <table className="w-full text-sm">
           <thead className="border-b border-gray-100 bg-gray-50">
             <tr>
-              {selecao && <th className="w-10 py-3 pl-4">{visiveis.length > 0 && selecionarTodos}</th>}
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Arquivo</th>
               {colunaExtra && <th className="hidden px-4 py-3 text-left text-xs font-medium text-gray-500 md:table-cell">{colunaExtra}</th>}
               <th className="hidden px-4 py-3 text-left text-xs font-medium text-gray-500 lg:table-cell">Enviado por</th>
@@ -240,7 +226,6 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
                 onClick={selecao ? e => clicarLinha(e, a.id) : undefined}
                 onDoubleClick={selecao && a.abrir ? e => { if (!(e.target as HTMLElement).closest('a, button, input')) window.open(a.abrir, '_blank', 'noopener,noreferrer') } : undefined}
                 className={`group border-b border-gray-50 transition-colors last:border-0 ${selecao ? 'cursor-default select-none' : ''} ${selecao && escolhidos.includes(a.id) ? 'bg-blue-100/80' : 'hover:bg-gray-50'}`}>
-                {selecao && <td className="w-10 py-3 pl-4"><CaixaSelecao marcado={escolhidos.includes(a.id)} onChange={v => marcar(a.id, v)} rotulo={`Selecionar ${a.nome}`} /></td>}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     {visualizacao && a.previa && a.categoria === 'imagem'

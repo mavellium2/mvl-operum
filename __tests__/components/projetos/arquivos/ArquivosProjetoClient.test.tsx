@@ -37,22 +37,24 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     com(['documentos:ver'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
     fireEvent.click(screen.getByText('5.0 MB'))
     expect(screen.getByText('1 item selecionado')).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Selecionar Visita.mp4' })).toBeChecked()
+    expect(screen.getByText('Visita.mp4').closest('tr')).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('checkbox')).toBeNull()
     fireEvent.click(screen.getByText('2.0 KB'), { ctrlKey: true })
     expect(screen.getByText('2 itens selecionados')).toBeInTheDocument()
     fireEvent.click(screen.getByText('2.0 KB'))
     expect(screen.getByText('1 item selecionado')).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Selecionar Visita.mp4' })).not.toBeChecked()
+    expect(screen.getByText('Visita.mp4').closest('tr')).toHaveAttribute('aria-selected', 'false')
     fireEvent.click(screen.getByRole('button', { name: 'Limpar seleção' }))
     expect(screen.queryByRole('toolbar')).toBeNull()
   })
 
-  it('selecionar todos libera as ações em lote e exclui depois de confirmar', async () => {
+  it('Shift seleciona o intervalo e exclui em lote depois de confirmar', async () => {
     vi.mocked(fetchWithSession).mockImplementation(async (url, init) =>
       init?.method === 'DELETE' ? new Response(null, { status: 204 }) : Response.json([]))
     com(['documentos:ver', 'documentos:editar', 'documentos:excluir'], <ArquivosProjetoClient projetoId="p1" categoria="APRESENTACAO" iniciais={arquivos} />)
     expect(screen.getByRole('button', { name: /Enviar arquivos/ })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar todos' }))
+    fireEvent.click(screen.getByText('5.0 MB'))
+    fireEvent.click(screen.getByText('2.0 KB'), { shiftKey: true })
     const barra = screen.getByRole('toolbar', { name: 'Ações dos arquivos selecionados' })
     expect(within(barra).getByRole('button', { name: 'Renomear' })).toBeDisabled()
     fireEvent.click(within(barra).getByRole('button', { name: 'Excluir 2 selecionados' }))
