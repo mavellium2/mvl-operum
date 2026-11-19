@@ -36,8 +36,8 @@
 
 .post-it__fold::after {
   position: absolute;
-  inset: 1px 0 0 1px;
-  background: linear-gradient(135deg, #d6d6a6 0 50%, #ffffcc 51% 100%);
+  inset: 1px;
+  background: linear-gradient(145deg, #c3c39a 0%, #d3d3a8 72%, #e7e7b8 100%);
   clip-path: polygon(0 100%, 100% 0, 100% 100%);
   content: '';
 }

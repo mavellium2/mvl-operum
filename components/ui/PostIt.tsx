@@ -17,7 +17,7 @@ export default function PostIt({
   children,
   width,
   height,
-  foldSize = 24,
+  foldSize = 28,
   placeholder = 'Escreva aqui...',
   className,
   style,
