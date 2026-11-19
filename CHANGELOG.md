@@ -11,7 +11,7 @@ funcionalidade depois disso é uma versão MINOR.
 
 Ajustes pedidos em 18/11/2026.
 
-- **Canvas do projeto:** adiciona o documento Canvas à área Documentação de todos os projetos. O quadro segue os 13 blocos do modelo de referência, aproveita nome do projeto, gerente, justificativa, objetivos, descrição do produto e equipe já cadastrados, e usa o fluxo comum de rascunhos, versões, aprovação, histórico e exportação para PDF/Word.
+- **Canvas do projeto:** adiciona o documento Canvas à área Documentação de todos os projetos. Reproduz a arte-base e a posição dos 13 blocos do DOCX de referência, aproveita nome do projeto, gerente, justificativa, objetivos, descrição do produto e equipe já cadastrados, e usa o fluxo comum de rascunhos, versões, aprovação, histórico e exportação para PDF/Word.
 
 - **Formatação do texto nos documentos:** a barra do editor ganhou o grupo "Formatação", com negrito, itálico, sublinhado e alinhamento (à esquerda, centralizado, à direita e justificado), como no Word. Os atalhos Ctrl+B, Ctrl+I e Ctrl+U também funcionam. Vale para os textos longos do Termo de Abertura, da Declaração do Escopo, dos Formulários de Riscos, das Lições Aprendidas e das Atas. A formatação sai igual no PDF e no Word. Colar texto de fora traz só o texto, sem estilos nem imagens.
 

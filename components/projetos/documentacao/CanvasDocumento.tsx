@@ -29,79 +29,68 @@ export const CANVAS_INICIAL = (sistema: DadosFormularios, membros: MembroEquipeO
   orcamento: '',
 })
 
-function Bloco({ id, titulo, valor, alterar, classe = '' }: {
+function CampoCanvas({ id, titulo, valor, alterar, area, rotulo }: {
   id: CampoCanvas
   titulo: string
   valor: string
   alterar?: RenderFormulario<Canvas>['alterar']
-  classe?: string
+  area: { x: number; y: number; width: number; height: number; fontSize?: number }
+  rotulo?: { x: number; y: number; width: number; height: number }
 }) {
   return (
-    <section className={`canvas-projeto-bloco ${classe}`}>
-      <h2>{titulo}</h2>
-      <CampoTexto
-        id={`canvas-${id}`}
-        rotulo={titulo}
-        ajuda={`Conteúdo do bloco ${titulo} do Canvas.`}
-        dica={`Escreva aqui: ${titulo.toLocaleLowerCase('pt-BR')}`}
-        valor={valor}
-        onChange={novo => alterar?.(atual => ({ ...atual, [id]: novo }))}
-        max={20000}
-        formatavel
-      />
-    </section>
+    <>
+      {rotulo && <h2 className="canvas-template-titulo" style={{ left: `${rotulo.x}pt`, top: `${rotulo.y}pt`, width: `${rotulo.width}pt`, height: `${rotulo.height}pt` }}>{titulo}</h2>}
+      <div className="canvas-template-campo" style={{ left: `${area.x}pt`, top: `${area.y}pt`, width: `${area.width}pt`, height: `${area.height}pt`, fontSize: `${area.fontSize ?? 8}pt` }}>
+        <CampoTexto id={`canvas-${id}`} rotulo={titulo} ajuda={`Conteúdo do bloco ${titulo} do Canvas.`}
+          dica={`Escreva aqui: ${titulo.toLocaleLowerCase('pt-BR')}`} valor={valor}
+          onChange={novo => alterar?.(atual => ({ ...atual, [id]: novo }))} max={20000} formatavel />
+      </div>
+    </>
   )
 }
 
-function CampoCabecalho({ id, titulo, valor, alterar, classe = '' }: {
+function CampoCabecalho({ id, titulo, valor, alterar, label, area, alinhamento = 'left' }: {
   id: 'projeto' | 'solicitante' | 'gerente'
   titulo: string
   valor: string
   alterar?: RenderFormulario<Canvas>['alterar']
-  classe?: string
+  label: { x: number; y: number; width: number; height: number }
+  area: { x: number; y: number; width: number; height: number; fontSize?: number }
+  alinhamento?: 'left' | 'center'
 }) {
   return (
-    <section className={`canvas-projeto-cabecalho ${classe}`}>
-      <strong>{titulo}</strong>
-      <CampoTexto id={`canvas-${id}`} rotulo={titulo} valor={valor}
-        onChange={novo => alterar?.(atual => ({ ...atual, [id]: novo }))} max={1000} />
-    </section>
+    <>
+      <strong className="canvas-template-label" style={{ left: `${label.x}pt`, top: `${label.y}pt`, width: `${label.width}pt`, height: `${label.height}pt` }}>{titulo}</strong>
+      <div className="canvas-template-campo" style={{ left: `${area.x}pt`, top: `${area.y}pt`, width: `${area.width}pt`, height: `${area.height}pt`, fontSize: `${area.fontSize ?? 11}pt`, textAlign: alinhamento }}>
+        <CampoTexto id={`canvas-${id}`} rotulo={titulo} valor={valor} alinhamento={alinhamento}
+          onChange={novo => alterar?.(atual => ({ ...atual, [id]: novo }))} max={1000} />
+      </div>
+    </>
   )
 }
 
 export function FolhaCanvas({ conteudo, alterar }: RenderFormulario<Canvas>) {
-  const campos: { id: CampoCanvas; titulo: string; classe?: string }[] = [
-    { id: 'justificativa', titulo: 'JUSTIFICATIVA (Por quê?)' },
-    { id: 'objetivos', titulo: 'OBJETIVO (Para quê?)' },
-    { id: 'escopo', titulo: 'ESCOPO (O quê?)' },
-    { id: 'escopoNaoIncluido', titulo: 'ESCOPO NÃO INCLUÍDO (O que não?)' },
-    { id: 'estrategia', titulo: 'ESTRATÉGIA DE CONDUÇÃO (Como?)' },
-    { id: 'stakeholders', titulo: 'STAKEHOLDERS (Com quem?)' },
-    { id: 'comunicacao', titulo: 'COMUNICAÇÃO' },
-    { id: 'restricoes', titulo: 'RESTRIÇÕES (Imposições)' },
-    { id: 'premissas', titulo: 'PREMISSAS (Hipóteses)' },
-    { id: 'riscos', titulo: 'RISCOS (Ameaças e Oportunidades)' },
-    { id: 'fases', titulo: 'FASES (2º nível da EAP)' },
-    { id: 'cronograma', titulo: 'CRONOGRAMA (Quando?)' },
-    { id: 'orcamento', titulo: 'ORÇAMENTO (Por quanto?)' },
-  ]
-  const bloco = (id: CampoCanvas, classe = '') => {
-    const campo = campos.find(item => item.id === id)!
-    return <Bloco key={id} {...campo} valor={conteudo[id]} alterar={alterar} classe={classe} />
-  }
   return (
-    <Folha paisagem data-testid="canvas-folha" style={{ gap: '3mm', fontSize: '8pt' }}>
-      <header className="canvas-projeto-topo">
-        <CampoCabecalho id="projeto" titulo="PROJETO" valor={conteudo.projeto} alterar={alterar} />
-        <CampoCabecalho id="solicitante" titulo="SOLICITANTE" valor={conteudo.solicitante} alterar={alterar} />
-        <CampoCabecalho id="gerente" titulo="GP" valor={conteudo.gerente} alterar={alterar} />
-      </header>
-      <div className="canvas-projeto-linha canvas-projeto-linha-4">{['justificativa', 'objetivos', 'escopo', 'escopoNaoIncluido'].map(id => bloco(id as CampoCanvas))}</div>
-      <div className="canvas-projeto-linha canvas-projeto-linha-5">{['estrategia', 'stakeholders', 'comunicacao', 'restricoes', 'premissas'].map(id => bloco(id as CampoCanvas))}</div>
-      <div className="canvas-projeto-linha canvas-projeto-linha-final">
-        {bloco('riscos', 'canvas-projeto-riscos')}
-        <div className="canvas-projeto-coluna">{bloco('fases')}{bloco('cronograma')}{bloco('orcamento')}</div>
-      </div>
+    <Folha paisagem fixa data-testid="canvas-folha" style={{ width: '355.6mm', height: '267.7mm', padding: 0, gap: 0, overflow: 'hidden', position: 'relative', fontFamily: 'Arial, sans-serif', fontSize: '8pt', lineHeight: 1.2 }}>
+      {/* Base gráfica extraída do DOCX do modelo; os campos editáveis ficam sobre os cartões originais. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="canvas-template-fundo" src="/images/project-canvas-template.png" alt="" />
+      <CampoCabecalho id="projeto" titulo="PROJETO:" valor={conteudo.projeto} alterar={alterar} alinhamento="center" label={{ x: 16, y: 54, width: 58, height: 22 }} area={{ x: 98, y: 50, width: 447, height: 38 }} />
+      <CampoCabecalho id="solicitante" titulo="SOLICITANTE:" valor={conteudo.solicitante} alterar={alterar} alinhamento="center" label={{ x: 548, y: 36, width: 104, height: 35 }} area={{ x: 653, y: 50, width: 147, height: 38 }} />
+      <CampoCabecalho id="gerente" titulo="GP:" valor={conteudo.gerente} alterar={alterar} alinhamento="center" label={{ x: 809, y: 16, width: 35, height: 26 }} area={{ x: 848, y: 50, width: 146, height: 38 }} />
+      <CampoCanvas id="justificativa" titulo="JUSTIFICATIVA (Por quê?)" valor={conteudo.justificativa} alterar={alterar} rotulo={{ x: 45, y: 99, width: 172, height: 38 }} area={{ x: 20, y: 154, width: 178, height: 142, fontSize: 4.6 }} />
+      <CampoCanvas id="objetivos" titulo="OBJETIVO (Para quê?)" valor={conteudo.objetivos} alterar={alterar} rotulo={{ x: 255, y: 99, width: 162, height: 38 }} area={{ x: 213, y: 147, width: 180, height: 156, fontSize: 4.2 }} />
+      <CampoCanvas id="escopo" titulo="ESCOPO (O quê?)" valor={conteudo.escopo} alterar={alterar} rotulo={{ x: 468, y: 99, width: 290, height: 38 }} area={{ x: 419, y: 169, width: 370, height: 127, fontSize: 11 }} />
+      <CampoCanvas id="escopoNaoIncluido" titulo="ESCOPO NÃO INCLUÍDO (O que não?)" valor={conteudo.escopoNaoIncluido} alterar={alterar} rotulo={{ x: 824, y: 99, width: 172, height: 51 }} area={{ x: 821, y: 182, width: 164, height: 121, fontSize: 11 }} />
+      <CampoCanvas id="estrategia" titulo="ESTRATÉGIA DE CONDUÇÃO (Como?)" valor={conteudo.estrategia} alterar={alterar} rotulo={{ x: 42, y: 316, width: 150, height: 59 }} area={{ x: 28, y: 391, width: 147, height: 112, fontSize: 10 }} />
+      <CampoCanvas id="stakeholders" titulo="STAKEHOLDERS (Com quem?)" valor={conteudo.stakeholders} alterar={alterar} rotulo={{ x: 228, y: 316, width: 177, height: 56 }} area={{ x: 224, y: 374, width: 155, height: 135, fontSize: 10 }} />
+      <CampoCanvas id="comunicacao" titulo="COMUNICAÇÃO" valor={conteudo.comunicacao} alterar={alterar} rotulo={{ x: 438, y: 341, width: 187, height: 24 }} area={{ x: 426, y: 362, width: 151, height: 143, fontSize: 15 }} />
+      <CampoCanvas id="restricoes" titulo="RESTRIÇÕES (Imposições)" valor={conteudo.restricoes} alterar={alterar} rotulo={{ x: 625, y: 341, width: 173, height: 34 }} area={{ x: 607, y: 378, width: 195, height: 128, fontSize: 6.5 }} />
+      <CampoCanvas id="premissas" titulo="PREMISSAS (Hipóteses)" valor={conteudo.premissas} alterar={alterar} rotulo={{ x: 830, y: 341, width: 174, height: 34 }} area={{ x: 829, y: 382, width: 157, height: 128, fontSize: 6.5 }} />
+      <CampoCanvas id="riscos" titulo="RISCOS (Ameaças e Oportunidades)" valor={conteudo.riscos} alterar={alterar} rotulo={{ x: 52, y: 548, width: 319, height: 27 }} area={{ x: 99, y: 577, width: 222, height: 150, fontSize: 10 }} />
+      <CampoCanvas id="fases" titulo="FASES (2º nível da EAP)" valor={conteudo.fases} alterar={alterar} rotulo={{ x: 438, y: 548, width: 173, height: 37 }} area={{ x: 416, y: 587, width: 171, height: 137, fontSize: 7.4 }} />
+      <CampoCanvas id="cronograma" titulo="CRONOGRAMA (Quando?)" valor={conteudo.cronograma} alterar={alterar} rotulo={{ x: 610, y: 548, width: 196, height: 37 }} area={{ x: 607, y: 585, width: 193, height: 145, fontSize: 7.4 }} />
+      <CampoCanvas id="orcamento" titulo="ORÇAMENTO (Por quanto?)" valor={conteudo.orcamento} alterar={alterar} rotulo={{ x: 816, y: 548, width: 186, height: 37 }} area={{ x: 813, y: 598, width: 183, height: 133, fontSize: 7.4 }} />
     </Folha>
   )
 }
@@ -115,24 +104,18 @@ export default function CanvasDocumento({ membros = [] }: { membros?: MembroEqui
   return (
     <>
       <style>{`
-        .canvas-projeto-topo{display:grid;grid-template-columns:minmax(20mm,2fr) minmax(18mm,1fr) minmax(18mm,1fr);align-items:stretch;gap:2mm;font-family:Arial,sans-serif;color:#26313d}
-        .canvas-projeto-cabecalho{border:1px solid #87909a;background:#fffed0;padding:1mm 2mm;min-width:0}
-        .canvas-projeto-cabecalho strong{display:block;font-size:7pt}
-        .canvas-projeto-cabecalho [data-campo],.canvas-projeto-cabecalho [data-texto-campo]{min-height:1.2em}
-        .canvas-projeto-linha{display:grid;gap:1.5mm;align-items:stretch}
-        .canvas-projeto-linha-4{grid-template-columns:1fr 1fr 2fr 1fr}
-        .canvas-projeto-linha-5{grid-template-columns:1fr 1fr .9fr 1.1fr 1fr}
-        .canvas-projeto-linha-final{grid-template-columns:1.1fr 3fr}
-        .canvas-projeto-coluna{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5mm}
-        .canvas-projeto-bloco{border:1px solid #87909a;background:#fffed0;padding:1.5mm 2mm;min-width:0;overflow:hidden}
-        .canvas-projeto-bloco h2{font:700 7.8pt/1.15 Arial,sans-serif;color:#26313d;text-align:center;margin:0 0 1mm}
-        .canvas-projeto-bloco [data-texto-campo]{min-height:15mm;white-space:pre-wrap;overflow-wrap:anywhere}
-        .canvas-projeto-bloco textarea{font:inherit!important;line-height:1.2!important;min-height:15mm}
-        .canvas-projeto-riscos [data-texto-campo],.canvas-projeto-riscos textarea{min-height:30mm}
+        .canvas-template-fundo{position:absolute;left:0;top:42pt;width:1008pt;height:711pt;max-width:none;object-fit:fill;z-index:0;pointer-events:none}
+        .canvas-template-label,.canvas-template-titulo,.canvas-template-campo{position:absolute;z-index:1;box-sizing:border-box;color:#27313d}
+        .canvas-template-label{font:700 15pt/1.05 Arial,sans-serif;overflow:hidden}
+        .canvas-template-titulo{font:700 15pt/1.1 Arial,sans-serif;text-align:center;margin:0;overflow:hidden}
+        .canvas-template-campo{overflow:hidden;padding:2pt 3pt;font:8pt/1.2 Arial,sans-serif}
+        .canvas-template-campo [data-texto-campo]{height:100%;min-height:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+        .canvas-template-campo textarea{box-sizing:border-box;width:100%;max-height:100%;overflow:auto!important;border:0!important;background:transparent!important;padding:0!important;font:inherit!important;line-height:inherit!important}
+        @media print{.canvas-template-campo [data-texto-campo],.canvas-template-campo textarea{overflow:hidden!important}.canvas-template-fundo{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
       `}</style>
       <FormularioDocumento<Canvas>
         tipo="CANVAS" documento="Canvas" titulo="Canvas do Projeto" arquivo="canvas-do-projeto.docx"
-        membros={membros} inicial={CANVAS_INICIAL} normalizar={normalizar} render={r => <FolhaCanvas {...r} />} paisagem
+        membros={membros} inicial={CANVAS_INICIAL} normalizar={normalizar} render={r => <FolhaCanvas {...r} />} paisagem pageSize={{ widthMm: 355.6, heightMm: 267.7 }}
       />
     </>
   )

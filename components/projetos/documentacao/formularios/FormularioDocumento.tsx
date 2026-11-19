@@ -62,6 +62,8 @@ interface Props<T> {
   topo?: ReactNode
   /** Folha e exportação em paisagem para documentos em formato de quadro. */
   paisagem?: boolean
+  /** Dimensões próprias do papel, em mm, para modelos que não usam A4. */
+  pageSize?: { widthMm: number; heightMm: number }
 }
 
 /**
@@ -69,7 +71,7 @@ interface Props<T> {
  * com aprovação do gerente, impressão, PDF e Word idêntico à folha — o mesmo
  * fluxo da Capa e do Termo.
  */
-export default function FormularioDocumento<T>({ tipo, documento, titulo, arquivo, membros, inicial, normalizar, render, adicionar, resourceId = '', topo, paisagem = false }: Props<T>) {
+export default function FormularioDocumento<T>({ tipo, documento, titulo, arquivo, membros, inicial, normalizar, render, adicionar, resourceId = '', topo, paisagem = false, pageSize }: Props<T>) {
   const { projetoId } = useParams<{ projetoId: string }>()
   const permissions = useProjectPermissions()
   const canEdit = permissions.has('documentos:editar')
@@ -131,7 +133,7 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
     aplicar: salvo => { if (sistema) setConteudo(ajustar(salvo as T, sistema)) },
   })
 
-  const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: `${titulo} - ${sistema?.nomeProjeto ?? 'Projeto'}`, pageStyle: printFolhasStyle({ landscape: paisagem }) })
+  const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: `${titulo} - ${sistema?.nomeProjeto ?? 'Projeto'}`, pageStyle: printFolhasStyle({ landscape: paisagem, pageSize }) })
 
   async function exportarWord() {
     if (!printRef.current) return
