@@ -2,6 +2,7 @@
 
 import { CampoTexto, Folha } from '@/components/documentos/editor/folha'
 import PostIt from '@/components/ui/PostIt'
+import { ICONES_CANVAS, IconeCanvas } from './canvas/IconesCanvas'
 import type { CabecalhoFormulario } from '@/lib/validation/formulariosGP'
 import type { CanvasConteudo } from '@/lib/validation/documentRevisionSchemas'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
@@ -95,6 +96,8 @@ export function FolhaCanvas({ conteudo, alterar }: RenderFormulario<Canvas>) {
       {/* Base gráfica do DOCX sem os cartões; os post-its são componentes editáveis e redimensionáveis. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className="canvas-template-fundo" src="/images/project-canvas-grid.png" alt="" />
+      {/* Ícones dos blocos no padrão do Operum (fora da arte de fundo). */}
+      {ICONES_CANVAS.map(icone => <IconeCanvas key={icone.id} {...icone} />)}
       {POSTITS_CANVAS.map(postIt => (
         <PostIt key={postIt.id} className="canvas-template-postit" placeholder=""
           style={{ position: 'absolute', left: `${postIt.x}pt`, top: `${postIt.y}pt`, width: `${postIt.width}pt`, height: `${postIt.height}pt` }} />
@@ -124,10 +127,8 @@ function normalizar(salvo: Canvas, sistema: DadosFormularios, membros: MembroEqu
   return { ...inicial, ...salvo, cabecalho: salvo.cabecalho ?? {} }
 }
 
-export default function CanvasDocumento({ membros = [] }: { membros?: MembroEquipeOption[] }) {
-  return (
-    <>
-      <style>{`
+/** Estilos da folha do Canvas (posições sobre a arte de fundo, post-its, ícones e campos). */
+export const ESTILO_CANVAS = `
         .canvas-template-fundo{position:absolute;left:0;top:42pt;width:1008pt;height:711pt;max-width:none;object-fit:fill;z-index:0;pointer-events:none}
         .canvas-template-postit{position:absolute;z-index:1;filter:drop-shadow(1px 2px 2px rgb(0 0 0 / 32%))}
         .canvas-template-label,.canvas-template-titulo,.canvas-template-campo{position:absolute;z-index:2;box-sizing:border-box;color:#27313d}
@@ -137,7 +138,12 @@ export default function CanvasDocumento({ membros = [] }: { membros?: MembroEqui
         .canvas-template-campo [data-texto-campo]{height:100%;min-height:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
         .canvas-template-campo textarea{box-sizing:border-box;width:100%;max-height:100%;overflow:auto!important;border:0!important;background:transparent!important;padding:0!important;font:inherit!important;line-height:inherit!important}
         @media print{.canvas-template-campo [data-texto-campo],.canvas-template-campo textarea{overflow:hidden!important}.canvas-template-fundo{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-      `}</style>
+      `
+
+export default function CanvasDocumento({ membros = [] }: { membros?: MembroEquipeOption[] }) {
+  return (
+    <>
+      <style>{ESTILO_CANVAS}</style>
       <FormularioDocumento<Canvas>
         tipo="CANVAS" documento="Canvas" titulo="Canvas do Projeto" arquivo="canvas-do-projeto.docx"
         membros={membros} inicial={CANVAS_INICIAL} normalizar={normalizar} render={r => <FolhaCanvas {...r} />} paisagem pageSize={{ widthMm: 355.6, heightMm: 267.7 }}
