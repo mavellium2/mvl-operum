@@ -1,8 +1,11 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Grid2x2 } from 'lucide-react'
 import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
+import GlassSegmentedControl from '@/components/ui/GlassSegmentedControl'
+import GradeArquivos from './GradeArquivos'
 
 /** Categoria usada no ícone e no filtro "Tipo". */
 export type CategoriaVisual = 'imagem' | 'video' | 'pdf' | 'apresentacao' | 'link' | 'outro'
@@ -22,6 +25,43 @@ export interface ItemArquivo {
   /** Texto a mais que entra na busca (ex.: título do card). */
   busca?: string
   acoes: ReactNode
+  /** URL da arte (imagem ou vídeo) para a miniatura dos blocos e da lista. */
+  previa?: string
+  /** Link aberto ao clicar na miniatura do bloco. */
+  abrir?: string
+}
+
+type Modo = 'lista' | 'blocos'
+const TAMANHO_MIN = 120
+const TAMANHO_MAX = 360
+const TAMANHO_PADRAO = 180
+
+function lerVisualizacao(chave: string): { modo?: Modo; tamanho?: number } {
+  try {
+    const salvo = JSON.parse(window.localStorage.getItem(`operum:arquivos:${chave}`) ?? 'null') as { modo?: string; tamanho?: number } | null
+    return {
+      modo: salvo?.modo === 'lista' || salvo?.modo === 'blocos' ? salvo.modo : undefined,
+      tamanho: typeof salvo?.tamanho === 'number' ? Math.min(TAMANHO_MAX, Math.max(TAMANHO_MIN, salvo.tamanho)) : undefined,
+    }
+  } catch { return {} /* sem armazenamento */ }
+}
+
+/** Modo e tamanho do bloco guardados neste navegador (lidos depois de montar, para não divergir da hidratação). */
+function useVisualizacao(chave: string | undefined) {
+  const [modo, setModo] = useState<Modo>('lista')
+  const [tamanho, setTamanho] = useState(TAMANHO_PADRAO)
+  const [lido, setLido] = useState(false)
+  useEffect(() => {
+    if (!chave) return
+    const salvo = lerVisualizacao(chave)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o armazenamento só no navegador, depois de hidratar
+    setModo(m => salvo.modo ?? m); setTamanho(t => salvo.tamanho ?? t); setLido(true)
+  }, [chave])
+  useEffect(() => {
+    if (!chave || !lido) return
+    try { window.localStorage.setItem(`operum:arquivos:${chave}`, JSON.stringify({ modo, tamanho })) } catch { /* sem armazenamento */ }
+  }, [chave, lido, modo, tamanho])
+  return { modo, setModo, tamanho, setTamanho }
 }
 
 const ROTULO_TIPO: Record<CategoriaVisual, string> = { imagem: 'Imagens', video: 'Vídeos', pdf: 'PDFs', apresentacao: 'Apresentações', link: 'Links', outro: 'Outros' }
@@ -47,7 +87,7 @@ export function IconeArquivo({ categoria }: { categoria: CategoriaVisual }) {
  * Lista de arquivos com busca, filtro por tipo, contador e tabela. Base comum
  * do menu Arquivos (admin) e das seções de arquivos do projeto.
  */
-export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, placeholderBusca = 'Buscar por nome…', vazio = 'Nenhum arquivo encontrado' }: {
+export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, placeholderBusca = 'Buscar por nome…', vazio = 'Nenhum arquivo encontrado', visualizacao }: {
   itens: ItemArquivo[]
   /** Opções do filtro "Tipo", na ordem. */
   tipos: CategoriaVisual[]
@@ -57,7 +97,10 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
   filtroExtra?: { elemento: ReactNode; ativo: boolean; aceita: (item: ItemArquivo) => boolean }
   placeholderBusca?: string
   vazio?: string
+  /** Chave para guardar a escolha; com ela aparecem os modos Lista/Blocos e o tamanho do bloco (como no Finder). */
+  visualizacao?: string
 }) {
+  const { modo, setModo, tamanho, setTamanho } = useVisualizacao(visualizacao)
   const [busca, setBusca] = useState('')
   const [tipo, setTipo] = useState('')
   const visiveis = useMemo(() => itens.filter(a => {
@@ -91,12 +134,36 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
         {filtroExtra?.elemento}
       </div>
 
-      <p className="mb-3 text-sm text-gray-500">
-        {visiveis.length} arquivo{visiveis.length !== 1 ? 's' : ''}
-        {busca || tipo || filtroExtra?.ativo ? ' (filtrado)' : ''}
-      </p>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-gray-500">
+          {visiveis.length} arquivo{visiveis.length !== 1 ? 's' : ''}
+          {busca || tipo || filtroExtra?.ativo ? ' (filtrado)' : ''}
+        </p>
+        {visualizacao && (
+          <div className="flex flex-wrap items-center gap-3">
+            {modo === 'blocos' && (
+              <label className="flex items-center gap-2 text-slate-500">
+                <Grid2x2 className="h-3 w-3" aria-hidden="true" />
+                {/* Controle deslizante nativo (range): permitido fora da base dos campos de texto. */}
+                <input type="range" min={TAMANHO_MIN} max={TAMANHO_MAX} step={10} value={tamanho}
+                  onChange={e => setTamanho(Number(e.target.value))}
+                  aria-label="Tamanho dos blocos" aria-valuetext={`${tamanho} pixels`} className="h-1 w-28 cursor-pointer accent-blue-600 sm:w-36" />
+                <Grid2x2 className="h-4 w-4" aria-hidden="true" />
+              </label>
+            )}
+            <GlassSegmentedControl<Modo>
+              variant="compact"
+              label="Modo de visualização"
+              className="!mb-0 w-48"
+              value={modo}
+              onChange={setModo}
+              options={[{ value: 'lista', label: 'Lista' }, { value: 'blocos', label: 'Blocos' }]}
+            />
+          </div>
+        )}
+      </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} /> : <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
         <table className="w-full text-sm">
           <thead className="border-b border-gray-100 bg-gray-50">
             <tr>
@@ -116,7 +183,10 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
               <tr key={a.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <IconeArquivo categoria={a.categoria} />
+                    {visualizacao && a.previa && a.categoria === 'imagem'
+                      // eslint-disable-next-line @next/next/no-img-element -- URL assinada do storage, servida por redirecionamento.
+                      ? <img src={a.previa} alt="" loading="lazy" decoding="async" className="h-8 w-8 shrink-0 rounded-md bg-slate-100 object-cover" />
+                      : <IconeArquivo categoria={a.categoria} />}
                     <div className="min-w-0">
                       <p className="max-w-[260px] truncate font-medium text-gray-900" title={a.nome}>{a.nome}</p>
                       <p className="text-xs text-gray-400">{a.subtitulo}</p>
@@ -132,7 +202,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
     </div>
   )
 }

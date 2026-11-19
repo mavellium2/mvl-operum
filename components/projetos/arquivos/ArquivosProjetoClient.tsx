@@ -116,6 +116,8 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
       tamanho: formatarTamanho(a.tamanho),
       enviadoPor: a.enviadoPor,
       data: a.enviadoEm,
+      previa: href,
+      abrir: href,
       acoes: <>
         <a href={href} target="_blank" rel="noopener noreferrer" className={botao}>Ver</a>
         <a href={`${href}?baixar=1`} className={botao}>Baixar</a>
@@ -164,6 +166,7 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
           itens={itens}
           tipos={categoria === 'FOTOS_VIDEOS' ? ['imagem', 'video'] : ['apresentacao', 'pdf', 'video']}
           vazio={secao.vazio}
+          visualizacao={categoria === 'FOTOS_VIDEOS' ? `projeto-${categoria}` : undefined}
         />
       </div>
 

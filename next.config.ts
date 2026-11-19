@@ -15,6 +15,8 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   // i.ytimg.com: miniatura dos anexos que são link de vídeo do YouTube.
   `img-src 'self' data: blob: https://*.operum.adm.br https://i.ytimg.com ${isDev ? MINIO_PUBLIC : ''}`.trim(),
+  // media-src: miniatura (primeiro quadro) dos vídeos em Fotos e Vídeos, servida pela URL assinada do storage.
+  `media-src 'self' blob: https://*.operum.adm.br ${isDev ? MINIO_PUBLIC : ''}`.trim(),
   "font-src 'self'",
   `connect-src 'self' https://*.operum.adm.br https://viacep.com.br ${isDev ? MINIO_PUBLIC : ''}`.trim(),
   // PWA: manifest e service worker só da própria origem.
