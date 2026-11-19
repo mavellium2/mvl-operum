@@ -69,7 +69,7 @@ function CampoCabecalho({ id, titulo, valor, alterar, classe = '' }: {
   )
 }
 
-export function FolhaCanvas({ conteudo, versaoPadrao, alterar }: RenderFormulario<Canvas>) {
+export function FolhaCanvas({ conteudo, alterar }: RenderFormulario<Canvas>) {
   const campos: { id: CampoCanvas; titulo: string; classe?: string }[] = [
     { id: 'justificativa', titulo: 'JUSTIFICATIVA (Por quê?)' },
     { id: 'objetivos', titulo: 'OBJETIVO (Para quê?)' },
@@ -92,11 +92,9 @@ export function FolhaCanvas({ conteudo, versaoPadrao, alterar }: RenderFormulari
   return (
     <Folha paisagem data-testid="canvas-folha" style={{ gap: '3mm', fontSize: '8pt' }}>
       <header className="canvas-projeto-topo">
-        <strong>PROJECT CANVAS</strong>
         <CampoCabecalho id="projeto" titulo="PROJETO" valor={conteudo.projeto} alterar={alterar} />
         <CampoCabecalho id="solicitante" titulo="SOLICITANTE" valor={conteudo.solicitante} alterar={alterar} />
         <CampoCabecalho id="gerente" titulo="GP" valor={conteudo.gerente} alterar={alterar} />
-        <span>Versão {conteudo.cabecalho.versao || versaoPadrao}</span>
       </header>
       <div className="canvas-projeto-linha canvas-projeto-linha-4">{['justificativa', 'objetivos', 'escopo', 'escopoNaoIncluido'].map(id => bloco(id as CampoCanvas))}</div>
       <div className="canvas-projeto-linha canvas-projeto-linha-5">{['estrategia', 'stakeholders', 'comunicacao', 'restricoes', 'premissas'].map(id => bloco(id as CampoCanvas))}</div>
@@ -117,9 +115,7 @@ export default function CanvasDocumento({ membros = [] }: { membros?: MembroEqui
   return (
     <>
       <style>{`
-        .canvas-projeto-topo{display:grid;grid-template-columns:auto minmax(20mm,2fr) minmax(18mm,1fr) minmax(18mm,1fr) auto;align-items:stretch;gap:2mm;font-family:Arial,sans-serif;color:#26313d}
-        .canvas-projeto-topo>strong{align-self:center;font-size:11pt}
-        .canvas-projeto-topo>span{align-self:center;white-space:nowrap;font-size:8pt}
+        .canvas-projeto-topo{display:grid;grid-template-columns:minmax(20mm,2fr) minmax(18mm,1fr) minmax(18mm,1fr);align-items:stretch;gap:2mm;font-family:Arial,sans-serif;color:#26313d}
         .canvas-projeto-cabecalho{border:1px solid #87909a;background:#fffed0;padding:1mm 2mm;min-width:0}
         .canvas-projeto-cabecalho strong{display:block;font-size:7pt}
         .canvas-projeto-cabecalho [data-campo],.canvas-projeto-cabecalho [data-texto-campo]{min-height:1.2em}
