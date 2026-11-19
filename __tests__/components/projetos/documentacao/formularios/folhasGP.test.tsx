@@ -58,7 +58,8 @@ describe('Declaração do Escopo — modelo "14 Aula GP"', () => {
   it('campos vazios mostram a instrução do modelo entre < >', () => {
     const vazio = { ...escopoInicial(sistema, []), justificativa: '', objetivos: '', descricaoProduto: '' }
     render(editavel(<FolhasEscopo conteudo={vazio} sistema={sistema} versaoPadrao="1.0" />))
-    const dica = (rotulo: string) => screen.getByLabelText(rotulo).getAttribute('placeholder')
+    // Campo com formatação: a instrução aparece na folha e vai em aria-placeholder.
+    const dica = (rotulo: string) => screen.getByLabelText(rotulo).getAttribute('aria-placeholder')
     expect(dica('Justificativa do projeto')).toBe('<citar a razão pela qual o projeto é necessário, os objetivos estratégicos associados, e os benefícios que o projeto trará>')
     expect(dica('Objetivo(s) do projeto')).toMatch(/^<descrever o\(s\) objetivo\(s\) do projeto, ou seja/)
     expect(dica('Descrição do(s) produto(s) ou serviço(s) do projeto')).toBe('<citar e descrever os produtos e serviços que serão entregues pelo projeto>')

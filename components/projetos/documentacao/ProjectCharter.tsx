@@ -24,7 +24,7 @@ import { useToast } from '@/components/ui/Toast'
 import { fetchWithSession } from '@/lib/clientFetch'
 import { formatDateBR, toDateInputValue } from '@/lib/date'
 import type { MacroFase } from './MacroFaseTable'
-import ProjectCharterDocument, { TITULO_TERMO, type CharterDocumentProps, type EdicaoTermo } from './ProjectCharterDocument'
+import ProjectCharterDocument, { TEXTO_GERENCIA_PADRAO, TITULO_TERMO, type CharterDocumentProps, type EdicaoTermo } from './ProjectCharterDocument'
 import type { CharterChange } from '@/lib/charterChanges'
 import {
   type MembroEquipeOption,
@@ -148,6 +148,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     restricoes: '',
     limitesAutoridade: '',
     principaisEnvolvidos: '',
+    textoGerencia: TEXTO_GERENCIA_PADRAO,
   })
   const savedFields = useRef(fields)
 
@@ -198,7 +199,8 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
       }
       if (!Array.isArray(payload.macroFases) || !payload.macroFases.every((fase: MacroFase) =>
         typeof fase.id === 'string' && typeof fase.fase === 'string' && typeof fase.dataLimite === 'string' && typeof fase.custo === 'string')) throw new Error('invalid')
-      setFields(next); setFases(payload.macroFases)
+      // As macrofases vêm sempre da planilha/EAP; a cópia local só devolve os textos.
+      setFields(next)
       recovery.discard()
       toast('Cópia local restaurada. Aguarde a confirmação do salvamento.')
     } catch { toast('A cópia local não pôde ser restaurada.', 'error') }
@@ -225,6 +227,8 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
           restricoes: p.restricoes ?? '',
           limitesAutoridade: p.limitesAutoridade ?? '',
           principaisEnvolvidos: (p as CharterProject & { principaisEnvolvidos?: string }).principaisEnvolvidos ?? '',
+          // Linha "Gerente do projeto": começa com o texto do modelo, editável.
+          textoGerencia: (p as CharterProject & { textoGerencia?: string }).textoGerencia || TEXTO_GERENCIA_PADRAO,
         }
         setFields(init)
         savedFields.current = init
@@ -244,9 +248,8 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
         if (!cancelled && draft?.payload) {
           const { macroFases: _fases, documentContext: _context, ...draftFields } = draft.payload
           const next = { ...savedFields.current, ...draftFields }
-          resetDraft(JSON.stringify({ ...next, macroFases: draft.payload.macroFases ?? savedFases.current }))
+          resetDraft(JSON.stringify({ ...next, macroFases: savedFases.current }))
           setFields(next)
-          if (draft.payload.macroFases) setFases(draft.payload.macroFases)
           toast('Seu rascunho privado foi restaurado. Salve uma versão para enviá-lo à aprovação.')
         }
         if (!cancelled) setDraftReady(true)
@@ -295,9 +298,6 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
 
   // ── Macro fases ────────────────────────────────────────────────────────────
 
-  function handleFaseChange(id: string, field: keyof Omit<MacroFase, 'id'>, value: string) {
-    if (canEdit) setFases(prev => prev.map(f => f.id === id ? { ...f, [field]: value } : f))
-  }
 
 
   // ── Print ──────────────────────────────────────────────────────────────────
@@ -449,7 +449,6 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
       const v = (salvo ?? {}) as NonNullable<DocumentVersion['payload']>
       const textos = Object.fromEntries(Object.entries(v).filter(([k, x]) => k in savedFields.current && typeof x === 'string'))
       setFields(f => ({ ...f, ...textos }))
-      if (Array.isArray(v.macroFases)) setFases(v.macroFases)
       const origem = versions.find(x => x.id === versao.id)
       if (origem) {
         const atuais = todosMembrosRef.current
@@ -514,6 +513,7 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     descricaoProduto: content?.descricaoProduto ?? '', premissas: content?.premissas ?? '',
     restricoes: content?.restricoes ?? '', limitesAutoridade: content?.limitesAutoridade ?? '',
     principaisEnvolvidos: content?.principaisEnvolvidos ?? '',
+    textoGerencia: content.textoGerencia,
   }
   async function exportWord() {
     if (!printRef.current) return
@@ -535,7 +535,6 @@ export default function ProjectCharter({ membros = [] }: { membros?: MembroEquip
     onElaboradoPor: handleSelectElaborado,
     dataAprovacaoRaw: versionMeta.dataAprovacaoRaw,
     onDataAprovacao: v => setVersionMeta(m => ({ ...m, dataAprovacaoRaw: v })),
-    onFase: handleFaseChange,
 
   }
   const pendentes = versions.filter(v => v.status === 'PENDING').length

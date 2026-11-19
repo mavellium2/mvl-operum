@@ -38,3 +38,21 @@ export function publicUrl(key: string): string {
   const base = (process.env.MINIO_PUBLIC_URL ?? `http://localhost:9000`).replace(/\/$/, '')
   return `${base}/${BUCKET}/${key}`
 }
+
+/**
+ * Assina URLs com o endereço público (MINIO_PUBLIC_URL), para o navegador
+ * enviar e baixar direto do storage (vídeos grandes não passam pelo app).
+ * Sem MINIO_PUBLIC_URL, assina com o endereço interno, como o file-service.
+ */
+const enderecoPublico = (process.env.MINIO_PUBLIC_URL ?? '').replace(/\/$/, '')
+export const assinador = enderecoPublico
+  ? new S3Client({
+      endpoint: enderecoPublico,
+      region: 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.MINIO_ACCESS_KEY ?? '',
+        secretAccessKey: process.env.MINIO_SECRET_KEY ?? '',
+      },
+      forcePathStyle: true,
+    })
+  : s3

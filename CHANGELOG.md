@@ -7,6 +7,24 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.60.0] — 2026-11-19
+
+Ajustes pedidos em 18/11/2026.
+
+- **Canvas do projeto:** adiciona o documento Canvas à área Documentação de todos os projetos. O quadro segue os 13 blocos do modelo de referência, aproveita nome do projeto, gerente, justificativa, objetivos, descrição do produto e equipe já cadastrados, e usa o fluxo comum de rascunhos, versões, aprovação, histórico e exportação para PDF/Word.
+
+- **Formatação do texto nos documentos:** a barra do editor ganhou o grupo "Formatação", com negrito, itálico, sublinhado e alinhamento (à esquerda, centralizado, à direita e justificado), como no Word. Os atalhos Ctrl+B, Ctrl+I e Ctrl+U também funcionam. Vale para os textos longos do Termo de Abertura, da Declaração do Escopo, dos Formulários de Riscos, das Lições Aprendidas e das Atas. A formatação sai igual no PDF e no Word. Colar texto de fora traz só o texto, sem estilos nem imagens.
+
+- **Versões 1.0, 1.1, 1.2 … 1.99, 2.0:** os documentos voltam a numerar as versões nesse formato, no lugar de v1.0.1, v1.0.2… As versões já salvas continuam a sequência (a v1.0.2 equivale à 1.1).
+
+- **Termo de Abertura, Designação do gerente:** a linha "Gerente do projeto" traz a frase "A gerência do projeto será de responsabilidade de" seguida do nome do gerente. A frase pode ser editada; o nome vem do cadastro e não muda.
+
+- **Termo de Abertura, Macro Fases, prazos e custos:** o quadro não é mais editável no Termo e mostra sempre as macrofases atuais da planilha/EAP, onde elas devem ser alteradas.
+
+- **Fotos e Vídeos e Apresentação e Vídeo:** dois menus novos no projeto para guardar as fotos e os vídeos do projeto e a apresentação e o vídeo da entrega final, na mesma base da tela de Arquivos. O envio vai direto ao armazenamento (vídeos até 1 GB) e mostra o progresso; cada arquivo pode ser aberto, baixado e, por quem tem permissão, excluído.
+
+- **Word das folhas:** o sublinhado e as outras marcas começam e terminam na palavra, sem pegar o espaço vizinho.
+
 ## [1.59.0] — 2026-11-18
 
 - **Voltar para uma versão nos documentos:** em todos os documentos da Documentação (Capa, Partes Interessadas, Termo de Abertura, EAP, Atas, Declaração do Escopo, Formulários de Riscos e Lições Aprendidas), escolher uma versão no seletor "Versão" da barra (ou "Voltar para esta versão" no histórico do Termo) leva o conteúdo dela para o rascunho, editável, depois de uma confirmação. Ao salvar, vira uma versão nova e segue para aprovação como qualquer outra; nenhuma versão é apagada. Antes, a versão escolhida só podia ser vista e baixada.

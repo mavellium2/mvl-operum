@@ -239,6 +239,7 @@ async function aplicarDocumento(
       documentContext: _documentContext,
       macroFases: _macroFases,
       principaisEnvolvidos: _principais,
+      textoGerencia: _textoGerencia,
       ...data
     } = charterSchema.parse(content)
     await tx.project.update({ where: { id: projectId }, data })

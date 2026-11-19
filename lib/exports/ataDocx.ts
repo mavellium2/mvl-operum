@@ -1,3 +1,4 @@
+import { textoSimples } from '@/lib/textoFormatado'
 import {
   AlignmentType, BorderStyle, Document, HeightRule, ImageRun, Paragraph, ShadingType,
   Table, TableCell, TableRow, TextRun, VerticalAlign, WidthType,
@@ -171,9 +172,9 @@ export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinatur
     { cells: [celula(titulo('Nome:'), W1), celula(titulo('Setor/Empresa:'), W2)] },
     ...presentes.map(p => ({ cells: [celula(texto([{ t: p.nome }]), W1), celula(texto([{ t: p.setorEmpresa ?? '' }]), W2)] })),
     { cells: [celula(titulo('II. Assuntos tratados'), LARGURA, { span: 2, cinza: CINZA })] },
-    { cells: [celula(texto([{ t: d.assuntosTratados ?? '' }]), LARGURA, { span: 2 })], altura: 1300 },
+    { cells: [celula(texto([{ t: textoSimples(d.assuntosTratados) }]), LARGURA, { span: 2 })], altura: 1300 },
     { cells: [celula(titulo('III. Decisões tomadas'), LARGURA, { span: 2, cinza: CINZA })] },
-    { cells: [celula(texto([{ t: d.decisoesTomadas ?? '' }]), LARGURA, { span: 2 })], altura: 1300 },
+    { cells: [celula(texto([{ t: textoSimples(d.decisoesTomadas) }]), LARGURA, { span: 2 })], altura: 1300 },
   ])
 
   const tabelaAcoes = tabela([A1, A2, A3], [
@@ -226,7 +227,7 @@ export function buildAtaDocx(d: AtaExportData, logo: Paragraph[] = [], assinatur
       margins: { left: 80, right: 80, top: 20, bottom: 20 },
       children: [...titulo('Assinaturas'), new Table({ width: { size: LARGURA - 200, type: WidthType.DXA }, columnWidths: Array.from({ length: ATA_ASSINATURAS_POR_LINHA }, () => A), rows: linhasAssinatura }), new Paragraph({ children: [] })],
     })], altura: 1200 },
-    { cells: [celula([...titulo('Obs:'), ...texto([{ t: d.observacoes ?? '', b: true }])], LARGURA)], altura: 900 },
+    { cells: [celula([...titulo('Obs:'), ...texto([{ t: textoSimples(d.observacoes), b: true }])], LARGURA)], altura: 900 },
   ])
 
   return new Document({

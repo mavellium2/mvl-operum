@@ -3,7 +3,8 @@
 import { Fragment } from 'react'
 import SidebarNavLink from './SidebarNavLink'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Building2, Briefcase, LayoutDashboard, Columns3, UsersRound, Files, Network, Wallet, Settings2 } from 'lucide-react'
+import { Building2, Briefcase, LayoutDashboard, Columns3, UsersRound, Files, Network, Wallet, Settings2, Images, Presentation } from 'lucide-react'
+import { SECOES_ARQUIVOS } from '@/lib/arquivosProjeto'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import DocumentSidebar from '@/components/projetos/documentacao/DocumentSidebar'
 import SidebarLayout from '@/components/layout/SidebarLayout'
@@ -31,6 +32,8 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
     { href: `/projetos/${projetoId}/wbs`, label: 'EAP / WBS', Icon: Network },
     { href: `/projetos/${projetoId}/documentacao`, label: 'Documentação', Icon: Files },
     { href: `/projetos/${projetoId}/planilha-custos`, label: 'Planilha de Custos', Icon: Wallet },
+    { href: `/projetos/${projetoId}/${SECOES_ARQUIVOS.FOTOS_VIDEOS.slug}`, label: SECOES_ARQUIVOS.FOTOS_VIDEOS.titulo, Icon: Images },
+    { href: `/projetos/${projetoId}/${SECOES_ARQUIVOS.APRESENTACAO.slug}`, label: SECOES_ARQUIVOS.APRESENTACAO.titulo, Icon: Presentation },
     ...((canManageMembers || permissions.has('cadastros:gerenciar'))
       ? [
           { href: `/projetos/${projetoId}/stakeholders`, label: 'Stakeholders', Icon: UsersRound },
@@ -44,6 +47,7 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
   ].filter(item => {
     if (item.label === 'Sprints' || item.label === 'Dashboard') return permissions.has('quadro:ver')
     if (item.label === 'Documentação') return permissions.has('documentos:ver')
+    if (item.label === SECOES_ARQUIVOS.FOTOS_VIDEOS.titulo || item.label === SECOES_ARQUIVOS.APRESENTACAO.titulo) return permissions.has('documentos:ver')
     if (item.label === 'Planilha de Custos') return permissions.has('planilha:ver')
     if (item.label === 'Stakeholders') return canManageMembers
     return true

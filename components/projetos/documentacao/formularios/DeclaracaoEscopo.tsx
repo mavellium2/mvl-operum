@@ -156,7 +156,7 @@ function ListaEntregas({ entregas }: { entregas: DadosFormularios['entregas'] })
 export function FolhasEscopo({ conteudo, sistema, versaoPadrao, alterar, edicao }: RenderFormulario<Escopo>) {
   const secao = ({ campo, titulo, ajuda, dica }: Secao): ReactNode => (
     <SecaoTexto key={campo} estilo="interno" colado titulo={titulo} alturaMinima="auto">
-      <CampoTexto id={`escopo-${campo}`} rotulo={titulo} ajuda={ajuda} dica={dica} valor={conteudo[campo]} onChange={v => alterar?.(c => ({ ...c, [campo]: v }))} alinhamento="justify" max={20000} />
+      <CampoTexto formatavel id={`escopo-${campo}`} rotulo={titulo} ajuda={ajuda} dica={dica} valor={conteudo[campo]} onChange={v => alterar?.(c => ({ ...c, [campo]: v }))} alinhamento="justify" max={20000} />
     </SecaoTexto>
   )
   return (

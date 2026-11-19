@@ -1,4 +1,6 @@
 'use client'
+
+import { textoSimples } from '@/lib/textoFormatado'
 import OperumButton from '@/components/ui/GlassButton'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -38,6 +40,7 @@ const labels: Record<string, string> = {
   ESCOPO: 'Declaração do Escopo',
   RISCOS: 'Formulários de Riscos',
   LICOES: 'Lições Aprendidas',
+  CANVAS: 'Canvas',
   instituicao: 'Instituição',
   curso: 'Curso',
   disciplina: 'Disciplina',
@@ -116,7 +119,8 @@ function Conteudo({ value }: { value: unknown }) {
           ))}
       </dl>
     )
-  return <span>{String(value)}</span>
+  // Texto com formatação (negrito, alinhamento…) aparece como texto simples no histórico.
+  return <span>{typeof value === 'string' ? textoSimples(value) : String(value)}</span>
 }
 export default function HistoricoDocumento({
   projetoId,

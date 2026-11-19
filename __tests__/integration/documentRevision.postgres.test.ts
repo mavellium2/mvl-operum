@@ -148,10 +148,10 @@ describe.skipIf(!testUrl)('revisões documentais — PostgreSQL real', () => {
     expect(await documentoVigente(member, projectId, 'STAKEHOLDER')).toBeNull()
     await revisarDocumento(manager, projectId, pending.id, 'approve')
     // A versão digitada é ignorada: o servidor numera em sequência e grava no cabeçalho.
-    expect(pending.payload).toMatchObject({ ...payload, header: { ...payload.header, aprovadoPor: 'Gerente', versao: 'v1.0.1' } })
-    expect(pending.versao).toBe('v1.0.1')
+    expect(pending.payload).toMatchObject({ ...payload, header: { ...payload.header, aprovadoPor: 'Gerente', versao: '1.0' } })
+    expect(pending.versao).toBe('1.0')
     expect(pending.aprovadoPor).toBe('Gerente')
-    expect((await documentoVigente(member, projectId, 'STAKEHOLDER'))?.payload).toMatchObject({ ...payload, header: { ...payload.header, aprovadoPor: 'Gerente', versao: 'v1.0.1' } })
+    expect((await documentoVigente(member, projectId, 'STAKEHOLDER'))?.payload).toMatchObject({ ...payload, header: { ...payload.header, aprovadoPor: 'Gerente', versao: '1.0' } })
   })
 
   it('EAP pendente preserva a árvore vigente e aprovação publica códigos normalizados', async () => {
@@ -223,18 +223,18 @@ describe.skipIf(!testUrl)('revisões documentais — PostgreSQL real', () => {
     expect((await criarRisco(member, projectId)).numero).toBe(2)
   })
 
-  it('versões numeradas em sequência por documento (v1.0.1, v1.0.2…), continuando depois das antigas', async () => {
+  it('versões numeradas em sequência por documento (1.0, 1.1…), continuando depois das antigas', async () => {
     const a = await submeterDocumento(member, projectId, 'ESCOPO', { justificativa: 'A', cabecalho: { versao: '9.9' } }, meta)
     const b = await submeterDocumento(member, projectId, 'ESCOPO', { justificativa: 'B' }, meta)
-    expect([a.versao, b.versao]).toEqual(['v1.0.1', 'v1.0.2'])
-    expect(b.payload).toMatchObject({ cabecalho: { versao: 'v1.0.2' } })
+    expect([a.versao, b.versao]).toEqual(['1.0', '1.1'])
+    expect(b.payload).toMatchObject({ cabecalho: { versao: '1.1' } })
     // Outro documento tem a própria sequência; um risco também.
-    expect((await submeterDocumento(member, projectId, 'LICOES', {}, meta)).versao).toBe('v1.0.1')
+    expect((await submeterDocumento(member, projectId, 'LICOES', {}, meta)).versao).toBe('1.0')
     const r = await criarRisco(member, projectId)
-    expect((await submeterDocumento(member, projectId, 'RISCOS', { denominacao: 'X' }, meta, r.id)).versao).toBe('v1.0.1')
-    // Duas versões antigas ("1.0", "1.1") contam na sequência.
-    await prisma.documentVersion.createMany({ data: ['1.0', '1.1'].map(versao => ({ projectId, documentType: 'CAPA' as const, versao, elaboradoPor: '', aprovadoPor: '', dataAprovacao: '', payload: {} })) })
-    expect((await submeterDocumento(member, projectId, 'CAPA', {}, meta)).versao).toBe('v1.0.3')
+    expect((await submeterDocumento(member, projectId, 'RISCOS', { denominacao: 'X' }, meta, r.id)).versao).toBe('1.0')
+    // Versões já salvas continuam a sequência: "1.0" digitado e "v1.0.2" da 1.59.0 → 1.2.
+    await prisma.documentVersion.createMany({ data: ['1.0', 'v1.0.2'].map(versao => ({ projectId, documentType: 'CAPA' as const, versao, elaboradoPor: '', aprovadoPor: '', dataAprovacao: '', payload: {} })) })
+    expect((await submeterDocumento(member, projectId, 'CAPA', {}, meta)).versao).toBe('1.2')
   })
 
   it('versões legadas sem snapshot não são aprováveis; exclusão não remove aprovada', async () => {

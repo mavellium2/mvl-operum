@@ -1,3 +1,5 @@
+import { textoSimples } from './textoFormatado'
+
 /**
  * Regras da lista de Atas de Reunião (Documentação > Atas): resumo de cada
  * ata, status de aprovação pelas versões enviadas, busca e filtros.
@@ -40,7 +42,7 @@ const diaUtc = (d: Date) => d.toISOString().slice(0, 10)
 
 /** Resumo de uma ata para a lista (sem enviar o conteúdo inteiro ao navegador). */
 export function resumoDaAta(a: AtaDoBanco, hoje: Date = new Date()): AtaListItem {
-  const assunto = (a.assuntosTratados ?? '').split('\n').map(l => l.trim()).find(Boolean) ?? ''
+  const assunto = textoSimples(a.assuntosTratados).split('\n').map(l => l.trim()).find(Boolean) ?? ''
   const dataHoje = diaUtc(hoje)
   return {
     id: a.id,

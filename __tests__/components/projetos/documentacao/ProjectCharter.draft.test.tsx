@@ -2,6 +2,16 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchWithSession } from '@/lib/clientFetch'
 import ProjectCharter from '@/components/projetos/documentacao/ProjectCharter'
+
+// Campos com formatação (negrito, alinhamento…) são contenteditable: um <div> por parágrafo.
+const temCampo = (texto: string) => screen.queryByText(texto, { selector: '[data-formatavel] div' })
+const campoCom = (texto: string) => screen.findByText(texto, { selector: '[data-formatavel] div' }).then(el => el.closest('[data-formatavel]') as HTMLElement)
+function digitar(campo: HTMLElement, texto: string) {
+  const par = document.createElement('div')
+  par.textContent = texto
+  campo.replaceChildren(par)
+  fireEvent.input(campo)
+}
 const { toast, members } = vi.hoisted(() => ({ toast: vi.fn(), members: [] }))
 vi.mock('next/navigation', () => ({ useParams: () => ({ projetoId: 'p1' }), useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('react-to-print', () => ({ useReactToPrint: () => vi.fn() }))
@@ -24,14 +34,14 @@ describe('rascunho privado do Termo', () => {
     render(<ProjectCharter />)
     // Enquanto o rascunho é recuperado, a folha mostra o vigente só para leitura.
     expect((await screen.findAllByText('Vigente')).length).toBeGreaterThan(0)
-    expect(screen.queryByDisplayValue('Vigente')).not.toBeInTheDocument()
+    expect(temCampo('Vigente')).not.toBeInTheDocument()
     await waitFor(() => expect(fetchWithSession).toHaveBeenCalledWith('/api/projects/p1/revisions?type=CHARTER&draft=1'))
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 1300)) })
     expect(vi.mocked(fetchWithSession).mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(0)
     await act(async () => { resolveDraft(Response.json({ payload: { justificativa: 'Rascunho privado' } })) })
-    const field = await screen.findByDisplayValue('Rascunho privado')
+    const field = await campoCom('Rascunho privado')
     expect(vi.mocked(fetchWithSession).mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(0)
-    fireEvent.change(field, { target: { value: 'Rascunho privado editado' } })
+    digitar(field, 'Rascunho privado editado')
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 1300)) })
     const writes = vi.mocked(fetchWithSession).mock.calls.filter(([, init]) => init?.method === 'PATCH')
     expect(writes.length).toBeGreaterThan(0)
@@ -46,7 +56,7 @@ describe('rascunho privado do Termo', () => {
     expect(screen.getByRole('button', { name: 'Tentar novamente' })).toBeEnabled()
     // Sem o rascunho, a folha fica só para leitura: o texto aparece, mas não há campo editável.
     expect(screen.getAllByText('Vigente').length).toBeGreaterThan(0)
-    expect(screen.queryByDisplayValue('Vigente')).not.toBeInTheDocument()
+    expect(temCampo('Vigente')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' })).toBeDisabled()
   })
 })
@@ -59,14 +69,14 @@ it('flush rejeitado preserva texto e não cria versão', async () => {
     return Response.json(published)
   })
   render(<ProjectCharter />)
-  const field = await screen.findByDisplayValue('Vigente')
+  const field = await campoCom('Vigente')
   await waitFor(() => expect(field).toBeEnabled())
-  fireEvent.change(field, { target: { value: 'Não perder' } })
+  digitar(field, 'Não perder')
   fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
   fireEvent.change(await screen.findByPlaceholderText('Ex: Inclusão da metodologia ágil'), { target: { value: 'Alteração' } })
   fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
   await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringContaining('rascunho não foi salvo'), 'error'))
-  expect(field).toHaveValue('Não perder')
+  expect(field).toHaveTextContent('Não perder')
   expect(vi.mocked(fetchWithSession).mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
   expect(screen.getByRole('button', { name: 'Tentar salvar novamente' })).toBeInTheDocument()
 })
@@ -80,9 +90,9 @@ it('aguarda PATCH lento antes de criar uma única versão com os campos atuais',
     return Response.json(published)
   })
   render(<ProjectCharter />)
-  const field = await screen.findByDisplayValue('Vigente')
+  const field = await campoCom('Vigente')
   await waitFor(() => expect(field).toBeEnabled())
-  fireEvent.change(field, { target: { value: 'Último texto' } })
+  digitar(field, 'Último texto')
   fireEvent.click(screen.getByRole('button', { name: 'Salvar versão (Ctrl+S)' }))
   fireEvent.change(await screen.findByPlaceholderText('Ex: Inclusão da metodologia ágil'), { target: { value: 'Alteração' } })
   const confirm = screen.getByRole('button', { name: 'Confirmar' })
@@ -107,20 +117,20 @@ it('restaura explicitamente a cópia local do autor sem substituir silenciosamen
   })
   render(<ProjectCharter />)
   const restore = await screen.findByRole('button', { name: 'Restaurar cópia local' })
-  expect(screen.getByDisplayValue('Vigente')).toBeInTheDocument()
-  expect(screen.queryByDisplayValue('Cópia local recuperada')).not.toBeInTheDocument()
+  expect(temCampo('Vigente')).toBeInTheDocument()
+  expect(temCampo('Cópia local recuperada')).not.toBeInTheDocument()
   fireEvent.click(restore)
-  expect(await screen.findByDisplayValue('Cópia local recuperada')).toBeInTheDocument()
+  expect(await campoCom('Cópia local recuperada')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Restaurar cópia local' })).not.toBeInTheDocument()
 })
 
 it('edita direto na folha e a cópia usada no PDF mostra o mesmo texto', async () => {
   vi.mocked(fetchWithSession).mockImplementation(async url => String(url).includes('/revisions') ? Response.json(null) : String(url).includes('/versions') ? Response.json([]) : Response.json(published))
   const { container } = render(<ProjectCharter />)
-  const field = await screen.findByDisplayValue('Vigente')
+  const field = await campoCom('Vigente')
   await waitFor(() => expect(field).toBeEnabled())
   expect(field).toHaveAccessibleName('Justificativa')
-  fireEvent.change(field, { target: { value: 'Texto da sessão' } })
+  digitar(field, 'Texto da sessão')
   // Cópia de impressão: fora da tela (inert), com a mesma folha só de leitura.
   const copiaDoPdf = container.querySelector('[inert]')!
   expect(copiaDoPdf).toHaveTextContent('Texto da sessão')
@@ -128,29 +138,29 @@ it('edita direto na folha e a cópia usada no PDF mostra o mesmo texto', async (
   // Ctrl+Z na folha desfaz a edição.
   field.focus()
   fireEvent.keyDown(field, { key: 'z', ctrlKey: true })
-  await waitFor(() => expect(screen.getByDisplayValue('Vigente')).toBeInTheDocument())
+  await waitFor(() => expect(temCampo('Vigente')).toBeInTheDocument())
 })
 it('voltar para uma versão leva o texto dela ao rascunho, editável, e o salvamento vira a próxima versão', async () => {
   const version = { id: 'v1', status: 'APPROVED', versao: '1', commitTitle: 'Inicial', elaboradoPor: 'Autor', aprovadoPor: 'Gerente', createdAt: '2026-10-01', payload: { justificativa: 'Texto histórico', documentContext: { nomeProjeto: 'Nome histórico', gerenteProjeto: 'Gerente', membros: [] } }, changes: [] }
   vi.mocked(fetchWithSession).mockImplementation(async url => String(url).includes('/revisions') ? Response.json(null) : String(url).includes('/versions') ? Response.json([version]) : Response.json(published))
   render(<ProjectCharter />)
-  await screen.findByDisplayValue('Vigente')
+  await campoCom('Vigente')
   fireEvent.click(screen.getByRole('button', { name: 'Histórico de versões' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Voltar para esta versão' }))
   // Confirmação: o conteúdo da versão vira o rascunho; nenhuma versão é apagada.
   expect(await screen.findByText(/Nenhuma versão é apagada/)).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Voltar para esta versão' }))
-  expect(await screen.findByDisplayValue('Texto histórico')).toBeInTheDocument()
-  expect(screen.queryByDisplayValue('Vigente')).not.toBeInTheDocument()
-  // Uma versão antiga ("1") conta na sequência: o rascunho será salvo como v1.0.2.
-  expect(screen.getAllByText('v1.0.2').length).toBeGreaterThan(0)
+  expect(await campoCom('Texto histórico')).toBeInTheDocument()
+  expect(temCampo('Vigente')).not.toBeInTheDocument()
+  // Uma versão antiga ("1") conta na sequência: o rascunho será salvo como 1.1.
+  expect(screen.getAllByText('1.1').length).toBeGreaterThan(0)
   expect(screen.queryByText(/somente leitura/)).not.toBeInTheDocument()
 })
 
 it('a folha atual usa a assinatura do perfil do gerente sem exigir abrir o histórico', async () => {
   vi.mocked(fetchWithSession).mockImplementation(async url => String(url).includes('/revisions') ? Response.json(null) : String(url).includes('/versions') ? Response.json([]) : Response.json({ ...published, gerenteProjeto: 'Gerente', gerente: { name: 'Gerente', signatureUrl: '/assinatura-gerente.png' } }))
   const { container } = render(<ProjectCharter />)
-  await screen.findByDisplayValue('Vigente')
+  await campoCom('Vigente')
   const assinaturas = container.querySelectorAll('[data-assinatura-em-linha] img')
   expect(assinaturas.length).toBeGreaterThan(0)
   for (const image of assinaturas) expect(image).toHaveAttribute('src', '/assinatura-gerente.png')

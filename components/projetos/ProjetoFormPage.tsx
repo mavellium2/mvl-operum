@@ -1,4 +1,5 @@
 'use client'
+import { textoSimples } from '@/lib/textoFormatado'
 
 import FormActions from '@/components/ui/FormActions'
 import { Textarea as OperumTextarea, Input as OperumInput } from '@/components/ui/Field'
@@ -280,13 +281,14 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         location: p.location ?? '',
         logoUrl: p.logoUrl ?? '',
         initialMemberId: gerenteId,
-        justificativa: p.justificativa ?? '',
-        objetivos: p.objetivos ?? '',
-        metodologia: p.metodologia ?? '',
-        descricaoProduto: p.descricaoProduto ?? '',
+        // Campos do Termo com formatação (negrito, alinhamento…) aparecem como texto simples aqui.
+        justificativa: textoSimples(p.justificativa),
+        objetivos: textoSimples(p.objetivos),
+        metodologia: textoSimples(p.metodologia),
+        descricaoProduto: textoSimples(p.descricaoProduto),
         premissas: p.premissas ?? '',
         restricoes: p.restricoes ?? '',
-        limitesAutoridade: p.limitesAutoridade ?? '',
+        limitesAutoridade: textoSimples(p.limitesAutoridade),
         semestre: p.semestre ?? '',
         termo: p.termo ?? '',
         turno: p.turno ?? '',
