@@ -97,7 +97,7 @@ export function FolhaCanvas({ conteudo, alterar }: RenderFormulario<Canvas>) {
       <img className="canvas-template-fundo" src="/images/project-canvas-grid.png" alt="" />
       {POSTITS_CANVAS.map(postIt => (
         <PostIt key={postIt.id} className="canvas-template-postit" placeholder=""
-          style={{ left: `${postIt.x}pt`, top: `${postIt.y}pt`, width: `${postIt.width}pt`, height: `${postIt.height}pt` }} />
+          style={{ position: 'absolute', left: `${postIt.x}pt`, top: `${postIt.y}pt`, width: `${postIt.width}pt`, height: `${postIt.height}pt` }} />
       ))}
       <CampoCabecalho id="projeto" titulo="PROJETO:" valor={conteudo.projeto} alterar={alterar} alinhamento="center" label={{ x: 16, y: 54, width: 58, height: 22 }} area={{ x: 98, y: 50, width: 447, height: 38 }} />
       <CampoCabecalho id="solicitante" titulo="SOLICITANTE:" valor={conteudo.solicitante} alterar={alterar} alinhamento="center" label={{ x: 548, y: 36, width: 104, height: 35 }} area={{ x: 653, y: 50, width: 147, height: 38 }} />
