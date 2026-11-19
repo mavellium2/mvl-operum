@@ -142,8 +142,8 @@ it('voltar para uma versão leva o texto dela ao rascunho, editável, e o salvam
   fireEvent.click(screen.getByRole('button', { name: 'Voltar para esta versão' }))
   expect(await screen.findByDisplayValue('Texto histórico')).toBeInTheDocument()
   expect(screen.queryByDisplayValue('Vigente')).not.toBeInTheDocument()
-  // Uma versão antiga ("1") conta na sequência: o rascunho será salvo como v1.0.2.
-  expect(screen.getAllByText('v1.0.2').length).toBeGreaterThan(0)
+  // Uma versão antiga ("1") conta na sequência: o rascunho será salvo como 1.1.
+  expect(screen.getAllByText('1.1').length).toBeGreaterThan(0)
   expect(screen.queryByText(/somente leitura/)).not.toBeInTheDocument()
 })
 
