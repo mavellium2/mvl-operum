@@ -175,7 +175,7 @@ export function IconeArquivo({ categoria }: { categoria: CategoriaVisual }) {
  * Lista de arquivos com busca, filtro por tipo, contador e tabela. Base comum
  * do menu Arquivos (admin) e das seções de arquivos do projeto.
  */
-export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, placeholderBusca = 'Buscar por nome…', vazio = 'Nenhum arquivo encontrado', visualizacao, selecao, acoesTopo }: {
+export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, placeholderBusca = 'Buscar por nome…', vazio = 'Nenhum arquivo encontrado', visualizacao, selecao, acoesTopo, onAbrir }: {
   itens: ItemArquivo[]
   /** Opções do filtro "Tipo", na ordem. */
   tipos: CategoriaVisual[]
@@ -190,6 +190,8 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
   selecao?: SelecaoArquivos
   /** Ações gerais no fim da barra de ferramentas (ex.: enviar arquivos). */
   acoesTopo?: ReactNode
+  /** Abrir no próprio Operum (duplo clique/Enter), recebendo a lista na ordem exibida; sem ele, abre `abrir` em nova aba. */
+  onAbrir?: (item: ItemArquivo, lista: ItemArquivo[]) => void
 }) {
   const { modo, setModo, tamanho, setTamanho } = useVisualizacao(visualizacao)
   const [busca, setBusca] = useState('')
@@ -209,7 +211,10 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
   const idsVisiveis = new Set(visiveis.map(a => a.id))
   const escolhidos = (selecao?.selecionados ?? []).filter(id => idsVisiveis.has(id))
   const marcar = (id: string, v: boolean) => selecao?.onChange(v ? [...selecao.selecionados, id] : selecao.selecionados.filter(x => x !== id))
-  const abrirArquivo = (a: ItemArquivo) => { if (a.abrir) window.open(a.abrir, '_blank', 'noopener,noreferrer') }
+  const abrirArquivo = (a: ItemArquivo) => {
+    if (onAbrir) onAbrir(a, visiveis)
+    else if (a.abrir) window.open(a.abrir, '_blank', 'noopener,noreferrer')
+  }
   /** Teclado na linha/bloco: Enter abre, Espaço seleciona (Ctrl/⌘ soma). */
   function teclaItem(e: KeyboardEvent, a: ItemArquivo) {
     if (!selecao || e.target !== e.currentTarget) return

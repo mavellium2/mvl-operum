@@ -18,7 +18,7 @@ const com = (permissoes: Permissao[], ui: ReactNode) => render(<ProjectPermissio
 describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', () => {
   beforeEach(() => vi.mocked(fetchWithSession).mockReset())
 
-  it('um clique no nome seleciona; duplo clique e Enter abrem; ações na linha; barra só com seleção', () => {
+  it('um clique no nome seleciona sem abrir; ações na linha; barra só com seleção', () => {
     const abrir = vi.spyOn(window, 'open').mockReturnValue(null)
     com(['documentos:ver'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
     expect(screen.getByRole('heading', { name: 'Fotos e Vídeos' })).toBeInTheDocument()
@@ -28,10 +28,6 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     fireEvent.click(within(linha).getByText('Visita.mp4'))
     expect(linha).toHaveAttribute('aria-selected', 'true')
     expect(abrir).not.toHaveBeenCalled()
-    fireEvent.doubleClick(within(linha).getByText('Visita.mp4'))
-    expect(abrir).toHaveBeenCalledWith('/api/projects/p1/arquivos/a1', '_blank', 'noopener,noreferrer')
-    fireEvent.keyDown(screen.getByText('Equipe.png').closest('tr') as HTMLElement, { key: 'Enter' })
-    expect(abrir).toHaveBeenLastCalledWith('/api/projects/p1/arquivos/a2', '_blank', 'noopener,noreferrer')
     fireEvent.click(screen.getByRole('button', { name: 'Limpar seleção' }))
     abrir.mockRestore()
     expect(within(linha).getByText('5.0 MB')).toBeInTheDocument()
@@ -59,6 +55,30 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     expect(screen.getByText('Visita.mp4').closest('tr')).toHaveAttribute('aria-selected', 'false')
     fireEvent.click(screen.getByRole('button', { name: 'Limpar seleção' }))
     expect(screen.queryByRole('toolbar')).toBeNull()
+  })
+
+  it('duplo clique e Enter abrem foto e vídeo no visualizador do Operum, com setas para navegar', () => {
+    const novaAba = vi.spyOn(window, 'open').mockReturnValue(null)
+    com(['documentos:ver'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
+    fireEvent.doubleClick(screen.getByText('Visita.mp4'))
+    let dialogo = screen.getByRole('dialog', { name: 'Visualizar Visita.mp4' })
+    expect(dialogo.querySelector('video')).toHaveAttribute('src', '/api/projects/p1/arquivos/a1')
+    expect(within(dialogo).getByText(/1 de 2/)).toBeInTheDocument()
+    expect(within(dialogo).getByRole('link', { name: 'Baixar Visita.mp4' })).toHaveAttribute('href', '/api/projects/p1/arquivos/a1?baixar=1')
+    expect(within(dialogo).queryByRole('button', { name: 'Anterior' })).toBeNull()
+
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Próximo' }))
+    dialogo = screen.getByRole('dialog', { name: 'Visualizar Equipe.png' })
+    expect(within(dialogo).getByRole('img', { name: 'Equipe.png' })).toHaveAttribute('src', '/api/projects/p1/arquivos/a2')
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByRole('dialog', { name: 'Visualizar Visita.mp4' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar visualização' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.keyDown(screen.getByText('Equipe.png').closest('tr') as HTMLElement, { key: 'Enter' })
+    expect(screen.getByRole('dialog', { name: 'Visualizar Equipe.png' })).toBeInTheDocument()
+    expect(novaAba).not.toHaveBeenCalled()
+    novaAba.mockRestore()
   })
 
   it('Shift seleciona o intervalo e exclui em lote depois de confirmar', async () => {

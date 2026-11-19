@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal'
 import FormActions from '@/components/ui/FormActions'
 import { Input } from '@/components/ui/Field'
 import Tooltip from '@/components/ui/Tooltip'
+import VisualizadorMidia, { type MidiaVisualizavel } from '@/components/ui/VisualizadorMidia'
 import { useToast } from '@/components/ui/Toast'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import { fetchWithSession } from '@/lib/clientFetch'
@@ -76,6 +77,7 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
   const [arquivos, setArquivos] = useState(iniciais)
   const [envios, setEnvios] = useState<Envio[]>([])
   const [selecionados, setSelecionados] = useState<string[]>([])
+  const [visualizar, setVisualizar] = useState<{ itens: MidiaVisualizavel[]; indice: number } | null>(null)
   const [excluir, setExcluir] = useState<ArquivoDoProjeto[]>([])
   const [renomear, setRenomear] = useState<ArquivoDoProjeto | null>(null)
   const [novoNome, setNovoNome] = useState('')
@@ -215,6 +217,18 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
       </>,
     }
   })
+  /** Foto e vídeo abrem no visualizador do Operum, navegando na ordem da lista; os demais tipos, em nova aba. */
+  function abrir(item: ItemArquivo, lista: ItemArquivo[]) {
+    if (item.categoria !== 'imagem' && item.categoria !== 'video') {
+      if (item.abrir) window.open(item.abrir, '_blank', 'noopener,noreferrer')
+      return
+    }
+    const midias: MidiaVisualizavel[] = lista
+      .filter(i => (i.categoria === 'imagem' || i.categoria === 'video') && i.abrir)
+      .map(i => ({ id: i.id, nome: i.nome, tipo: i.categoria as 'imagem' | 'video', url: i.abrir!, baixar: `${i.abrir}?baixar=1`, detalhe: i.tamanho }))
+    setVisualizar({ itens: midias, indice: Math.max(0, midias.findIndex(m => m.id === item.id)) })
+  }
+
   const doId = (ids: string[]) => arquivos.filter(a => ids.includes(a.id))
   const acoesSelecao = (ids: string[]) => {
     const lista = doId(ids)
@@ -273,12 +287,18 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
         placeholderBusca={`Buscar em ${secao.titulo}`}
         visualizacao={categoria === 'FOTOS_VIDEOS' ? `projeto-${categoria}` : undefined}
         selecao={{ selecionados, onChange: setSelecionados, acoes: acoesSelecao }}
+        onAbrir={abrir}
         acoesTopo={podeEnviar && (
           <GlassButton variant="primary" type="button" onClick={() => seletor.current?.click()} disabled={enviando} aria-busy={enviando} className="inline-flex h-10 items-center gap-1.5 px-4 text-sm">
             <Upload className="h-4 w-4" aria-hidden="true" />{enviando ? 'Enviando…' : 'Enviar'}
           </GlassButton>
         )}
       />
+
+      {visualizar && (
+        <VisualizadorMidia itens={visualizar.itens} indice={visualizar.indice}
+          onIndice={i => setVisualizar(v => (v ? { ...v, indice: i } : v))} onClose={() => setVisualizar(null)} />
+      )}
 
       <Modal isOpen={!!renomear} onClose={() => { if (!salvandoNome) setRenomear(null) }} title="Renomear arquivo" maxWidth="max-w-md">
         <form onSubmit={e => { e.preventDefault(); void salvarNome() }}>

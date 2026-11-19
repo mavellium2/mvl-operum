@@ -1,0 +1,31 @@
+/* Visualizador de mídia: fundo escuro em qualquer tema, como os visualizadores de fotos. */
+.visualizador-midia {
+  color: #f1f3ff;
+  background: #05070fe8;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+@media (prefers-reduced-transparency: reduce) { .visualizador-midia { background: #05070f; -webkit-backdrop-filter: none; backdrop-filter: none; } }
+.visualizador-midia__barra { background: linear-gradient(180deg, #000a, transparent); }
+.visualizador-midia__suave { color: #b9bfd8; }
+.visualizador-midia__acao {
+  display: inline-flex; height: 2.25rem; width: 2.25rem; align-items: center; justify-content: center;
+  border-radius: 9999px; color: #e6e9ff;
+}
+.visualizador-midia__acao:hover { background: #ffffff1f; }
+.visualizador-midia__acao:focus-visible,
+.visualizador-midia__seta:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }
+.visualizador-midia__seta {
+  display: inline-flex; height: 3rem; width: 3rem; align-items: center; justify-content: center;
+  border-radius: 9999px; color: #fff; background: #ffffff1a; border: 1px solid #ffffff26;
+}
+.visualizador-midia__seta:hover { background: #ffffff33; }
+.visualizador-midia__conteudo { opacity: 0; box-shadow: 0 24px 60px -24px #000; }
+.visualizador-midia__conteudo.is-pronto { opacity: 1; }
+.visualizador-midia__erro { background: #ffffff12; border: 1px solid #ffffff26; }
+@media (prefers-reduced-motion: no-preference) {
+  .visualizador-midia { animation: visualizador-midia-entrar 180ms ease-out both; }
+  .visualizador-midia__conteudo { transition: opacity 200ms ease; }
+  .visualizador-midia__acao, .visualizador-midia__seta { transition: background-color 150ms ease; }
+}
+@keyframes visualizador-midia-entrar { from { opacity: 0; } to { opacity: 1; } }
