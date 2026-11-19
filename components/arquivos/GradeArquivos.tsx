@@ -49,33 +49,34 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onC
   onClicar?: (e: MouseEvent, id: string) => void
 }) {
   if (itens.length === 0) {
-    return <div className="rounded-2xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-400">{vazio}</div>
+    return <div className="arq-quadro arq-meta rounded-2xl px-4 py-10 text-center text-sm">{vazio}</div>
   }
   return (
-    <ul className="grid gap-4" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(${tamanho}px, 100%), 1fr))` }} aria-label="Arquivos em blocos">
+    <ul className="grid gap-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(${tamanho}px, 100%), 1fr))` }} aria-label="Arquivos em blocos">
       {itens.map(a => {
         const marcado = selecionados?.includes(a.id) ?? false
         return (
         <li key={a.id} className="min-w-0">
           <GlassCard as="article" interactive aria-selected={selecionados ? marcado : undefined}
             onClick={onClicar ? e => onClicar(e, a.id) : undefined}
-            className={`bloco-arquivo group relative ${onClicar ? 'cursor-default select-none' : ''} flex h-full flex-col overflow-hidden !rounded-2xl p-2 ${marcado ? 'ring-2 ring-blue-500' : ''}`}>
+            className={`arq-bloco bloco-arquivo group relative flex h-full flex-col overflow-hidden !rounded-2xl p-1.5 ${onClicar ? 'cursor-default select-none' : ''}`}>
             {a.abrir
               ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${a.nome}`}
-                  className="relative block aspect-[4/3] overflow-hidden rounded-xl bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500">
+                  className="arq-miniatura relative block aspect-[4/3] overflow-hidden rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2">
                   <Miniatura item={a} tamanho={tamanho} />
                 </a>
-              : <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100"><Miniatura item={a} tamanho={tamanho} /></div>}
-            <div className="mt-2 min-w-0 px-1">
-              {a.abrir
-                ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" tabIndex={-1} className="block truncate text-sm font-medium text-slate-900 hover:text-blue-600 hover:underline" title={a.nome}>{a.nome}</a>
-                : <p className="truncate text-sm font-medium text-slate-900" title={a.nome}>{a.nome}</p>}
-              <p className="flex items-center gap-1 truncate text-xs text-slate-500">
-                {a.favorito && <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" aria-label="Com estrela" />}
-                {a.tamanho} · {new Date(a.data).toLocaleDateString('pt-BR')}
-              </p>
+              : <div className="arq-miniatura relative aspect-[4/3] overflow-hidden rounded-xl"><Miniatura item={a} tamanho={tamanho} /></div>}
+            {/* Ações por cima da arte, no canto, como no Drive; aparecem no hover/foco. */}
+            {a.acoes && <div className={`arq-acoes-bloco absolute right-3 top-3 z-10 flex items-center gap-0.5 rounded-xl p-0.5 ${selecionados ? 'acoes-linha-arquivo' : ''}`}>{a.acoes}</div>}
+            <div className="min-w-0 px-1.5 pb-1 pt-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                {a.abrir
+                  ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" tabIndex={-1} className="arq-nome min-w-0 truncate text-sm font-medium" title={a.nome}>{a.nome}</a>
+                  : <span className="arq-nome min-w-0 truncate text-sm font-medium" title={a.nome}>{a.nome}</span>}
+                {a.favorito && <Star className="arq-estrela h-3 w-3 shrink-0" aria-label="Com estrela" />}
+              </div>
+              <p className="arq-meta truncate text-xs tabular-nums">{a.tamanho} · {new Date(a.data).toLocaleDateString('pt-BR')}</p>
             </div>
-            {a.acoes && <div className={`mt-1 flex flex-wrap items-center justify-end gap-0.5 ${selecionados ? 'acoes-linha-arquivo' : ''}`}>{a.acoes}</div>}
           </GlassCard>
         </li>
         )

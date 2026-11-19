@@ -29,7 +29,7 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     expect(within(linha).getByRole('button', { name: 'Baixar Visita.mp4' })).toBeInTheDocument()
     expect(within(linha).getByRole('button', { name: 'Adicionar estrela a Visita.mp4' })).toBeInTheDocument()
     expect(within(linha).queryByRole('button', { name: /Renomear|Excluir/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /Enviar arquivos/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Enviar/ })).toBeNull()
     expect(screen.queryByRole('toolbar')).toBeNull()
   })
 
@@ -52,7 +52,7 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     vi.mocked(fetchWithSession).mockImplementation(async (url, init) =>
       init?.method === 'DELETE' ? new Response(null, { status: 204 }) : Response.json([]))
     com(['documentos:ver', 'documentos:editar', 'documentos:excluir'], <ArquivosProjetoClient projetoId="p1" categoria="APRESENTACAO" iniciais={arquivos} />)
-    expect(screen.getByRole('button', { name: /Enviar arquivos/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Enviar/ })).toBeInTheDocument()
     fireEvent.click(screen.getByText('5.0 MB'))
     fireEvent.click(screen.getByText('2.0 KB'), { shiftKey: true })
     const barra = screen.getByRole('toolbar', { name: 'Ações dos arquivos selecionados' })

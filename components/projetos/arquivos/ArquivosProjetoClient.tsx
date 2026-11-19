@@ -33,6 +33,17 @@ const categoriaVisual = (tipo: string): CategoriaVisual =>
   tipo.startsWith('image/') ? 'imagem' : tipo.startsWith('video/') ? 'video' : tipo === 'application/pdf' ? 'pdf' : 'apresentacao'
 
 
+/** Tipo legível para a coluna "Tipo": "Vídeo MP4", "Imagem PNG", "PDF"… */
+function tipoLegivel(mime: string): string {
+  const [grupo, sub = ''] = mime.split('/')
+  const formato = sub.replace(/^x-/, '').replace(/^vnd\.openxmlformats-officedocument\.presentationml\.presentation$/, 'pptx').replace(/^vnd\.ms-powerpoint$/, 'ppt').replace(/^quicktime$/, 'mov').toUpperCase()
+  if (grupo === 'image') return `Imagem ${formato}`
+  if (grupo === 'video') return `Vídeo ${formato}`
+  if (mime === 'application/pdf') return 'PDF'
+  if (formato === 'PPTX' || formato === 'PPT') return `Apresentação ${formato}`
+  return formato || mime
+}
+
 /** Envia o arquivo direto ao storage pela URL assinada, com progresso. */
 function enviarParaStorage(url: string, arquivo: File, tipo: string, onProgresso: (p: number) => void): Promise<void> {
   return new Promise((ok, falha) => {
@@ -178,7 +189,7 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
     return {
       id: a.id,
       nome: a.nome,
-      subtitulo: a.tipo,
+      subtitulo: tipoLegivel(a.tipo),
       categoria: categoriaVisual(a.tipo),
       tamanho: formatarTamanho(a.tamanho),
       enviadoPor: a.enviadoPor,
@@ -225,49 +236,46 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
   }
 
   return (
-    <div className="px-4 py-6 sm:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">{secao.titulo}</h1>
-            <p className="mt-0.5 text-sm text-slate-500">{secao.descricao}</p>
-          </div>
-          {podeEnviar && <>
-            {/* Seletor nativo de arquivo (controle permitido fora da base dos campos de texto). */}
-            <input ref={seletor} type="file" multiple accept={secao.aceita} className="hidden" aria-label={`Escolher arquivos para ${secao.titulo}`}
-              onChange={e => { void escolher(e.target.files); e.target.value = '' }} />
-            <GlassButton variant="primary" type="button" onClick={() => seletor.current?.click()} disabled={enviando} aria-busy={enviando} className="inline-flex h-9 items-center gap-1.5 px-4 text-sm">
-              <Upload className="h-4 w-4" />{enviando ? 'Enviando…' : 'Enviar arquivos'}
-            </GlassButton>
-          </>}
-        </header>
+    <div className="arq px-3 py-3 sm:px-5 sm:py-4">
+      {/* Título só para leitores de tela: a seção já aparece no menu do projeto. */}
+      <h1 className="sr-only">{secao.titulo}</h1>
+      {podeEnviar && (
+        /* Seletor nativo de arquivo (controle permitido fora da base dos campos de texto). */
+        <input ref={seletor} type="file" multiple accept={secao.aceita} className="hidden" aria-label={`Escolher arquivos para ${secao.titulo}`}
+          onChange={e => { void escolher(e.target.files); e.target.value = '' }} />
+      )}
 
-        {envios.length > 0 && (
-          <ul className="mb-6 space-y-2" aria-label="Envios em andamento">
-            {envios.map(e => (
-              <li key={e.chave} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="truncate font-medium text-slate-800">{e.nome}</span>
-                  {e.erro
-                    ? <GlassButton variant="custom" type="button" onClick={() => setEnvios(l => l.filter(x => x.chave !== e.chave))} className="text-xs text-slate-500 underline">Dispensar</GlassButton>
-                    : <span className="text-xs text-slate-500">{e.progresso}%</span>}
-                </div>
+      {envios.length > 0 && (
+        <ul className="mb-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-label="Envios em andamento">
+          {envios.map(e => (
+            <li key={e.chave} className="arq-quadro rounded-xl px-3 py-2 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="arq-nome truncate font-medium">{e.nome}</span>
                 {e.erro
-                  ? <p role="alert" className="mt-1 text-xs text-red-600">{e.erro}</p>
-                  : <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuenow={e.progresso} aria-valuemin={0} aria-valuemax={100} aria-label={`Envio de ${e.nome}`}><div className="h-full bg-blue-500 transition-[width]" style={{ width: `${e.progresso}%` }} /></div>}
-              </li>
-            ))}
-          </ul>
-        )}
+                  ? <GlassButton variant="custom" type="button" onClick={() => setEnvios(l => l.filter(x => x.chave !== e.chave))} className="arq-meta text-xs underline">Dispensar</GlassButton>
+                  : <span className="arq-meta text-xs tabular-nums">{e.progresso}%</span>}
+              </div>
+              {e.erro
+                ? <p role="alert" className="arq-erro mt-1 text-xs">{e.erro}</p>
+                : <div className="arq-progresso mt-1.5 h-1 overflow-hidden rounded-full" role="progressbar" aria-valuenow={e.progresso} aria-valuemin={0} aria-valuemax={100} aria-label={`Envio de ${e.nome}`}><div className="h-full transition-[width]" style={{ width: `${e.progresso}%` }} /></div>}
+            </li>
+          ))}
+        </ul>
+      )}
 
-        <ListaArquivos
-          itens={itens}
-          tipos={categoria === 'FOTOS_VIDEOS' ? ['imagem', 'video'] : ['apresentacao', 'pdf', 'video']}
-          vazio={secao.vazio}
-          visualizacao={categoria === 'FOTOS_VIDEOS' ? `projeto-${categoria}` : undefined}
-          selecao={{ selecionados, onChange: setSelecionados, acoes: acoesSelecao }}
-        />
-      </div>
+      <ListaArquivos
+        itens={itens}
+        tipos={categoria === 'FOTOS_VIDEOS' ? ['imagem', 'video'] : ['apresentacao', 'pdf', 'video']}
+        vazio={secao.vazio}
+        placeholderBusca={`Buscar em ${secao.titulo}`}
+        visualizacao={categoria === 'FOTOS_VIDEOS' ? `projeto-${categoria}` : undefined}
+        selecao={{ selecionados, onChange: setSelecionados, acoes: acoesSelecao }}
+        acoesTopo={podeEnviar && (
+          <GlassButton variant="primary" type="button" onClick={() => seletor.current?.click()} disabled={enviando} aria-busy={enviando} className="inline-flex h-10 items-center gap-1.5 px-4 text-sm">
+            <Upload className="h-4 w-4" aria-hidden="true" />{enviando ? 'Enviando…' : 'Enviar'}
+          </GlassButton>
+        )}
+      />
 
       <Modal isOpen={!!renomear} onClose={() => { if (!salvandoNome) setRenomear(null) }} title="Renomear arquivo" maxWidth="max-w-md">
         <form onSubmit={e => { e.preventDefault(); void salvarNome() }}>
@@ -277,7 +285,7 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
             // Seleciona só o nome, sem a extensão, como no Finder.
             onFocus={e => { const ponto = e.currentTarget.value.lastIndexOf('.'); e.currentTarget.setSelectionRange(0, ponto > 0 ? ponto : e.currentTarget.value.length) }}
             className="w-full rounded-xl border px-3 py-2 text-sm" />
-          {erroNome && <p id="renomear-arquivo-erro" role="alert" className="mt-2 text-sm text-red-600">{erroNome}</p>}
+          {erroNome && <p id="renomear-arquivo-erro" role="alert" className="arq-erro mt-2 text-sm">{erroNome}</p>}
           <FormActions surface="none" className="mt-4 flex justify-end gap-2">
             <GlassButton type="button" onClick={() => setRenomear(null)} disabled={salvandoNome}>Cancelar</GlassButton>
             <GlassButton variant="primary" type="submit" disabled={salvandoNome || !novoNome.trim()} aria-busy={salvandoNome}>{salvandoNome ? 'Salvando…' : 'Salvar'}</GlassButton>
