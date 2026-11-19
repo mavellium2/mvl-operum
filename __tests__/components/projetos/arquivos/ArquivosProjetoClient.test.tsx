@@ -133,7 +133,7 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     expect(screen.getByRole('status')).toHaveTextContent('Fotos e Vídeos')
     fireEvent.drop(zona, { dataTransfer })
     expect(screen.queryByText('Solte os arquivos para enviar em')).toBeNull()
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Envie fotos/)
+    expect(await screen.findByText('0 envios concluídos, 1 com erro')).toBeInTheDocument()
   })
 
   it('quem só vê não tem área de soltar', () => {
@@ -141,11 +141,28 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     expect(screen.getByText('Visita.mp4').closest('.zona-soltar')).toBeNull()
   })
 
-  it('arquivo de tipo errado não chega a ser enviado e mostra o motivo', async () => {
+  it('envios ficam no painel do canto: barra recolhida que expande com cada arquivo e o resultado', async () => {
+    vi.mocked(fetchWithSession).mockImplementation(async url =>
+      String(url).endsWith('/envio') ? Response.json({ url: 'https://minio.operum.adm.br/up', chave: 'k' }) : String(url).includes('?categoria=') ? Response.json(arquivos) : Response.json({ id: 'n' }, { status: 201 }))
+    // PUT no storage: XHR simulado que conclui na hora.
+    class XhrFalso { upload = { onprogress: null as null | ((e: unknown) => void) }; status = 200; onload: null | (() => void) = null; onerror = null; onabort = null
+      open() {} setRequestHeader() {} send() { this.upload.onprogress?.({ lengthComputable: true, loaded: 1, total: 1 }); setTimeout(() => this.onload?.()) } abort() {} }
+    vi.stubGlobal('XMLHttpRequest', XhrFalso)
     com(['documentos:ver', 'documentos:editar'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={[]} />)
-    const input = screen.getByLabelText('Escolher arquivos para Fotos e Vídeos')
-    fireEvent.change(input, { target: { files: [new File(['x'], 'slides.pdf', { type: 'application/pdf' })] } })
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Envie fotos/)
-    expect(fetchWithSession).not.toHaveBeenCalledWith('/api/projects/p1/arquivos/envio', expect.anything())
+    fireEvent.change(screen.getByLabelText('Escolher arquivos para Fotos e Vídeos'), { target: { files: [
+      new File(['x'], 'foto.png', { type: 'image/png' }),
+      new File(['x'], 'slides.pdf', { type: 'application/pdf' }),
+    ] } })
+    const painel = screen.getByRole('region', { name: 'Envios de arquivos' })
+    expect(await within(painel).findByText('1 envio concluído, 1 com erro')).toBeInTheDocument()
+    const resumo = within(painel).getByRole('button', { expanded: false })
+    fireEvent.click(resumo)
+    expect(resumo).toHaveAttribute('aria-expanded', 'true')
+    expect(within(painel).getByText('foto.png')).toBeInTheDocument()
+    expect(within(painel).getByLabelText('Concluído')).toBeInTheDocument()
+    expect(within(painel).getByText(/Envie fotos/)).toBeInTheDocument()
+    fireEvent.click(within(painel).getByRole('button', { name: 'Fechar painel de envios' }))
+    expect(screen.queryByRole('region', { name: 'Envios de arquivos' })).toBeNull()
+    vi.unstubAllGlobals()
   })
 })

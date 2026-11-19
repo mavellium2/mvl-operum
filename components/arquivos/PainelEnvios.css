@@ -1,0 +1,52 @@
+/* Painel de envios (como o do Google Drive), nas cores da aparência do projeto. */
+.painel-envios {
+  --pe-texto: var(--ap-text, #0f172a);
+  --pe-suave: var(--ap-muted, #64748b);
+  --pe-borda: var(--ap-border, #e2e8f0);
+  --pe-superficie: var(--ap-surface, #ffffff);
+  --pe-destaque: var(--ap-accent, #2563eb);
+  color: var(--pe-texto);
+  background: color-mix(in srgb, var(--pe-superficie) 96%, transparent);
+  border: 1px solid var(--pe-borda);
+  box-shadow: 0 18px 40px -18px #0007, 0 2px 6px -2px #0002;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+@media (prefers-reduced-transparency: reduce) { .painel-envios { background: var(--pe-superficie); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+.painel-envios__topo { background: color-mix(in srgb, var(--pe-destaque) 8%, transparent); }
+.painel-envios__resumo { color: var(--pe-texto); border-radius: 9999px; }
+.painel-envios__resumo:hover .painel-envios__icone,
+.painel-envios__resumo:focus-visible .painel-envios__icone { background: color-mix(in srgb, var(--pe-destaque) 14%, transparent); }
+.painel-envios__resumo:focus-visible { outline: 2px solid var(--pe-destaque); outline-offset: 2px; }
+.painel-envios .glass-button.glass-close-button.painel-envios__fechar { background: transparent; border-color: transparent; box-shadow: none; color: var(--pe-texto); border-radius: 9999px; }
+.painel-envios .glass-button.glass-close-button.painel-envios__fechar:hover { background: color-mix(in srgb, var(--pe-destaque) 14%, transparent); }
+.painel-envios__trilho { background: color-mix(in srgb, var(--pe-borda) 70%, transparent); }
+.painel-envios__barra { background: var(--pe-destaque); }
+.painel-envios__faixa { color: var(--pe-suave); background: color-mix(in srgb, var(--pe-borda) 30%, transparent); }
+.painel-envios__link { color: color-mix(in srgb, var(--pe-destaque) 80%, var(--pe-texto)); }
+.painel-envios__link:hover { text-decoration: underline; }
+.painel-envios__item:hover { background: color-mix(in srgb, var(--pe-destaque) 6%, transparent); }
+.painel-envios__tipo { color: #fff; background: #ea4335; }
+.painel-envios__suave { color: var(--pe-suave); }
+.painel-envios__ok { color: #16a34a; }
+.painel-envios__erro { color: #dc2626; }
+.project-appearance[data-period='night'] .painel-envios__ok { color: #4ade80; }
+.project-appearance[data-period='night'] .painel-envios__erro { color: #fda4af; }
+.painel-envios__anel-fundo { stroke: color-mix(in srgb, var(--pe-borda) 80%, transparent); }
+.painel-envios__anel-valor { stroke: var(--pe-destaque); }
+.painel-envios__cancelar { color: var(--pe-texto); }
+.painel-envios__cancelar:hover { background: color-mix(in srgb, var(--pe-destaque) 14%, transparent); }
+.painel-envios :is(.painel-envios__cancelar, .painel-envios__link):focus-visible { outline: 2px solid var(--pe-destaque); outline-offset: 1px; }
+
+/* Lista expande para cima (o painel cresce a partir do canto). */
+.painel-envios__corpo { grid-template-rows: 0fr; }
+.painel-envios__corpo[data-aberto] { grid-template-rows: 1fr; border-top: 1px solid var(--pe-borda); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .painel-envios { animation: painel-envios-entrar 240ms cubic-bezier(.2, .9, .3, 1.1) both; }
+  .painel-envios__corpo { transition: grid-template-rows 220ms ease; }
+  .painel-envios__barra { transition: width 200ms ease; }
+  .painel-envios__anel-valor { transition: stroke-dashoffset 200ms ease; }
+  .painel-envios__icone, .painel-envios__item { transition: background-color 150ms ease; }
+}
+@keyframes painel-envios-entrar { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
