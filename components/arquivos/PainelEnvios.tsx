@@ -45,6 +45,7 @@ export default function PainelEnvios({ envios, onCancelar, onCancelarTodos, onFe
 }) {
   const [aberto, setAberto] = useState(false)
   const [confirmar, setConfirmar] = useState(false)
+  const [motivo, setMotivo] = useState<string | null>(null)
   if (envios.length === 0) return null
 
   const andamento = envios.filter(e => e.estado === 'enviando' || e.estado === 'aguardando')
@@ -96,16 +97,27 @@ export default function PainelEnvios({ envios, onCancelar, onCancelarTodos, onFe
             {envios.map(e => {
               const Icone = e.tipo.startsWith('image/') ? ImageIcon : e.tipo.startsWith('video/') ? Film : File
               return (
-                <li key={e.chave} className="painel-envios__item group flex items-center gap-3 px-4 py-2">
+                <li key={e.chave} className={`painel-envios__item group flex gap-3 px-4 py-2 ${motivo === e.chave ? 'items-start' : 'items-center'}`}>
                   <span className="painel-envios__tipo flex h-6 w-6 shrink-0 items-center justify-center rounded" aria-hidden="true"><Icone className="h-3.5 w-3.5" /></span>
                   <div className="min-w-0 flex-1">
                     <p className={`truncate text-sm ${e.estado === 'cancelado' ? 'painel-envios__suave line-through' : ''}`} title={e.nome}>{e.nome}</p>
-                    {e.estado === 'erro' && <p className="painel-envios__erro truncate text-xs" title={e.erro}>{e.erro}</p>}
+                    {e.estado === 'erro' && <p className="painel-envios__erro text-xs">Não foi enviado</p>}
+                    {e.estado === 'erro' && motivo === e.chave && (
+                      <p id={`motivo-${e.chave}`} role="alert" className="painel-envios__motivo anim-surgir mt-1.5 rounded-lg px-2.5 py-2 text-xs leading-relaxed">{e.erro ?? 'Falha no envio.'}</p>
+                    )}
                     {e.estado === 'cancelado' && <p className="painel-envios__suave text-xs">Cancelado</p>}
                   </div>
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center">
                     {e.estado === 'concluido' && <Check className="painel-envios__ok h-5 w-5" strokeWidth={3} aria-label="Concluído" />}
-                    {e.estado === 'erro' && <AlertCircle className="painel-envios__erro h-5 w-5" aria-label="Erro" />}
+                    {e.estado === 'erro' && (
+                      <Tooltip label={motivo === e.chave ? 'Esconder o motivo' : 'Ver por que não foi enviado'}>
+                        <GlassButton variant="custom" aria-expanded={motivo === e.chave} aria-controls={`motivo-${e.chave}`}
+                          aria-label={`Ver por que ${e.nome} não foi enviado`} onClick={() => setMotivo(m => (m === e.chave ? null : e.chave))}
+                          className="painel-envios__cancelar pressionavel flex h-7 w-7 items-center justify-center rounded-full">
+                          <AlertCircle className="painel-envios__erro h-5 w-5" aria-hidden="true" />
+                        </GlassButton>
+                      </Tooltip>
+                    )}
                     {(e.estado === 'enviando' || e.estado === 'aguardando') && <>
                       <span className="group-hover:hidden group-focus-within:hidden" aria-label={`${e.progresso}% enviado`} role="img"><Anel progresso={e.progresso} /></span>
                       <Tooltip label="Cancelar envio">

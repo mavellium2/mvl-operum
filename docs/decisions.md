@@ -531,7 +531,8 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Alternativas consideradas:** sanitizar com DOMPurify no file-service (mais SVGs aceitos, mas nova dependência e o arquivo gravado deixa de ser o enviado); converter para PNG no upload (perde o vetor); continuar recusando (o usuário pediu).
 - **Consequências:** SVG com `<a>`, `<use>`, `<image>`, animação ou links é recusado com mensagem pedindo um SVG simples ou PNG. Abrir o SVG pela URL do storage baixa o arquivo; a visualização fica no lightbox.
 - **Condições de revisão:** pedido de SVG com `use`/gradientes externos ou animações, ou migração do storage para um domínio que aceite cabeçalhos de CSP por objeto.
-- **Referências:** `file-service/src/upload/svg-safety.ts`, `file-service/src/upload/upload.service.ts`, `file-service/src/minio/minio.service.ts`, `app/api/files/[attachmentId]/image/route.ts`, `lib/attachmentTypes.ts`, `mcp-server/src/attachmentTypes.ts`.
+- **Extensão (19/11/2026, 1.61.0):** a mesma escolha passou a valer para os arquivos do projeto (Fotos e Vídeos), a pedido do usuário. Como esse envio vai do navegador direto ao storage, a recusa de conteúdo ativo roda no registro (`registrarArquivo`, que lê o objeto e o apaga se recusado) com uma cópia das regras em `lib/svgSeguro.ts`; as duas listas precisam ficar iguais. Exibição pela origem do app com CSP `sandbox` em `app/api/projects/[projetoId]/arquivos/[arquivoId]/route.ts`; URL assinada de SVG sempre `attachment`. Limite de 5 MB para SVG.
+- **Referências:** `file-service/src/upload/svg-safety.ts`, `file-service/src/upload/upload.service.ts`, `file-service/src/minio/minio.service.ts`, `app/api/files/[attachmentId]/image/route.ts`, `lib/attachmentTypes.ts`, `mcp-server/src/attachmentTypes.ts`, `lib/svgSeguro.ts`, `services/arquivosProjetoService.ts`.
 
 ## ADR-041 — Membro da equipe inativado perde o acesso e continua nos cards
 

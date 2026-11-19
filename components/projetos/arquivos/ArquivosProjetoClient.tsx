@@ -39,7 +39,7 @@ const categoriaVisual = (tipo: string): CategoriaVisual =>
 /** Tipo legível para a coluna "Tipo": "Vídeo MP4", "Imagem PNG", "PDF"… */
 function tipoLegivel(mime: string): string {
   const [grupo, sub = ''] = mime.split('/')
-  const formato = sub.replace(/^x-/, '').replace(/^vnd\.openxmlformats-officedocument\.presentationml\.presentation$/, 'pptx').replace(/^vnd\.ms-powerpoint$/, 'ppt').replace(/^quicktime$/, 'mov').toUpperCase()
+  const formato = sub.replace(/^x-/, '').replace(/\+xml$/, '').replace(/^vnd\.openxmlformats-officedocument\.presentationml\.presentation$/, 'pptx').replace(/^vnd\.ms-powerpoint$/, 'ppt').replace(/^quicktime$/, 'mov').toUpperCase()
   if (grupo === 'image') return `Imagem ${formato}`
   if (grupo === 'video') return `Vídeo ${formato}`
   if (mime === 'application/pdf') return 'PDF'
