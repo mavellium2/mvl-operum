@@ -195,15 +195,59 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
     if (id) limpadores.current.get(id)?.()
   }, [])
 
+  /**
+   * Âncora do zoom (como no Word): o ponto que a pessoa está vendo fica no
+   * mesmo lugar da tela depois do zoom. Na roda do mouse é o ponto sob o
+   * mouse; nos botões, teclado e controle deslizante, o cursor de texto na
+   * folha (ou o centro da área visível).
+   */
+  const ancoraZoom = useRef<{ x: number; y: number; ux: number; uy: number } | null>(null)
+  const zoomAtual = useRef(zoom)
+  useEffect(() => { zoomAtual.current = zoom }, [zoom])
+  const marcarAncora = useCallback((ponto?: { x: number; y: number }) => {
+    const a = area.current, f = folhas.current
+    if (!a || !f) return
+    let alvo = ponto
+    if (!alvo) {
+      const sel = window.getSelection()
+      if (sel?.rangeCount && f.contains(sel.anchorNode)) {
+        const r = sel.getRangeAt(0).getBoundingClientRect()
+        if (r.width || r.height) alvo = { x: r.left, y: r.top }
+      }
+      const ativo = document.activeElement
+      if (!alvo && ativo instanceof HTMLElement && f.contains(ativo)) { const r = ativo.getBoundingClientRect(); alvo = { x: r.left, y: r.top } }
+      // Cursor fora da parte visível: usa o centro da área.
+      const ar = a.getBoundingClientRect()
+      if (!alvo || alvo.y < ar.top || alvo.y > ar.bottom) alvo = { x: ar.left + ar.width / 2, y: ar.top + ar.height / 2 }
+    }
+    const fr = f.getBoundingClientRect()
+    const escala = zoomAtual.current / 100
+    ancoraZoom.current = { x: alvo.x, y: alvo.y, ux: (alvo.x - fr.left) / escala, uy: (alvo.y - fr.top) / escala }
+  }, [])
+  /** Muda o zoom mantendo o ponto de interesse no lugar. */
+  const aplicarZoom = useCallback((novo: number | ((z: number) => number), ponto?: { x: number; y: number }) => {
+    marcarAncora(ponto)
+    setZoom(z => limitarZoom(typeof novo === 'function' ? novo(z) : novo))
+  }, [marcarAncora])
+  useLayoutEffect(() => {
+    const anc = ancoraZoom.current, a = area.current, f = folhas.current
+    if (!anc || !a || !f) return
+    ancoraZoom.current = null
+    const fr = f.getBoundingClientRect()
+    const escala = zoom / 100
+    a.scrollTop += fr.top + anc.uy * escala - anc.y
+    a.scrollLeft += fr.left + anc.ux * escala - anc.x
+  }, [zoom])
+
   const ajustarLargura = useCallback(() => {
     const largura = (area.current?.clientWidth ?? 0) - 64
     const folha = (paisagem ? 297 : 210) * 96 / 25.4
-    if (largura > 0) setZoom(limitarZoom(Math.floor((largura / folha) * 100)))
-  }, [paisagem])
-  const mudarZoom = useCallback((dir: 1 | -1) => setZoom(z => {
+    if (largura > 0) aplicarZoom(Math.floor((largura / folha) * 100))
+  }, [paisagem, aplicarZoom])
+  const mudarZoom = useCallback((dir: 1 | -1) => aplicarZoom(z => {
     if (dir === 1) return ZOOMS.find(v => v > z) ?? ZOOM_MAX
     return [...ZOOMS].reverse().find(v => v < z) ?? ZOOM_MIN
-  }), [])
+  }), [aplicarZoom])
 
   // Ctrl + roda do mouse sobre a folha muda o zoom (como no Word), sem dar zoom na página inteira.
   useEffect(() => {
@@ -212,11 +256,11 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
     const onWheel = (e: WheelEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return
       e.preventDefault()
-      setZoom(z => limitarZoom(z * (e.deltaY < 0 ? 1.1 : 1 / 1.1)))
+      aplicarZoom(z => z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), { x: e.clientX, y: e.clientY })
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [aplicarZoom])
 
   // Páginas (EAP): a página atual acompanha a rolagem.
   useEffect(() => {
@@ -249,7 +293,7 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
       // Zoom do documento: Ctrl + / Ctrl − / Ctrl 0 (100%).
       if (mod && !e.altKey && (k === '=' || k === '+')) { e.preventDefault(); mudarZoom(1); return }
       if (mod && !e.altKey && k === '-') { e.preventDefault(); mudarZoom(-1); return }
-      if (mod && !e.altKey && k === '0') { e.preventDefault(); setZoom(100); return }
+      if (mod && !e.altKey && k === '0') { e.preventDefault(); aplicarZoom(100); return }
       const naFolha = !!folhas.current?.contains(document.activeElement)
       if (!naFolha) return
       if (mod && desfazer && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); desfazer.refazer(); return }
@@ -258,7 +302,7 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onSalvar, podeSalvar, onImprimir, desfazer, navegar, mudarZoom])
+  }, [onSalvar, podeSalvar, onImprimir, desfazer, navegar, mudarZoom, aplicarZoom])
 
   const st = STATUS[status]
   const larguraFolha = paisagem ? '297mm' : '210mm'
@@ -392,13 +436,13 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
             <OperumButton variant="custom" type="button" aria-label="Diminuir zoom" onClick={() => mudarZoom(-1)} disabled={zoom <= ZOOM_MIN} className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-40"><ZoomOut className="h-3.5 w-3.5" /></OperumButton>
           </Tooltip>
           {/* Controle deslizante nativo (range): permitido fora da base dos campos de texto. */}
-          <input type="range" min={ZOOM_MIN} max={ZOOM_MAX} step={5} value={zoom} onChange={e => setZoom(limitarZoom(Number(e.target.value)))}
+          <input type="range" min={ZOOM_MIN} max={ZOOM_MAX} step={5} value={zoom} onChange={e => aplicarZoom(Number(e.target.value))}
             aria-label="Zoom" aria-valuetext={`${zoom}%`} className="h-1 w-24 cursor-pointer accent-blue-600 sm:w-32" />
           <Tooltip label="Aumentar zoom (Ctrl +)">
             <OperumButton variant="custom" type="button" aria-label="Aumentar zoom" onClick={() => mudarZoom(1)} disabled={zoom >= ZOOM_MAX} className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-40"><ZoomIn className="h-3.5 w-3.5" /></OperumButton>
           </Tooltip>
           <Tooltip label="Voltar a 100% (Ctrl 0)">
-            <OperumButton variant="custom" type="button" aria-label={`Zoom ${zoom}%, voltar a 100%`} onClick={() => setZoom(100)} className="min-w-[3.25rem] rounded-full px-2 py-1 text-center text-xs font-medium tabular-nums text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500">{zoom}%</OperumButton>
+            <OperumButton variant="custom" type="button" aria-label={`Zoom ${zoom}%, voltar a 100%`} onClick={() => aplicarZoom(100)} className="min-w-[3.25rem] rounded-full px-2 py-1 text-center text-xs font-medium tabular-nums text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500">{zoom}%</OperumButton>
           </Tooltip>
         </div>
       </div>
