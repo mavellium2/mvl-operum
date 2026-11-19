@@ -71,3 +71,17 @@ tr[aria-selected='true'] .acoes-linha-arquivo,
   backdrop-filter: blur(10px);
 }
 .arq-miniatura:focus-visible { outline-color: var(--arq-destaque); }
+
+/* Alternador Lista/Blocos em ícones (como o do Drive). */
+.arq-alternador { border: 1px solid var(--arq-borda); background: var(--arq-superficie); }
+.arq-alternador-opcao { color: var(--arq-suave); min-width: 3.25rem; }
+.arq-alternador-opcao + .arq-alternador-opcao { border-left: 1px solid var(--arq-borda); }
+.arq-alternador-opcao:hover { color: var(--arq-texto); background: color-mix(in srgb, var(--arq-destaque) 8%, transparent); }
+.arq-alternador-opcao[aria-checked='true'] {
+  color: color-mix(in srgb, var(--arq-destaque) 75%, var(--arq-texto));
+  background: color-mix(in srgb, var(--arq-destaque) 20%, transparent);
+}
+.arq-alternador-opcao:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: -3px; border-radius: 9999px; }
+@media (prefers-reduced-motion: no-preference) {
+  .arq-alternador-opcao { transition: background-color 160ms ease, color 160ms ease; }
+}

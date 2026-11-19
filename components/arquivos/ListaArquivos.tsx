@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
-import { Grid2x2, Star } from 'lucide-react'
+import { Check, Grid2x2, LayoutGrid, List, Star } from 'lucide-react'
 import SearchInput from '@/components/ui/SearchInput'
 import Select from '@/components/ui/Select'
-import GlassSegmentedControl from '@/components/ui/GlassSegmentedControl'
+import GlassButton from '@/components/ui/GlassButton'
 import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import GradeArquivos from './GradeArquivos'
 import './ListaArquivos.css'
@@ -58,6 +58,35 @@ function lerVisualizacao(chave: string): { modo?: Modo; tamanho?: number } {
       tamanho: typeof salvo?.tamanho === 'number' ? Math.min(TAMANHO_MAX, Math.max(TAMANHO_MIN, salvo.tamanho)) : undefined,
     }
   } catch { return {} /* sem armazenamento */ }
+}
+
+/** Alternador Lista/Blocos em ícones, como o do Drive: o modo ativo ganha o ✓ e o fundo de destaque. */
+function AlternadorModo({ modo, onChange }: { modo: Modo; onChange: (m: Modo) => void }) {
+  const opcoes = [{ valor: 'lista', rotulo: 'Lista', Icone: List }, { valor: 'blocos', rotulo: 'Blocos', Icone: LayoutGrid }] as const
+  const grupo = useRef<HTMLDivElement>(null)
+  return (
+    <div ref={grupo} role="radiogroup" aria-label="Modo de visualização" className="arq-alternador flex h-9 shrink-0 items-stretch overflow-hidden rounded-full">
+      {opcoes.map(({ valor, rotulo, Icone }, i) => {
+        const ativo = modo === valor
+        return (
+          <GlassButton key={valor} variant="custom" role="radio" aria-checked={ativo} aria-label={rotulo} title={rotulo}
+            tabIndex={ativo ? 0 : -1}
+            onClick={() => onChange(valor)}
+            onKeyDown={e => {
+              if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
+              e.preventDefault()
+              const prox = opcoes[(i + 1) % opcoes.length]
+              onChange(prox.valor)
+              grupo.current?.querySelectorAll<HTMLButtonElement>('[role=radio]')[(i + 1) % opcoes.length]?.focus()
+            }}
+            className="arq-alternador-opcao pressionavel flex items-center justify-center gap-1 px-3.5">
+            {ativo && <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />}
+            <Icone className="h-4 w-4" aria-hidden="true" />
+          </GlassButton>
+        )
+      })}
+    </div>
+  )
 }
 
 /** Modo e tamanho do bloco guardados neste navegador (lidos depois de montar, para não divergir da hidratação). */
@@ -177,14 +206,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
                 <Grid2x2 className="h-4 w-4" aria-hidden="true" />
               </label>
             )}
-            <GlassSegmentedControl<Modo>
-              variant="compact"
-              label="Modo de visualização"
-              className="!mb-0 w-40"
-              value={modo}
-              onChange={setModo}
-              options={[{ value: 'lista', label: 'Lista' }, { value: 'blocos', label: 'Blocos' }]}
-            />
+            <AlternadorModo modo={modo} onChange={setModo} />
           </div>
         )}
         {acoesTopo}
