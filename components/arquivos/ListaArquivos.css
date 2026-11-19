@@ -85,3 +85,14 @@ tr[aria-selected='true'] .acoes-linha-arquivo,
 @media (prefers-reduced-motion: no-preference) {
   .arq-alternador-opcao { transition: background-color 160ms ease, color 160ms ease; }
 }
+
+/* Títulos ordenáveis: a seta aparece no hover/foco e fica fixa na coluna ativa. */
+.arq-titulo-ordem { color: var(--arq-suave); font: inherit; }
+.arq-titulo-ordem:hover { color: var(--arq-texto); background: color-mix(in srgb, var(--arq-destaque) 8%, transparent); }
+.arq-titulo-ordem[data-ativa] { color: var(--arq-texto); }
+.arq-titulo-ordem[data-ativa] svg { color: var(--arq-destaque); }
+.arq-titulo-ordem:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: 1px; }
+.arq-seta-inativa { opacity: 0; }
+.arq-titulo-ordem:hover .arq-seta-inativa,
+.arq-titulo-ordem:focus-visible .arq-seta-inativa { opacity: .5; }
+@media (hover: none) { .arq-seta-inativa { opacity: .35; } }

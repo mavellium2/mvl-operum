@@ -37,3 +37,30 @@ describe('ListaArquivos — modos de visualização', () => {
     expect(screen.getByRole('slider', { name: 'Tamanho dos blocos' })).toHaveValue('300')
   })
 })
+
+describe('ListaArquivos — ordenação pelos títulos', () => {
+  const lista: ItemArquivo[] = [
+    { id: 'b', nome: 'b10.png', subtitulo: 'Imagem PNG', categoria: 'imagem', tamanho: '2 MB', tamanhoBytes: 2_000_000, enviadoPor: 'Caio', data: '2026-11-10T12:00:00.000Z' },
+    { id: 'a', nome: 'B2.png', subtitulo: 'Imagem PNG', categoria: 'imagem', tamanho: '900 KB', tamanhoBytes: 900_000, enviadoPor: 'Ana', data: '2026-11-18T12:00:00.000Z' },
+    { id: 'c', nome: 'a.mp4', subtitulo: 'Vídeo MP4', categoria: 'video', tamanho: '10 MB', tamanhoBytes: 10_000_000, enviadoPor: null, data: '2026-11-01T12:00:00.000Z' },
+  ]
+  const nomes = () => screen.getAllByRole('row').slice(1).map(r => r.querySelector('td')?.textContent)
+
+  it('clique ordena crescente, de novo decrescente; tamanho pelos bytes e nomes com número natural', () => {
+    render(<ListaArquivos itens={lista} tipos={['imagem', 'video']} />)
+    expect(nomes()).toEqual(['b10.png', 'B2.png', 'a.mp4'])
+    const nome = screen.getByRole('button', { name: /^Ordenar por Nome/ })
+    fireEvent.click(nome)
+    expect(nomes()).toEqual(['a.mp4', 'B2.png', 'b10.png'])
+    expect(nome.closest('th')).toHaveAttribute('aria-sort', 'ascending')
+    fireEvent.click(nome)
+    expect(nomes()).toEqual(['b10.png', 'B2.png', 'a.mp4'])
+    expect(nome.closest('th')).toHaveAttribute('aria-sort', 'descending')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ordenar por Tamanho/ }))
+    expect(nomes()).toEqual(['B2.png', 'b10.png', 'a.mp4'])
+    fireEvent.click(screen.getByRole('button', { name: /^Ordenar por Data/ }))
+    expect(nomes()).toEqual(['a.mp4', 'b10.png', 'B2.png'])
+    expect(nome.closest('th')).not.toHaveAttribute('aria-sort')
+  })
+})

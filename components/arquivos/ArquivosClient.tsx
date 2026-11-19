@@ -59,6 +59,7 @@ export default function ArquivosClient({ initialAttachments }: Props) {
       subtitulo: link ? linkHost(a.filePath) : a.fileType,
       categoria: getFileCategory(a.fileType),
       tamanho: a.fileSizeFormatted,
+      tamanhoBytes: a.fileSize,
       enviadoPor: a.uploadedBy,
       data: a.uploadedAt,
       busca: a.card.title,

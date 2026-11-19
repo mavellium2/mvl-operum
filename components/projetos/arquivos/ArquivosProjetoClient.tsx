@@ -192,6 +192,7 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
       subtitulo: tipoLegivel(a.tipo),
       categoria: categoriaVisual(a.tipo),
       tamanho: formatarTamanho(a.tamanho),
+      tamanhoBytes: a.tamanho,
       enviadoPor: a.enviadoPor,
       data: a.enviadoEm,
       previa: href,

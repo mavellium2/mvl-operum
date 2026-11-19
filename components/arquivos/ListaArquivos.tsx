@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
-import { Check, Grid2x2, LayoutGrid, List, Star } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Grid2x2, LayoutGrid, List, Star } from 'lucide-react'
 import SearchInput from '@/components/ui/SearchInput'
 import Select from '@/components/ui/Select'
 import GlassButton from '@/components/ui/GlassButton'
@@ -19,6 +19,8 @@ export interface ItemArquivo {
   subtitulo: string
   categoria: CategoriaVisual
   tamanho: string
+  /** Tamanho em bytes, para ordenar pela coluna (sem ele, ordena pelo texto). */
+  tamanhoBytes?: number
   enviadoPor: string | null
   /** ISO. */
   data: string
@@ -37,6 +39,46 @@ export interface ItemArquivo {
 }
 
 type Modo = 'lista' | 'blocos'
+type ColunaOrdem = 'nome' | 'tipo' | 'enviadoPor' | 'data' | 'tamanho'
+interface Ordem { coluna: ColunaOrdem; direcao: 'asc' | 'desc' }
+
+const comparar = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' }).compare
+const VALOR_ORDEM: Record<ColunaOrdem, (a: ItemArquivo) => string | number> = {
+  nome: a => a.nome,
+  tipo: a => a.subtitulo,
+  enviadoPor: a => a.enviadoPor ?? '',
+  data: a => Date.parse(a.data) || 0,
+  tamanho: a => a.tamanhoBytes ?? a.tamanho,
+}
+
+/** Ordena uma cópia; empates mantêm a ordem recebida. */
+export function ordenarArquivos(itens: ItemArquivo[], ordem: Ordem | null): ItemArquivo[] {
+  if (!ordem) return itens
+  const valor = VALOR_ORDEM[ordem.coluna]
+  const sinal = ordem.direcao === 'asc' ? 1 : -1
+  return itens.map((a, i) => ({ a, i })).sort((x, y) => {
+    const vx = valor(x.a), vy = valor(y.a)
+    const r = typeof vx === 'number' && typeof vy === 'number' ? vx - vy : comparar(String(vx), String(vy))
+    return r * sinal || x.i - y.i
+  }).map(({ a }) => a)
+}
+
+/** Título de coluna que ordena ao clicar (crescente, depois decrescente), com a seta da direção. */
+function TituloOrdenavel({ coluna, rotulo, ordem, onOrdenar, alinhar = 'left' }: {
+  coluna: ColunaOrdem; rotulo: string; ordem: Ordem | null; onOrdenar: (c: ColunaOrdem) => void; alinhar?: 'left' | 'right'
+}) {
+  const ativa = ordem?.coluna === coluna
+  const Seta = ativa && ordem.direcao === 'desc' ? ArrowDown : ArrowUp
+  return (
+    <GlassButton variant="custom" type="button" onClick={() => onOrdenar(coluna)}
+      aria-label={`Ordenar por ${rotulo}${ativa ? (ordem.direcao === 'asc' ? ', em ordem crescente' : ', em ordem decrescente') : ''}`}
+      className={`arq-titulo-ordem pressionavel inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 ${alinhar === 'right' ? 'flex-row-reverse' : ''}`}
+      data-ativa={ativa || undefined}>
+      <span className="truncate">{rotulo}</span>
+      <Seta className={`h-3.5 w-3.5 shrink-0 ${ativa ? '' : 'arq-seta-inativa'}`} aria-hidden="true" />
+    </GlassButton>
+  )
+}
 
 /** Seleção de arquivos com as ações em lote numa barra acima da lista. */
 export interface SelecaoArquivos {
@@ -149,13 +191,17 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
   const { modo, setModo, tamanho, setTamanho } = useVisualizacao(visualizacao)
   const [busca, setBusca] = useState('')
   const [tipo, setTipo] = useState('')
-  const visiveis = useMemo(() => itens.filter(a => {
+  const [ordem, setOrdem] = useState<Ordem | null>(null)
+  const ordenar = (coluna: ColunaOrdem) => setOrdem(o => (o?.coluna === coluna ? { coluna, direcao: o.direcao === 'asc' ? 'desc' : 'asc' } : { coluna, direcao: 'asc' }))
+  const ariaSort = (coluna: ColunaOrdem) => (ordem?.coluna === coluna ? (ordem.direcao === 'asc' ? 'ascending' : 'descending') : undefined)
+  const filtrados = useMemo(() => itens.filter(a => {
     const q = busca.trim().toLowerCase()
     if (q && !a.nome.toLowerCase().includes(q) && !(a.busca ?? '').toLowerCase().includes(q)) return false
     if (tipo && a.categoria !== tipo) return false
     if (filtroExtra && !filtroExtra.aceita(a)) return false
     return true
   }), [itens, busca, tipo, filtroExtra])
+  const visiveis = useMemo(() => ordenarArquivos(filtrados, ordem), [filtrados, ordem])
   const colunas = 6 + (colunaExtra ? 1 : 0)
   const idsVisiveis = new Set(visiveis.map(a => a.id))
   const escolhidos = (selecao?.selecionados ?? []).filter(id => idsVisiveis.has(id))
@@ -232,12 +278,12 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
         <table className="w-full table-fixed text-sm">
           <thead className="arq-cabecalho">
             <tr>
-              <th className="px-4 py-2.5 text-left">Nome</th>
-              {colunaExtra && <th className="hidden w-48 px-3 py-2.5 text-left md:table-cell">{colunaExtra}</th>}
-              <th className="hidden w-32 px-3 py-2.5 text-left md:table-cell">Tipo</th>
-              <th className="hidden w-40 px-3 py-2.5 text-left xl:table-cell">Enviado por</th>
-              <th className="hidden w-32 px-3 py-2.5 text-left sm:table-cell">Data</th>
-              <th className="hidden w-24 px-3 py-2.5 text-right sm:table-cell">Tamanho</th>
+              <th className="px-3 py-2 text-left" aria-sort={ariaSort('nome')}><TituloOrdenavel coluna="nome" rotulo="Nome" ordem={ordem} onOrdenar={ordenar} /></th>
+              {colunaExtra && <th className="hidden w-48 px-3 py-2 text-left md:table-cell">{colunaExtra}</th>}
+              <th className="hidden w-32 px-2 py-2 text-left md:table-cell" aria-sort={ariaSort('tipo')}><TituloOrdenavel coluna="tipo" rotulo="Tipo" ordem={ordem} onOrdenar={ordenar} /></th>
+              <th className="hidden w-40 px-2 py-2 text-left xl:table-cell" aria-sort={ariaSort('enviadoPor')}><TituloOrdenavel coluna="enviadoPor" rotulo="Enviado por" ordem={ordem} onOrdenar={ordenar} /></th>
+              <th className="hidden w-32 px-2 py-2 text-left sm:table-cell" aria-sort={ariaSort('data')}><TituloOrdenavel coluna="data" rotulo="Data" ordem={ordem} onOrdenar={ordenar} /></th>
+              <th className="hidden w-28 px-2 py-2 text-right sm:table-cell" aria-sort={ariaSort('tamanho')}><TituloOrdenavel coluna="tamanho" rotulo="Tamanho" ordem={ordem} onOrdenar={ordenar} alinhar="right" /></th>
               <th className={`px-3 py-2.5 text-right ${selecao ? 'w-40' : 'w-36'}`}><span className={selecao ? 'sr-only' : ''}>Ações</span></th>
             </tr>
           </thead>
