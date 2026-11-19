@@ -28,6 +28,7 @@ Ajustes pedidos em 18/11/2026.
 ## [1.60.1] — 2026-11-19
 
 - **Canvas do projeto:** ajusta a folha para reproduzir a arte-base, os ícones, as posições dos campos e o tamanho de página do DOCX de referência. Retira o título "PROJECT CANVAS" e a versão do cabeçalho do documento.
+- **Post-it reutilizável:** adiciona um cartão amarelo redimensionável com dobra no canto, contorno e sombra para compor interfaces de Canvas.
 
 ## [1.59.0] — 2026-11-18
 
