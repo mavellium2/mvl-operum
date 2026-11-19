@@ -40,6 +40,7 @@ const labels: Record<string, string> = {
   ESCOPO: 'Declaração do Escopo',
   RISCOS: 'Formulários de Riscos',
   LICOES: 'Lições Aprendidas',
+  CANVAS: 'Canvas',
   instituicao: 'Instituição',
   curso: 'Curso',
   disciplina: 'Disciplina',

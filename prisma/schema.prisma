@@ -746,6 +746,7 @@ enum DocumentType {
   ESCOPO
   RISCOS
   LICOES
+  CANVAS
 }
 
 model DocumentVersion {

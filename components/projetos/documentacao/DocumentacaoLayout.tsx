@@ -11,6 +11,7 @@ import CapaDocumento from './CapaDocumento'
 import DeclaracaoEscopo from './formularios/DeclaracaoEscopo'
 import DocumentoRiscos, { type RiscoListItem } from './formularios/DocumentoRiscos'
 import LicoesAprendidas from './formularios/LicoesAprendidas'
+import CanvasDocumento from './CanvasDocumento'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import Drawer from '@/components/ui/Drawer'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
@@ -25,6 +26,7 @@ const DOCUMENT_MAP = {
   escopo: DeclaracaoEscopo,
   riscos: DocumentoRiscos,
   licoes: LicoesAprendidas,
+  canvas: CanvasDocumento,
 } as const
 
 type DocType = keyof typeof DOCUMENT_MAP
@@ -68,7 +70,7 @@ export default function DocumentacaoLayout({ projetoId, atas, riscos = [], geren
     window.addEventListener('operum:revisar-propostas', abrir)
     return () => window.removeEventListener('operum:revisar-propostas', abrir)
   }, [projetoId])
-  const tipo = ({ atas: 'ATA', charter: 'CHARTER', eap: 'EAP', stakeholder: 'STAKEHOLDER', capa: 'CAPA', escopo: 'ESCOPO', riscos: 'RISCOS', licoes: 'LICOES' } as const)[activeDoc]
+  const tipo = ({ atas: 'ATA', charter: 'CHARTER', eap: 'EAP', stakeholder: 'STAKEHOLDER', capa: 'CAPA', escopo: 'ESCOPO', riscos: 'RISCOS', licoes: 'LICOES', canvas: 'CANVAS' } as const)[activeDoc]
 
   return (
     <ProjectAppearance enabled isolated>
@@ -86,6 +88,8 @@ export default function DocumentacaoLayout({ projetoId, atas, riscos = [], geren
           <DocumentoRiscos key={`${publication}-${searchParams.get('risco') ?? ''}`} projetoId={projetoId} riscos={riscos} membros={membros} />
         ) : activeDoc === 'licoes' ? (
           <LicoesAprendidas key={publication} membros={membros} />
+        ) : activeDoc === 'canvas' ? (
+          <CanvasDocumento key={publication} membros={membros} />
         ) : activeDoc === 'eap' ? (
           <EapDocument key={publication} membros={membros} />
         ) : (

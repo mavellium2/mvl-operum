@@ -16,6 +16,7 @@ const DOCUMENTS = [
   { id: 'atas', label: 'Atas de Reunião', tipo: 'ATA' },
   { id: 'riscos', label: 'Formulários de Riscos', tipo: 'RISCOS' },
   { id: 'licoes', label: 'Lições Aprendidas', tipo: 'LICOES' },
+  { id: 'canvas', label: 'Canvas', tipo: 'CANVAS' },
 ] as const
 
 type DocId = (typeof DOCUMENTS)[number]['id']

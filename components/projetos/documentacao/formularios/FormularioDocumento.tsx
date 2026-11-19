@@ -21,7 +21,7 @@ import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
 import type { EdicaoQuadro, SistemaFormulario } from './QuadroFormulario'
 
-export type TipoFormulario = 'ESCOPO' | 'RISCOS' | 'LICOES'
+export type TipoFormulario = 'ESCOPO' | 'RISCOS' | 'LICOES' | 'CANVAS'
 
 /** Dados do sistema devolvidos por `/formularios` (comuns + específicos de cada documento). */
 export interface DadosFormularios extends SistemaFormulario {
@@ -60,6 +60,8 @@ interface Props<T> {
   resourceId?: string
   /** Aviso fixo acima da folha (ex.: voltar à lista de riscos). */
   topo?: ReactNode
+  /** Folha e exportação em paisagem para documentos em formato de quadro. */
+  paisagem?: boolean
 }
 
 /**
@@ -67,7 +69,7 @@ interface Props<T> {
  * com aprovação do gerente, impressão, PDF e Word idêntico à folha — o mesmo
  * fluxo da Capa e do Termo.
  */
-export default function FormularioDocumento<T>({ tipo, documento, titulo, arquivo, membros, inicial, normalizar, render, adicionar, resourceId = '', topo }: Props<T>) {
+export default function FormularioDocumento<T>({ tipo, documento, titulo, arquivo, membros, inicial, normalizar, render, adicionar, resourceId = '', topo, paisagem = false }: Props<T>) {
   const { projetoId } = useParams<{ projetoId: string }>()
   const permissions = useProjectPermissions()
   const canEdit = permissions.has('documentos:editar')
@@ -129,7 +131,7 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
     aplicar: salvo => { if (sistema) setConteudo(ajustar(salvo as T, sistema)) },
   })
 
-  const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: `${titulo} - ${sistema?.nomeProjeto ?? 'Projeto'}`, pageStyle: printFolhasStyle() })
+  const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: `${titulo} - ${sistema?.nomeProjeto ?? 'Projeto'}`, pageStyle: printFolhasStyle({ landscape: paisagem }) })
 
   async function exportarWord() {
     if (!printRef.current) return

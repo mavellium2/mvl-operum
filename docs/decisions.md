@@ -1355,3 +1355,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** os textos formatados aparecem como texto simples na lista de atas, no histórico de alterações, no Word da Ata gerado no servidor e em Editar projeto; editar o campo em Editar projeto grava texto simples e tira a formatação daquele campo. A API e o MCP devolvem o valor como está gravado, com as marcas do formato. Os comandos de edição do navegador (`execCommand`) são antigos, mas seguem suportados pelos navegadores atuais; sem eles, o campo continua editável, só sem os botões.
 - **Referências:** `lib/textoFormatado.ts`, `components/documentos/editor/textoRico.tsx`, `components/documentos/editor/folha.tsx` (`CampoTexto` com `formatavel`), `components/documentos/editor/EditorDocumento.tsx` (grupo Formatação), testes em `__tests__/unit/lib/textoFormatado.test.ts` e `__tests__/components/documentos/textoRico.test.tsx`.
 - **Revisar quando:** for preciso formatar listas, tamanhos de fonte ou cores, ou quando os navegadores retirarem `execCommand`.
+
+## ADR-109 — Canvas como documento versionado de cada projeto
+
+- **Data:** 2026-11-19.
+- **Status:** implementada (1.60.0).
+- **Contexto:** o usuário pediu o Canvas do projeto dentro de Documentação, disponível para qualquer projeto, seguindo o modelo Project Canvas de 13 blocos fornecido em PDF.
+- **Escolha:** adicionar `DocumentType.CANVAS` e guardar os campos do quadro no `DocumentVersion` existente, com schema próprio. A interface reutiliza a barra de documentos, rascunho, histórico, submissão/aprovação e exportadores existentes; a folha é em paisagem. O ponto de partida preenche nome do projeto, gerente, justificativa, objetivos, descrição do produto e nomes da equipe quando disponíveis.
+- **Justificativa:** o Canvas é um documento único por projeto e pode seguir as regras de revisão e aprovação dos demais documentos sem uma tabela ou API paralela. Os demais campos permanecem próprios do Canvas.
+- **Alternativas consideradas:** guardar no navegador (não compartilhado); criar uma entidade e fluxo de versionamento próprios (duplica controles já existentes); reutilizar a Declaração do Escopo (não representa os demais blocos do Canvas).
+- **Consequências:** a migration adiciona o tipo `CANVAS` ao enum; cada projeto passa a ter seu próprio rascunho, versões e propostas na área Documentação. Não há migração de dados de um projeto específico.
+- **Referências:** `prisma/schema.prisma`, `prisma/migrations/20261119170000_canvas_documento`, `lib/validation/documentRevisionSchemas.ts`, `components/projetos/documentacao/CanvasDocumento.tsx`, `components/projetos/documentacao/DocumentSidebar.tsx`.
+- **Revisar quando:** Canvas precisar de mais blocos, persistência separada ou sincronização editável com outros documentos.

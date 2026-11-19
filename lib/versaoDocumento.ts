@@ -53,7 +53,7 @@ export function comVersaoNoConteudo(tipo: string, conteudo: Record<string, unkno
   if (tipo === 'STAKEHOLDER' && conteudo.header && typeof conteudo.header === 'object')
     return { ...conteudo, header: { ...(conteudo.header as object), versao: rotulo } }
   if (tipo === 'EAP') return { ...conteudo, version: rotulo }
-  if (tipo === 'ESCOPO' || tipo === 'RISCOS' || tipo === 'LICOES')
+  if (tipo === 'ESCOPO' || tipo === 'RISCOS' || tipo === 'LICOES' || tipo === 'CANVAS')
     return { ...conteudo, cabecalho: { ...((conteudo.cabecalho as object | undefined) ?? {}), versao: rotulo } }
   return conteudo
 }

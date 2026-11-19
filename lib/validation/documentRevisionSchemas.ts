@@ -6,9 +6,9 @@ import { EAP_LIMITS, SaveEapDocumentSchema } from './eapSchemas'
 import { recomputeNodeCodes } from '@/lib/eapCode'
 import { safeAvatarUrl } from './avatarUrl'
 import type { EapNode } from '@/types/eap'
-import { escopoSchema, licoesSchema, riscoSchema } from './formulariosGP'
+import { cabecalhoFormularioSchema, escopoSchema, licoesSchema, riscoSchema } from './formulariosGP'
 
-export const tipoDocumento = z.enum(['CHARTER', 'STAKEHOLDER', 'EAP', 'ATA', 'CAPA', 'ESCOPO', 'RISCOS', 'LICOES'])
+export const tipoDocumento = z.enum(['CHARTER', 'STAKEHOLDER', 'EAP', 'ATA', 'CAPA', 'ESCOPO', 'RISCOS', 'LICOES', 'CANVAS'])
 export type TipoDocumento = z.infer<typeof tipoDocumento>
 const texto = z.string().max(50000).nullable().optional()
 export const charterSchema = z
@@ -152,7 +152,30 @@ export const capaSchema = z
   .strict()
 export type CapaConteudo = z.infer<typeof capaSchema>
 
+/** Canvas do projeto: blocos independentes editados e versionados como um documento. */
+export const canvasSchema = z.object({
+  cabecalho: cabecalhoFormularioSchema.optional(),
+  projeto: z.string().max(500),
+  solicitante: z.string().max(1000),
+  gerente: z.string().max(1000),
+  justificativa: z.string().max(20000),
+  objetivos: z.string().max(20000),
+  escopo: z.string().max(20000),
+  escopoNaoIncluido: z.string().max(20000),
+  estrategia: z.string().max(20000),
+  stakeholders: z.string().max(20000),
+  comunicacao: z.string().max(20000),
+  restricoes: z.string().max(20000),
+  premissas: z.string().max(20000),
+  riscos: z.string().max(20000),
+  fases: z.string().max(20000),
+  cronograma: z.string().max(20000),
+  orcamento: z.string().max(20000),
+}).strict()
+export type CanvasConteudo = z.infer<typeof canvasSchema>
+
 export function validarDocumento(type: TipoDocumento, payload: unknown) {
+  if (type === 'CANVAS') return canvasSchema.parse(payload)
   if (type === 'CAPA') return capaSchema.parse(payload)
   if (type === 'ESCOPO') return escopoSchema.parse(payload)
   if (type === 'RISCOS') return riscoSchema.parse(payload)
