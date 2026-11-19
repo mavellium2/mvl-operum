@@ -40,3 +40,11 @@ describe('Canvas novo: cada bloco vem de onde o modelo do professor manda', () =
     expect([c.riscos, c.fases, c.cronograma, c.orcamento]).toEqual(['', '', '', ''])
   })
 })
+
+describe('Canvas novo passa na validação do servidor (rascunho e versão)', () => {
+  it('o conteúdo montado por CANVAS_INICIAL é aceito pelo schema CANVAS', async () => {
+    const { validarDocumento } = await import('@/lib/validation/documentRevisionSchemas')
+    const c = CANVAS_INICIAL({ ...base, stakeholders: ['A'], riscos: [{ numero: 1, denominacao: 'R' }], macroFases: [{ codigo: '1.1', fase: 'F', dataLimite: '2026-08-14', custo: '10' }] }, [])
+    expect(() => validarDocumento('CANVAS', c)).not.toThrow()
+  })
+})

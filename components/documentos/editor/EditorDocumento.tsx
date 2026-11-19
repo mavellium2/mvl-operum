@@ -4,7 +4,7 @@ import OperumButton from '@/components/ui/GlassButton'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   BookOpen, ChevronDown, ChevronUp, CircleHelp, Eraser, FileCheck2, FileText, FileType2, History, ListPlus,
-  Maximize2, Printer, Redo2, Save, Search, Undo2, ZoomIn, ZoomOut, ArrowDownToLine, Pencil,
+  Maximize2, Printer, Redo2, Save, Undo2, ZoomIn, ZoomOut, ArrowDownToLine, Pencil,
 } from 'lucide-react'
 import Tooltip from '@/components/ui/Tooltip'
 import Modal from '@/components/ui/Modal'
@@ -86,7 +86,12 @@ function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
 }
 
 const ICONE = 'h-4 w-4'
-const ZOOMS = [50, 67, 75, 90, 100, 110, 125, 150, 175, 200]
+const ZOOMS = [25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300]
+const ZOOM_MIN = 25
+const ZOOM_MAX = 300
+const limitarZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(z)))
+/** Zoom escolhido fica guardado neste navegador (conveniência; sem ele, 100%). */
+const CHAVE_ZOOM = 'operum:documentos:zoom'
 
 const STATUS: Record<StatusSalvamento, { cor: string; texto: string }> = {
   salvo: { cor: 'bg-emerald-500', texto: 'Rascunho salvo' },
@@ -107,6 +112,18 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
   const conteudo = useRef<HTMLDivElement>(null)
   const folhas = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(100)
+  // Zoom guardado: lido depois de montar (o servidor desenha em 100%) e salvo a cada mudança,
+  // só depois da leitura (senão o 100% inicial apagaria o valor guardado).
+  const [zoomLido, setZoomLido] = useState(false)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o armazenamento só no navegador, depois de hidratar
+    try { const salvo = Number(window.localStorage.getItem(CHAVE_ZOOM)); if (salvo >= ZOOM_MIN && salvo <= ZOOM_MAX) setZoom(salvo) } catch { /* sem armazenamento */ }
+    setZoomLido(true)
+  }, [])
+  useEffect(() => {
+    if (!zoomLido) return
+    try { window.localStorage.setItem(CHAVE_ZOOM, String(zoom)) } catch { /* sem armazenamento */ }
+  }, [zoom, zoomLido])
   const [foco, setFoco] = useState<CampoEmFoco | null>(null)
   const [posAjuda, setPosAjuda] = useState<{ top: number; left: number } | null>(null)
   const [vazios, setVazios] = useState(0)
@@ -181,13 +198,25 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
   const ajustarLargura = useCallback(() => {
     const largura = (area.current?.clientWidth ?? 0) - 64
     const folha = (paisagem ? 297 : 210) * 96 / 25.4
-    if (largura > 0) setZoom(Math.max(50, Math.min(200, Math.floor((largura / folha) * 100))))
+    if (largura > 0) setZoom(limitarZoom(Math.floor((largura / folha) * 100)))
   }, [paisagem])
-  const mudarZoom = (dir: 1 | -1) => setZoom(z => {
-    const i = ZOOMS.findIndex(v => v >= z)
-    if (dir === 1) return ZOOMS.find(v => v > z) ?? 200
-    return [...ZOOMS].reverse().find(v => v < z) ?? (i <= 0 ? 50 : ZOOMS[i - 1])
-  })
+  const mudarZoom = useCallback((dir: 1 | -1) => setZoom(z => {
+    if (dir === 1) return ZOOMS.find(v => v > z) ?? ZOOM_MAX
+    return [...ZOOMS].reverse().find(v => v < z) ?? ZOOM_MIN
+  }), [])
+
+  // Ctrl + roda do mouse sobre a folha muda o zoom (como no Word), sem dar zoom na página inteira.
+  useEffect(() => {
+    const el = area.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      e.preventDefault()
+      setZoom(z => limitarZoom(z * (e.deltaY < 0 ? 1.1 : 1 / 1.1)))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   // Páginas (EAP): a página atual acompanha a rolagem.
   useEffect(() => {
@@ -217,6 +246,10 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
       const k = e.key.toLowerCase()
       if (mod && k === 's') { e.preventDefault(); if (onSalvar && podeSalvar) onSalvar(); return }
       if (mod && k === 'p') { if (onImprimir) { e.preventDefault(); onImprimir() } return }
+      // Zoom do documento: Ctrl + / Ctrl − / Ctrl 0 (100%).
+      if (mod && !e.altKey && (k === '=' || k === '+')) { e.preventDefault(); mudarZoom(1); return }
+      if (mod && !e.altKey && k === '-') { e.preventDefault(); mudarZoom(-1); return }
+      if (mod && !e.altKey && k === '0') { e.preventDefault(); setZoom(100); return }
       const naFolha = !!folhas.current?.contains(document.activeElement)
       if (!naFolha) return
       if (mod && desfazer && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); desfazer.refazer(); return }
@@ -225,14 +258,14 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onSalvar, podeSalvar, onImprimir, desfazer, navegar])
+  }, [onSalvar, podeSalvar, onImprimir, desfazer, navegar, mudarZoom])
 
   const st = STATUS[status]
   const larguraFolha = paisagem ? '297mm' : '210mm'
 
   return (
     <EditorFolhaProvider value={ctx}>
-      <div ref={raiz} data-testid="editor-documento" className="documento-editor flex h-full min-h-0 flex-col bg-[#eef0f3]">
+      <div ref={raiz} data-testid="editor-documento" className="documento-editor relative flex h-full min-h-0 flex-col bg-[#eef0f3]">
         {/* ── Barra de ferramentas ─────────────────────────────────────────── */}
         <div role="toolbar" aria-label={`Ferramentas do documento ${documento}`} className="documento-toolbar sticky top-0 z-20 flex shrink-0 items-center gap-1.5 overflow-x-auto border-b px-1.5 py-1">
           {versao && (
@@ -316,10 +349,6 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
           </Grupo>
 
           <Grupo titulo="Outros">
-            <Botao rotulo="Ajustar à largura" onClick={ajustarLargura}><Maximize2 className={ICONE} /></Botao>
-            <Botao rotulo="Diminuir zoom" onClick={() => mudarZoom(-1)} disabled={zoom <= 50}><ZoomOut className={ICONE} /></Botao>
-            <Botao rotulo={`Zoom: ${zoom}% (clique = 100%)`} onClick={() => setZoom(100)}><Search className={ICONE} /></Botao>
-            <Botao rotulo="Aumentar zoom" onClick={() => mudarZoom(1)} disabled={zoom >= 200}><ZoomIn className={ICONE} /></Botao>
             <Botao rotulo="Ajuda rápida" onClick={() => setAjudaAberta(true)}><CircleHelp className={ICONE} /></Botao>
             <Botao rotulo="Manual" onClick={() => setManualAberto(true)}><BookOpen className={ICONE} /></Botao>
           </Grupo>
@@ -352,6 +381,25 @@ export default function EditorDocumento(props: EditorDocumentoProps) {
               </>
             )}
           </div>
+        </div>
+
+        {/* ── Zoom, como na barra de status do Word ─────────────────────────── */}
+        <div role="group" aria-label="Zoom do documento" className="documento-zoom absolute bottom-3 right-4 z-20 flex items-center gap-1 rounded-full border border-slate-200 bg-white/95 px-2 py-1 shadow-sm backdrop-blur">
+          <Tooltip label="Ajustar à largura">
+            <OperumButton variant="custom" type="button" aria-label="Ajustar à largura" onClick={ajustarLargura} className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500"><Maximize2 className="h-3.5 w-3.5" /></OperumButton>
+          </Tooltip>
+          <Tooltip label="Diminuir zoom (Ctrl −)">
+            <OperumButton variant="custom" type="button" aria-label="Diminuir zoom" onClick={() => mudarZoom(-1)} disabled={zoom <= ZOOM_MIN} className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-40"><ZoomOut className="h-3.5 w-3.5" /></OperumButton>
+          </Tooltip>
+          {/* Controle deslizante nativo (range): permitido fora da base dos campos de texto. */}
+          <input type="range" min={ZOOM_MIN} max={ZOOM_MAX} step={5} value={zoom} onChange={e => setZoom(limitarZoom(Number(e.target.value)))}
+            aria-label="Zoom" aria-valuetext={`${zoom}%`} className="h-1 w-24 cursor-pointer accent-blue-600 sm:w-32" />
+          <Tooltip label="Aumentar zoom (Ctrl +)">
+            <OperumButton variant="custom" type="button" aria-label="Aumentar zoom" onClick={() => mudarZoom(1)} disabled={zoom >= ZOOM_MAX} className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-40"><ZoomIn className="h-3.5 w-3.5" /></OperumButton>
+          </Tooltip>
+          <Tooltip label="Voltar a 100% (Ctrl 0)">
+            <OperumButton variant="custom" type="button" aria-label={`Zoom ${zoom}%, voltar a 100%`} onClick={() => setZoom(100)} className="min-w-[3.25rem] rounded-full px-2 py-1 text-center text-xs font-medium tabular-nums text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500">{zoom}%</OperumButton>
+          </Tooltip>
         </div>
       </div>
 
