@@ -78,7 +78,7 @@ export async function listarArquivos(s: SessaoAuthz, projetoId: string, categori
     where: { tenantId: s.tenantId, projetoId, categoria, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     select: {
-      id: true, nome: true, tipo: true, tamanho: true, createdAt: true, enviadoPor: { select: { name: true } },
+      id: true, nome: true, tipo: true, tamanho: true, createdAt: true, enviadoPor: { select: { name: true, avatarUrl: true } },
       // Só a estrela de quem está vendo.
       favoritos: { where: { userId: s.userId }, select: { userId: true } },
     },

@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, Check, Grid2x2, LayoutGrid, List, Star } from 'luci
 import SearchInput from '@/components/ui/SearchInput'
 import Select from '@/components/ui/Select'
 import GlassButton from '@/components/ui/GlassButton'
+import UserAvatar from '@/components/user/UserAvatar'
 import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import GradeArquivos from './GradeArquivos'
 import './ListaArquivos.css'
@@ -22,6 +23,8 @@ export interface ItemArquivo {
   /** Tamanho em bytes, para ordenar pela coluna (sem ele, ordena pelo texto). */
   tamanhoBytes?: number
   enviadoPor: string | null
+  /** Foto de quem enviou (sem ela, o avatar mostra as iniciais). */
+  enviadoPorAvatar?: string | null
   /** ISO. */
   data: string
   /** Conteúdo da coluna extra (ex.: card e sprint no admin). */
@@ -321,7 +324,14 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
                 </td>
                 {colunaExtra && <td className="hidden truncate px-3 py-1.5 md:table-cell">{a.extra}</td>}
                 <td className="arq-meta hidden truncate px-3 py-1.5 md:table-cell" title={a.subtitulo}>{a.subtitulo}</td>
-                <td className="arq-meta hidden truncate px-3 py-1.5 xl:table-cell">{a.enviadoPor ?? '—'}</td>
+                <td className="arq-meta hidden px-3 py-1.5 xl:table-cell">
+                  {a.enviadoPor
+                    ? <span className="flex min-w-0 items-center gap-2" title={a.enviadoPor}>
+                        <span aria-hidden="true" className="contents"><UserAvatar name={a.enviadoPor} avatarUrl={a.enviadoPorAvatar} size="xs" /></span>
+                        <span className="truncate">{a.enviadoPor}</span>
+                      </span>
+                    : '—'}
+                </td>
                 <td className="arq-meta hidden whitespace-nowrap px-3 py-1.5 sm:table-cell">{data(a.data)}</td>
                 <td className="arq-meta hidden whitespace-nowrap px-3 py-1.5 text-right tabular-nums sm:table-cell">{a.tamanho}</td>
                 <td className="px-3 py-1">

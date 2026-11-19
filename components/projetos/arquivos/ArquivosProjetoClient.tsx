@@ -23,6 +23,7 @@ export interface ArquivoDoProjeto {
   tamanho: number
   enviadoEm: string
   enviadoPor: string | null
+  enviadoPorAvatar?: string | null
   /** Estrela pessoal de quem está vendo. */
   favorito?: boolean
 }
@@ -194,6 +195,7 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
       tamanho: formatarTamanho(a.tamanho),
       tamanhoBytes: a.tamanho,
       enviadoPor: a.enviadoPor,
+      enviadoPorAvatar: a.enviadoPorAvatar,
       data: a.enviadoEm,
       previa: href,
       abrir: href,

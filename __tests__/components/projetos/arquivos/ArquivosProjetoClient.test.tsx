@@ -10,7 +10,7 @@ import { fetchWithSession } from '@/lib/clientFetch'
 import ArquivosProjetoClient from '@/components/projetos/arquivos/ArquivosProjetoClient'
 
 const arquivos = [
-  { id: 'a1', nome: 'Visita.mp4', tipo: 'video/mp4', tamanho: 5 * 1024 * 1024, enviadoEm: '2026-11-18T10:00:00.000Z', enviadoPor: 'Ana' },
+  { id: 'a1', nome: 'Visita.mp4', tipo: 'video/mp4', tamanho: 5 * 1024 * 1024, enviadoEm: '2026-11-18T10:00:00.000Z', enviadoPor: 'Ana', enviadoPorAvatar: 'https://minio.operum.adm.br/avatars/ana.png' },
   { id: 'a2', nome: 'Equipe.png', tipo: 'image/png', tamanho: 2048, enviadoEm: '2026-11-17T10:00:00.000Z', enviadoPor: null },
 ]
 const com = (permissoes: Permissao[], ui: ReactNode) => render(<ProjectPermissionsProvider permissions={permissoes}>{ui}</ProjectPermissionsProvider>)
@@ -35,6 +35,9 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', 
     fireEvent.click(screen.getByRole('button', { name: 'Limpar seleção' }))
     abrir.mockRestore()
     expect(within(linha).getByText('5.0 MB')).toBeInTheDocument()
+    // Enviado por: foto antes do nome.
+    const ana = within(linha).getByText('Ana')
+    expect(ana.parentElement?.querySelector('img')).toHaveAttribute('src', 'https://minio.operum.adm.br/avatars/ana.png')
     // Só ver: baixar e estrela na linha; sem renomear, excluir nem enviar.
     expect(within(linha).getByRole('button', { name: 'Baixar Visita.mp4' })).toBeInTheDocument()
     expect(within(linha).getByRole('button', { name: 'Adicionar estrela a Visita.mp4' })).toBeInTheDocument()
