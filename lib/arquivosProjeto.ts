@@ -80,3 +80,18 @@ export function formatarTamanho(bytes: number): string {
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
+
+const extensao = (nome: string) => /\.[A-Za-z0-9]{1,8}$/.exec(nome)?.[0] ?? ''
+
+/**
+ * Nome final ao renomear: sem espaços nas pontas e com até 255 caracteres.
+ * Se o novo nome vier sem extensão, mantém a do arquivo (como no Finder).
+ * Devolve null quando o nome fica vazio.
+ */
+export function nomeRenomeado(atual: string, novo: string): string | null {
+  const limpo = novo.replace(/[\u0000-\u001f\u007f]/g, '').trim()
+  if (!limpo || limpo === extensao(atual)) return null
+  const ext = extensao(atual)
+  const final = ext && !extensao(limpo) ? `${limpo}${ext}` : limpo
+  return final.slice(0, 255)
+}

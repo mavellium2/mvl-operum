@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Grid2x2 } from 'lucide-react'
 import { Input as OperumInput } from '@/components/ui/Field'
 import Select from '@/components/ui/Select'
@@ -24,7 +24,8 @@ export interface ItemArquivo {
   extra?: ReactNode
   /** Texto a mais que entra na busca (ex.: título do card). */
   busca?: string
-  acoes: ReactNode
+  /** Ações na linha (sem `selecao`). Com seleção, as ações ficam na barra acima. */
+  acoes?: ReactNode
   /** URL da arte (imagem ou vídeo) para a miniatura dos blocos e da lista. */
   previa?: string
   /** Link aberto ao clicar na miniatura do bloco. */
@@ -32,6 +33,22 @@ export interface ItemArquivo {
 }
 
 type Modo = 'lista' | 'blocos'
+
+/** Seleção de arquivos com as ações em lote numa barra acima da lista. */
+export interface SelecaoArquivos {
+  selecionados: string[]
+  onChange: (ids: string[]) => void
+  /** Ações para os arquivos selecionados que estão visíveis (respeitando busca e filtros). */
+  acoes: (ids: string[]) => ReactNode
+}
+
+/** Caixa de seleção nativa (controle permitido fora da base dos campos de texto), com estado parcial. */
+export function CaixaSelecao({ marcado, parcial = false, onChange, rotulo, className = '' }: { marcado: boolean; parcial?: boolean; onChange: (v: boolean) => void; rotulo: string; className?: string }) {
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (ref.current) ref.current.indeterminate = parcial && !marcado }, [parcial, marcado])
+  return <input ref={ref} type="checkbox" checked={marcado} onChange={e => onChange(e.target.checked)} aria-label={rotulo}
+    className={`h-4 w-4 shrink-0 cursor-pointer rounded accent-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${className}`} />
+}
 const TAMANHO_MIN = 120
 const TAMANHO_MAX = 360
 const TAMANHO_PADRAO = 180
@@ -87,7 +104,7 @@ export function IconeArquivo({ categoria }: { categoria: CategoriaVisual }) {
  * Lista de arquivos com busca, filtro por tipo, contador e tabela. Base comum
  * do menu Arquivos (admin) e das seções de arquivos do projeto.
  */
-export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, placeholderBusca = 'Buscar por nome…', vazio = 'Nenhum arquivo encontrado', visualizacao }: {
+export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, placeholderBusca = 'Buscar por nome…', vazio = 'Nenhum arquivo encontrado', visualizacao, selecao }: {
   itens: ItemArquivo[]
   /** Opções do filtro "Tipo", na ordem. */
   tipos: CategoriaVisual[]
@@ -99,6 +116,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
   vazio?: string
   /** Chave para guardar a escolha; com ela aparecem os modos Lista/Blocos e o tamanho do bloco (como no Finder). */
   visualizacao?: string
+  selecao?: SelecaoArquivos
 }) {
   const { modo, setModo, tamanho, setTamanho } = useVisualizacao(visualizacao)
   const [busca, setBusca] = useState('')
@@ -110,7 +128,16 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
     if (filtroExtra && !filtroExtra.aceita(a)) return false
     return true
   }), [itens, busca, tipo, filtroExtra])
+  // Com seleção, a coluna da caixa substitui a de ações: o total não muda.
   const colunas = 5 + (colunaExtra ? 1 : 0)
+  const idsVisiveis = new Set(visiveis.map(a => a.id))
+  const escolhidos = (selecao?.selecionados ?? []).filter(id => idsVisiveis.has(id))
+  const todos = visiveis.length > 0 && escolhidos.length === visiveis.length
+  const marcarTodos = (v: boolean) => selecao?.onChange(v
+    ? [...new Set([...selecao.selecionados, ...visiveis.map(a => a.id)])]
+    : selecao.selecionados.filter(id => !idsVisiveis.has(id)))
+  const marcar = (id: string, v: boolean) => selecao?.onChange(v ? [...selecao.selecionados, id] : selecao.selecionados.filter(x => x !== id))
+  const selecionarTodos = <CaixaSelecao marcado={todos} parcial={escolhidos.length > 0} onChange={marcarTodos} rotulo="Selecionar todos" />
 
   return (
     <div>
@@ -135,10 +162,15 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
       </div>
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-gray-500">
-          {visiveis.length} arquivo{visiveis.length !== 1 ? 's' : ''}
-          {busca || tipo || filtroExtra?.ativo ? ' (filtrado)' : ''}
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          {selecao && modo === 'blocos' && visiveis.length > 0 && selecionarTodos}
+          <p className="text-sm text-gray-500" aria-live="polite">
+            {selecao && escolhidos.length > 0
+              ? `${escolhidos.length} de ${visiveis.length} selecionado${escolhidos.length !== 1 ? 's' : ''}`
+              : <>{visiveis.length} arquivo{visiveis.length !== 1 ? 's' : ''}{busca || tipo || filtroExtra?.ativo ? ' (filtrado)' : ''}</>}
+          </p>
+          {selecao && <div role="toolbar" aria-label="Ações dos arquivos selecionados" className="flex items-center gap-1">{selecao.acoes(escolhidos)}</div>}
+        </div>
         {visualizacao && (
           <div className="flex flex-wrap items-center gap-3">
             {modo === 'blocos' && (
@@ -163,16 +195,17 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
         )}
       </div>
 
-      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} /> : <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
+      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onMarcar={marcar} /> : <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
         <table className="w-full text-sm">
           <thead className="border-b border-gray-100 bg-gray-50">
             <tr>
+              {selecao && <th className="w-10 py-3 pl-4">{visiveis.length > 0 && selecionarTodos}</th>}
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Arquivo</th>
               {colunaExtra && <th className="hidden px-4 py-3 text-left text-xs font-medium text-gray-500 md:table-cell">{colunaExtra}</th>}
               <th className="hidden px-4 py-3 text-left text-xs font-medium text-gray-500 lg:table-cell">Enviado por</th>
               <th className="hidden px-4 py-3 text-right text-xs font-medium text-gray-500 sm:table-cell">Tamanho</th>
               <th className="hidden px-4 py-3 text-right text-xs font-medium text-gray-500 lg:table-cell">Data</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Ações</th>
+              {!selecao && <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Ações</th>}
             </tr>
           </thead>
           <tbody>
@@ -180,15 +213,19 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
               <tr><td colSpan={colunas} className="px-4 py-8 text-center text-sm text-gray-400">{vazio}</td></tr>
             )}
             {visiveis.map(a => (
-              <tr key={a.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+              <tr key={a.id} aria-selected={selecao ? escolhidos.includes(a.id) : undefined}
+                className={`border-b border-gray-50 transition-colors last:border-0 ${selecao && escolhidos.includes(a.id) ? 'bg-blue-50/70' : 'hover:bg-gray-50'}`}>
+                {selecao && <td className="w-10 py-3 pl-4"><CaixaSelecao marcado={escolhidos.includes(a.id)} onChange={v => marcar(a.id, v)} rotulo={`Selecionar ${a.nome}`} /></td>}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     {visualizacao && a.previa && a.categoria === 'imagem'
                       // eslint-disable-next-line @next/next/no-img-element -- URL assinada do storage, servida por redirecionamento.
-                      ? <img src={a.previa} alt="" loading="lazy" decoding="async" className="h-8 w-8 shrink-0 rounded-md bg-slate-100 object-cover" />
+                      ? <a href={a.abrir ?? a.previa} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true" className="shrink-0"><img src={a.previa} alt="" loading="lazy" decoding="async" className="h-8 w-8 rounded-md bg-slate-100 object-cover" /></a>
                       : <IconeArquivo categoria={a.categoria} />}
                     <div className="min-w-0">
-                      <p className="max-w-[260px] truncate font-medium text-gray-900" title={a.nome}>{a.nome}</p>
+                      {a.abrir
+                        ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" className="block max-w-[260px] truncate font-medium text-gray-900 hover:text-blue-600 hover:underline focus-visible:outline-2 focus-visible:outline-blue-500" title={a.nome}>{a.nome}</a>
+                        : <p className="max-w-[260px] truncate font-medium text-gray-900" title={a.nome}>{a.nome}</p>}
                       <p className="text-xs text-gray-400">{a.subtitulo}</p>
                     </div>
                   </div>
@@ -197,7 +234,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
                 <td className="hidden px-4 py-3 text-gray-600 lg:table-cell">{a.enviadoPor ?? '—'}</td>
                 <td className="hidden px-4 py-3 text-right text-gray-600 sm:table-cell">{a.tamanho}</td>
                 <td className="hidden px-4 py-3 text-right text-xs text-gray-400 lg:table-cell">{new Date(a.data).toLocaleDateString('pt-BR')}</td>
-                <td className="px-4 py-3"><div className="flex items-center justify-end gap-1">{a.acoes}</div></td>
+                {!selecao && <td className="px-4 py-3"><div className="flex items-center justify-end gap-1">{a.acoes}</div></td>}
               </tr>
             ))}
           </tbody>

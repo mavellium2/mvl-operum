@@ -4,7 +4,7 @@ import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectComm
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import prisma from '@/lib/prisma'
 import { assinador, BUCKET, s3 } from '@/lib/minio'
-import { erroDoArquivo, SECOES_ARQUIVOS, type CategoriaArquivoProjeto } from '@/lib/arquivosProjeto'
+import { erroDoArquivo, nomeRenomeado, SECOES_ARQUIVOS, type CategoriaArquivoProjeto } from '@/lib/arquivosProjeto'
 import { exigirPermissao, type SessaoAuthz } from './authz'
 import { registrarAcao } from './auditoriaService'
 
@@ -92,6 +92,19 @@ export async function urlDeAcesso(s: SessaoAuthz, projetoId: string, id: string,
     ResponseContentType: arquivo.tipo,
     ResponseContentDisposition: `${baixar ? 'attachment' : 'inline'}; filename*=UTF-8''${nome}`,
   }), { expiresIn: EXPIRA_ACESSO_S })
+}
+
+/** Troca só o nome exibido e usado no download; o objeto no storage não muda. */
+export async function renomearArquivo(s: SessaoAuthz, projetoId: string, id: string, novoNome: string) {
+  await acesso(s, projetoId, 'documentos:editar')
+  const arquivo = await prisma.arquivoProjeto.findFirst({ where: { id, projetoId, tenantId: s.tenantId, deletedAt: null } })
+  if (!arquivo) throw new ArquivoProjetoError('Arquivo não encontrado', 404)
+  const nome = nomeRenomeado(arquivo.nome, novoNome)
+  if (!nome) throw new ArquivoProjetoError('Informe um nome para o arquivo.')
+  if (nome === arquivo.nome) return arquivo
+  const atualizado = await prisma.arquivoProjeto.update({ where: { id }, data: { nome } })
+  await registrarAcao({ tenantId: s.tenantId, userId: s.userId, action: 'ARQUIVO_PROJETO_RENOMEAR', entity: 'ArquivoProjeto', entityId: id, details: { projetoId, categoria: arquivo.categoria, de: arquivo.nome, para: nome } })
+  return atualizado
 }
 
 export async function excluirArquivo(s: SessaoAuthz, projetoId: string, id: string) {

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { verifySession } from '@/lib/dal'
 import { isSafeStorageUrl } from '@/lib/storageUrl'
-import { excluirArquivo, urlDeAcesso } from '@/services/arquivosProjetoService'
+import { excluirArquivo, renomearArquivo, urlDeAcesso } from '@/services/arquivosProjetoService'
 import { erroArquivos } from '../erros'
 
 type Ctx = { params: Promise<{ projetoId: string; arquivoId: string }> }
@@ -15,6 +16,17 @@ export async function GET(req: Request, { params }: Ctx) {
     // Só redireciona para o host do storage (MINIO_PUBLIC_URL).
     if (!isSafeStorageUrl(url)) return NextResponse.json({ error: 'Armazenamento indisponível' }, { status: 502 })
     return NextResponse.redirect(url, 302)
+  } catch (e) { return erroArquivos(e) }
+}
+
+/** Renomeia o arquivo (só o nome; o objeto no storage continua o mesmo). */
+export async function PATCH(req: Request, { params }: Ctx) {
+  const { projetoId, arquivoId } = await params
+  const { tenantId, role, userId } = await verifySession()
+  try {
+    const { nome } = z.object({ nome: z.string().min(1).max(255) }).strict().parse(await req.json())
+    const a = await renomearArquivo({ tenantId, role, userId }, projetoId, arquivoId, nome)
+    return NextResponse.json({ id: a.id, nome: a.nome })
   } catch (e) { return erroArquivos(e) }
 }
 

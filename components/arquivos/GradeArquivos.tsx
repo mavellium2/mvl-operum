@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Play } from 'lucide-react'
 import GlassCard from '@/components/ui/GlassCard'
-import { IconeArquivo, type ItemArquivo } from './ListaArquivos'
+import { CaixaSelecao, IconeArquivo, type ItemArquivo } from './ListaArquivos'
 
 const duracao = (s: number) => {
   if (!Number.isFinite(s) || s <= 0) return null
@@ -41,15 +41,28 @@ function Miniatura({ item, tamanho }: { item: ItemArquivo; tamanho: number }) {
  * Visualização em blocos (como os ícones do Finder): a arte de cada arquivo,
  * com o nome embaixo. O tamanho do bloco vem do controle deslizante da lista.
  */
-export default function GradeArquivos({ itens, tamanho, vazio }: { itens: ItemArquivo[]; tamanho: number; vazio: string }) {
+export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onMarcar }: {
+  itens: ItemArquivo[]; tamanho: number; vazio: string
+  /** Com seleção: ids marcados (sem ela, os blocos não têm caixa). */
+  selecionados?: string[]
+  onMarcar?: (id: string, marcado: boolean) => void
+}) {
   if (itens.length === 0) {
     return <div className="rounded-2xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-400">{vazio}</div>
   }
   return (
     <ul className="grid gap-4" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(${tamanho}px, 100%), 1fr))` }} aria-label="Arquivos em blocos">
-      {itens.map(a => (
+      {itens.map(a => {
+        const marcado = selecionados?.includes(a.id) ?? false
+        return (
         <li key={a.id} className="min-w-0">
-          <GlassCard as="article" interactive className="group relative flex h-full flex-col overflow-hidden !rounded-2xl p-2">
+          <GlassCard as="article" interactive aria-selected={selecionados ? marcado : undefined}
+            className={`group relative flex h-full flex-col overflow-hidden !rounded-2xl p-2 ${marcado ? 'ring-2 ring-blue-500' : ''}`}>
+            {selecionados && onMarcar && (
+              <span className="absolute left-3.5 top-3.5 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-white/90 shadow-sm backdrop-blur-sm">
+                <CaixaSelecao marcado={marcado} onChange={v => onMarcar(a.id, v)} rotulo={`Selecionar ${a.nome}`} />
+              </span>
+            )}
             {a.abrir
               ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${a.nome}`}
                   className="relative block aspect-[4/3] overflow-hidden rounded-xl bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500">
@@ -57,13 +70,16 @@ export default function GradeArquivos({ itens, tamanho, vazio }: { itens: ItemAr
                 </a>
               : <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100"><Miniatura item={a} tamanho={tamanho} /></div>}
             <div className="mt-2 min-w-0 px-1">
-              <p className="truncate text-sm font-medium text-slate-900" title={a.nome}>{a.nome}</p>
+              {a.abrir
+                ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" tabIndex={-1} className="block truncate text-sm font-medium text-slate-900 hover:text-blue-600 hover:underline" title={a.nome}>{a.nome}</a>
+                : <p className="truncate text-sm font-medium text-slate-900" title={a.nome}>{a.nome}</p>}
               <p className="truncate text-xs text-slate-500">{a.tamanho} · {new Date(a.data).toLocaleDateString('pt-BR')}</p>
             </div>
-            <div className="mt-2 flex flex-wrap items-center justify-end gap-1 px-1">{a.acoes}</div>
+            {a.acoes && <div className="mt-2 flex flex-wrap items-center justify-end gap-1 px-1">{a.acoes}</div>}
           </GlassCard>
         </li>
-      ))}
+        )
+      })}
     </ul>
   )
 }

@@ -1,9 +1,15 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { Upload } from 'lucide-react'
+import { Download, Upload } from 'lucide-react'
 import GlassButton from '@/components/ui/GlassButton'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import AnimatedTrashButton from '@/components/ui/AnimatedTrashButton'
+import AnimatedEditButton from '@/components/ui/AnimatedEditButton'
+import Modal from '@/components/ui/Modal'
+import FormActions from '@/components/ui/FormActions'
+import { Input } from '@/components/ui/Field'
+import Tooltip from '@/components/ui/Tooltip'
 import { useToast } from '@/components/ui/Toast'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import { fetchWithSession } from '@/lib/clientFetch'
@@ -24,7 +30,6 @@ interface Envio { chave: string; nome: string; progresso: number; erro?: string 
 const categoriaVisual = (tipo: string): CategoriaVisual =>
   tipo.startsWith('image/') ? 'imagem' : tipo.startsWith('video/') ? 'video' : tipo === 'application/pdf' ? 'pdf' : 'apresentacao'
 
-const botao = 'rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50'
 
 /** Envia o arquivo direto ao storage pela URL assinada, com progresso. */
 function enviarParaStorage(url: string, arquivo: File, tipo: string, onProgresso: (p: number) => void): Promise<void> {
@@ -56,11 +61,20 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
   const seletor = useRef<HTMLInputElement>(null)
   const [arquivos, setArquivos] = useState(iniciais)
   const [envios, setEnvios] = useState<Envio[]>([])
-  const [excluir, setExcluir] = useState<ArquivoDoProjeto | null>(null)
+  const [selecionados, setSelecionados] = useState<string[]>([])
+  const [excluir, setExcluir] = useState<ArquivoDoProjeto[]>([])
+  const [renomear, setRenomear] = useState<ArquivoDoProjeto | null>(null)
+  const [novoNome, setNovoNome] = useState('')
+  const [salvandoNome, setSalvandoNome] = useState(false)
+  const [erroNome, setErroNome] = useState('')
 
   const recarregar = useCallback(async () => {
     const r = await fetchWithSession(`/api/projects/${projetoId}/arquivos?categoria=${categoria}`)
-    if (r.ok) setArquivos(await r.json())
+    if (!r.ok) return
+    const lista = await r.json() as ArquivoDoProjeto[]
+    setArquivos(lista)
+    // Tira da seleção o que saiu da lista.
+    setSelecionados(sel => sel.filter(id => lista.some(a => a.id === id)))
   }, [projetoId, categoria])
 
   /** Envia um arquivo; devolve se ele entrou na lista. */
@@ -98,11 +112,47 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
     if (enviados.some(Boolean)) await recarregar()
   }
 
-  async function confirmarExclusao(arquivo: ArquivoDoProjeto) {
-    const r = await fetchWithSession(`/api/projects/${projetoId}/arquivos/${arquivo.id}`, { method: 'DELETE' })
-    if (!r.ok) { toast((await r.json().catch(() => ({})))?.error ?? 'Não foi possível excluir o arquivo.', 'error'); return }
-    toast(`"${arquivo.nome}" excluído.`, 'success')
+  async function confirmarExclusao(lista: ArquivoDoProjeto[]) {
+    const resultados = await Promise.all(lista.map(a =>
+      fetchWithSession(`/api/projects/${projetoId}/arquivos/${a.id}`, { method: 'DELETE' }).then(r => r.ok, () => false)))
+    const ok = resultados.filter(Boolean).length
+    const falhas = lista.length - ok
+    if (ok) toast(lista.length === 1 ? `"${lista[0].nome}" excluído.` : `${ok} arquivo${ok !== 1 ? 's' : ''} excluído${ok !== 1 ? 's' : ''}.`, 'success')
+    if (falhas) toast(`Não foi possível excluir ${falhas} arquivo${falhas !== 1 ? 's' : ''}.`, 'error')
     await recarregar()
+  }
+
+  /** Baixa cada arquivo pela rota que confere a sessão; links com `download` não trocam de página nem se cancelam. */
+  function baixar(lista: ArquivoDoProjeto[]) {
+    lista.forEach((a, i) => setTimeout(() => {
+      const link = document.createElement('a')
+      link.href = `/api/projects/${projetoId}/arquivos/${a.id}?baixar=1`
+      link.download = a.nome
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    }, i * 250))
+  }
+
+  function abrirRenomear(arquivo: ArquivoDoProjeto) {
+    setRenomear(arquivo); setNovoNome(arquivo.nome); setErroNome('')
+  }
+
+  async function salvarNome() {
+    if (!renomear || salvandoNome) return
+    setSalvandoNome(true); setErroNome('')
+    try {
+      const r = await fetchWithSession(`/api/projects/${projetoId}/arquivos/${renomear.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: novoNome }),
+      })
+      if (!r.ok) { setErroNome((await r.json().catch(() => ({})))?.error ?? 'Não foi possível renomear o arquivo.'); return }
+      const { nome } = await r.json() as { nome: string }
+      setArquivos(lista => lista.map(a => (a.id === renomear.id ? { ...a, nome } : a)))
+      setRenomear(null)
+      toast('Arquivo renomeado.', 'success')
+    } catch {
+      setErroNome('Não foi possível renomear o arquivo.')
+    } finally { setSalvandoNome(false) }
   }
 
   const enviando = envios.some(e => !e.erro)
@@ -118,13 +168,25 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
       data: a.enviadoEm,
       previa: href,
       abrir: href,
-      acoes: <>
-        <a href={href} target="_blank" rel="noopener noreferrer" className={botao}>Ver</a>
-        <a href={`${href}?baixar=1`} className={botao}>Baixar</a>
-        {podeExcluir && <GlassButton variant="custom" type="button" onClick={() => setExcluir(a)} className={`${botao} hover:!bg-red-50 hover:!text-red-600`}>Excluir</GlassButton>}
-      </>,
     }
   })
+  const doId = (ids: string[]) => arquivos.filter(a => ids.includes(a.id))
+  const acoesSelecao = (ids: string[]) => {
+    const nada = ids.length === 0
+    return <>
+      <Tooltip label="Baixar">
+        <GlassButton variant="icon" aria-label={nada ? 'Baixar' : `Baixar ${ids.length} selecionado${ids.length !== 1 ? 's' : ''}`} disabled={nada} onClick={() => baixar(doId(ids))}>
+          <Download className="h-4 w-4" aria-hidden="true" />
+        </GlassButton>
+      </Tooltip>
+      {podeEnviar && <Tooltip label={ids.length > 1 ? 'Renomear (escolha um arquivo)' : 'Renomear'}>
+        <AnimatedEditButton label="Renomear" disabled={ids.length !== 1} onClick={() => { const [a] = doId(ids); if (a) abrirRenomear(a) }} />
+      </Tooltip>}
+      {podeExcluir && <Tooltip label="Excluir">
+        <AnimatedTrashButton effect="button" label={nada ? 'Excluir' : `Excluir ${ids.length} selecionado${ids.length !== 1 ? 's' : ''}`} disabled={nada} onDelete={() => setExcluir(doId(ids))} />
+      </Tooltip>}
+    </>
+  }
 
   return (
     <div className="px-4 py-6 sm:px-8">
@@ -167,16 +229,35 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
           tipos={categoria === 'FOTOS_VIDEOS' ? ['imagem', 'video'] : ['apresentacao', 'pdf', 'video']}
           vazio={secao.vazio}
           visualizacao={categoria === 'FOTOS_VIDEOS' ? `projeto-${categoria}` : undefined}
+          selecao={{ selecionados, onChange: setSelecionados, acoes: acoesSelecao }}
         />
       </div>
 
+      <Modal isOpen={!!renomear} onClose={() => { if (!salvandoNome) setRenomear(null) }} title="Renomear arquivo" maxWidth="max-w-md">
+        <form onSubmit={e => { e.preventDefault(); void salvarNome() }}>
+          <label htmlFor="renomear-arquivo" className="mb-2 block text-sm text-slate-600">Nome</label>
+          <Input id="renomear-arquivo" value={novoNome} onChange={e => setNovoNome(e.target.value)} maxLength={255} required autoFocus disabled={salvandoNome}
+            aria-invalid={!!erroNome || undefined} aria-describedby={erroNome ? 'renomear-arquivo-erro' : undefined}
+            // Seleciona só o nome, sem a extensão, como no Finder.
+            onFocus={e => { const ponto = e.currentTarget.value.lastIndexOf('.'); e.currentTarget.setSelectionRange(0, ponto > 0 ? ponto : e.currentTarget.value.length) }}
+            className="w-full rounded-xl border px-3 py-2 text-sm" />
+          {erroNome && <p id="renomear-arquivo-erro" role="alert" className="mt-2 text-sm text-red-600">{erroNome}</p>}
+          <FormActions surface="none" className="mt-4 flex justify-end gap-2">
+            <GlassButton type="button" onClick={() => setRenomear(null)} disabled={salvandoNome}>Cancelar</GlassButton>
+            <GlassButton variant="primary" type="submit" disabled={salvandoNome || !novoNome.trim()} aria-busy={salvandoNome}>{salvandoNome ? 'Salvando…' : 'Salvar'}</GlassButton>
+          </FormActions>
+        </form>
+      </Modal>
+
       <ConfirmDialog
-        isOpen={!!excluir}
-        onClose={() => setExcluir(null)}
-        onConfirm={() => { if (excluir) void confirmarExclusao(excluir) }}
-        title={excluir ? `Excluir "${excluir.nome}"?` : 'Excluir arquivo'}
-        message="O arquivo sai do projeto e do armazenamento. A exclusão fica registrada na auditoria."
-        confirmLabel="Excluir arquivo"
+        isOpen={excluir.length > 0}
+        onClose={() => setExcluir([])}
+        onConfirm={() => { if (excluir.length) void confirmarExclusao(excluir) }}
+        title={excluir.length === 1 ? `Excluir "${excluir[0].nome}"?` : `Excluir ${excluir.length} arquivos?`}
+        message={excluir.length === 1
+          ? 'O arquivo sai do projeto e do armazenamento. A exclusão fica registrada na auditoria.'
+          : 'Os arquivos saem do projeto e do armazenamento. As exclusões ficam registradas na auditoria.'}
+        confirmLabel={excluir.length === 1 ? 'Excluir arquivo' : 'Excluir arquivos'}
       />
     </div>
   )
