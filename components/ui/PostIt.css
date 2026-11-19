@@ -1,5 +1,5 @@
 .post-it {
-  --post-it-fold-size: 24px;
+  --post-it-fold-size: 34px;
   --post-it-color: #ffffcc;
   --post-it-ink: #292929;
   position: relative;
@@ -7,39 +7,19 @@
   flex: none;
   box-sizing: border-box;
   isolation: isolate;
-  filter: drop-shadow(1px 2px 2px rgb(0 0 0 / 32%));
+  filter: drop-shadow(2px 2px 2px rgb(0 0 0 / 35%));
 }
 
-.post-it__face,
-.post-it__fold {
+/* Folha com o canto cortado na diagonal: a aba dobrada cobre o corte. */
+.post-it__face {
   position: absolute;
   inset: 0;
+  z-index: 0;
   box-sizing: border-box;
   pointer-events: none;
-}
-
-.post-it__face {
-  z-index: 0;
   background: var(--post-it-color);
-  border: 1px solid var(--post-it-ink);
+  border: 1.5px solid var(--post-it-ink);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--post-it-fold-size)), calc(100% - var(--post-it-fold-size)) 100%, 0 100%);
-}
-
-.post-it__fold {
-  z-index: 2;
-  inset: auto 0 0 auto;
-  width: var(--post-it-fold-size);
-  height: var(--post-it-fold-size);
-  background: var(--post-it-ink);
-  clip-path: polygon(0 100%, 100% 0, 100% 100%);
-}
-
-.post-it__fold::after {
-  position: absolute;
-  inset: 1px;
-  background: linear-gradient(145deg, #c3c39a 0%, #d3d3a8 72%, #e7e7b8 100%);
-  clip-path: polygon(0 100%, 100% 0, 100% 100%);
-  content: '';
 }
 
 .post-it__content {
@@ -50,6 +30,23 @@
   height: 100%;
   padding: 16px 14px;
   overflow: auto;
+}
+
+/* Aba: do corte diagonal para dentro do cartão, por cima do conteúdo. */
+.post-it__fold {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  width: var(--post-it-fold-size);
+  height: var(--post-it-fold-size);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.post-it__fold-sombra {
+  fill: rgb(0 0 0 / 18%);
+  filter: blur(1.5px);
 }
 
 .post-it__placeholder {
