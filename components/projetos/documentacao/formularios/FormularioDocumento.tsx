@@ -25,8 +25,13 @@ export type TipoFormulario = 'ESCOPO' | 'RISCOS' | 'LICOES' | 'CANVAS'
 
 /** Dados do sistema devolvidos por `/formularios` (comuns + específicos de cada documento). */
 export interface DadosFormularios extends SistemaFormulario {
-  termo: { justificativa: string; objetivos: string; descricaoProduto: string }
+  termo: { justificativa: string; objetivos: string; descricaoProduto: string; restricoes?: string; premissas?: string }
   entregas: { raiz: { codigo: string; titulo: string } | null; itens: { codigo: string; titulo: string }[] }
+  /** Fontes do Canvas: Declaração do Escopo, Partes Interessadas, Riscos e macrofases (EAP/planilha). */
+  escopo?: { descricaoProduto: string; estrategia: string }
+  stakeholders?: string[]
+  riscos?: { numero: number; denominacao: string }[]
+  macroFases?: { codigo: string; fase: string; dataLimite: string; custo: string }[]
 }
 
 /** O que cada documento desenha: as folhas, a partir do conteúdo e do estado do editor. */

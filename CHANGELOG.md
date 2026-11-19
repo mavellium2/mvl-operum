@@ -7,9 +7,10 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
-## [1.60.1] — 2026-11-19
+## [1.61.0] — 2026-11-19
 
-- **Canvas do projeto:** ajusta a folha para reproduzir a arte-base, os ícones, as posições dos campos e o tamanho de página do DOCX de referência. Retira o título "PROJECT CANVAS" e a versão do cabeçalho do documento. Os 13 ícones dos blocos foram redesenhados em vetor, iguais aos do modelo e na mesma posição, mas nítidos na tela, no PDF e no Word (antes vinham em baixa resolução, achatados na imagem de fundo).
+- **Canvas do projeto, layout:** a folha foi reorganizada numa grade de 13 blocos como no modelo do professor. Em cada bloco ficam o ícone no canto, o título e o subtítulo ao lado e o post-it embaixo, sem nada por cima de outra coisa; o cabeçalho (Projeto, Solicitante e GP) fica numa linha só. Os ícones foram redesenhados em vetor, iguais aos do modelo, e ficam nítidos na tela, no PDF e no Word. Sai o título "PROJECT CANVAS" e a versão do cabeçalho.
+- **Canvas do projeto, preenchimento:** um Canvas novo já vem com o que o projeto tem, conforme as orientações do modelo: Justificativa, Objetivo, Restrições e Premissas do Termo de Abertura; Escopo e Estratégia de condução da Declaração do Escopo; Stakeholders com os nomes das Partes Interessadas (ou da equipe); Riscos com o título de cada formulário de risco; Fases, Cronograma e Orçamento com o 2º nível da EAP (ou as macrofases do Termo), a data limite e o custo de cada fase. Escopo não incluído, Comunicação e Solicitante ficam para a equipe escrever.
 - **Post-it reutilizável:** adiciona um cartão amarelo redimensionável com o canto inferior direito dobrado por cima da folha (aba virada para dentro, em tom mais escuro, com contorno, leve curva e sombra), para compor interfaces de Canvas. A dobra acompanha o tamanho do post-it (19% do lado menor, entre 10 e 64 px).
 
 ## [1.60.0] — 2026-11-19
