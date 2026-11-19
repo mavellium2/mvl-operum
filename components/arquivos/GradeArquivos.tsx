@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Play, Star } from 'lucide-react'
 import GlassCard from '@/components/ui/GlassCard'
-import type { MouseEvent } from 'react'
+import type { KeyboardEvent, MouseEvent } from 'react'
 import { IconeArquivo, type ItemArquivo } from './ListaArquivos'
 
 const duracao = (s: number) => {
@@ -42,11 +42,14 @@ function Miniatura({ item, tamanho }: { item: ItemArquivo; tamanho: number }) {
  * Visualização em blocos (como os ícones do Finder): a arte de cada arquivo,
  * com o nome embaixo. O tamanho do bloco vem do controle deslizante da lista.
  */
-export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onClicar }: {
+export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onClicar, onAbrir, onTecla }: {
   itens: ItemArquivo[]; tamanho: number; vazio: string
   /** Com seleção: ids marcados; o clique no bloco (fora da arte e dos botões) seleciona. */
   selecionados?: string[]
   onClicar?: (e: MouseEvent, id: string) => void
+  /** Com seleção: duplo clique abre. */
+  onAbrir?: (item: ItemArquivo) => void
+  onTecla?: (e: KeyboardEvent, item: ItemArquivo) => void
 }) {
   if (itens.length === 0) {
     return <div className="arq-quadro arq-meta rounded-2xl px-4 py-10 text-center text-sm">{vazio}</div>
@@ -59,8 +62,12 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onC
         <li key={a.id} className="min-w-0">
           <GlassCard as="article" interactive aria-selected={selecionados ? marcado : undefined}
             onClick={onClicar ? e => onClicar(e, a.id) : undefined}
+            onDoubleClick={onAbrir ? e => { if (!(e.target as HTMLElement).closest('button, input')) onAbrir(a) } : undefined}
+            onKeyDown={onTecla ? e => onTecla(e, a) : undefined}
+            tabIndex={onClicar ? 0 : undefined}
+            aria-label={onClicar ? `${a.nome}${a.abrir ? ' (Enter abre)' : ''}` : undefined}
             className={`arq-bloco bloco-arquivo group relative flex h-full flex-col overflow-hidden !rounded-2xl p-1.5 ${onClicar ? 'cursor-default select-none' : ''}`}>
-            {a.abrir
+            {a.abrir && !onClicar
               ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${a.nome}`}
                   className="arq-miniatura relative block aspect-[4/3] overflow-hidden rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2">
                   <Miniatura item={a} tamanho={tamanho} />
@@ -70,7 +77,7 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onC
             {a.acoes && <div className={`arq-acoes-bloco absolute right-3 top-3 z-10 flex items-center gap-0.5 rounded-xl p-0.5 ${selecionados ? 'acoes-linha-arquivo' : ''}`}>{a.acoes}</div>}
             <div className="min-w-0 px-1.5 pb-1 pt-2">
               <div className="flex min-w-0 items-center gap-1.5">
-                {a.abrir
+                {a.abrir && !onClicar
                   ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" tabIndex={-1} className="arq-nome min-w-0 truncate text-sm font-medium" title={a.nome}>{a.nome}</a>
                   : <span className="arq-nome min-w-0 truncate text-sm font-medium" title={a.nome}>{a.nome}</span>}
                 {a.favorito && <Star className="arq-estrela h-3 w-3 shrink-0" aria-label="Com estrela" />}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { ArrowDown, ArrowUp, Check, Grid2x2, LayoutGrid, List, Star } from 'lucide-react'
 import SearchInput from '@/components/ui/SearchInput'
 import Select from '@/components/ui/Select'
@@ -206,10 +206,18 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
   const idsVisiveis = new Set(visiveis.map(a => a.id))
   const escolhidos = (selecao?.selecionados ?? []).filter(id => idsVisiveis.has(id))
   const marcar = (id: string, v: boolean) => selecao?.onChange(v ? [...selecao.selecionados, id] : selecao.selecionados.filter(x => x !== id))
+  const abrirArquivo = (a: ItemArquivo) => { if (a.abrir) window.open(a.abrir, '_blank', 'noopener,noreferrer') }
+  /** Teclado na linha/bloco: Enter abre, Espaço seleciona (Ctrl/⌘ soma). */
+  function teclaItem(e: KeyboardEvent, a: ItemArquivo) {
+    if (!selecao || e.target !== e.currentTarget) return
+    if (e.key === 'Enter') { e.preventDefault(); abrirArquivo(a) }
+    if (e.key === ' ') { e.preventDefault(); ancora.current = a.id; if (e.ctrlKey || e.metaKey) marcar(a.id, !selecao.selecionados.includes(a.id)); else selecao.onChange([a.id]) }
+  }
   const ancora = useRef<string | null>(null)
   /** Clique na linha ou no bloco, como no Drive: seleciona só ela; Ctrl/⌘ alterna; Shift seleciona o intervalo. */
   function clicarLinha(e: MouseEvent, id: string) {
-    if (!selecao || (e.target as HTMLElement).closest('a, button, input, label')) return
+    // Com seleção, nome e miniatura não são links: um clique seleciona, o duplo clique abre (como no Drive).
+    if (!selecao || (e.target as HTMLElement).closest('button, input, label')) return
     if (e.shiftKey && ancora.current) {
       const ids = visiveis.map(a => a.id)
       const [de, ate] = [ids.indexOf(ancora.current), ids.indexOf(id)].sort((x, y) => x - y)
@@ -273,7 +281,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
             </p>}
       </div>
 
-      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={clicarLinha} /> : <div className="arq-quadro overflow-hidden rounded-2xl"
+      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={selecao ? clicarLinha : undefined} onAbrir={selecao ? abrirArquivo : undefined} onTecla={selecao ? teclaItem : undefined} /> : <div className="arq-quadro overflow-hidden rounded-2xl"
         onKeyDown={e => { if (selecao && e.key === 'Escape' && escolhidos.length) selecao.onChange([]) }}>
         <table className="w-full table-fixed text-sm">
           <thead className="arq-cabecalho">
@@ -294,15 +302,18 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
             {visiveis.map(a => (
               <tr key={a.id} aria-selected={selecao ? escolhidos.includes(a.id) : undefined}
                 onClick={selecao ? e => clicarLinha(e, a.id) : undefined}
-                onDoubleClick={selecao && a.abrir ? e => { if (!(e.target as HTMLElement).closest('a, button, input')) window.open(a.abrir, '_blank', 'noopener,noreferrer') } : undefined}
+                onDoubleClick={selecao && a.abrir ? e => { if (!(e.target as HTMLElement).closest('button, input')) abrirArquivo(a) } : undefined}
+                tabIndex={selecao ? 0 : undefined}
+                onKeyDown={selecao ? e => teclaItem(e, a) : undefined}
+                aria-label={selecao ? `${a.nome}${a.abrir ? ' (Enter abre)' : ''}` : undefined}
                 className={`arq-linha ${selecao ? 'cursor-default select-none' : ''}`}>
                 <td className="px-4 py-1.5">
                   <div className="flex min-w-0 items-center gap-3">
                     {visualizacao && a.previa && a.categoria === 'imagem'
                       // eslint-disable-next-line @next/next/no-img-element -- URL assinada do storage, servida por redirecionamento.
-                      ? <a href={a.abrir ?? a.previa} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true" className="shrink-0"><img src={a.previa} alt="" loading="lazy" decoding="async" className="arq-miniatura h-8 w-8 rounded-md object-cover" /></a>
+                      ? <img src={a.previa} alt="" loading="lazy" decoding="async" draggable={false} className="arq-miniatura h-8 w-8 shrink-0 rounded-md object-cover" />
                       : <span className="flex h-8 w-8 shrink-0 items-center justify-center"><IconeArquivo categoria={a.categoria} /></span>}
-                    {a.abrir
+                    {a.abrir && !selecao
                       ? <a href={a.abrir} target="_blank" rel="noopener noreferrer" className="arq-nome min-w-0 truncate font-medium" title={a.nome}>{a.nome}</a>
                       : <span className="arq-nome min-w-0 truncate font-medium" title={a.nome}>{a.nome}</span>}
                     {a.favorito && <Star className="arq-estrela h-3.5 w-3.5 shrink-0" aria-label="Com estrela" />}

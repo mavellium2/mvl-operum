@@ -18,12 +18,22 @@ const com = (permissoes: Permissao[], ui: ReactNode) => render(<ProjectPermissio
 describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', () => {
   beforeEach(() => vi.mocked(fetchWithSession).mockReset())
 
-  it('nome abre o arquivo; a linha tem ações próprias e a barra só aparece com seleção', () => {
+  it('um clique no nome seleciona; duplo clique e Enter abrem; ações na linha; barra só com seleção', () => {
+    const abrir = vi.spyOn(window, 'open').mockReturnValue(null)
     com(['documentos:ver'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
     expect(screen.getByRole('heading', { name: 'Fotos e Vídeos' })).toBeInTheDocument()
     expect(screen.getByText('2 arquivos')).toBeInTheDocument()
     const linha = screen.getByText('Visita.mp4').closest('tr') as HTMLElement
-    expect(within(linha).getByRole('link', { name: 'Visita.mp4' })).toHaveAttribute('href', '/api/projects/p1/arquivos/a1')
+    expect(within(linha).queryByRole('link')).toBeNull()
+    fireEvent.click(within(linha).getByText('Visita.mp4'))
+    expect(linha).toHaveAttribute('aria-selected', 'true')
+    expect(abrir).not.toHaveBeenCalled()
+    fireEvent.doubleClick(within(linha).getByText('Visita.mp4'))
+    expect(abrir).toHaveBeenCalledWith('/api/projects/p1/arquivos/a1', '_blank', 'noopener,noreferrer')
+    fireEvent.keyDown(screen.getByText('Equipe.png').closest('tr') as HTMLElement, { key: 'Enter' })
+    expect(abrir).toHaveBeenLastCalledWith('/api/projects/p1/arquivos/a2', '_blank', 'noopener,noreferrer')
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar seleção' }))
+    abrir.mockRestore()
     expect(within(linha).getByText('5.0 MB')).toBeInTheDocument()
     // Só ver: baixar e estrela na linha; sem renomear, excluir nem enviar.
     expect(within(linha).getByRole('button', { name: 'Baixar Visita.mp4' })).toBeInTheDocument()

@@ -96,3 +96,7 @@ tr[aria-selected='true'] .acoes-linha-arquivo,
 .arq-titulo-ordem:hover .arq-seta-inativa,
 .arq-titulo-ordem:focus-visible .arq-seta-inativa { opacity: .5; }
 @media (hover: none) { .arq-seta-inativa { opacity: .35; } }
+
+/* Linha e bloco focáveis (Enter abre, Espaço seleciona). */
+.arq-linha:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: -2px; }
+.arq-bloco:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: 2px; }
