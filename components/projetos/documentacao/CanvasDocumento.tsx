@@ -1,6 +1,7 @@
 'use client'
 
 import { CampoTexto, Folha } from '@/components/documentos/editor/folha'
+import PostIt from '@/components/ui/PostIt'
 import type { CabecalhoFormulario } from '@/lib/validation/formulariosGP'
 import type { CanvasConteudo } from '@/lib/validation/documentRevisionSchemas'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
@@ -8,6 +9,25 @@ import FormularioDocumento, { type DadosFormularios, type RenderFormulario } fro
 
 type Canvas = Omit<CanvasConteudo, 'cabecalho'> & { cabecalho: CabecalhoFormulario }
 type CampoCanvas = Exclude<keyof Canvas, 'cabecalho'>
+
+const POSTITS_CANVAS = [
+  { id: 'projeto', x: 98, y: 49, width: 447, height: 42 },
+  { id: 'solicitante', x: 653, y: 49, width: 147, height: 38 },
+  { id: 'gerente', x: 848, y: 49, width: 146, height: 38 },
+  { id: 'justificativa', x: 20, y: 151, width: 180, height: 145 },
+  { id: 'objetivos', x: 213, y: 145, width: 180, height: 157 },
+  { id: 'escopo', x: 419, y: 166, width: 374, height: 130 },
+  { id: 'escopoNaoIncluido', x: 821, y: 180, width: 164, height: 122 },
+  { id: 'estrategia', x: 28, y: 388, width: 147, height: 117 },
+  { id: 'stakeholders', x: 224, y: 372, width: 156, height: 133 },
+  { id: 'comunicacao', x: 426, y: 360, width: 152, height: 143 },
+  { id: 'restricoes', x: 607, y: 377, width: 189, height: 128 },
+  { id: 'premissas', x: 829, y: 380, width: 157, height: 130 },
+  { id: 'riscos', x: 99, y: 569, width: 225, height: 164 },
+  { id: 'fases', x: 416, y: 584, width: 171, height: 140 },
+  { id: 'cronograma', x: 607, y: 578, width: 193, height: 157 },
+  { id: 'orcamento', x: 813, y: 591, width: 183, height: 137 },
+]
 
 export const CANVAS_INICIAL = (sistema: DadosFormularios, membros: MembroEquipeOption[]): Canvas => ({
   cabecalho: {},
@@ -72,9 +92,13 @@ function CampoCabecalho({ id, titulo, valor, alterar, label, area, alinhamento =
 export function FolhaCanvas({ conteudo, alterar }: RenderFormulario<Canvas>) {
   return (
     <Folha paisagem fixa data-testid="canvas-folha" style={{ width: '355.6mm', height: '267.7mm', padding: 0, gap: 0, overflow: 'hidden', position: 'relative', fontFamily: 'Arial, sans-serif', fontSize: '8pt', lineHeight: 1.2 }}>
-      {/* Base gráfica extraída do DOCX do modelo; os campos editáveis ficam sobre os cartões originais. */}
+      {/* Base gráfica do DOCX sem os cartões; os post-its são componentes editáveis e redimensionáveis. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="canvas-template-fundo" src="/images/project-canvas-template.png" alt="" />
+      <img className="canvas-template-fundo" src="/images/project-canvas-grid.png" alt="" />
+      {POSTITS_CANVAS.map(postIt => (
+        <PostIt key={postIt.id} className="canvas-template-postit" placeholder=""
+          style={{ left: `${postIt.x}pt`, top: `${postIt.y}pt`, width: `${postIt.width}pt`, height: `${postIt.height}pt` }} />
+      ))}
       <CampoCabecalho id="projeto" titulo="PROJETO:" valor={conteudo.projeto} alterar={alterar} alinhamento="center" label={{ x: 16, y: 54, width: 58, height: 22 }} area={{ x: 98, y: 50, width: 447, height: 38 }} />
       <CampoCabecalho id="solicitante" titulo="SOLICITANTE:" valor={conteudo.solicitante} alterar={alterar} alinhamento="center" label={{ x: 548, y: 36, width: 104, height: 35 }} area={{ x: 653, y: 50, width: 147, height: 38 }} />
       <CampoCabecalho id="gerente" titulo="GP:" valor={conteudo.gerente} alterar={alterar} alinhamento="center" label={{ x: 809, y: 16, width: 35, height: 26 }} area={{ x: 848, y: 50, width: 146, height: 38 }} />
@@ -105,7 +129,8 @@ export default function CanvasDocumento({ membros = [] }: { membros?: MembroEqui
     <>
       <style>{`
         .canvas-template-fundo{position:absolute;left:0;top:42pt;width:1008pt;height:711pt;max-width:none;object-fit:fill;z-index:0;pointer-events:none}
-        .canvas-template-label,.canvas-template-titulo,.canvas-template-campo{position:absolute;z-index:1;box-sizing:border-box;color:#27313d}
+        .canvas-template-postit{position:absolute;z-index:1;filter:drop-shadow(1px 2px 2px rgb(0 0 0 / 32%))}
+        .canvas-template-label,.canvas-template-titulo,.canvas-template-campo{position:absolute;z-index:2;box-sizing:border-box;color:#27313d}
         .canvas-template-label{font:700 15pt/1.05 Arial,sans-serif;overflow:hidden}
         .canvas-template-titulo{font:700 15pt/1.1 Arial,sans-serif;text-align:center;margin:0;overflow:hidden}
         .canvas-template-campo{overflow:hidden;padding:2pt 3pt;font:8pt/1.2 Arial,sans-serif}

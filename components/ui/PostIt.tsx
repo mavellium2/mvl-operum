@@ -15,8 +15,8 @@ export type PostItProps = {
 /** Cartão amarelo com canto dobrado, redimensionável sem perder o aspecto de post-it. */
 export default function PostIt({
   children,
-  width = 240,
-  height = 180,
+  width,
+  height,
   foldSize = 24,
   placeholder = 'Escreva aqui...',
   className,
@@ -28,7 +28,7 @@ export default function PostIt({
   return (
     <div
       className={classes}
-      style={{ ...style, width, height, '--post-it-fold-size': typeof foldSize === 'number' ? `${foldSize}px` : foldSize } as CSSProperties}
+      style={{ ...style, width: width ?? style?.width ?? 240, height: height ?? style?.height ?? 180, '--post-it-fold-size': typeof foldSize === 'number' ? `${foldSize}px` : foldSize } as CSSProperties}
       aria-label={ariaLabel}
     >
       <div className="post-it__face" aria-hidden="true" />
