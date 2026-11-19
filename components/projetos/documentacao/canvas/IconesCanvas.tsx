@@ -164,20 +164,25 @@ const DESENHOS: Record<string, { viewBox: string; desenho: Desenho }> = {
   },
   // Forma cinza 3D com a explosão de raios (Riscos).
   riscos: {
-    viewBox: '0 0 38 56',
+    // Bomba redonda: corpo esférico cinza, gargalo, pavio curvo e a faísca com raios.
+    viewBox: '0 0 40 40',
     desenho: g => <>
       <defs>
-        <radialGradient id={g('pedra')} cx="0.35" cy="0.3"><stop offset="0" stopColor="#f2f2f2" /><stop offset="0.6" stopColor="#9a9a9a" /><stop offset="1" stopColor="#5b5b5b" /></radialGradient>
-        <radialGradient id={g('brilho')}><stop offset="0" stopColor="#fff6b0" /><stop offset="1" stopColor="#ff8a3a" stopOpacity="0" /></radialGradient>
+        <radialGradient id={g('corpo')} cx="0.35" cy="0.32" r="0.75"><stop offset="0" stopColor="#d9d9d9" /><stop offset="0.45" stopColor="#7a7a7a" /><stop offset="1" stopColor="#2e2e2e" /></radialGradient>
+        <linearGradient id={g('gargalo')} x1="0" x2="1"><stop offset="0" stopColor="#9a9a9a" /><stop offset="1" stopColor="#4a4a4a" /></linearGradient>
+        <radialGradient id={g('brilho')}><stop offset="0" stopColor="#fffbd0" /><stop offset="0.4" stopColor="#ffd24a" /><stop offset="1" stopColor="#ff7a2a" stopOpacity="0" /></radialGradient>
       </defs>
-      {Array.from({ length: 26 }, (_, i) => {
-        const a = (-150 + i * 12) * (Math.PI / 180)
-        const comp = 9 + ((i * 7) % 11)
-        return <line key={i} x1="23" y1="20" x2={r2(23 + Math.cos(a) * comp)} y2={r2(20 + Math.sin(a) * comp)} stroke={i % 3 === 0 ? '#8a8a8a' : '#f07a3e'} strokeWidth="0.55" />
+      <ellipse cx="16" cy="37.6" rx="11" ry="1.6" fill="#000" opacity="0.18" />
+      <circle cx="16" cy="24" r="13" fill={`url(#${g('corpo')})`} stroke="#262626" strokeWidth="0.5" />
+      <path d="M8.5 17.5 Q11 13.2 16 12.6" fill="none" stroke="#fff" strokeOpacity="0.75" strokeWidth="1.6" strokeLinecap="round" />
+      <rect x="20.2" y="9.6" width="6" height="4.6" rx="0.9" transform="rotate(38 23.2 11.9)" fill={`url(#${g('gargalo')})`} stroke="#262626" strokeWidth="0.5" />
+      <path d="M25.6 9.2 Q27.5 5.2 30.6 5.6" fill="none" stroke="#7a5a34" strokeWidth="1.1" strokeLinecap="round" />
+      {Array.from({ length: 16 }, (_, k) => {
+        const a = (k * 22.5) * (Math.PI / 180)
+        const comp = k % 2 === 0 ? 6.5 : 4.2
+        return <line key={k} x1="31" y1="5.4" x2={r2(31 + Math.cos(a) * comp)} y2={r2(5.4 + Math.sin(a) * comp)} stroke={k % 4 === 0 ? '#9a9a9a' : '#f07a3e'} strokeWidth="0.6" strokeLinecap="round" />
       })}
-      <circle cx="23" cy="20" r="3.2" fill={`url(#${g('brilho')})`} />
-      <path d="M2 30 Q1.5 18 11 17.5 Q20.5 17.5 21 30 V44 Q21 54 11.5 54 Q2 54 2 44 Z" fill={`url(#${g('pedra')})`} stroke="#5a5a5a" strokeWidth="0.4" />
-      <path d="M5 24 Q7 20.5 11 20.5" fill="none" stroke="#fff" strokeOpacity="0.7" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="31" cy="5.4" r="2.6" fill={`url(#${g('brilho')})`} />
     </>,
   },
   // Blocos coloridos subindo como escada, com silhuetas empurrando (Fases).
