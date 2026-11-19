@@ -29,6 +29,8 @@ export const charterSchema = z
     restricoes: texto,
     limitesAutoridade: texto,
     principaisEnvolvidos: texto,
+    /** Texto editável antes do nome do gerente ("A gerência do projeto será de responsabilidade de"). */
+    textoGerencia: z.string().max(500).optional(),
     macroFases: z
       .array(
         z.object({

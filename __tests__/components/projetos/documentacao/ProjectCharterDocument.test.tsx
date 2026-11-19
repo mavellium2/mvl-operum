@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
-import ProjectCharterDocument from '@/components/projetos/documentacao/ProjectCharterDocument'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { vi } from 'vitest'
+import { EditorFolhaProvider } from '@/components/documentos/editor/folha'
+import ProjectCharterDocument, { TEXTO_GERENCIA_PADRAO } from '@/components/projetos/documentacao/ProjectCharterDocument'
 
 const base = {
   nomeProjeto: 'Girassol em ação', gerenteProjeto: 'Maria Júlia', elaboradoPor: 'Ana Beatriz', aprovadoPor: 'Maria Júlia',
@@ -71,5 +73,30 @@ describe('ProjectCharterDocument — modelo "02_Project Charter" do professor', 
   it('fora do editor não há campos editáveis', () => {
     const { container } = render(<ProjectCharterDocument {...base} />)
     expect(container.querySelectorAll('textarea, input, select')).toHaveLength(0)
+  })
+
+  it('Designação do gerente: texto do modelo antes do nome do gerente; o texto se edita, o nome não', () => {
+    const { unmount } = render(<ProjectCharterDocument {...base} />)
+    expect(screen.getByText(`${TEXTO_GERENCIA_PADRAO} Maria Júlia.`)).toBeInTheDocument()
+    unmount()
+    render(<ProjectCharterDocument {...base} textoGerencia="O gerente do projeto será" />)
+    expect(screen.getByText('O gerente do projeto será Maria Júlia.')).toBeInTheDocument()
+  })
+
+  it('na edição, só a frase do gerente vira campo; o nome fica fixo e as macrofases não se editam', () => {
+    const onCampo = vi.fn()
+    const edicao = { projetoId: 'p', membros: [], onCriarMembro: () => {}, onCampo, elaboradoPorUserId: null, onElaboradoPor: () => {}, dataAprovacaoRaw: '', onDataAprovacao: () => {} }
+    render(
+      <EditorFolhaProvider value={{ editavel: true, focar: () => {}, registrarLimpar: () => {} }}>
+        <ProjectCharterDocument {...base} textoGerencia={TEXTO_GERENCIA_PADRAO} edicao={edicao} />
+      </EditorFolhaProvider>,
+    )
+    const campo = screen.getByLabelText('Texto antes do nome do gerente')
+    fireEvent.change(campo, { target: { value: 'Quem gerencia é' } })
+    expect(onCampo).toHaveBeenCalledWith('textoGerencia', 'Quem gerencia é')
+    expect(within(screen.getByTestId('linha-gerencia')).getByText('Maria Júlia.')).toBeInTheDocument()
+    const fases = screen.getByTestId('tabela-macro-fases')
+    expect(fases.querySelectorAll('textarea, input')).toHaveLength(0)
+    expect(within(fases).getByText('Planejamento inicial')).toBeInTheDocument()
   })
 })

@@ -86,7 +86,9 @@ export async function GET(
 
     const vigente = await documentoVigente(sessao, projetoId, 'CHARTER')
     const snapshot = vigente?.payload as Record<string, unknown> | null
-    if (snapshot) { Object.assign(project, snapshot); if (Array.isArray(snapshot.macroFases)) macroFases = snapshot.macroFases as typeof macroFases }
+    // As macrofases do Termo são sempre as atuais da planilha/EAP (não se editam no Termo);
+    // cada versão salva guarda a cópia do seu momento.
+    if (snapshot) { const { macroFases: _fasesDaVersao, ...resto } = snapshot; Object.assign(project, resto) }
     return NextResponse.json({
       project,
       macroFases,

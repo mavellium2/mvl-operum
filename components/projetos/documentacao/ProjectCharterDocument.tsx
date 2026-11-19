@@ -5,7 +5,6 @@ import { linhaOuAviso } from '@/lib/linhaInstitucional'
 import EnvolvidosEditor from './EnvolvidosEditor'
 import { exibirEnvolvidos } from '@/lib/charterEnvolvidos'
 import { forwardRef } from 'react'
-import MoedaInput from '@/components/ui/MoedaInput'
 import type { MacroFase } from './MacroFaseTable'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import { formatDateBR } from '@/lib/date'
@@ -38,12 +37,14 @@ export interface CharterDocumentProps {
   restricoes: string
   limitesAutoridade: string
   principaisEnvolvidos: string
+  /** Texto editável antes do nome do gerente; vazio usa o padrão do modelo. */
+  textoGerencia?: string
   /** `papel` é a função do membro no projeto (cargos do cadastro); sai como "Nome – Papel". */
   membros: { name: string; papel?: string }[]
   fases: MacroFase[]
 }
 
-export type CampoTermo = 'justificativa' | 'objetivos' | 'metodologia' | 'descricaoProduto' | 'premissas' | 'restricoes' | 'limitesAutoridade' | 'principaisEnvolvidos'
+export type CampoTermo = 'justificativa' | 'objetivos' | 'metodologia' | 'descricaoProduto' | 'premissas' | 'restricoes' | 'limitesAutoridade' | 'principaisEnvolvidos' | 'textoGerencia'
 
 /** Ligações da folha com o estado do editor (só usadas dentro do EditorDocumento). */
 export interface EdicaoTermo {
@@ -55,12 +56,11 @@ export interface EdicaoTermo {
   onElaboradoPor: (membro: MembroEquipeOption | null) => void
   dataAprovacaoRaw: string
   onDataAprovacao: (data: string) => void
-  onFase: (id: string, campo: keyof Omit<MacroFase, 'id'>, valor: string) => void
-  onAdicionarFase?: () => void
-  onRemoverFase?: (id: string) => void
 }
 
 export const TITULO_TERMO = 'Termo de Abertura de Projeto'
+/** Texto padrão da linha "Gerente do projeto" (ajustes de 18/11/2026); o nome do gerente vem depois e não se edita. */
+export const TEXTO_GERENCIA_PADRAO = 'A gerência do projeto será de responsabilidade de'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
       elaboradoPor, aprovadoPor, versao, dataAprovacao,
       justificativa, objetivos, metodologia, descricaoProduto,
       premissas, restricoes, limitesAutoridade,
-      principaisEnvolvidos, membros, fases, edicao,
+      principaisEnvolvidos, textoGerencia, membros, fases, edicao,
     } = props
     const { editavel } = useEditorFolha()
     const ed = edicao
@@ -240,25 +240,13 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
             </tr>
           }
         >
-          {fases.length === 0 && !editavel && <tr><td colSpan={3} style={{ ...celulaModelo, color: '#6b7280', fontStyle: 'italic' }}>Nenhuma macro fase cadastrada.</td></tr>}
+          {fases.length === 0 && <tr><td colSpan={3} style={{ ...celulaModelo, color: '#6b7280', fontStyle: 'italic' }}>Nenhuma macro fase cadastrada.</td></tr>}
+          {/* Só leitura: as macrofases vêm da planilha/EAP e só mudam lá (ajustes de 18/11/2026). */}
           {fases.map((f, i) => (
             <LinhaLista key={f.id}>
-              <td style={celulaModeloCampo}>
-                <div className="flex items-start" style={{ paddingLeft: 5 }}>
-                  <span style={{ padding: '0 3px 0 0', whiteSpace: 'nowrap' }}>{`1.${i + 1}`}</span>
-                  <div style={{ flex: 1 }}><CampoTexto id={`fase-${f.id}`} rotulo="Macro fase" ajuda="Grande etapa do projeto." pergunta="nome da fase" valor={f.fase} onChange={v => ed?.onFase(f.id, 'fase', v)} max={200} linha compacto /></div>
-                </div>
-              </td>
-              <td style={{ ...celulaModelo, textAlign: 'center' }}>{editavel ? <CampoData id={`fase-data-${f.id}`} rotulo="Data limite" ajuda="Até quando a fase precisa terminar." valor={f.dataLimite ?? ''} onChange={v => ed?.onFase(f.id, 'dataLimite', v)} alinhamento="center" /> : formatDateBR(f.dataLimite)}</td>
-              <td style={{ ...celulaModeloCampo, textAlign: 'right' }}>
-                {editavel ? <>
-                  <MoedaInput comSimbolo value={f.custo} aria-label={`Custo da macrofase ${f.fase || i + 1}`} rotulo="Custo"
-                    onValueChange={(_, value) => ed?.onFase(f.id, 'custo', value === null ? '' : value.toFixed(2))}
-                    className="w-full min-w-0 rounded-none border-0 bg-transparent px-1.5 py-0 text-right print:hidden"
-                    style={{ textAlign: 'right', font: 'inherit' }} />
-                  <span className="hidden print:block" style={{ padding: '0 5px' }}>{formatCusto(f.custo)}</span>
-                </> : <div style={{ padding: '0 5px' }}>{formatCusto(f.custo)}</div>}
-              </td>
+              <td style={celulaModelo}><span style={{ paddingRight: 3 }}>{`1.${i + 1}`}</span><span>{f.fase}</span></td>
+              <td style={{ ...celulaModelo, textAlign: 'center' }}>{formatDateBR(f.dataLimite)}</td>
+              <td style={{ ...celulaModelo, textAlign: 'right' }}>{formatCusto(f.custo)}</td>
             </LinhaLista>
           ))}
         </SecaoTabela>
@@ -278,7 +266,23 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
         <SecaoTabela estilo="titulo" repetirCabecalho={false} titulo="Designação de gerente" colunas={[{ largura: '24%' }, {}]}>
           <tr>
             <td style={celulaModelo}>Gerente do projeto</td>
-            <td style={celulaModeloCampo}><CampoAutomatico padding="1px 5px">{gerenteProjeto || 'Nenhum gerente definido no projeto.'}</CampoAutomatico></td>
+            <td style={celulaModeloCampo}>
+              {!gerenteProjeto
+                ? <CampoAutomatico padding="1px 5px">Nenhum gerente definido no projeto.</CampoAutomatico>
+                : editavel
+                  ? (
+                    // Texto editável; o nome do gerente vem do cadastro e não se edita.
+                    <div data-testid="linha-gerencia" className="flex flex-wrap items-start" style={{ paddingLeft: 2 }}>
+                      {/* O campo tem a largura do texto (cópia invisível na mesma célula da grade): o nome vem logo depois. */}
+                      <div style={{ display: 'inline-grid', maxWidth: '100%', minWidth: '4ch' }}>
+                        <span aria-hidden="true" style={{ gridArea: '1 / 1', visibility: 'hidden', whiteSpace: 'pre-wrap', padding: '0 3px' }}>{`${textoGerencia || TEXTO_GERENCIA_PADRAO} `}</span>
+                        <div style={{ gridArea: '1 / 1', minWidth: 0 }}><CampoTexto id="texto-gerencia" rotulo="Texto antes do nome do gerente" ajuda="Frase da designação do gerente. O nome do gerente vem do cadastro do projeto e não se edita aqui." pergunta={TEXTO_GERENCIA_PADRAO} valor={textoGerencia ?? ''} onChange={campo('textoGerencia')} max={500} linha compacto preencher={false} /></div>
+                      </div>
+                      <span title="Nome do gerente do projeto (cadastro do projeto)" style={{ whiteSpace: 'nowrap', paddingRight: 5 }}>{gerenteProjeto}.</span>
+                    </div>
+                  )
+                  : <div style={{ padding: '1px 5px' }}>{`${(textoGerencia ?? '').trim() || TEXTO_GERENCIA_PADRAO} ${gerenteProjeto}.`}</div>}
+            </td>
           </tr>
           <tr>
             <td style={celulaModelo}>Limites de autoridade</td>
