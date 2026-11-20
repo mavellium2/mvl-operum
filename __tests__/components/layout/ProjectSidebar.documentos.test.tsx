@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 
 const route = vi.hoisted(() => ({ pathname: '/projetos/p1/documentacao' }))
 vi.mock('next/navigation', () => ({
@@ -32,5 +32,25 @@ describe('menu lateral do projeto — documentos', () => {
     expect(filhos[documentacao + 1]).toBe(screen.getByRole('navigation', { name: 'Documentos' }))
     const planilha = filhos.findIndex(el => el.textContent === 'Planilha de Custos')
     expect(planilha).toBeGreaterThan(documentacao + 1)
+  })
+
+  it('clicar de novo em "Documentação" recolhe e reabre os documentos, com a seta indicando o estado', () => {
+    render(<ProjectSidebar projetoId="p1" canManageMembers />)
+    const item = screen.getByRole('link', { name: 'Documentação' })
+    expect(item).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(item)
+    expect(item).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('navigation', { name: 'Documentos' })).not.toBeInTheDocument()
+    fireEvent.click(item)
+    expect(item).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('navigation', { name: 'Documentos' })).toBeInTheDocument()
+  })
+
+  it('fora da Documentação, o item aparece fechado e os documentos não são mostrados', () => {
+    route.pathname = '/projetos/p1/dashboard'
+    render(<ProjectSidebar projetoId="p1" canManageMembers />)
+    expect(screen.getByRole('link', { name: 'Documentação' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('navigation', { name: 'Documentos' })).not.toBeInTheDocument()
+    route.pathname = '/projetos/p1/documentacao'
   })
 })

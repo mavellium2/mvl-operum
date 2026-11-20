@@ -66,7 +66,7 @@ function enviarParaStorage(url: string, arquivo: File, tipo: string, onProgresso
 }
 
 /**
- * Seção de arquivos do projeto ("Fotos e Vídeos" ou "Apresentação e Vídeo"),
+ * Seção de arquivos do projeto ("Fotos e Vídeos" ou "Apresentação Final e Vídeos"),
  * na mesma base da lista do menu Arquivos.
  */
 export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }: {

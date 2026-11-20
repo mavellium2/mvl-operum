@@ -7,7 +7,7 @@ import { erroArquivos } from './erros'
 const categoria = z.enum(['FOTOS_VIDEOS', 'APRESENTACAO'])
 type Ctx = { params: Promise<{ projetoId: string }> }
 
-/** Arquivos de uma seção do projeto (Fotos e Vídeos / Apresentação e Vídeo). */
+/** Arquivos de uma seção do projeto (Fotos e Vídeos / Apresentação Final e Vídeos). */
 export async function GET(req: Request, { params }: Ctx) {
   const { projetoId } = await params
   const { tenantId, role, userId } = await verifySession()

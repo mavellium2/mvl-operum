@@ -1,6 +1,6 @@
 /**
  * Seções de arquivos do projeto (ajustes de 18/11/2026): "Fotos e Vídeos" e
- * "Apresentação e Vídeo" (entrega e apresentação do projeto final). Regras
+ * "Apresentação Final e Vídeos" (entrega e apresentação do projeto final). Regras
  * comuns à tela e ao servidor: tipos aceitos, tamanho máximo e endereços.
  */
 
@@ -41,9 +41,9 @@ export const SECOES_ARQUIVOS: Record<CategoriaArquivoProjeto, {
     vazio: 'Nenhuma foto ou vídeo enviado ainda.',
   },
   APRESENTACAO: {
-    titulo: 'Apresentação e Vídeo',
+    titulo: 'Apresentação Final e Vídeos',
     slug: 'apresentacao',
-    descricao: 'Apresentação e vídeo da entrega final do projeto.',
+    descricao: 'Apresentação final e vídeos da entrega do projeto.',
     tipos: [...APRESENTACOES, ...VIDEOS],
     aceita: [...APRESENTACOES, '.pptx', '.ppt', '.odp', ...VIDEOS].join(','),
     vazio: 'Nenhuma apresentação ou vídeo enviado ainda.',

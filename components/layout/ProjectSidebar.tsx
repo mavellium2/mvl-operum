@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import SidebarNavLink from './SidebarNavLink'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Building2, Briefcase, LayoutDashboard, Columns3, UsersRound, Files, Network, Wallet, Settings2, Images, Presentation } from 'lucide-react'
@@ -25,6 +25,17 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
   const isAta = pathname === `/projetos/${projetoId}/atas` || pathname.startsWith(`/projetos/${projetoId}/atas/`)
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/') || (href === `/projetos/${projetoId}/documentacao` && isAta)
+  const docsHref = `/projetos/${projetoId}/documentacao`
+  const naDocumentacao = isActive(docsHref)
+  // Clicar de novo em "Documentação" recolhe os documentos; volta a abrir ao clicar outra vez
+  // ou ao entrar de novo na Documentação vindo de outra tela.
+  const [docsRecolhidos, setDocsRecolhidos] = useState(false)
+  const [estavaNaDocumentacao, setEstavaNaDocumentacao] = useState(naDocumentacao)
+  if (estavaNaDocumentacao !== naDocumentacao) {
+    setEstavaNaDocumentacao(naDocumentacao)
+    if (!naDocumentacao) setDocsRecolhidos(false)
+  }
+  const docsAbertos = naDocumentacao && !docsRecolhidos
 
   const navItems = [
     { href: `/projetos/${projetoId}/dashboard`, label: 'Dashboard', Icon: LayoutDashboard },
@@ -78,13 +89,19 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
       >
         <p className="sidebar-group-label">Neste projeto</p>
         {navItems.map(({ href, label, Icon }) => {
-          const documentacao = href === `/projetos/${projetoId}/documentacao`
+          const documentacao = href === docsHref
           return (
             <Fragment key={href}>
               {label === 'Departamentos' && <p className="sidebar-group-label">Administração</p>}
-              <SidebarNavLink href={href} label={label} active={isActive(href)}><Icon /></SidebarNavLink>
+              <SidebarNavLink
+                href={href}
+                label={label}
+                active={isActive(href)}
+                expanded={documentacao ? docsAbertos : undefined}
+                onClick={documentacao && naDocumentacao ? event => { event.preventDefault(); setDocsRecolhidos(v => !v) } : undefined}
+              ><Icon /></SidebarNavLink>
               {/* Documentos logo abaixo do item Documentação, quando ele está aberto. */}
-              {documentacao && permissions.has('documentos:ver') && isActive(href) && (
+              {documentacao && permissions.has('documentos:ver') && docsAbertos && (
                 <DocumentSidebar embedded projetoId={projetoId} activeDoc={isAta ? 'atas' : searchParams.get('doc') ?? 'stakeholder'} onSelect={doc => router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)} />
               )}
             </Fragment>
