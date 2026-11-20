@@ -1381,3 +1381,15 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Referências:** `lib/filtrosProjetos.ts`, `app/actions/projectList.ts`, `services/projectList.ts`, `components/projetos/ProjectListFilters.tsx`, `components/ui/OpcoesMultiplas.tsx`, `project-service/src/project/project.controller.ts`, `project-service/src/project/project.service.ts`.
 - **Revisar quando:** houver uma tabela de preferências do usuário ou pedido para o filtro acompanhar a conta em vários dispositivos.
 
+## ADR-111 — Seções de arquivos do projeto declaradas por catálogo de formatos
+
+- **Data:** 2026-11-20.
+- **Status:** implementada (1.62.0).
+- **Contexto:** os ajustes de 20/11/2026 pedem as seções Desenhos Técnicos e Pesquisas com a mesma usabilidade de Fotos e Vídeos. Na 1.61.0, cada seção tinha a lista de tipos, a mensagem de erro e partes da tela (filtro de tipo, modo Blocos) escritas à mão, com condições `categoria === 'FOTOS_VIDEOS'` no componente. O usuário pediu um padrão em que a tela receba só "o que esta seção aceita".
+- **Escolha:** um catálogo de formatos (`FORMATOS`, extensão → tipo MIME, rótulo e ícone) e uma fábrica `secao(...)` que monta a configuração completa de cada seção a partir da lista de formatos. `ArquivosProjetoClient`, as rotas e o serviço leem tudo de `SECOES_ARQUIVOS[categoria]`. Desenhos Técnicos aceita fotos, PDF e CAD (DWG, DXF, STEP, STL); Pesquisas aceita PDF, documentos de texto, planilhas e fotos. As duas usam o mesmo modelo `ArquivoProjeto` com dois valores novos no enum.
+- **Justificativa:** o layout é o mesmo; só mudam formatos e textos. Declarar a seção por dados evita uma cópia da tela por seção e condições espalhadas, e mantém tela e servidor validando pela mesma regra.
+- **Alternativas consideradas:** um componente por seção (duplica a tela); manter as listas de tipos à mão em cada seção (mensagens e filtros divergem com o tempo); tabela de seções no banco (configuração dinâmica que ninguém pediu, com mais superfície de validação).
+- **Consequências:** migration `20261120120000_desenhos_tecnicos_pesquisas` acrescenta `DESENHOS_TECNICOS` e `PESQUISAS` ao enum. O tipo do arquivo passa a ser deduzido pela extensão conhecida antes do informado pelo navegador (o navegador costuma não informar DWG, STEP ou CSV); continua valendo a confirmação do objeto no storage no registro e a barreira de SVG (ADR-042). HTML, scripts e executáveis não estão no catálogo. Arquivos de CAD não têm pré-visualização: aparecem com ícone e abrem em nova aba (download).
+- **Referências:** `lib/arquivosProjeto.ts`, `components/projetos/arquivos/ArquivosProjetoClient.tsx`, `components/arquivos/ListaArquivos.tsx`, `components/projetos/documentacao/DocumentSidebar.tsx`, `app/projetos/[projetoId]/desenhos-tecnicos/page.tsx`, `app/projetos/[projetoId]/pesquisas/page.tsx`, `prisma/migrations/20261120120000_desenhos_tecnicos_pesquisas`.
+- **Revisar quando:** uma seção precisar de comportamento que não seja só formato (ex.: pastas, campos próprios) ou de pré-visualização de CAD.
+

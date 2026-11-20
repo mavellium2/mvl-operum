@@ -20,8 +20,7 @@ const DOCUMENTS = [
   { id: 'canvas', label: 'Canvas', tipo: 'CANVAS' },
   // Seções de arquivos (ajustes de 20/11/2026): ficam na Documentação, com a mesma ordenação,
   // mas abrem a própria tela (/projetos/:id/<slug>) e não têm versões para aprovar.
-  { id: SECOES_ARQUIVOS.FOTOS_VIDEOS.slug, label: SECOES_ARQUIVOS.FOTOS_VIDEOS.titulo, tipo: null },
-  { id: SECOES_ARQUIVOS.APRESENTACAO.slug, label: SECOES_ARQUIVOS.APRESENTACAO.titulo, tipo: null },
+  ...Object.values(SECOES_ARQUIVOS).map(s => ({ id: s.slug, label: s.titulo, tipo: null })),
 ] as const
 
 type DocId = (typeof DOCUMENTS)[number]['id']

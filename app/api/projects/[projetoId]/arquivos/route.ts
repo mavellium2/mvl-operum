@@ -3,11 +3,12 @@ import { z } from 'zod'
 import { verifySession } from '@/lib/dal'
 import { listarArquivos, registrarArquivo } from '@/services/arquivosProjetoService'
 import { erroArquivos } from './erros'
+import { CATEGORIAS_ARQUIVO } from '@/lib/arquivosProjeto'
 
-const categoria = z.enum(['FOTOS_VIDEOS', 'APRESENTACAO'])
+const categoria = z.enum(CATEGORIAS_ARQUIVO)
 type Ctx = { params: Promise<{ projetoId: string }> }
 
-/** Arquivos de uma seção do projeto (Fotos e Vídeos / Apresentação Final e Vídeos). */
+/** Arquivos de uma seção do projeto (Fotos e Vídeos, Apresentação, Desenhos Técnicos, Pesquisas…). */
 export async function GET(req: Request, { params }: Ctx) {
   const { projetoId } = await params
   const { tenantId, role, userId } = await verifySession()

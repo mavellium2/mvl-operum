@@ -60,9 +60,13 @@ describe('menu lateral do projeto — documentos', () => {
     const documentos = screen.getByRole('navigation', { name: 'Documentos' })
     expect(within(documentos).getByRole('button', { name: 'Fotos e Vídeos' })).toBeInTheDocument()
     expect(within(documentos).getByRole('button', { name: 'Apresentação Final e Vídeos' })).toBeInTheDocument()
+    expect(within(documentos).getByRole('button', { name: 'Desenhos Técnicos' })).toBeInTheDocument()
+    expect(within(documentos).getByRole('button', { name: 'Pesquisas' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Fotos e Vídeos' })).not.toBeInTheDocument()
     fireEvent.click(within(documentos).getByRole('button', { name: 'Fotos e Vídeos' }))
     expect(nav.push).toHaveBeenCalledWith('/projetos/p1/fotos-videos')
+    fireEvent.click(within(documentos).getByRole('button', { name: 'Pesquisas' }))
+    expect(nav.push).toHaveBeenCalledWith('/projetos/p1/pesquisas')
   })
 
   it('na tela de Fotos e Vídeos, a Documentação fica aberta com a seção marcada', () => {
