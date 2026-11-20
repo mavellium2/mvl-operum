@@ -3,7 +3,7 @@
 import { Fragment, useState } from 'react'
 import SidebarNavLink from './SidebarNavLink'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Building2, Briefcase, LayoutDashboard, Columns3, UsersRound, Files, Network, Wallet, Settings2, Images, Presentation } from 'lucide-react'
+import { Building2, Briefcase, LayoutDashboard, Columns3, UsersRound, Files, Network, Wallet, Settings2 } from 'lucide-react'
 import { SECOES_ARQUIVOS } from '@/lib/arquivosProjeto'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import DocumentSidebar from '@/components/projetos/documentacao/DocumentSidebar'
@@ -23,8 +23,10 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
   const searchParams = useSearchParams()
   const router = useRouter()
   const isAta = pathname === `/projetos/${projetoId}/atas` || pathname.startsWith(`/projetos/${projetoId}/atas/`)
+  // Fotos e Vídeos e Apresentação ficam dentro da Documentação no menu (ajustes de 20/11/2026).
+  const secaoArquivos = Object.values(SECOES_ARQUIVOS).find(s => pathname === `/projetos/${projetoId}/${s.slug}` || pathname.startsWith(`/projetos/${projetoId}/${s.slug}/`))
   const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + '/') || (href === `/projetos/${projetoId}/documentacao` && isAta)
+    pathname === href || pathname.startsWith(href + '/') || (href === `/projetos/${projetoId}/documentacao` && (isAta || !!secaoArquivos))
   const docsHref = `/projetos/${projetoId}/documentacao`
   const naDocumentacao = isActive(docsHref)
   // Clicar de novo em "Documentação" recolhe os documentos; volta a abrir ao clicar outra vez
@@ -43,8 +45,6 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
     { href: `/projetos/${projetoId}/wbs`, label: 'EAP / WBS', Icon: Network },
     { href: `/projetos/${projetoId}/documentacao`, label: 'Documentação', Icon: Files },
     { href: `/projetos/${projetoId}/planilha-custos`, label: 'Planilha de Custos', Icon: Wallet },
-    { href: `/projetos/${projetoId}/${SECOES_ARQUIVOS.FOTOS_VIDEOS.slug}`, label: SECOES_ARQUIVOS.FOTOS_VIDEOS.titulo, Icon: Images },
-    { href: `/projetos/${projetoId}/${SECOES_ARQUIVOS.APRESENTACAO.slug}`, label: SECOES_ARQUIVOS.APRESENTACAO.titulo, Icon: Presentation },
     ...((canManageMembers || permissions.has('cadastros:gerenciar'))
       ? [
           { href: `/projetos/${projetoId}/stakeholders`, label: 'Stakeholders', Icon: UsersRound },
@@ -58,7 +58,6 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
   ].filter(item => {
     if (item.label === 'Sprints' || item.label === 'Dashboard') return permissions.has('quadro:ver')
     if (item.label === 'Documentação') return permissions.has('documentos:ver')
-    if (item.label === SECOES_ARQUIVOS.FOTOS_VIDEOS.titulo || item.label === SECOES_ARQUIVOS.APRESENTACAO.titulo) return permissions.has('documentos:ver')
     if (item.label === 'Planilha de Custos') return permissions.has('planilha:ver')
     if (item.label === 'Stakeholders') return canManageMembers
     return true
@@ -75,7 +74,7 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
       : { placeholder: 'Buscar cards, sprints e pessoas...', context: 'project_items', contextId: projetoId }
   )
 
-  const title = navItems.find(i => isActive(i.href))?.label ?? (pathname.startsWith('/configuracoes') ? 'Configurações' : pathname === '/sobre' ? 'Sobre' : pathname === '/notificacoes' ? 'Notificações' : 'Projeto')
+  const title = secaoArquivos?.titulo ?? navItems.find(i => isActive(i.href))?.label ?? (pathname.startsWith('/configuracoes') ? 'Configurações' : pathname === '/sobre' ? 'Sobre' : pathname === '/notificacoes' ? 'Notificações' : 'Projeto')
 
   return (
     <>
@@ -102,7 +101,16 @@ export default function ProjectSidebar({ projetoId, projectName, canManageMember
               ><Icon /></SidebarNavLink>
               {/* Documentos logo abaixo do item Documentação, quando ele está aberto. */}
               {documentacao && permissions.has('documentos:ver') && docsAbertos && (
-                <DocumentSidebar embedded projetoId={projetoId} activeDoc={isAta ? 'atas' : searchParams.get('doc') ?? 'stakeholder'} onSelect={doc => router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)} />
+                <DocumentSidebar
+                  embedded
+                  projetoId={projetoId}
+                  activeDoc={secaoArquivos?.slug ?? (isAta ? 'atas' : searchParams.get('doc') ?? 'stakeholder')}
+                  onSelect={doc => {
+                    if (Object.values(SECOES_ARQUIVOS).some(s => s.slug === doc)) router.push(`/projetos/${projetoId}/${doc}`)
+                    else if (secaoArquivos || isAta) router.push(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)
+                    else router.replace(`/projetos/${projetoId}/documentacao?doc=${encodeURIComponent(doc)}`)
+                  }}
+                />
               )}
             </Fragment>
           )

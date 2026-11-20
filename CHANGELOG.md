@@ -11,6 +11,8 @@ funcionalidade depois disso é uma versão MINOR.
 
 Ajustes pedidos em 20/11/2026.
 
+- **Filtros de Meus projetos:** além da Situação, a lista de projetos agora filtra por Ano, Departamento, Turma (1° ou 2° Semestre, Anual), Termo e Turno. Em cada filtro dá para marcar várias opções; sem nada marcado, vale para todas. Ano, Departamento e Termo mostram os valores que existem nos projetos. O filtro fica guardado: ao abrir o sistema de novo, a lista já vem filtrada, até mudar ou limpar no botão de filtros, que mostra quantos filtros estão ativos. O filtro vale para o navegador onde foi escolhido.
+- **Fotos e Vídeos e Apresentação Final e Vídeos dentro da Documentação:** os dois saem do menu principal do projeto e passam para a lista de documentos da Documentação, onde podem ser reordenados arrastando, como os demais. Ao abrir uma dessas telas, a Documentação fica aberta com ela marcada.
 - **Menu Documentação abre e fecha:** clicar de novo em "Documentação" no menu do projeto recolhe a lista de documentos; outro clique abre de novo. Uma seta ao lado do nome mostra se a lista está aberta ou fechada. Ao entrar na Documentação vindo de outra tela, a lista já vem aberta.
 - **Seletor de instituição mais simples:** sai o atalho "Minhas instituições" do seletor de troca de instituição. A página completa continua em Configurações → Minhas instituições.
 - **Apresentação Final e Vídeos:** o menu "Apresentação e Vídeo" passa a se chamar "Apresentação Final e Vídeos". O endereço e os arquivos já enviados não mudam.

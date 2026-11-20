@@ -46,7 +46,7 @@
 .projects-search { position:relative; flex:1; min-width:0; }
 .projects-search input { padding-right:42px; }
 .projects-search-clear { position:absolute; right:5px; top:50%; transform:translateY(-50%); }
-.projects-filter-dot { width:6px; height:6px; border-radius:50%; background:var(--ap-accent); }
+.projects-filter-count { display:inline-grid; place-items:center; min-width:17px; height:17px; padding:0 4px; border-radius:999px; background:var(--ap-accent); color:#fff; font-size:10px; font-weight:700; line-height:1; }
 .project-appearance[data-period] .project-list-card[data-status='COMPLETED'] { background:linear-gradient(140deg,color-mix(in srgb,#57ad91 12%,var(--ap-surface)),color-mix(in srgb,#57ad91 5%,var(--ap-surface))); border-color:color-mix(in srgb,#57ad91 28%,var(--glass-edge)); }
 .project-list-card[data-status='COMPLETED'] .project-status { color:color-mix(in srgb,#409377 72%,var(--ap-text)); }
 .project-list-card[data-status='COMPLETED'] .project-status i { background:#57ad91; }

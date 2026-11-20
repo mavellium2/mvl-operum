@@ -6,6 +6,7 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-p
 import { GripVertical } from 'lucide-react'
 import { fetchWithSession } from '@/lib/clientFetch'
 import { navegarComGuarda } from '@/components/documentos/editor/GuardaSaida'
+import { SECOES_ARQUIVOS } from '@/lib/arquivosProjeto'
 
 const DOCUMENTS = [
   { id: 'capa', label: 'Capa', tipo: 'CAPA' },
@@ -17,6 +18,10 @@ const DOCUMENTS = [
   { id: 'riscos', label: 'Formulários de Riscos', tipo: 'RISCOS' },
   { id: 'licoes', label: 'Lições Aprendidas', tipo: 'LICOES' },
   { id: 'canvas', label: 'Canvas', tipo: 'CANVAS' },
+  // Seções de arquivos (ajustes de 20/11/2026): ficam na Documentação, com a mesma ordenação,
+  // mas abrem a própria tela (/projetos/:id/<slug>) e não têm versões para aprovar.
+  { id: SECOES_ARQUIVOS.FOTOS_VIDEOS.slug, label: SECOES_ARQUIVOS.FOTOS_VIDEOS.titulo, tipo: null },
+  { id: SECOES_ARQUIVOS.APRESENTACAO.slug, label: SECOES_ARQUIVOS.APRESENTACAO.titulo, tipo: null },
 ] as const
 
 type DocId = (typeof DOCUMENTS)[number]['id']
@@ -39,6 +44,7 @@ function usePendentes(projetoId?: string): Partial<Record<DocId, number>> {
     let ativo = true
     const carregar = async () => {
       const pares = await Promise.all(DOCUMENTS.map(async d => {
+        if (!d.tipo) return [d.id, 0] as const
         try {
           const r = await fetchWithSession(`/api/projects/${projetoId}/revisions?type=${d.tipo}&tab=historico`)
           if (!r.ok) return [d.id, 0] as const
@@ -140,7 +146,7 @@ export default function DocumentSidebar({ activeDoc, onSelect, embedded = false,
                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         }`}
                       >
-                        <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${(pendentes[doc.id] ?? 0) > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                        <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${!doc.tipo ? 'bg-transparent' : (pendentes[doc.id] ?? 0) > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                         <span className="flex-1 truncate">{doc.label}</span>
                         {(pendentes[doc.id] ?? 0) > 0 && (
                           <span className="text-xs tabular-nums text-slate-500" aria-label={`${pendentes[doc.id]} proposta(s) pendente(s)`}>{pendentes[doc.id]}</span>
