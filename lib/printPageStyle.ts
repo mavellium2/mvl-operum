@@ -75,9 +75,10 @@ export function printPageStyle({ landscape = false, marginMm = { top: 0, x: 0 },
  * desenhados nela. O @page fica sem margem e cada folha ocupa uma página, então
  * o PDF sai igual ao que se vê na tela.
  */
-export function printFolhasStyle({ landscape = false }: { landscape?: boolean } = {}): string {
+export function printFolhasStyle({ landscape = false, pageSize }: { landscape?: boolean; pageSize?: { widthMm: number; heightMm: number } } = {}): string {
+  const tamanho = pageSize ? `${pageSize.widthMm}mm ${pageSize.heightMm}mm` : `A4${landscape ? ' landscape' : ''}`
   return `
-    @page { size: A4${landscape ? ' landscape' : ''}; margin: 0; }
+    @page { size: ${tamanho}; margin: 0; }
     @media print {
       html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

@@ -4,7 +4,8 @@ import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectComm
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import prisma from '@/lib/prisma'
 import { assinador, BUCKET, s3 } from '@/lib/minio'
-import { erroDoArquivo, SECOES_ARQUIVOS, type CategoriaArquivoProjeto } from '@/lib/arquivosProjeto'
+import { motivoSvgInseguro } from '@/lib/svgSeguro'
+import { erroDoArquivo, nomeRenomeado, SECOES_ARQUIVOS, SVG, type CategoriaArquivoProjeto } from '@/lib/arquivosProjeto'
 import { exigirPermissao, type SessaoAuthz } from './authz'
 import { registrarAcao } from './auditoriaService'
 
@@ -18,8 +19,9 @@ const EXPIRA_ACESSO_S = 5 * 60
 const prefixo = (projetoId: string, categoria: CategoriaArquivoProjeto) => `projetos/${projetoId}/${SECOES_ARQUIVOS[categoria].slug}/`
 
 /** Nome seguro para a chave do objeto (o nome original fica no registro). */
-const nomeNaChave = (nome: string) =>
-  nome.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(-120) || 'arquivo'
+export const nomeNaChave = (nome: string) =>
+  // Pontos repetidos ("v.f..png") viram um só: a chave nunca tem "..".
+  nome.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/\.{2,}/g, '.').replace(/^[-.]+|-+$/g, '').slice(-120) || 'arquivo'
 
 async function acesso(s: SessaoAuthz, projetoId: string, permissao: 'documentos:ver' | 'documentos:editar' | 'documentos:excluir') {
   await exigirPermissao(s, projetoId, 'projeto:ver')
@@ -50,7 +52,9 @@ export async function urlDeEnvio(s: SessaoAuthz, projetoId: string, categoria: C
  */
 export async function registrarArquivo(s: SessaoAuthz, projetoId: string, categoria: CategoriaArquivoProjeto, chave: string, nome: string) {
   await acesso(s, projetoId, 'documentos:editar')
-  if (!chave.startsWith(prefixo(projetoId, categoria)) || chave.includes('..')) throw new ArquivoProjetoError('Envio inválido')
+  // Só recusa segmentos de caminho "." e ".."; pontos dentro do nome do arquivo são válidos.
+  if (!chave.startsWith(prefixo(projetoId, categoria)) || chave.split('/').some(p => p === '.' || p === '..'))
+    throw new ArquivoProjetoError('Não foi possível confirmar o envio deste arquivo. Tente enviar de novo.')
   let tipo = ''
   let tamanho = 0
   try {
@@ -60,7 +64,16 @@ export async function registrarArquivo(s: SessaoAuthz, projetoId: string, catego
   } catch {
     throw new ArquivoProjetoError('O arquivo não chegou ao armazenamento. Tente enviar de novo.')
   }
-  const erro = erroDoArquivo(categoria, tipo, tamanho)
+  let erro = erroDoArquivo(categoria, tipo, tamanho)
+  // SVG executa no navegador: só entra sem conteúdo ativo (ADR-042).
+  if (!erro && tipo === SVG) {
+    try {
+      const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: chave }))
+      erro = motivoSvgInseguro(await obj.Body?.transformToString('utf-8') ?? '')
+    } catch {
+      erro = 'Não foi possível ler o SVG enviado. Tente enviar de novo.'
+    }
+  }
   if (erro) {
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: chave })).catch(() => {})
     throw new ArquivoProjetoError(erro)
@@ -77,8 +90,28 @@ export async function listarArquivos(s: SessaoAuthz, projetoId: string, categori
   return prisma.arquivoProjeto.findMany({
     where: { tenantId: s.tenantId, projetoId, categoria, deletedAt: null },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, nome: true, tipo: true, tamanho: true, createdAt: true, enviadoPor: { select: { name: true } } },
-  })
+    select: {
+      id: true, nome: true, tipo: true, tamanho: true, createdAt: true, enviadoPor: { select: { name: true, avatarUrl: true } },
+      // Só a estrela de quem está vendo.
+      favoritos: { where: { userId: s.userId }, select: { userId: true } },
+    },
+  }).then(lista => lista.map(({ favoritos, ...a }) => ({ ...a, favorito: favoritos.length > 0 })))
+}
+
+/** Marca ou tira a estrela pessoal de um arquivo (quem pode ver o arquivo pode favoritá-lo). */
+export async function definirFavorito(s: SessaoAuthz, projetoId: string, id: string, favorito: boolean) {
+  await acesso(s, projetoId, 'documentos:ver')
+  const arquivo = await prisma.arquivoProjeto.findFirst({ where: { id, projetoId, tenantId: s.tenantId, deletedAt: null }, select: { id: true } })
+  if (!arquivo) throw new ArquivoProjetoError('Arquivo não encontrado', 404)
+  if (favorito) {
+    await prisma.arquivoProjetoFavorito.upsert({
+      where: { arquivoId_userId: { arquivoId: id, userId: s.userId } },
+      create: { arquivoId: id, userId: s.userId, tenantId: s.tenantId },
+      update: {},
+    })
+  } else {
+    await prisma.arquivoProjetoFavorito.deleteMany({ where: { arquivoId: id, userId: s.userId } })
+  }
 }
 
 /** URL assinada (5 min) para ver ou baixar; `baixar` força o download com o nome original. */
@@ -87,11 +120,36 @@ export async function urlDeAcesso(s: SessaoAuthz, projetoId: string, id: string,
   const arquivo = await prisma.arquivoProjeto.findFirst({ where: { id, projetoId, tenantId: s.tenantId, deletedAt: null } })
   if (!arquivo) throw new ArquivoProjetoError('Arquivo não encontrado', 404)
   const nome = encodeURIComponent(arquivo.nome)
+  // SVG pela URL do storage sempre baixa: exibir só pela origem do app, com CSP sandbox (svgParaExibir).
+  const anexo = baixar || arquivo.tipo === SVG
   return getSignedUrl(assinador, new GetObjectCommand({
     Bucket: BUCKET, Key: arquivo.chave,
     ResponseContentType: arquivo.tipo,
-    ResponseContentDisposition: `${baixar ? 'attachment' : 'inline'}; filename*=UTF-8''${nome}`,
+    ResponseContentDisposition: `${anexo ? 'attachment' : 'inline'}; filename*=UTF-8''${nome}`,
   }), { expiresIn: EXPIRA_ACESSO_S })
+}
+
+/** Conteúdo do SVG para exibir pela origem do app (com CSP sandbox); null se o arquivo não for SVG. */
+export async function svgParaExibir(s: SessaoAuthz, projetoId: string, id: string): Promise<string | null> {
+  await acesso(s, projetoId, 'documentos:ver')
+  const arquivo = await prisma.arquivoProjeto.findFirst({ where: { id, projetoId, tenantId: s.tenantId, deletedAt: null }, select: { tipo: true, chave: true } })
+  if (!arquivo) throw new ArquivoProjetoError('Arquivo não encontrado', 404)
+  if (arquivo.tipo !== SVG) return null
+  const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: arquivo.chave }))
+  return await obj.Body?.transformToString('utf-8') ?? ''
+}
+
+/** Troca só o nome exibido e usado no download; o objeto no storage não muda. */
+export async function renomearArquivo(s: SessaoAuthz, projetoId: string, id: string, novoNome: string) {
+  await acesso(s, projetoId, 'documentos:editar')
+  const arquivo = await prisma.arquivoProjeto.findFirst({ where: { id, projetoId, tenantId: s.tenantId, deletedAt: null } })
+  if (!arquivo) throw new ArquivoProjetoError('Arquivo não encontrado', 404)
+  const nome = nomeRenomeado(arquivo.nome, novoNome)
+  if (!nome) throw new ArquivoProjetoError('Informe um nome para o arquivo.')
+  if (nome === arquivo.nome) return arquivo
+  const atualizado = await prisma.arquivoProjeto.update({ where: { id }, data: { nome } })
+  await registrarAcao({ tenantId: s.tenantId, userId: s.userId, action: 'ARQUIVO_PROJETO_RENOMEAR', entity: 'ArquivoProjeto', entityId: id, details: { projetoId, categoria: arquivo.categoria, de: arquivo.nome, para: nome } })
+  return atualizado
 }
 
 export async function excluirArquivo(s: SessaoAuthz, projetoId: string, id: string) {

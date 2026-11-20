@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { verifySession } from '@/lib/dal'
 import { isSafeStorageUrl } from '@/lib/storageUrl'
-import { excluirArquivo, urlDeAcesso } from '@/services/arquivosProjetoService'
+import { excluirArquivo, renomearArquivo, svgParaExibir, urlDeAcesso } from '@/services/arquivosProjetoService'
 import { erroArquivos } from '../erros'
+
+const SVG_HEADERS = {
+  'Content-Type': 'image/svg+xml',
+  'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+  'X-Content-Type-Options': 'nosniff',
+  'Cache-Control': 'private, max-age=300',
+}
 
 type Ctx = { params: Promise<{ projetoId: string; arquivoId: string }> }
 
@@ -11,10 +19,27 @@ export async function GET(req: Request, { params }: Ctx) {
   const { projetoId, arquivoId } = await params
   const { tenantId, role, userId } = await verifySession()
   try {
-    const url = await urlDeAcesso({ tenantId, role, userId }, projetoId, arquivoId, new URL(req.url).searchParams.get('baixar') === '1')
+    const baixar = new URL(req.url).searchParams.get('baixar') === '1'
+    if (!baixar) {
+      // SVG sai pela origem do app: com CSP sandbox e default-src 'none', nada nele executa (ADR-042).
+      const svg = await svgParaExibir({ tenantId, role, userId }, projetoId, arquivoId)
+      if (svg !== null) return new Response(svg, { headers: SVG_HEADERS })
+    }
+    const url = await urlDeAcesso({ tenantId, role, userId }, projetoId, arquivoId, baixar)
     // Só redireciona para o host do storage (MINIO_PUBLIC_URL).
     if (!isSafeStorageUrl(url)) return NextResponse.json({ error: 'Armazenamento indisponível' }, { status: 502 })
     return NextResponse.redirect(url, 302)
+  } catch (e) { return erroArquivos(e) }
+}
+
+/** Renomeia o arquivo (só o nome; o objeto no storage continua o mesmo). */
+export async function PATCH(req: Request, { params }: Ctx) {
+  const { projetoId, arquivoId } = await params
+  const { tenantId, role, userId } = await verifySession()
+  try {
+    const { nome } = z.object({ nome: z.string().min(1).max(255) }).strict().parse(await req.json())
+    const a = await renomearArquivo({ tenantId, role, userId }, projetoId, arquivoId, nome)
+    return NextResponse.json({ id: a.id, nome: a.nome })
   } catch (e) { return erroArquivos(e) }
 }
 

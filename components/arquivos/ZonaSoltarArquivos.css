@@ -1,0 +1,31 @@
+/* Área de soltar arquivos (como no Google Drive), nas cores da aparência do projeto. */
+.zona-soltar {
+  --zs-destaque: var(--ap-accent, #2563eb);
+  --zs-superficie: var(--ap-surface, #ffffff);
+  --zs-texto: var(--ap-text, #0f172a);
+}
+.zona-soltar__contorno {
+  border: 2px solid var(--zs-destaque);
+  background: color-mix(in srgb, var(--zs-destaque) 7%, transparent);
+}
+.zona-soltar__nuvem { color: color-mix(in srgb, var(--zs-destaque) 35%, var(--zs-superficie)); filter: drop-shadow(0 6px 14px #0003); }
+.zona-soltar__seta { color: color-mix(in srgb, var(--zs-destaque) 80%, var(--zs-texto)); top: 46%; transform: translateY(-50%); }
+.zona-soltar__pilula {
+  color: var(--zs-texto);
+  background: color-mix(in srgb, var(--zs-destaque) 22%, var(--zs-superficie));
+  border: 1px solid color-mix(in srgb, var(--zs-destaque) 30%, transparent);
+  box-shadow: 0 14px 34px -16px #0008;
+  max-width: min(22rem, calc(100vw - 2rem));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Entrada: contorno aparece e o aviso sobe; a nuvem flutua só enquanto há arquivos sobre a área. */
+  .zona-soltar__contorno { animation: zona-soltar-aparecer 160ms ease-out both; }
+  .zona-soltar__aviso { animation: zona-soltar-subir 260ms cubic-bezier(.2, .9, .3, 1.2) both; }
+  .zona-soltar__nuvem { animation: zona-soltar-flutuar 1.6s ease-in-out 260ms infinite; }
+  .zona-soltar__seta { animation: zona-soltar-seta 1.6s ease-in-out 260ms infinite; }
+}
+@keyframes zona-soltar-aparecer { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zona-soltar-subir { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes zona-soltar-flutuar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes zona-soltar-seta { 0%, 100% { transform: translateY(-50%); } 50% { transform: translateY(-75%); } }

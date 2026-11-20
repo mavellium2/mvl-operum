@@ -1,0 +1,58 @@
+/* Visualizador de mídia no estilo do Google Drive: fundo escuro translúcido em qualquer tema. */
+.visualizador-midia { color: #e8eaed; background: #000000d9; }
+@media (prefers-reduced-transparency: reduce) { .visualizador-midia { background: #0b0c0e; } }
+.visualizador-midia:fullscreen { background: #000; }
+.visualizador-midia .vm-suave { color: #9aa0a6; }
+
+/* Ícone do tipo de arquivo (vermelho, como o de imagem/vídeo do Drive). */
+.visualizador-midia .vm-tipo { background: #ea4335; color: #fff; }
+
+/* Botões só-ícone: círculo neutro com hover suave. */
+.visualizador-midia .vm-icone {
+  display: inline-flex; height: 2.5rem; min-width: 2.5rem; align-items: center; justify-content: center;
+  padding: 0 .5rem; border-radius: 9999px; color: #e8eaed; background: transparent;
+}
+.visualizador-midia .vm-icone:hover:not(:disabled) { background: #ffffff1f; }
+.visualizador-midia .vm-icone:disabled { opacity: .38; cursor: default; }
+.visualizador-midia .vm-zoom { min-width: 3.25rem; }
+
+/* Barra de ferramentas em pílula. */
+.visualizador-midia .vm-ferramentas { background: #3c4043cc; }
+.visualizador-midia .vm-divisor { background: #5f6368; }
+
+/* Botão contornado "Abrir em nova aba" (como o "Abrir com"). */
+.visualizador-midia .vm-botao-contorno {
+  height: 2.5rem; padding: 0 1.1rem; border-radius: 9999px; font-size: .875rem; font-weight: 500;
+  color: #e8eaed; border: 1px solid #8e918f; background: transparent;
+}
+.visualizador-midia .vm-botao-contorno:hover { background: #ffffff14; }
+
+/* Setas laterais: círculo escuro contornado. */
+.visualizador-midia .vm-seta {
+  display: inline-flex; height: 2.75rem; width: 2.75rem; align-items: center; justify-content: center;
+  border-radius: 9999px; color: #e8eaed; background: #202124e6; border: 1px solid #8e918f;
+}
+.visualizador-midia .vm-seta:hover { background: #3c4043; }
+
+.visualizador-midia :is(.vm-icone, .vm-seta, .vm-botao-contorno):focus-visible { outline: 2px solid #8ab4f8; outline-offset: 2px; }
+
+.visualizador-midia .vm-conteudo { opacity: 0; transform-origin: center; }
+.visualizador-midia .vm-conteudo.is-pronto { opacity: 1; }
+.visualizador-midia .vm-conteudo.is-ampliada { cursor: grab; touch-action: none; }
+.visualizador-midia .vm-conteudo.is-ampliada:active { cursor: grabbing; }
+.visualizador-midia .vm-erro { background: #ffffff12; border: 1px solid #ffffff26; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .visualizador-midia { animation: visualizador-midia-entrar 160ms ease-out both; }
+  .visualizador-midia .vm-conteudo { transition: opacity 200ms ease, transform 160ms ease; }
+  .visualizador-midia .vm-conteudo.is-ampliada:active { transition: opacity 200ms ease; }
+  .visualizador-midia :is(.vm-icone, .vm-seta, .vm-botao-contorno) { transition: background-color 150ms ease; }
+}
+@keyframes visualizador-midia-entrar { from { opacity: 0; } to { opacity: 1; } }
+/* Fechar: o GlassCloseButton compartilhado, sem o vidro, como o "X" do Drive. */
+.visualizador-midia .glass-button.glass-close-button.vm-fechar {
+  width: 2.5rem; min-height: 2.5rem; padding: .55rem; border-radius: 9999px;
+  color: #e8eaed; background: transparent; border-color: transparent; box-shadow: none;
+}
+.visualizador-midia .glass-button.glass-close-button.vm-fechar:hover { background: #ffffff1f; }
+.visualizador-midia .glass-button.glass-close-button.vm-fechar svg { width: 1.25rem; height: 1.25rem; }

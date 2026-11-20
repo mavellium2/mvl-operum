@@ -98,12 +98,17 @@ afterEach(() => {
 
 // ── Testes ───────────────────────────────────────────────────────────────────
 
+// Só a preferência de zoom do editor (conveniência do navegador) pode usar o localStorage;
+// o conteúdo do documento nunca.
+const ZOOM = 'operum:documentos:zoom'
+const fora = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.filter(c => c[0] !== ZOOM)
+
 describe('DocumentoStakeholders — localStorage', () => {
   it('não chama localStorage.getItem durante a inicialização', async () => {
     const getSpy = vi.spyOn(Storage.prototype, 'getItem')
     renderComponent()
     await waitFor(() => expect(screen.getAllByTestId('stakeholders-folha').length).toBeGreaterThan(0))
-    expect(getSpy).not.toHaveBeenCalled()
+    expect(fora(getSpy)).toEqual([])
   })
 
   it('não chama localStorage.setItem ao editar campos', async () => {
@@ -113,7 +118,7 @@ describe('DocumentoStakeholders — localStorage', () => {
     await userEvent.click(screen.getByRole('combobox', { name: 'Elaborado por' }))
     await userEvent.click(screen.getByRole('option', { name: 'João' }))
     expect(screen.getByRole('combobox', { name: 'Elaborado por' })).toHaveTextContent('João')
-    expect(setSpy).not.toHaveBeenCalled()
+    expect(fora(setSpy)).toEqual([])
   })
 })
 

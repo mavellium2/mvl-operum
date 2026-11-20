@@ -6,7 +6,11 @@
 
 export type CategoriaArquivoProjeto = 'FOTOS_VIDEOS' | 'APRESENTACAO'
 
-const IMAGENS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+/** SVG: só sem conteúdo ativo (validado no registro) e exibido pela origem do app com CSP sandbox (ADR-042). */
+export const SVG = 'image/svg+xml'
+const IMAGENS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', SVG]
+/** SVG é lido inteiro para validar: limite bem menor que o geral. */
+export const TAMANHO_MAXIMO_SVG = 5 * 1024 * 1024
 const VIDEOS = ['video/mp4', 'video/webm', 'video/quicktime']
 const APRESENTACOES = [
   'application/pdf',
@@ -33,7 +37,7 @@ export const SECOES_ARQUIVOS: Record<CategoriaArquivoProjeto, {
     slug: 'fotos-videos',
     descricao: 'Fotos e vídeos do projeto.',
     tipos: [...IMAGENS, ...VIDEOS],
-    aceita: [...IMAGENS, ...VIDEOS].join(','),
+    aceita: [...IMAGENS, '.svg', ...VIDEOS].join(','),
     vazio: 'Nenhuma foto ou vídeo enviado ainda.',
   },
   APRESENTACAO: {
@@ -61,16 +65,18 @@ export function tipoDoArquivo(nome: string, tipo: string): string {
     mp4: 'video/mp4',
     webm: 'video/webm',
     mov: 'video/quicktime',
+    svg: SVG,
   } as Record<string, string>)[ext ?? ''] ?? ''
 }
 
 export function erroDoArquivo(categoria: CategoriaArquivoProjeto, tipo: string, tamanho: number): string | null {
   if (!SECOES_ARQUIVOS[categoria].tipos.includes(tipo))
     return categoria === 'FOTOS_VIDEOS'
-      ? 'Envie fotos (JPG, PNG, WEBP, GIF) ou vídeos (MP4, WEBM, MOV).'
+      ? 'Envie fotos (JPG, PNG, WEBP, GIF, SVG) ou vídeos (MP4, WEBM, MOV).'
       : 'Envie a apresentação (PDF, PPTX, PPT, ODP) ou o vídeo (MP4, WEBM, MOV).'
   if (!Number.isSafeInteger(tamanho) || tamanho <= 0) return 'Arquivo vazio.'
   if (tamanho > TAMANHO_MAXIMO_ARQUIVO) return 'O arquivo passa de 1 GB.'
+  if (tipo === SVG && tamanho > TAMANHO_MAXIMO_SVG) return 'O SVG passa de 5 MB. Exporte como PNG.'
   return null
 }
 
@@ -79,4 +85,19 @@ export function formatarTamanho(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+const extensao = (nome: string) => /\.[A-Za-z0-9]{1,8}$/.exec(nome)?.[0] ?? ''
+
+/**
+ * Nome final ao renomear: sem espaços nas pontas e com até 255 caracteres.
+ * Se o novo nome vier sem extensão, mantém a do arquivo (como no Finder).
+ * Devolve null quando o nome fica vazio.
+ */
+export function nomeRenomeado(atual: string, novo: string): string | null {
+  const limpo = novo.replace(/[\u0000-\u001f\u007f]/g, '').trim()
+  if (!limpo || limpo === extensao(atual)) return null
+  const ext = extensao(atual)
+  const final = ext && !extensao(limpo) ? `${limpo}${ext}` : limpo
+  return final.slice(0, 255)
 }

@@ -1,0 +1,106 @@
+/*
+ * Cores da lista de arquivos vindas dos tokens da aparência (--ap-*), com o tema
+ * claro como reserva fora do projeto (admin). Não usar utilitários de cor do
+ * Tailwind aqui: a aparência os remapeia por substring (ex.: "hover:bg-gray-50"
+ * pintaria a linha sempre no tema noturno).
+ */
+.arq {
+  --arq-texto: var(--ap-text, #0f172a);
+  --arq-suave: var(--ap-muted, #64748b);
+  --arq-borda: var(--ap-border, #e2e8f0);
+  --arq-superficie: var(--ap-surface, #ffffff);
+  --arq-destaque: var(--ap-accent, #2563eb);
+}
+.arq-meta { color: var(--arq-suave); }
+.arq-quadro {
+  background: var(--arq-superficie);
+  border: 1px solid var(--arq-borda);
+}
+.arq-cabecalho th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--arq-suave);
+  background: color-mix(in srgb, var(--arq-borda) 28%, transparent);
+  border-bottom: 1px solid var(--arq-borda);
+}
+.arq-linha { border-bottom: 1px solid color-mix(in srgb, var(--arq-borda) 70%, transparent); color: var(--arq-texto); }
+.arq-linha:last-child { border-bottom: 0; }
+.arq-linha:hover { background: color-mix(in srgb, var(--arq-destaque) 7%, transparent); }
+.arq-linha[aria-selected='true'],
+.arq-linha[aria-selected='true']:hover { background: color-mix(in srgb, var(--arq-destaque) 18%, transparent); }
+.arq-linha[aria-selected='true'] .arq-nome { color: color-mix(in srgb, var(--arq-destaque) 70%, var(--arq-texto)); }
+.arq-nome { color: var(--arq-texto); text-decoration: none; text-underline-offset: 3px; }
+a.arq-nome:hover { text-decoration: underline; }
+a.arq-nome:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: 2px; border-radius: 4px; }
+.arq-estrela { color: #f59e0b; fill: #fbbf24; }
+.arq-miniatura { background: color-mix(in srgb, var(--arq-borda) 50%, transparent); }
+.arq-barra-selecao {
+  color: var(--arq-texto);
+  background: color-mix(in srgb, var(--arq-destaque) 12%, var(--arq-superficie));
+  border: 1px solid color-mix(in srgb, var(--arq-destaque) 22%, transparent);
+}
+.arq-range { accent-color: var(--arq-destaque); }
+.arq-bloco[aria-selected='true'] { outline: 2px solid var(--arq-destaque); outline-offset: 1px; }
+.arq-bloco[aria-selected='true'] .arq-nome { color: color-mix(in srgb, var(--arq-destaque) 70%, var(--arq-texto)); }
+.arq-progresso { background: color-mix(in srgb, var(--arq-borda) 60%, transparent); }
+.arq-progresso > div { background: var(--arq-destaque); }
+.arq-erro { color: #dc2626; }
+.project-appearance[data-period='night'] .arq-erro,
+body[data-operum-period='night'] .arq-erro { color: #fda4af; }
+@media (prefers-reduced-motion: no-preference) {
+  .arq-linha { transition: background-color 140ms ease; }
+}
+
+/* Ações da linha de arquivo aparecem ao passar o mouse ou focar (como no Drive). */
+.acoes-linha-arquivo { opacity: 0; }
+tr:hover .acoes-linha-arquivo,
+tr:focus-within .acoes-linha-arquivo,
+tr[aria-selected='true'] .acoes-linha-arquivo,
+.bloco-arquivo:hover .acoes-linha-arquivo,
+.bloco-arquivo:focus-within .acoes-linha-arquivo { opacity: 1; }
+/* Telas de toque não têm hover: ações sempre visíveis. */
+@media (hover: none) { .acoes-linha-arquivo { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) { .acoes-linha-arquivo { transition: opacity 160ms ease; } }
+
+/* Ações sobre a miniatura do bloco: fundo do próprio tema para continuarem legíveis sobre qualquer imagem. */
+.arq-acoes-bloco {
+  background: color-mix(in srgb, var(--arq-superficie) 88%, transparent);
+  border: 1px solid var(--arq-borda);
+  box-shadow: 0 6px 16px -10px #0006;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.arq-miniatura:focus-visible { outline-color: var(--arq-destaque); }
+
+/* Alternador Lista/Blocos em ícones (como o do Drive). */
+.arq-alternador { border: 1px solid var(--arq-borda); background: var(--arq-superficie); }
+.arq-alternador-opcao { color: var(--arq-suave); min-width: 3.25rem; }
+.arq-alternador-opcao + .arq-alternador-opcao { border-left: 1px solid var(--arq-borda); }
+.arq-alternador-opcao:hover { color: var(--arq-texto); background: color-mix(in srgb, var(--arq-destaque) 8%, transparent); }
+.arq-alternador-opcao[aria-checked='true'] {
+  color: color-mix(in srgb, var(--arq-destaque) 75%, var(--arq-texto));
+  background: color-mix(in srgb, var(--arq-destaque) 20%, transparent);
+}
+.arq-alternador-opcao:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: -3px; border-radius: 9999px; }
+@media (prefers-reduced-motion: no-preference) {
+  .arq-alternador-opcao { transition: background-color 160ms ease, color 160ms ease; }
+}
+
+/* Títulos ordenáveis: a seta aparece no hover/foco e fica fixa na coluna ativa. */
+.arq-titulo-ordem { color: var(--arq-suave); font: inherit; }
+.arq-titulo-ordem:hover { color: var(--arq-texto); background: color-mix(in srgb, var(--arq-destaque) 8%, transparent); }
+.arq-titulo-ordem[data-ativa] { color: var(--arq-texto); }
+.arq-titulo-ordem[data-ativa] svg { color: var(--arq-destaque); }
+.arq-titulo-ordem:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: 1px; }
+.arq-seta-inativa { opacity: 0; }
+.arq-titulo-ordem:hover .arq-seta-inativa,
+.arq-titulo-ordem:focus-visible .arq-seta-inativa { opacity: .5; }
+@media (hover: none) { .arq-seta-inativa { opacity: .35; } }
+
+/* Linha e bloco focáveis (Enter abre, Espaço seleciona). */
+.arq-linha:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: -2px; }
+.arq-bloco:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: 2px; }
+
+/* Página de arquivos do projeto: o fundo da aparência preenche a área visível mesmo com poucos arquivos. */
+.arq-pagina > .project-appearance { min-height: 100%; }
+.arq-pagina > .project-appearance > .arq { min-height: 100%; }

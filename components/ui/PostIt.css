@@ -1,0 +1,59 @@
+.post-it {
+  /* Dobra proporcional ao cartão: 19% do lado menor (como no modelo, 35px num
+     post-it de 240×180), entre 10px e 64px. Navegador sem cqmin fica nos 34px. */
+  --post-it-fold-size: 34px;
+  --post-it-fold-size: clamp(10px, 19cqmin, 64px);
+  container-type: size;
+  --post-it-color: #ffffcc;
+  --post-it-ink: #292929;
+  position: relative;
+  display: block;
+  flex: none;
+  box-sizing: border-box;
+  isolation: isolate;
+  filter: drop-shadow(2px 2px 2px rgb(0 0 0 / 35%));
+}
+
+/* Folha com o canto cortado na diagonal: a aba dobrada cobre o corte. */
+.post-it__face {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  background: var(--post-it-color);
+  border: 1.5px solid var(--post-it-ink);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--post-it-fold-size)), calc(100% - var(--post-it-fold-size)) 100%, 0 100%);
+}
+
+.post-it__content {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 16px 14px;
+  overflow: auto;
+}
+
+/* Aba: do corte diagonal para dentro do cartão, por cima do conteúdo. */
+.post-it__fold {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  width: var(--post-it-fold-size);
+  height: var(--post-it-fold-size);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.post-it__fold-sombra {
+  fill: rgb(0 0 0 / 18%);
+  filter: blur(1.5px);
+}
+
+.post-it__placeholder {
+  color: #8ca0c5;
+  font: 13px/1.25 Arial, sans-serif;
+}
