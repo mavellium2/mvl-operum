@@ -101,13 +101,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.
 # to nextjs:nodejs — world-execute removed (750 vs 755) — same posture as before.
 # Instala o Prisma isoladamente para evitar o merge destrutivo do `cp` no Alpine.
 # O symlink garante que o Node resolva 'prisma/config' a partir do ./node_modules local.
-# Override mysql2 aplicado aqui porque prisma@7.7.0 pina "mysql2": "3.15.3" no
-# package.json, mas 3.15.3 é vulnerável (GHSA-3f6p-5ww8-9rcr). Este install isolado
-# usa npm (não pnpm), então não herda o override do pnpm-workspace.yaml da raiz.
+# Overrides aplicados aqui porque prisma@7.7.0 pina "mysql2": "3.15.3" e usa
+# effect 3.20.0 via @prisma/config, ambos vulneráveis (GHSA-3f6p-5ww8-9rcr e
+# CVE-2026-121707). Este install isolado usa npm (não pnpm), então não herda o
+# override do pnpm-workspace.yaml da raiz.
 RUN mkdir -p /app/prisma-cli \
- && printf '{"name":"prisma-cli","private":true,"overrides":{"deepmerge-ts":">=8.0.0","mysql2":"3.24.2"}}' > /app/prisma-cli/package.json \
+ && printf '{"name":"prisma-cli","private":true,"overrides":{"deepmerge-ts":">=8.0.0","mysql2":"3.24.2","effect":">=3.22.1 <4.0.0"}}' > /app/prisma-cli/package.json \
  && npm install prisma@7.7.0 --no-save --prefix /app/prisma-cli \
  && node -e "const v=require('/app/prisma-cli/node_modules/mysql2/package.json').version; if (v !== '3.24.2') { console.error('mysql2 override falhou: esperado 3.24.2, obtido ' + v); process.exit(1); }" \
+ && node -e "const v=require('/app/prisma-cli/node_modules/effect/package.json').version; const [m,n,p]=v.split('.').map(Number); if (m!==3 || n<22 || (n===22 && p<1)) { console.error('effect override falhou: esperado >=3.22.1 <4, obtido ' + v); process.exit(1); }" \
  && chown -R nextjs:nodejs /app/prisma-cli \
  && chmod -R 750 /app/prisma-cli \
  && ln -s /app/prisma-cli/node_modules/prisma ./node_modules/prisma

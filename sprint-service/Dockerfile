@@ -59,9 +59,10 @@ COPY --from=builder --chown=nestjs:nodejs /app/prisma.config.ts ./prisma.config.
 # Installed locally into /app/prisma-cli with plain npm (flat node_modules) and
 # symlinked into node_modules so Node resolves `prisma/config` and `dotenv/config`.
 RUN mkdir -p /app/prisma-cli \
- && printf '{"name":"prisma-cli","private":true,"overrides":{"deepmerge-ts":">=8.0.0","mysql2":"3.24.2"}}' > /app/prisma-cli/package.json \
+ && printf '{"name":"prisma-cli","private":true,"overrides":{"deepmerge-ts":">=8.0.0","mysql2":"3.24.2","effect":">=3.22.1 <4.0.0"}}' > /app/prisma-cli/package.json \
  && npm install prisma@7.7.0 dotenv --no-save --prefix /app/prisma-cli \
  && node -e "const v=require('/app/prisma-cli/node_modules/mysql2/package.json').version; if (v !== '3.24.2') { console.error('mysql2 override falhou: esperado 3.24.2, obtido ' + v); process.exit(1); }" \
+ && node -e "const v=require('/app/prisma-cli/node_modules/effect/package.json').version; const [m,n,p]=v.split('.').map(Number); if (m!==3 || n<22 || (n===22 && p<1)) { console.error('effect override falhou: esperado >=3.22.1 <4, obtido ' + v); process.exit(1); }" \
  && chown -R nestjs:nodejs /app/prisma-cli \
  && chmod -R 750 /app/prisma-cli \
  && ln -s /app/prisma-cli/node_modules/prisma ./node_modules/prisma \
