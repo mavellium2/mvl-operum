@@ -4,8 +4,12 @@ import { useLayoutEffect, useRef, useState, type RefObject, type ReactNode } fro
 import { createPortal } from 'react-dom'
 
 /** Caixa ancorada com o mesmo material dos selects, sem backdrop modal. */
-export default function GlassPopover({ open, onClose, anchor, label, children, id, inline = false }: {
-  open: boolean; onClose: () => void; anchor: RefObject<HTMLElement | null>; label: string; children: ReactNode; id?: string; inline?: boolean
+/**
+ * `layout="form"`: o conteúdo é um formulário com `form-layout` (FormBody rolável e
+ * FormActions fixo no rodapé); o painel não rola inteiro, para Aplicar ficar à vista.
+ */
+export default function GlassPopover({ open, onClose, anchor, label, children, id, inline = false, layout = 'scroll' }: {
+  open: boolean; onClose: () => void; anchor: RefObject<HTMLElement | null>; label: string; children: ReactNode; id?: string; inline?: boolean; layout?: 'scroll' | 'form'
 }) {
   const panel = useRef<HTMLDivElement>(null)
   const close = useRef(onClose)
@@ -20,7 +24,7 @@ export default function GlassPopover({ open, onClose, anchor, label, children, i
       const rect = trigger.getBoundingClientRect()
       const boundary = inline ? trigger.closest('[data-operum-sidebar]')?.getBoundingClientRect() : undefined
       const leftEdge = boundary?.left ?? 0, rightEdge = boundary?.right ?? window.innerWidth
-      const width = Math.min(360, rightEdge - leftEdge - 24)
+      const width = Math.min(layout === 'form' ? 400 : 360, rightEdge - leftEdge - 24)
       const height = panel.current?.scrollHeight ?? 280
       const below = window.innerHeight - rect.bottom - 20, above = rect.top - 20
       const up = below < Math.min(height, 280) && above > below
@@ -37,7 +41,7 @@ export default function GlassPopover({ open, onClose, anchor, label, children, i
     window.addEventListener('resize', place)
     window.addEventListener('scroll', place, true)
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true) }
-  }, [open, anchor, inline])
+  }, [open, anchor, inline, layout])
   useLayoutEffect(() => {
     if (!open) { focused.current = false; return }
     if (!position || focused.current) return
@@ -46,6 +50,6 @@ export default function GlassPopover({ open, onClose, anchor, label, children, i
     focused.current = true
   }, [open, position])
   if (!open || typeof document === 'undefined') return null
-  const content = <div id={id} ref={panel} onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); event.stopPropagation(); onClose(); anchor.current?.focus() } }} data-glass-select-panel role="dialog" aria-label={label} tabIndex={-1} style={{ position: 'fixed', ...position, zIndex: 9000, visibility: position ? 'visible' : 'hidden' }} className="overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-xl outline-none">{children}</div>
+  const content = <div id={id} ref={panel} onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); event.stopPropagation(); onClose(); anchor.current?.focus() } }} data-glass-select-panel role="dialog" aria-label={label} tabIndex={-1} style={{ position: 'fixed', ...position, zIndex: 9000, visibility: position ? 'visible' : 'hidden' }} className={`${layout === 'form' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'} rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-xl outline-none`}>{children}</div>
   return inline ? content : createPortal(content, document.body)
 }

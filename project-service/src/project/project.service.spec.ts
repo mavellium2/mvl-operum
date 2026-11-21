@@ -196,7 +196,7 @@ describe('ProjectService.list — situações e recentes do usuário', () => {
   it('combina pesquisa e situação em todos os resultados', async () => {
     db.project.count.mockResolvedValueOnce(1)
     db.project.findMany.mockResolvedValueOnce([{ id: 'c1' }])
-    const result = await new ProjectService().list('t1', 1, 9, undefined, ['a2'], 'concl', 'COMPLETED')
+    const result = await new ProjectService().list('t1', 1, 9, undefined, ['a2'], 'concl', { status: ['COMPLETED'] })
     expect(result.items.map(p => p.id)).toEqual(['c1'])
     // Filtro de situação sem "ativos": os recentes não são buscados.
     expect(db.project.findMany).toHaveBeenCalledTimes(1)
@@ -208,5 +208,29 @@ describe('ProjectService.list — situações e recentes do usuário', () => {
     db.project.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 'a1' }]).mockResolvedValueOnce([{ id: 'c1' }]).mockResolvedValueOnce([{ id: 'i1' }])
     const result = await new ProjectService().list('t1', 1, 9, undefined, ['i1'])
     expect(result.items.map(p => p.id)).toEqual(['a1', 'c1', 'i1'])
+  })
+})
+
+describe('ProjectService.list — filtros de ano, departamento, turma, termo e turno', () => {
+  beforeEach(() => { vi.clearAllMocks(); db.project.findMany.mockResolvedValue([]); db.project.findFirst.mockResolvedValue(null); db.project.count.mockResolvedValue(0) })
+  it('aplica cada filtro marcado e só as situações escolhidas, mantendo os ativos primeiro', async () => {
+    await new ProjectService().list('t1', 1, 9, undefined, [], '', { status: ['COMPLETED', 'ACTIVE'], anos: [2026], departamentos: ['Gestão'], turmas: ['2'], termos: ['5'], turnos: ['Vespertino'] })
+    const where = { tenantId: 't1', deletedAt: null, ano: { in: [2026] }, departamentos: { hasSome: ['Gestão'] }, semestre: { in: ['2'] }, termo: { in: ['5'] }, turno: { in: ['Vespertino'] } }
+    expect(db.project.count.mock.calls.map(c => c[0].where)).toEqual([{ ...where, status: 'ACTIVE' }, { ...where, status: 'COMPLETED' }])
+  })
+  it('filtro vazio vale como todas as opções', async () => {
+    await new ProjectService().list('t1', 1, 9, undefined, [], '', { status: [], anos: [], departamentos: [] })
+    expect(db.project.count).toHaveBeenCalledTimes(4)
+    expect(db.project.count.mock.calls[0][0].where).toEqual({ tenantId: 't1', deletedAt: null, status: 'ACTIVE' })
+  })
+  it('com opções, devolve anos, departamentos e termos dos projetos acessíveis, sem aplicar os filtros', async () => {
+    db.project.findMany.mockResolvedValueOnce([
+      { ano: 2025, departamentos: ['Gestão', 'Agronegócio'], termo: '5' },
+      { ano: 2026, departamentos: ['Gestão'], termo: '10' },
+      { ano: null, departamentos: [], termo: ' ' },
+    ])
+    const result = await new ProjectService().list('t1', 1, 9, ['p1'], [], 'x', { anos: [2026] }, true) as { opcoes?: unknown }
+    expect(result.opcoes).toEqual({ anos: [2026, 2025], departamentos: ['Agronegócio', 'Gestão'], termos: ['5', '10'] })
+    expect(db.project.findMany).toHaveBeenLastCalledWith({ where: { tenantId: 't1', deletedAt: null, id: { in: ['p1'] } }, select: { ano: true, departamentos: true, termo: true } })
   })
 })

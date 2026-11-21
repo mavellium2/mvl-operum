@@ -11,6 +11,7 @@ import { EditProjectButton } from '@/components/projetos/ProjectListActions'
 import { useRef, useState } from 'react'
 import { loadMoreProjects } from '@/app/actions/projectList'
 import type { ProjectListBatch } from '@/services/projectList'
+import type { FiltrosProjetos } from '@/lib/filtrosProjetos'
 
 function initials(name: string) { return name.trim().split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase() || 'P' }
 function date(value?: string | null) {
@@ -19,13 +20,13 @@ function date(value?: string | null) {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-type Props = { initial: ProjectListBatch; query: string; status: string }
+type Props = { initial: ProjectListBatch; query: string; filtros: FiltrosProjetos }
 export default function ProjectListGrid(props: Props) {
   // Server Actions podem reenviar o mesmo lote como um novo objeto.
   // Só reiniciar quando o conteúdo mudar; identidade de objeto não é uma alteração.
-  return <ProjectGrid key={JSON.stringify([props.initial, props.query, props.status])} {...props} />
+  return <ProjectGrid key={JSON.stringify([props.initial, props.query, props.filtros])} {...props} />
 }
-function ProjectGrid({ initial, query, status }: Props) {
+function ProjectGrid({ initial, query, filtros }: Props) {
   const [projects, setProjects] = useState(initial.projects)
   const [total, setTotal] = useState(initial.total)
   const [nextPage, setNextPage] = useState(2)
@@ -39,7 +40,7 @@ function ProjectGrid({ initial, query, status }: Props) {
     busy.current = true
     setPending(true); setError('')
     try {
-      const result = await loadMoreProjects({ page: nextPage, query, status, preferred: recent })
+      const result = await loadMoreProjects({ page: nextPage, query, filtros, preferred: recent })
       if ('error' in result) { setError(result.error ?? 'Tente novamente.'); return }
       const batch = result.batch
       setProjects(previous => { const ids = new Set(previous.map(project => project.id)); return [...previous, ...batch.projects.filter(project => !ids.has(project.id))] })

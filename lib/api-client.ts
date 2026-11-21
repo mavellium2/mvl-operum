@@ -217,8 +217,9 @@ type Project = { macroFasesRevision?: number; macroFasesSyncedRevision?: number;
 // ── Projects ──────────────────────────────────────────────
 
 export const projectsApi = {
-  list: (page = 1, limit = 50, preferred?: string, filters?: { q?: string; status?: string }) =>
-    request<{ items: Project[]; total: number }>(`/projects?page=${page}&limit=${limit}${preferred ? `&preferred=${encodeURIComponent(preferred)}` : ''}${filters?.q ? `&q=${encodeURIComponent(filters.q)}` : ''}${filters?.status ? `&status=${encodeURIComponent(filters.status)}` : ''}`),
+  /** `filters.filtros`: parâmetros já montados por `filtrosNaQuery` (ano, departamento, turma, termo, turno, status). */
+  list: (page = 1, limit = 50, preferred?: string, filters?: { q?: string; status?: string; filtros?: string; opcoes?: boolean }) =>
+    request<{ items: Project[]; total: number; opcoes?: { anos: number[]; departamentos: string[]; termos: string[] } }>(`/projects?page=${page}&limit=${limit}${preferred ? `&preferred=${encodeURIComponent(preferred)}` : ''}${filters?.q ? `&q=${encodeURIComponent(filters.q)}` : ''}${filters?.status ? `&status=${encodeURIComponent(filters.status)}` : ''}${filters?.filtros ? `&${filters.filtros}` : ''}${filters?.opcoes ? '&opcoes=1' : ''}`),
 
   get: (id: string) => request<Project>(`/projects/${id}`),
 

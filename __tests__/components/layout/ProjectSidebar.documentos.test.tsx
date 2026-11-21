@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 
 const route = vi.hoisted(() => ({ pathname: '/projetos/p1/documentacao' }))
+const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
 vi.mock('next/navigation', () => ({
   usePathname: () => route.pathname,
   useSearchParams: () => new URLSearchParams('doc=charter'),
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => nav,
 }))
 vi.mock('@/components/permissoes/ProjectPermissions', () => ({
   useProjectPermissions: () => new Set(['documentos:ver', 'quadro:ver', 'planilha:ver']),
@@ -32,5 +33,50 @@ describe('menu lateral do projeto — documentos', () => {
     expect(filhos[documentacao + 1]).toBe(screen.getByRole('navigation', { name: 'Documentos' }))
     const planilha = filhos.findIndex(el => el.textContent === 'Planilha de Custos')
     expect(planilha).toBeGreaterThan(documentacao + 1)
+  })
+
+  it('clicar de novo em "Documentação" recolhe e reabre os documentos, com a seta indicando o estado', () => {
+    render(<ProjectSidebar projetoId="p1" canManageMembers />)
+    const item = screen.getByRole('link', { name: 'Documentação' })
+    expect(item).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(item)
+    expect(item).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('navigation', { name: 'Documentos' })).not.toBeInTheDocument()
+    fireEvent.click(item)
+    expect(item).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('navigation', { name: 'Documentos' })).toBeInTheDocument()
+  })
+
+  it('fora da Documentação, o item aparece fechado e os documentos não são mostrados', () => {
+    route.pathname = '/projetos/p1/dashboard'
+    render(<ProjectSidebar projetoId="p1" canManageMembers />)
+    expect(screen.getByRole('link', { name: 'Documentação' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('navigation', { name: 'Documentos' })).not.toBeInTheDocument()
+    route.pathname = '/projetos/p1/documentacao'
+  })
+
+  it('Fotos e Vídeos e Apresentação Final e Vídeos ficam dentro da Documentação, não soltos no menu', () => {
+    render(<ProjectSidebar projetoId="p1" canManageMembers />)
+    const documentos = screen.getByRole('navigation', { name: 'Documentos' })
+    expect(within(documentos).getByRole('button', { name: 'Fotos e Vídeos' })).toBeInTheDocument()
+    expect(within(documentos).getByRole('button', { name: 'Apresentação Final e Vídeos' })).toBeInTheDocument()
+    expect(within(documentos).getByRole('button', { name: 'Desenhos Técnicos' })).toBeInTheDocument()
+    expect(within(documentos).getByRole('button', { name: 'Pesquisas' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Fotos e Vídeos' })).not.toBeInTheDocument()
+    fireEvent.click(within(documentos).getByRole('button', { name: 'Fotos e Vídeos' }))
+    expect(nav.push).toHaveBeenCalledWith('/projetos/p1/fotos-videos')
+    fireEvent.click(within(documentos).getByRole('button', { name: 'Pesquisas' }))
+    expect(nav.push).toHaveBeenCalledWith('/projetos/p1/pesquisas')
+  })
+
+  it('na tela de Fotos e Vídeos, a Documentação fica aberta com a seção marcada', () => {
+    route.pathname = '/projetos/p1/fotos-videos'
+    render(<ProjectSidebar projetoId="p1" canManageMembers />)
+    expect(screen.getByRole('link', { name: 'Documentação' })).toHaveAttribute('aria-current', 'page')
+    const documentos = screen.getByRole('navigation', { name: 'Documentos' })
+    expect(within(documentos).getByRole('button', { name: 'Fotos e Vídeos' })).toHaveAttribute('aria-current', 'page')
+    fireEvent.click(within(documentos).getByRole('button', { name: 'Canvas' }))
+    expect(nav.push).toHaveBeenCalledWith('/projetos/p1/documentacao?doc=canvas')
+    route.pathname = '/projetos/p1/documentacao'
   })
 })

@@ -1368,3 +1368,28 @@ Ao substituir uma decisão, manter o texto histórico, alterar seu status e liga
 - **Consequências:** a migration adiciona o tipo `CANVAS` ao enum; cada projeto passa a ter seu próprio rascunho, versões e propostas na área Documentação. Não há migração de dados de um projeto específico.
 - **Referências:** `prisma/schema.prisma`, `prisma/migrations/20261119170000_canvas_documento`, `lib/validation/documentRevisionSchemas.ts`, `components/projetos/documentacao/CanvasDocumento.tsx`, `components/projetos/documentacao/DocumentSidebar.tsx`, `public/images/project-canvas-template.png`.
 - **Revisar quando:** Canvas precisar de mais blocos, persistência separada ou sincronização editável com outros documentos.
+
+## ADR-110 — Filtros de Meus projetos guardados em cookie e opções na própria listagem
+
+- **Data:** 2026-11-20.
+- **Status:** implementada (1.62.0).
+- **Contexto:** os ajustes de 20/11/2026 pedem filtrar a lista de projetos por Ano, Departamento, Turma, Termo, Turno e Situação, com várias opções por filtro, e que o filtro fique gravado para a lista já abrir filtrada. Os campos já existem em `Project` (`ano`, `departamentos`, `semestre`, `termo`, `turno`, `status`).
+- **Escolha:** guardar os filtros num cookie funcional por usuário e instituição, lido pela página `/projetos` no servidor e gravado por server action; a pesquisa continua na URL. As opções variáveis (anos, departamentos e termos) vêm na resposta de `GET /projects` quando pedidas com `opcoes=1`; turma, turno e situação usam listas fixas.
+- **Justificativa:** o cookie segue o padrão já usado nos projetos recentes (ADR-096), dispensa tabela e migration e permite renderizar a lista filtrada no primeiro carregamento, sem piscar a lista completa. Trazer as opções na listagem evita uma rota nova, que exigiria regra própria no gateway e na autorização (`/projects/<algo>` é tratado como ID de projeto).
+- **Alternativas consideradas:** preferência no banco por usuário (sincroniza dispositivos, mas exige modelo, migration e API novos; não há hoje tabela de preferências); `localStorage` (só no navegador e só depois da hidratação, o que mostra a lista sem filtro antes); filtros na URL (não ficam gravados ao abrir o sistema de novo); rota `GET /projects/filtros` (precisaria de exceção na autorização).
+- **Consequências:** o filtro vale para o navegador onde foi escolhido; em outro computador a lista abre sem filtro. `GET /projects` aceita parâmetros repetidos nos filtros. A primeira página de `/projetos` faz uma consulta a mais (as opções) sobre os projetos acessíveis.
+- **Referências:** `lib/filtrosProjetos.ts`, `app/actions/projectList.ts`, `services/projectList.ts`, `components/projetos/ProjectListFilters.tsx`, `components/ui/OpcoesMultiplas.tsx`, `project-service/src/project/project.controller.ts`, `project-service/src/project/project.service.ts`.
+- **Revisar quando:** houver uma tabela de preferências do usuário ou pedido para o filtro acompanhar a conta em vários dispositivos.
+
+## ADR-111 — Seções de arquivos do projeto declaradas por catálogo de formatos
+
+- **Data:** 2026-11-20.
+- **Status:** implementada (1.62.0).
+- **Contexto:** os ajustes de 20/11/2026 pedem as seções Desenhos Técnicos e Pesquisas com a mesma usabilidade de Fotos e Vídeos. Na 1.61.0, cada seção tinha a lista de tipos, a mensagem de erro e partes da tela (filtro de tipo, modo Blocos) escritas à mão, com condições `categoria === 'FOTOS_VIDEOS'` no componente. O usuário pediu um padrão em que a tela receba só "o que esta seção aceita".
+- **Escolha:** um catálogo de formatos (`FORMATOS`, extensão → tipo MIME, rótulo e ícone) e uma fábrica `secao(...)` que monta a configuração completa de cada seção a partir da lista de formatos. `ArquivosProjetoClient`, as rotas e o serviço leem tudo de `SECOES_ARQUIVOS[categoria]`. Desenhos Técnicos aceita fotos, PDF e CAD (DWG, DXF, STEP, STL); Pesquisas aceita PDF, documentos de texto, planilhas e fotos. As duas usam o mesmo modelo `ArquivoProjeto` com dois valores novos no enum.
+- **Justificativa:** o layout é o mesmo; só mudam formatos e textos. Declarar a seção por dados evita uma cópia da tela por seção e condições espalhadas, e mantém tela e servidor validando pela mesma regra.
+- **Alternativas consideradas:** um componente por seção (duplica a tela); manter as listas de tipos à mão em cada seção (mensagens e filtros divergem com o tempo); tabela de seções no banco (configuração dinâmica que ninguém pediu, com mais superfície de validação).
+- **Consequências:** migration `20261120120000_desenhos_tecnicos_pesquisas` acrescenta `DESENHOS_TECNICOS` e `PESQUISAS` ao enum. O tipo do arquivo passa a ser deduzido pela extensão conhecida antes do informado pelo navegador (o navegador costuma não informar DWG, STEP ou CSV); continua valendo a confirmação do objeto no storage no registro e a barreira de SVG (ADR-042). HTML, scripts e executáveis não estão no catálogo. Arquivos de CAD não têm pré-visualização: aparecem com ícone e abrem em nova aba (download).
+- **Referências:** `lib/arquivosProjeto.ts`, `components/projetos/arquivos/ArquivosProjetoClient.tsx`, `components/arquivos/ListaArquivos.tsx`, `components/projetos/documentacao/DocumentSidebar.tsx`, `app/projetos/[projetoId]/desenhos-tecnicos/page.tsx`, `app/projetos/[projetoId]/pesquisas/page.tsx`, `prisma/migrations/20261120120000_desenhos_tecnicos_pesquisas`.
+- **Revisar quando:** uma seção precisar de comportamento que não seja só formato (ex.: pastas, campos próprios) ou de pré-visualização de CAD.
+

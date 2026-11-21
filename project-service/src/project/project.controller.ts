@@ -13,7 +13,8 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common'
-import { ProjectService, CreateProjectSchema, UpdateProjectSchema, AddMemberSchema } from './project.service'
+import { ProjectService, CreateProjectSchema, UpdateProjectSchema, AddMemberSchema, type FiltrosListaProjetos } from './project.service'
+import type { ProjectStatus } from '../../lib/generated/prisma'
 
 
 /** "id1,id2,…": projetos abertos recentemente pelo usuário, o mais recente primeiro (até 50). */
@@ -25,6 +26,34 @@ export function recentesDoParametro(valor: string): string[] {
     if (ids.length >= 50) break
   }
   return ids
+}
+
+const SITUACOES = ['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE']
+
+/**
+ * Parâmetro de filtro que pode vir repetido (`ano=2026&ano=2025`): devolve a lista
+ * sem vazios nem repetidos, até 50 valores de até 100 caracteres.
+ */
+export function listaDoParametro(valor: unknown, nome: string, permitidos?: string[]): string[] {
+  if (valor === undefined) return []
+  const valores = Array.isArray(valor) ? valor : [valor]
+  if (valores.length > 50 || !valores.every(v => typeof v === 'string')) throw new BadRequestException(`Filtro ${nome} inválido`)
+  const lista = [...new Set((valores as string[]).map(v => v.trim()).filter(Boolean))]
+  if (lista.some(v => v.length > 100 || (permitidos && !permitidos.includes(v)))) throw new BadRequestException(`Filtro ${nome} inválido`)
+  return lista
+}
+
+export function filtrosDaQuery(params: { ano?: unknown; departamento?: unknown; turma?: unknown; termo?: unknown; turno?: unknown; status?: unknown }): FiltrosListaProjetos {
+  const anos = listaDoParametro(params.ano, 'de ano').map(Number)
+  if (anos.some(a => !Number.isInteger(a) || a < 1900 || a > 3000)) throw new BadRequestException('Filtro de ano inválido')
+  return {
+    status: listaDoParametro(params.status, 'de situação', SITUACOES) as ProjectStatus[],
+    anos,
+    departamentos: listaDoParametro(params.departamento, 'de departamento'),
+    turmas: listaDoParametro(params.turma, 'de turma', ['1', '2', 'ano']),
+    termos: listaDoParametro(params.termo, 'de termo'),
+    turnos: listaDoParametro(params.turno, 'de turno'),
+  }
 }
 
 @Controller('projects')
@@ -40,16 +69,22 @@ export class ProjectController {
     @Query('preferred') preferred?: unknown,
     @Query('q') query?: unknown,
     @Query('status') status?: unknown,
+    @Query('ano') ano?: unknown,
+    @Query('departamento') departamento?: unknown,
+    @Query('turma') turma?: unknown,
+    @Query('termo') termo?: unknown,
+    @Query('turno') turno?: unknown,
+    @Query('opcoes') opcoes?: unknown,
   ) {
     if (page !== undefined && typeof page !== 'string') throw new BadRequestException('Página inválida')
     if (limit !== undefined && typeof limit !== 'string') throw new BadRequestException('Limite inválido')
     if (preferred !== undefined && typeof preferred !== 'string') throw new BadRequestException('Projeto preferido inválido')
     if (query !== undefined && typeof query !== 'string') throw new BadRequestException('Pesquisa inválida')
-    if (status !== undefined && typeof status !== 'string') throw new BadRequestException('Situação de projeto inválida')
-    if (typeof status === 'string' && status && !['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE'].includes(status)) throw new BadRequestException('Situação de projeto inválida')
+    // Situação pode vir repetida (várias marcadas); vazia = todas.
+    const filtros = filtrosDaQuery({ ano, departamento, turma, termo, turno, status: status === '' ? undefined : status })
     const pageNumber = Number(page ?? 1), pageSize = Number(limit ?? 20)
     if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new BadRequestException('Paginação inválida')
-    return this.projectService.list(tenantId, pageNumber, pageSize, authorized?.split(','), typeof preferred === 'string' ? recentesDoParametro(preferred) : undefined, typeof query === 'string' ? query.trim().slice(0, 200) : undefined, typeof status === 'string' ? status || undefined : undefined)
+    return this.projectService.list(tenantId, pageNumber, pageSize, authorized?.split(','), typeof preferred === 'string' ? recentesDoParametro(preferred) : undefined, typeof query === 'string' ? query.trim().slice(0, 200) : undefined, filtros, opcoes === '1')
   }
 
   @Get('user/:userId')

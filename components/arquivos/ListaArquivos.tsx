@@ -11,7 +11,7 @@ import GradeArquivos from './GradeArquivos'
 import './ListaArquivos.css'
 
 /** Categoria usada no ícone e no filtro "Tipo". */
-export type CategoriaVisual = 'imagem' | 'video' | 'pdf' | 'apresentacao' | 'link' | 'outro'
+export type CategoriaVisual = 'imagem' | 'video' | 'pdf' | 'apresentacao' | 'documento' | 'planilha' | 'desenho' | 'link' | 'outro'
 
 export interface ItemArquivo {
   id: string
@@ -152,7 +152,7 @@ function useVisualizacao(chave: string | undefined) {
   return { modo, setModo, tamanho, setTamanho }
 }
 
-const ROTULO_TIPO: Record<CategoriaVisual, string> = { imagem: 'Imagens', video: 'Vídeos', pdf: 'PDFs', apresentacao: 'Apresentações', link: 'Links', outro: 'Outros' }
+const ROTULO_TIPO: Record<CategoriaVisual, string> = { imagem: 'Imagens', video: 'Vídeos', pdf: 'PDFs', apresentacao: 'Apresentações', documento: 'Documentos', planilha: 'Planilhas', desenho: 'Desenhos (CAD)', link: 'Links', outro: 'Outros' }
 
 export function IconeArquivo({ categoria }: { categoria: CategoriaVisual }) {
   const caminho: Record<CategoriaVisual, { cor: string; d: string }> = {
@@ -161,6 +161,9 @@ export function IconeArquivo({ categoria }: { categoria: CategoriaVisual }) {
     video: { cor: 'text-purple-500', d: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z' },
     pdf: { cor: 'text-red-500', d: 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
     apresentacao: { cor: 'text-orange-500', d: 'M9 17v-2m3 2v-4m3 4v-6M4 4h16v11a1 1 0 01-1 1H5a1 1 0 01-1-1V4zm8 12v4m-4 0h8' },
+    documento: { cor: 'text-blue-600', d: 'M9 13h6m-6 4h6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zm7 0v5h5' },
+    planilha: { cor: 'text-emerald-600', d: 'M4 5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm0 5h16M4 15h16M10 3v18' },
+    desenho: { cor: 'text-cyan-600', d: 'M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zm0 0v18m8-13.5l-8 4.5-8-4.5' },
     outro: { cor: 'text-gray-400', d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
   }
   const { cor, d } = caminho[categoria]

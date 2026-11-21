@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useTransition, useId } from 'react'
 import { Building2, ChevronDown, Check, Loader2 } from 'lucide-react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import GlassButton from '@/components/ui/GlassButton'
 import SearchInput from '@/components/ui/SearchInput'
@@ -66,7 +65,6 @@ export default function TenantSwitcher({ compact = false }: { compact?: boolean 
         <div className="sidebar-institution-list mt-2">{tenants.filter(t => matchesSearch(`${t.tenantName} ${t.tenantSubdomain}`, query)).map(t => <GlassButton variant="custom" key={t.tenantId} disabled={pending || t.isCurrent} className="sidebar-institution-option" onClick={() => { if (t.requiresPassword) navegarComGuarda(() => { setTarget(t); setError('') }); else access(t) }}>
           <Building2 size={16} className="shrink-0" aria-hidden="true" /><span className="min-w-0 flex-1 text-left"><span className="block break-words text-sm font-medium">{t.tenantName}</span><span className="block text-[11px] opacity-70">{t.tenantSubdomain} · {roles[t.role] ?? t.role}</span></span>{t.isCurrent && <Check size={15} aria-label="Você está aqui" />}
         </GlassButton>)}{!loading && !tenants.some(t => matchesSearch(`${t.tenantName} ${t.tenantSubdomain}`, query)) && <p className="py-4 text-xs opacity-70">Nenhuma instituição encontrada.</p>}</div>
-        <Link href="/configuracoes/instituicoes" className="sidebar-popover-link mt-3">Minhas instituições</Link>
       </>}
       {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
     </GlassPopover>

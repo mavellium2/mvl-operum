@@ -14,10 +14,10 @@ import VisualizadorMidia, { type MidiaVisualizavel } from '@/components/ui/Visua
 import { useToast } from '@/components/ui/Toast'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 import { fetchWithSession } from '@/lib/clientFetch'
-import { erroDoArquivo, formatarTamanho, SECOES_ARQUIVOS, tipoDoArquivo, type CategoriaArquivoProjeto } from '@/lib/arquivosProjeto'
+import { erroDoArquivo, formatarTamanho, SECOES_ARQUIVOS, tipoDoArquivo, tipoLegivel, visualDoTipo, type CategoriaArquivoProjeto } from '@/lib/arquivosProjeto'
 import ZonaSoltarArquivos from '@/components/arquivos/ZonaSoltarArquivos'
 import PainelEnvios, { type EnvioArquivo } from '@/components/arquivos/PainelEnvios'
-import ListaArquivos, { type CategoriaVisual, type ItemArquivo } from '@/components/arquivos/ListaArquivos'
+import ListaArquivos, { type ItemArquivo } from '@/components/arquivos/ListaArquivos'
 
 export interface ArquivoDoProjeto {
   id: string
@@ -31,21 +31,6 @@ export interface ArquivoDoProjeto {
   favorito?: boolean
 }
 
-
-const categoriaVisual = (tipo: string): CategoriaVisual =>
-  tipo.startsWith('image/') ? 'imagem' : tipo.startsWith('video/') ? 'video' : tipo === 'application/pdf' ? 'pdf' : 'apresentacao'
-
-
-/** Tipo legível para a coluna "Tipo": "Vídeo MP4", "Imagem PNG", "PDF"… */
-function tipoLegivel(mime: string): string {
-  const [grupo, sub = ''] = mime.split('/')
-  const formato = sub.replace(/^x-/, '').replace(/\+xml$/, '').replace(/^vnd\.openxmlformats-officedocument\.presentationml\.presentation$/, 'pptx').replace(/^vnd\.ms-powerpoint$/, 'ppt').replace(/^quicktime$/, 'mov').toUpperCase()
-  if (grupo === 'image') return `Imagem ${formato}`
-  if (grupo === 'video') return `Vídeo ${formato}`
-  if (mime === 'application/pdf') return 'PDF'
-  if (formato === 'PPTX' || formato === 'PPT') return `Apresentação ${formato}`
-  return formato || mime
-}
 
 /** Envios ao mesmo tempo (o resto espera na fila, como no Drive). */
 const ENVIOS_SIMULTANEOS = 3
@@ -66,8 +51,10 @@ function enviarParaStorage(url: string, arquivo: File, tipo: string, onProgresso
 }
 
 /**
- * Seção de arquivos do projeto ("Fotos e Vídeos" ou "Apresentação e Vídeo"),
- * na mesma base da lista do menu Arquivos.
+ * Tela de uma seção de arquivos do projeto (Fotos e Vídeos, Apresentação Final e
+ * Vídeos, Desenhos Técnicos, Pesquisas…), na mesma base da lista do menu Arquivos.
+ * Tudo o que muda entre as seções vem de `SECOES_ARQUIVOS[categoria]`
+ * (`lib/arquivosProjeto.ts`): título, formatos aceitos, filtro de tipo e modo Blocos.
  */
 export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }: {
   projetoId: string
@@ -221,7 +208,7 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
       id: a.id,
       nome: a.nome,
       subtitulo: tipoLegivel(a.tipo),
-      categoria: categoriaVisual(a.tipo),
+      categoria: visualDoTipo(a.tipo),
       tamanho: formatarTamanho(a.tamanho),
       tamanhoBytes: a.tamanho,
       enviadoPor: a.enviadoPor,
@@ -295,10 +282,10 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
       <ZonaSoltarArquivos ativa={podeEnviar} destino={secao.titulo} onSoltar={lista => void escolher(lista)} className="min-h-[calc(100vh-10rem)] rounded-2xl">
       <ListaArquivos
         itens={itens}
-        tipos={categoria === 'FOTOS_VIDEOS' ? ['imagem', 'video'] : ['apresentacao', 'pdf', 'video']}
+        tipos={secao.tiposVisuais}
         vazio={secao.vazio}
         placeholderBusca={`Buscar em ${secao.titulo}`}
-        visualizacao={categoria === 'FOTOS_VIDEOS' ? `projeto-${categoria}` : undefined}
+        visualizacao={secao.blocos ? `projeto-${categoria}` : undefined}
         selecao={{ selecionados, onChange: setSelecionados, acoes: acoesSelecao }}
         onAbrir={abrir}
         acoesTopo={podeEnviar && (

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { verifySession } from '@/lib/dal'
 import { urlDeEnvio } from '@/services/arquivosProjetoService'
 import { erroArquivos } from '../erros'
+import { CATEGORIAS_ARQUIVO } from '@/lib/arquivosProjeto'
 
 /**
  * URL assinada para o navegador enviar o arquivo direto ao storage. Vídeos
@@ -13,7 +14,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ projeto
   const { tenantId, role, userId } = await verifySession()
   try {
     const d = z.object({
-      categoria: z.enum(['FOTOS_VIDEOS', 'APRESENTACAO']),
+      categoria: z.enum(CATEGORIAS_ARQUIVO),
       nome: z.string().min(1).max(255),
       tipo: z.string().min(1).max(150),
       tamanho: z.number().int().positive(),

@@ -784,6 +784,8 @@ model DocumentVersion {
 enum CategoriaArquivoProjeto {
   FOTOS_VIDEOS
   APRESENTACAO
+  DESENHOS_TECNICOS
+  PESQUISAS
 }
 
 /// Arquivo enviado direto ao MinIO por URL assinada; o registro só é criado

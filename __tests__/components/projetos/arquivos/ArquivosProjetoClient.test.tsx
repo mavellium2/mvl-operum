@@ -15,7 +15,7 @@ const arquivos = [
 ]
 const com = (permissoes: Permissao[], ui: ReactNode) => render(<ProjectPermissionsProvider permissions={permissoes}>{ui}</ProjectPermissionsProvider>)
 
-describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação e Vídeo', () => {
+describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação Final e Vídeos', () => {
   beforeEach(() => vi.mocked(fetchWithSession).mockReset())
 
   it('um clique no nome seleciona sem abrir; ações na linha; barra só com seleção', () => {

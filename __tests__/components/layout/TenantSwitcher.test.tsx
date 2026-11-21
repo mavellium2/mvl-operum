@@ -32,3 +32,8 @@ it('pede a senha da conta correta no próprio seletor antes de trocar', async ()
   expect(await screen.findByRole('alert')).toHaveTextContent('Senha incorreta')
   await waitFor(() => expect(switchTenantAction).toHaveBeenCalledWith('t2', 'senha-teste'))
 })
+it('o seletor só troca de instituição: sem o atalho "Minhas instituições" (fica no menu de Configurações)', async () => {
+  render(<TenantSwitcher />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Trocar de instituição: Ativa' }))
+  expect(within(screen.getByRole('dialog', { name: 'Trocar de instituição' })).queryByRole('link', { name: 'Minhas instituições' })).not.toBeInTheDocument()
+})

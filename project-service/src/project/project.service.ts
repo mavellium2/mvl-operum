@@ -72,6 +72,17 @@ export const UpdateProjectSchema = CreateProjectSchema.partial().omit({ tenantId
 export type CreateProjectDto = z.infer<typeof CreateProjectSchema>
 export type UpdateProjectDto = z.infer<typeof UpdateProjectSchema>
 
+/** Filtros da lista de projetos; lista vazia ou ausente = todas as opções. */
+export interface FiltrosListaProjetos {
+  status?: ProjectStatus[]
+  anos?: number[]
+  departamentos?: string[]
+  /** Período (`semestre`): "1", "2" ou "ano". */
+  turmas?: string[]
+  termos?: string[]
+  turnos?: string[]
+}
+
 @Injectable()
 export class ProjectService {
   withoutDocuments<T extends object>(project: T) {
@@ -85,11 +96,18 @@ export class ProjectService {
    * primeiro, na ordem em que foram abertos (`recentes`: o mais recente primeiro); os
    * demais seguem por criação. Concluídos, arquivados e inativos ficam depois.
    */
-  async list(tenantId: string, page = 1, limit = 20, authorized?: string[], recentes: string[] = [], query = '', status?: string) {
-    const base = { tenantId, deletedAt: null, ...(authorized ? { id: { in: authorized } } : {}),
-      ...(query ? { OR: [{ name: { contains: query, mode: 'insensitive' as const } }, { slogan: { contains: query, mode: 'insensitive' as const } }] } : {}) }
+  async list(tenantId: string, page = 1, limit = 20, authorized?: string[], recentes: string[] = [], query = '', filtros: FiltrosListaProjetos = {}, comOpcoes = false) {
+    const acesso = { tenantId, deletedAt: null, ...(authorized ? { id: { in: authorized } } : {}) }
+    const base = { ...acesso,
+      ...(query ? { OR: [{ name: { contains: query, mode: 'insensitive' as const } }, { slogan: { contains: query, mode: 'insensitive' as const } }] } : {}),
+      ...(filtros.anos?.length ? { ano: { in: filtros.anos } } : {}),
+      ...(filtros.departamentos?.length ? { departamentos: { hasSome: filtros.departamentos } } : {}),
+      ...(filtros.turmas?.length ? { semestre: { in: filtros.turmas } } : {}),
+      ...(filtros.termos?.length ? { termo: { in: filtros.termos } } : {}),
+      ...(filtros.turnos?.length ? { turno: { in: filtros.turnos } } : {}) }
     const include = { _count: { select: { members: { where: { active: true } }, macroFases: true } } }
-    const groups: ProjectStatus[] = status ? [status as ProjectStatus] : ['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE']
+    // Mantém a ordem fixa dos grupos (ativos primeiro) mesmo com várias situações marcadas.
+    const groups: ProjectStatus[] = (['ACTIVE', 'COMPLETED', 'ARCHIVED', 'INACTIVE'] as ProjectStatus[]).filter(value => !filtros.status?.length || filtros.status.includes(value))
     const scopes = groups.map(value => ({ ...base, status: value }))
     const counts = await Promise.all(scopes.map(where => prisma.project.count({ where })))
     // Recentes que continuam ativos e acessíveis, na ordem em que o usuário os abriu.
@@ -118,7 +136,20 @@ export class ProjectService {
       }
       offset = 0
     }
-    return { items: items.map(p => this.withoutDocuments(p)), total: counts.reduce((sum, count) => sum + count, 0), page, limit }
+    const result = { items: items.map(p => this.withoutDocuments(p)), total: counts.reduce((sum, count) => sum + count, 0), page, limit }
+    return comOpcoes ? { ...result, opcoes: await this.opcoesDosFiltros(acesso) } : result
+  }
+
+  /** Anos, departamentos e termos que existem nos projetos que a pessoa vê (opções dos filtros da lista). */
+  private async opcoesDosFiltros(where: Prisma.ProjectWhereInput) {
+    const projetos = await prisma.project.findMany({ where, select: { ano: true, departamentos: true, termo: true } })
+    const textos = (valores: (string | null | undefined)[]) =>
+      [...new Set(valores.map(v => (v ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }))
+    return {
+      anos: [...new Set(projetos.map(p => p.ano).filter((a): a is number => typeof a === 'number'))].sort((a, b) => b - a),
+      departamentos: textos(projetos.flatMap(p => p.departamentos ?? [])),
+      termos: textos(projetos.map(p => p.termo)),
+    }
   }
 
   async findOne(id: string, tenantId: string) {
