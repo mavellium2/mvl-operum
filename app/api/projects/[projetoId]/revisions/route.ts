@@ -11,6 +11,7 @@ import {
   rascunhoDocumento,
   excluirVersao,
   descartarRascunho,
+  acessoAvaliacaoRh,
 } from '@/services/documentRevisionService'
 import {
   tipoDocumento,
@@ -31,6 +32,7 @@ export async function GET(req: Request, { params }: Ctx) {
     await requireProjectPermission(session, projetoId, 'documentos:ver')
     const query = new URL(req.url).searchParams
     const documentType = tipoDocumento.parse(query.get('type'))
+    await acessoAvaliacaoRh(session, projetoId, documentType)
     const resourceId = query.get('resourceId') ?? ''
     validarRecurso(documentType, resourceId)
     if (query.get('draft') === '1')
@@ -111,6 +113,7 @@ export async function POST(req: Request, { params }: Ctx) {
   try {
     const { projetoId } = await params
     const data = input.parse(await req.json())
+    await acessoAvaliacaoRh(session, projetoId, data.type)
     const result = data.draft
       ? await salvarRascunho(
           session,

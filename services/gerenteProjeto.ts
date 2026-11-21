@@ -26,3 +26,12 @@ export async function gerenteDoProjeto(projectId: string, db: Prisma.Transaction
   })
   return { userIds: entradas.map(e => e.userId), nome: users.map(u => u.name).join(' e '), signatureUrl: users[0]?.signatureUrl ?? null }
 }
+
+/**
+ * Avaliações de R.H. são dados de gestão de pessoas: só o administrador e o(s)
+ * gerente(s) do projeto veem e editam (decisão do usuário em 20/11/2026).
+ */
+export async function podeAvaliarRh(s: { role: string; userId: string }, projectId: string): Promise<boolean> {
+  if (s.role === 'admin') return true
+  return !!(await gerenteDoProjeto(projectId)).userIds?.includes(s.userId)
+}

@@ -4,13 +4,13 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/lib/dal', () => ({ verifySession: vi.fn() }))
 vi.mock('@/services/projectAccess', () => ({ canProjectPermission: vi.fn(), requireProjectPermission: vi.fn() }))
 vi.mock('@/lib/prisma', () => ({ default: { documentVersion: { findMany: vi.fn() }, auditLog: { findMany: vi.fn() }, user: { findMany: vi.fn() } } }))
-vi.mock('@/services/documentRevisionService', () => ({ submeterDocumento: vi.fn(), revisarDocumento: vi.fn(), salvarRascunho: vi.fn(), rascunhoDocumento: vi.fn(), excluirVersao: vi.fn(), descartarRascunho: vi.fn() }))
+vi.mock('@/services/documentRevisionService', () => ({ submeterDocumento: vi.fn(), revisarDocumento: vi.fn(), salvarRascunho: vi.fn(), rascunhoDocumento: vi.fn(), excluirVersao: vi.fn(), descartarRascunho: vi.fn(), acessoAvaliacaoRh: vi.fn() }))
 import { verifySession } from '@/lib/dal'
 import { requireProjectPermission } from '@/services/projectAccess'
 import { SemPermissaoError } from '@/services/authz'
 import prisma from '@/lib/prisma'
 import { GET, POST, PATCH, DELETE } from '@/app/api/projects/[projetoId]/revisions/route'
-import { rascunhoDocumento, excluirVersao, submeterDocumento, revisarDocumento, descartarRascunho } from '@/services/documentRevisionService'
+import { rascunhoDocumento, excluirVersao, submeterDocumento, revisarDocumento, descartarRascunho, acessoAvaliacaoRh } from '@/services/documentRevisionService'
 const session = { tenantId: 't1', userId: 'u1', role: 'member' }
 const ctx = { params: Promise.resolve({ projetoId: 'p1' }) }
 function req(method: string, body: unknown) { return new Request('http://localhost/api/projects/p1/revisions', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) }
@@ -50,6 +50,11 @@ describe('API de revisões unificada', () => {
     expect((await GET(new Request('http://localhost/revisions?type=INVALID'), ctx)).status).toBe(400)
     expect((await GET(new Request('http://localhost/revisions?type=CHARTER&resourceId=a1'), ctx)).status).toBe(400)
     expect(prisma.documentVersion.findMany).not.toHaveBeenCalled()
+  })
+  it('avaliação de R.H. passa pela checagem de gerente antes de consultar', async () => {
+    const response = await GET(new Request('http://localhost/revisions?type=AVALIACAO_RH&resourceId=rh:1:u1'), ctx)
+    expect(response.status).toBe(200)
+    expect(acessoAvaliacaoRh).toHaveBeenCalledWith(session, 'p1', 'AVALIACAO_RH')
   })
   it('rascunho usa o usuário da sessão e o documento selecionado', async () => {
     vi.mocked(rascunhoDocumento).mockResolvedValue(null)

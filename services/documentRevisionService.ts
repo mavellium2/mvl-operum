@@ -1,4 +1,4 @@
-import { gerenteDoProjeto } from './gerenteProjeto'
+import { gerenteDoProjeto, podeAvaliarRh } from './gerenteProjeto'
 import { charterChanges } from '@/lib/charterChanges'
 import { DocumentRevisionError } from '@/lib/documentRevisionError'
 import 'server-only'
@@ -17,7 +17,7 @@ import {
 import { getOrCreateDocument } from './eapService'
 import { registrarAcao } from './auditoriaService'
 import { AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
-import { riscoSchema, type Risco } from '@/lib/validation/formulariosGP'
+import { avaliacaoRhSchema, riscoSchema, type Risco } from '@/lib/validation/formulariosGP'
 import { comVersaoNoConteudo, proximaVersaoDocumento } from '@/lib/versaoDocumento'
 export {
   tipoDocumento,
@@ -36,6 +36,12 @@ async function acesso(
 ) {
   await exigirPermissao(s, projectId, 'projeto:ver')
   await exigirPermissao(s, projectId, permission)
+}
+
+/** Avaliações de R.H. são dados de gestão: somente administrador ou gerente do projeto. */
+export async function acessoAvaliacaoRh(s: SessaoAuthz, projectId: string, type: DocumentType) {
+  if (type !== 'AVALIACAO_RH') return
+  if (!await podeAvaliarRh(s, projectId)) throw new DocumentRevisionError('Somente o gerente do projeto ou o administrador acessa as avaliações de R.H.', 403)
 }
 const whereDraft = (
   s: SessaoAuthz,
@@ -58,6 +64,7 @@ export async function documentoVigente(
   resourceId = '',
 ) {
   await acesso(s, projectId, 'documentos:ver')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId)
   return prisma.documentVersion.findFirst({
     where: {
@@ -77,6 +84,7 @@ export async function rascunhoDocumento(
   resourceId = '',
 ) {
   await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId, true)
   return prisma.documentDraft.findUnique({
     where: whereDraft(s, projectId, documentType, resourceId),
@@ -90,6 +98,7 @@ export async function descartarRascunho(
   resourceId = '',
 ) {
   await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId, true)
   const { count } = await prisma.documentDraft.deleteMany({
     where: { projectId, userId: s.userId, documentType, resourceId, tenantId: s.tenantId },
@@ -104,6 +113,7 @@ export async function salvarRascunho(
   resourceId = '',
 ) {
   await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId, true)
   const content = JSON.parse(
     JSON.stringify(validarDocumento(documentType, payload)),
@@ -114,6 +124,8 @@ export async function salvarRascunho(
       await validarAta(tx, s, projectId, resourceId, content)
     if (documentType === 'RISCOS')
       await validarRisco(tx, s, projectId, resourceId, content)
+    if (documentType === 'AVALIACAO_RH')
+      await validarAvaliacaoRh(tx, s, projectId, resourceId, content)
     const draft = await tx.documentDraft.upsert({
       where: whereDraft(s, projectId, documentType, resourceId),
       create: {
@@ -221,6 +233,24 @@ async function validarRisco(
     if (members !== ids.length)
       throw new DocumentRevisionError('Responsáveis devem ser membros ativos do projeto')
   }
+}
+
+/** O resourceId da avaliação é `rh:<rodada>:<integranteId>` e só vale para integrante ativo do projeto. */
+async function validarAvaliacaoRh(
+  tx: Prisma.TransactionClient,
+  s: SessaoAuthz,
+  projectId: string,
+  resourceId: string,
+  payload: unknown,
+) {
+  const avaliacao = avaliacaoRhSchema.parse(payload)
+  const esperado = `rh:${avaliacao.rodada}:${avaliacao.integranteId}`
+  if (resourceId !== esperado) throw new DocumentRevisionError('Identificação da avaliação inválida')
+  const membro = await tx.userProject.findFirst({
+    where: { projectId, userId: avaliacao.integranteId, active: true, user: { tenantId: s.tenantId, deletedAt: null, isActive: true } },
+    select: { user: { select: { name: true } } },
+  })
+  if (!membro) throw new DocumentRevisionError('Integrante não está ativo no projeto', 404)
 }
 
 async function aplicarDocumento(
@@ -400,6 +430,7 @@ export async function submeterDocumento(
 ) {
   const db = transaction ?? prisma
   await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId, true)
   if (documentoPorRecurso(documentType) && !resourceId)
     throw new DocumentRevisionError('Identificação do documento obrigatória')
@@ -442,6 +473,8 @@ export async function submeterDocumento(
       await validarAta(tx, s, projectId, resourceId, content)
     if (documentType === 'RISCOS')
       await validarRisco(tx, s, projectId, resourceId, content)
+    if (documentType === 'AVALIACAO_RH')
+      await validarAvaliacaoRh(tx, s, projectId, resourceId, content)
     if (approve)
       await aplicarDocumento(
         tx,
@@ -513,6 +546,7 @@ export async function revisarDocumento(
     })
     if (!current)
       throw new DocumentRevisionError('Versão não encontrada ou já revisada')
+    await acessoAvaliacaoRh(s, projectId, current.documentType)
     if (action === 'approve' && !current.payload)
       throw new DocumentRevisionError(
         'Versão legada sem conteúdo: crie uma nova versão antes de aprovar',
@@ -567,6 +601,7 @@ export async function excluirVersao(
       where: { id: versionId, projectId },
     })
     if (!version) throw new DocumentRevisionError('Versão não encontrada', 404)
+    await acessoAvaliacaoRh(s, projectId, version.documentType)
     if (version.status === 'APPROVED')
       throw new DocumentRevisionError(
         'Versões aprovadas são preservadas no histórico',

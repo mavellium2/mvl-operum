@@ -6,9 +6,10 @@ import { EAP_LIMITS, SaveEapDocumentSchema } from './eapSchemas'
 import { recomputeNodeCodes } from '@/lib/eapCode'
 import { safeAvatarUrl } from './avatarUrl'
 import type { EapNode } from '@/types/eap'
-import { cabecalhoFormularioSchema, escopoSchema, licoesSchema, riscoSchema } from './formulariosGP'
+import { lerRecursoAvaliacaoRh } from '@/lib/avaliacaoRh'
+import { avaliacaoRhSchema, cabecalhoFormularioSchema, escopoSchema, licoesSchema, riscoSchema } from './formulariosGP'
 
-export const tipoDocumento = z.enum(['CHARTER', 'STAKEHOLDER', 'EAP', 'ATA', 'CAPA', 'ESCOPO', 'RISCOS', 'LICOES', 'CANVAS'])
+export const tipoDocumento = z.enum(['CHARTER', 'STAKEHOLDER', 'EAP', 'ATA', 'CAPA', 'ESCOPO', 'RISCOS', 'LICOES', 'CANVAS', 'AVALIACAO_RH'])
 export type TipoDocumento = z.infer<typeof tipoDocumento>
 const texto = z.string().max(50000).nullable().optional()
 export const charterSchema = z
@@ -179,6 +180,7 @@ export function validarDocumento(type: TipoDocumento, payload: unknown) {
   if (type === 'CAPA') return capaSchema.parse(payload)
   if (type === 'ESCOPO') return escopoSchema.parse(payload)
   if (type === 'RISCOS') return riscoSchema.parse(payload)
+  if (type === 'AVALIACAO_RH') return avaliacaoRhSchema.parse(payload)
   if (type === 'LICOES') return licoesSchema.parse(payload)
   if (type === 'CHARTER') return charterSchema.parse(payload)
   if (type === 'STAKEHOLDER') return stakeholderSchema.parse(payload)
@@ -193,8 +195,8 @@ export const metaDocumento = z.object({
   aprovadoPor: z.string().max(300).default(''),
   dataAprovacao: z.string().max(50).default(''),
 })
-/** Documentos com um registro por recurso (cada ata, cada risco): `resourceId` obrigatório ao gravar. */
-export const documentoPorRecurso = (type: TipoDocumento) => type === 'ATA' || type === 'RISCOS'
+/** Documentos com um registro por recurso (cada ata, cada risco, cada avaliação de R.H.): `resourceId` obrigatório ao gravar. */
+export const documentoPorRecurso = (type: TipoDocumento) => type === 'ATA' || type === 'RISCOS' || type === 'AVALIACAO_RH'
 
 export function validarRecurso(
   type: TipoDocumento,
@@ -204,6 +206,8 @@ export function validarRecurso(
   z.string().max(64).parse(resourceId)
   if (!documentoPorRecurso(type) && resourceId)
     throw new DocumentRevisionError('Este documento não admite resourceId')
+  if (type === 'AVALIACAO_RH' && resourceId && !lerRecursoAvaliacaoRh(resourceId))
+    throw new DocumentRevisionError('Identificação da avaliação inválida')
   if (documentoPorRecurso(type) && writing && !resourceId)
-    throw new DocumentRevisionError(type === 'ATA' ? 'Identificação da ata obrigatória' : 'Identificação do risco obrigatória')
+    throw new DocumentRevisionError(type === 'ATA' ? 'Identificação da ata obrigatória' : type === 'RISCOS' ? 'Identificação do risco obrigatória' : 'Identificação da avaliação obrigatória')
 }

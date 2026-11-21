@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CONCEITOS_RH, IDS_CRITERIOS_RH } from '@/lib/avaliacaoRh'
 
 /**
  * Conteúdo dos formulários das aulas de Gestão de Projetos guardados como
@@ -65,6 +66,25 @@ export const riscoSchema = z
   .strict()
 /** Conteúdo de um formulário de risco (cada risco é um documento, como as Atas; o Nº vem do cadastro `Risco`). */
 export type Risco = z.infer<typeof riscoSchema>
+
+/** Uma avaliação de R.H. por integrante e por rodada (AC ou AF); critérios em `lib/avaliacaoRh.ts`. */
+const conceitoRh = z.enum(CONCEITOS_RH).nullable()
+export const avaliacaoRhSchema = z
+  .object({
+    /** Só a versão (automática) é usada; o resto do quadro vem do projeto. */
+    cabecalho: cabecalhoFormularioSchema.optional(),
+    integranteId: z.string().min(1).max(64),
+    /** Nome do participante na data da avaliação. */
+    integrante: texto(300),
+    rodada: z.union([z.literal(1), z.literal(2)]),
+    /** Digitada pelo gerente. */
+    notaFinal: z.string().max(30).optional(),
+    data: data.optional(),
+    observacoes: texto(10000).optional(),
+    criterios: z.object(Object.fromEntries(IDS_CRITERIOS_RH.map(id => [id, conceitoRh.optional()])) as Record<string, z.ZodOptional<typeof conceitoRh>>).strict(),
+  })
+  .strict()
+export type AvaliacaoRh = z.infer<typeof avaliacaoRhSchema>
 
 /** Aspectos 1 a 13 (Sim/Não + comentário) e perguntas abertas 14 a 17 do modelo. */
 export const ASPECTOS_LICOES = [

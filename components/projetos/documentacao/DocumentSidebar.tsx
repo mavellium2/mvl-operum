@@ -18,6 +18,7 @@ const DOCUMENTS = [
   { id: 'riscos', label: 'Formulários de Riscos', tipo: 'RISCOS' },
   { id: 'licoes', label: 'Lições Aprendidas', tipo: 'LICOES' },
   { id: 'canvas', label: 'Canvas', tipo: 'CANVAS' },
+  { id: 'avaliacao-rh', label: 'Avaliação de R.H.', tipo: 'AVALIACAO_RH' },
   // Seções de arquivos (ajustes de 20/11/2026): ficam na Documentação, com a mesma ordenação,
   // mas abrem a própria tela (/projetos/:id/<slug>) e não têm versões para aprovar.
   ...Object.values(SECOES_ARQUIVOS).map(s => ({ id: s.slug, label: s.titulo, tipo: null })),

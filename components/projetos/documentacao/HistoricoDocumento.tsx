@@ -41,6 +41,7 @@ const labels: Record<string, string> = {
   RISCOS: 'Formulários de Riscos',
   LICOES: 'Lições Aprendidas',
   CANVAS: 'Canvas',
+  AVALIACAO_RH: 'Avaliação de R.H.',
   instituicao: 'Instituição',
   curso: 'Curso',
   disciplina: 'Disciplina',

@@ -748,6 +748,7 @@ enum DocumentType {
   RISCOS
   LICOES
   CANVAS
+  AVALIACAO_RH
 }
 
 model DocumentVersion {

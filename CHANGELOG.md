@@ -7,6 +7,10 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.63.0] — 2026-11-21
+
+- **Avaliação de R.H.:** nova seção na Documentação, no modelo "15 - Avaliação R.H." do professor. Cada integrante ativo da equipe tem uma avaliação na 1ª Avaliação (AC) e outra na 2ª Avaliação (AF), com os 12 critérios do modelo, as frases de cada critério e uma marca por conceito (Fraco, Regular, Bom, Ótimo), além de observações, nota final e data. O documento usa o mesmo fluxo de rascunho, versões, aprovação, histórico e exportação em PDF/Word dos demais formulários. Por tratar dados de gestão de pessoas, só o gerente do projeto e o administrador veem e editam as avaliações; a lista mostra o andamento de cada rodada.
+
 ## [1.62.1] — 2026-11-21
 
 - **Segurança:** as imagens do app, do auth-service, do file-service e do sprint-service voltam a instalar a dependência `effect` na versão corrigida. O Prisma CLI é instalado à parte com `npm` dentro da imagem (para as migrations no deploy) e não herdava o override do `pnpm-workspace.yaml`; ele puxava a 3.20.0, que tem a falha de lentidão provocada por texto malicioso (CVE-2026-121707). Agora o install isolado fixa `effect >=3.22.1 <4` e a build falha se a versão instalada ficar abaixo disso. Isso desbloqueia o scan de imagem da Services Validation e o deploy de produção.

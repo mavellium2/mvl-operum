@@ -12,6 +12,7 @@ import DeclaracaoEscopo from './formularios/DeclaracaoEscopo'
 import DocumentoRiscos, { type RiscoListItem } from './formularios/DocumentoRiscos'
 import LicoesAprendidas from './formularios/LicoesAprendidas'
 import CanvasDocumento from './CanvasDocumento'
+import AvaliacaoRhDocumento, { type AvaliacaoRhItem } from './formularios/AvaliacaoRh'
 import type { MembroEquipeOption } from './MembroEquipeSelect'
 import Drawer from '@/components/ui/Drawer'
 import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
@@ -27,6 +28,7 @@ const DOCUMENT_MAP = {
   riscos: DocumentoRiscos,
   licoes: LicoesAprendidas,
   canvas: CanvasDocumento,
+  'avaliacao-rh': AvaliacaoRhDocumento,
 } as const
 
 type DocType = keyof typeof DOCUMENT_MAP
@@ -36,6 +38,8 @@ interface Props {
   atas: AtaListItem[]
   /** Formulários de Riscos (um documento por risco, como as Atas). */
   riscos?: RiscoListItem[]
+  avaliacoesRh?: AvaliacaoRhItem[]
+  podeAvaliarRh?: boolean
   gerente: boolean
   /** Membros da equipe — responsáveis/aprovadores dos documentos devem ser membros */
   membros?: MembroEquipeOption[]
@@ -43,7 +47,7 @@ interface Props {
   cadastroStakeholders?: CadastroStakeholders | null
 }
 
-export default function DocumentacaoLayout({ projetoId, atas, riscos = [], gerente, membros = [], cadastroStakeholders = null }: Props) {
+export default function DocumentacaoLayout({ projetoId, atas, riscos = [], avaliacoesRh = [], podeAvaliarRh = false, gerente, membros = [], cadastroStakeholders = null }: Props) {
   const searchParams = useSearchParams()
 
   const raw = searchParams.get('doc') ?? 'stakeholder'
@@ -70,7 +74,7 @@ export default function DocumentacaoLayout({ projetoId, atas, riscos = [], geren
     window.addEventListener('operum:revisar-propostas', abrir)
     return () => window.removeEventListener('operum:revisar-propostas', abrir)
   }, [projetoId])
-  const tipo = ({ atas: 'ATA', charter: 'CHARTER', eap: 'EAP', stakeholder: 'STAKEHOLDER', capa: 'CAPA', escopo: 'ESCOPO', riscos: 'RISCOS', licoes: 'LICOES', canvas: 'CANVAS' } as const)[activeDoc]
+  const tipo = ({ atas: 'ATA', charter: 'CHARTER', eap: 'EAP', stakeholder: 'STAKEHOLDER', capa: 'CAPA', escopo: 'ESCOPO', riscos: 'RISCOS', licoes: 'LICOES', canvas: 'CANVAS', 'avaliacao-rh': 'AVALIACAO_RH' } as const)[activeDoc]
 
   return (
     <ProjectAppearance enabled isolated>
@@ -90,6 +94,8 @@ export default function DocumentacaoLayout({ projetoId, atas, riscos = [], geren
           <LicoesAprendidas key={publication} membros={membros} />
         ) : activeDoc === 'canvas' ? (
           <CanvasDocumento key={publication} membros={membros} />
+        ) : activeDoc === 'avaliacao-rh' ? (
+          <AvaliacaoRhDocumento key={`${publication}-${searchParams.get('integrante') ?? ''}-${searchParams.get('rodada') ?? ''}`} projetoId={projetoId} membros={membros} avaliacoes={avaliacoesRh} permitido={podeAvaliarRh} />
         ) : activeDoc === 'eap' ? (
           <EapDocument key={publication} membros={membros} />
         ) : (

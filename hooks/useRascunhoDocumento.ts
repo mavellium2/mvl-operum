@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from 'react'
 import { fetchWithSession } from '@/lib/clientFetch'
 
-type Tipo = 'CHARTER' | 'STAKEHOLDER' | 'EAP' | 'ATA' | 'CAPA' | 'ESCOPO' | 'RISCOS' | 'LICOES' | 'CANVAS'
+type Tipo = 'CHARTER' | 'STAKEHOLDER' | 'EAP' | 'ATA' | 'CAPA' | 'ESCOPO' | 'RISCOS' | 'LICOES' | 'CANVAS' | 'AVALIACAO_RH'
 
 /**
  * Rascunho privado de um documento ("Salvar mais tarde"): guarda, recupera e
