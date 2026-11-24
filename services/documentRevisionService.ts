@@ -284,6 +284,56 @@ export async function adicionarRodadaAvaliacaoRh(s: SessaoAuthz, projectId: stri
   })
 }
 
+/**
+ * Exclui a última rodada de avaliação (3ª em diante; a 1ª AC e a 2ª AF são fixas). Só gerente ou administrador.
+ * Nada é apagado do histórico: os documentos da rodada passam para um identificador de arquivo (`excl:<id>`), que a
+ * lista ignora (e que uma rodada reaberta depois não enxerga), as propostas pendentes são recusadas e os rascunhos
+ * em andamento são descartados. A exclusão fica no registro do projeto.
+ */
+export async function removerRodadaAvaliacaoRh(s: SessaoAuthz, projectId: string, rodada: number) {
+  await acesso(s, projectId, 'documentos:excluir')
+  await acessoAvaliacaoRh(s, projectId, 'AVALIACAO_RH')
+  return prisma.$transaction(async (tx) => {
+    await bloquearProjeto(tx, s, projectId)
+    const projeto = await tx.project.findFirst({ where: { id: projectId, tenantId: s.tenantId }, select: { avaliacaoRhRodadas: true } })
+    if (!projeto) throw new DocumentRevisionError('Projeto não encontrado', 404)
+    const ultima = Math.max(MIN_RODADAS_RH, projeto.avaliacaoRhRodadas)
+    if (rodada <= MIN_RODADAS_RH)
+      throw new DocumentRevisionError('A 1ª (AC) e a 2ª (AF) avaliação não podem ser excluídas', 400)
+    if (rodada !== ultima)
+      throw new DocumentRevisionError(`Só é possível excluir a última rodada (${ultima}ª Avaliação)`, 409)
+    const prefixo = `rh:${rodada}:`
+    const versoes = await tx.documentVersion.findMany({
+      where: { projectId, documentType: 'AVALIACAO_RH', resourceId: { startsWith: prefixo } },
+      select: { id: true, resourceId: true, status: true },
+    })
+    for (const v of versoes) {
+      await tx.documentVersion.update({
+        where: { id: v.id },
+        data: { resourceId: `excl:${v.resourceId}`, ...(v.status === 'PENDING' ? { status: 'REJECTED', approvedById: s.userId } : {}) },
+      })
+    }
+    await tx.documentDraft.deleteMany({ where: { projectId, tenantId: s.tenantId, documentType: 'AVALIACAO_RH', resourceId: { startsWith: prefixo } } })
+    await tx.project.update({ where: { id: projectId }, data: { avaliacaoRhRodadas: rodada - 1 } })
+    await registrarAcao(
+      {
+        tenantId: s.tenantId,
+        userId: s.userId,
+        action: 'DOCUMENTO_EXCLUIR',
+        entity: 'Document',
+        entityId: projectId,
+        details: {
+          documentType: 'AVALIACAO_RH',
+          resourceId: '',
+          reason: `${rodada}ª rodada de avaliação excluída; ${versoes.length} ${versoes.length === 1 ? 'versão preservada' : 'versões preservadas'} no histórico`,
+        },
+      },
+      tx,
+    )
+    return { rodadas: rodada - 1, versoesArquivadas: versoes.length }
+  })
+}
+
 async function aplicarDocumento(
   tx: Prisma.TransactionClient,
   s: SessaoAuthz,

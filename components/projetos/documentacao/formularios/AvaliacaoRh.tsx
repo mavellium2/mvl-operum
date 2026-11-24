@@ -7,13 +7,15 @@ import { ArrowLeft, CheckCircle2, Clock, FileText, History, Plus, User, XCircle 
 import GlassButton from '@/components/ui/GlassButton'
 import EmptyState from '@/components/ui/EmptyState'
 import Tooltip from '@/components/ui/Tooltip'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import AnimatedTrashButton from '@/components/ui/AnimatedTrashButton'
 import { useToast } from '@/components/ui/Toast'
 import { fetchWithSession } from '@/lib/clientFetch'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import { CampoAutomatico, CampoData, CampoTexto, Folha, SecaoTabela, useEditorFolha } from '@/components/documentos/editor/folha'
 import { abrirPropostas } from '@/hooks/useVersoesDocumento'
 import {
-  CONCEITOS_RH, CRITERIOS_RH, MAX_RODADAS_RH, ROTULO_CONCEITO_RH, listaRodadasRh, recursoAvaliacaoRh, rodadaRhValida, rotuloRodadaRh, siglaRodadaRh, tituloRodadaRh,
+  CONCEITOS_RH, CRITERIOS_RH, MAX_RODADAS_RH, MIN_RODADAS_RH, ROTULO_CONCEITO_RH, listaRodadasRh, recursoAvaliacaoRh, rodadaRhValida, rotuloRodadaRh, siglaRodadaRh, tituloRodadaRh,
   type ConceitoRh, type RodadaRh,
 } from '@/lib/avaliacaoRh'
 import type { AvaliacaoRh } from '@/lib/validation/formulariosGP'
@@ -237,6 +239,7 @@ export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, r
   const router = useRouter()
   const { toast } = useToast()
   const [adicionando, setAdicionando] = useState(false)
+  const [excluir, setExcluir] = useState<RodadaRh | null>(null)
   const integranteId = params.get('integrante')
   const rodadaParam = Number(params.get('rodada'))
   const rodada: RodadaRh | null = rodadaRhValida(rodadaParam) ? rodadaParam : null
@@ -276,6 +279,21 @@ export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, r
     }
   }
 
+  async function excluirRodada(r: RodadaRh) {
+    try {
+      const resposta = await fetchWithSession(`/api/projects/${projetoId}/avaliacao-rh/rodadas`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rodada: r }),
+      })
+      const dados = await resposta.json().catch(() => ({}))
+      if (!resposta.ok) { toast(dados?.error ?? 'Não foi possível excluir a rodada.', 'error'); return }
+      toast(`${tituloRodadaRh(r)} excluída.`, 'success')
+      router.refresh()
+    } catch {
+      toast('Não foi possível excluir a rodada.', 'error')
+    }
+  }
+  const salvasNaRodada = (r: RodadaRh) => porRodada(r).filter(a => a.status !== 'NONE').length
+
   return (
     <div className="documento-atas-page px-4 py-6 sm:px-8">
       <div className="mx-auto max-w-5xl">
@@ -308,7 +326,15 @@ export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, r
                 <section key={r} className="w-[min(22rem,85vw)] shrink-0 snap-start rounded-xl border border-slate-200 bg-white p-4 lg:w-[calc(50%-0.625rem)]" aria-labelledby={`avaliacao-rh-rodada-${r}`}>
                   <div className="flex items-baseline justify-between gap-3">
                     <h3 id={`avaliacao-rh-rodada-${r}`} className="font-semibold text-slate-900">{tituloRodadaRh(r)}{sigla && <> – {sigla}</>}</h3>
-                    <span className="text-xs text-slate-500">{concluidas} de {itens.length} aprovadas</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">{concluidas} de {itens.length} aprovadas</span>
+                      {/* Só a última rodada, da 3ª em diante (AC e AF são fixas), pode ser excluída. */}
+                      {r === lista.length && r > MIN_RODADAS_RH && (
+                        <Tooltip label={`Excluir a ${tituloRodadaRh(r)}`}>
+                          <AnimatedTrashButton effect="button" label={`Excluir a ${tituloRodadaRh(r)}`} onDelete={() => setExcluir(r)} />
+                        </Tooltip>
+                      )}
+                    </span>
                   </div>
                   <ul className="mt-3 space-y-2">
                     {itens.map(item => <CartaoAvaliacao key={item.integranteId} item={item} projetoId={projetoId} />)}
@@ -319,6 +345,16 @@ export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, r
           </div>
         )}
       </div>
+      <ConfirmDialog
+        isOpen={excluir !== null}
+        onClose={() => setExcluir(null)}
+        onConfirm={() => { if (excluir !== null) void excluirRodada(excluir) }}
+        title={excluir !== null ? `Excluir a ${tituloRodadaRh(excluir)}?` : 'Excluir rodada'}
+        message={excluir !== null && salvasNaRodada(excluir) > 0
+          ? `Esta rodada tem ${salvasNaRodada(excluir)} ${salvasNaRodada(excluir) === 1 ? 'avaliação salva' : 'avaliações salvas'}. Elas deixam de aparecer na lista, mas as versões ficam preservadas no histórico do projeto. Propostas ainda pendentes são recusadas e rascunhos em andamento são descartados.`
+          : 'Esta rodada ainda não tem avaliações salvas. Ela sai da lista e pode ser aberta de novo depois.'}
+        confirmLabel="Excluir rodada"
+      />
     </div>
   )
 }
