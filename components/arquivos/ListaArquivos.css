@@ -162,3 +162,12 @@ tr:hover .arq-circulo, tr:focus-within .arq-circulo, .arq-bloco:hover .arq-circu
 }
 /* O foco do teclado nunca fica escondido atrás do cabeçalho fixo. */
 .arq-fixa .arq-linha { scroll-margin-top: 44px; }
+
+/* Botão "Filtros": o número mostra quantos filtros estão ativos. */
+.arq-filtro-contagem { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--arq-sel, var(--arq-destaque)); color: #fff; font-size: 10px; font-weight: 700; line-height: 1; }
+/* Etiqueta de filtro ativo (com X para remover). */
+.arq-etiqueta { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; padding: 2px 6px 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; line-height: 1.2; color: var(--arq-texto); cursor: pointer;
+  background: color-mix(in srgb, var(--arq-sel, var(--arq-destaque)) 13%, transparent); border: 1px solid color-mix(in srgb, var(--arq-sel, var(--arq-destaque)) 28%, transparent); }
+.arq-etiqueta:hover { background: color-mix(in srgb, var(--arq-sel, var(--arq-destaque)) 22%, transparent); }
+.arq-etiqueta:focus-visible { outline: 2px solid var(--arq-sel, var(--arq-destaque)); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { .arq-etiqueta { transition: background-color 160ms ease; } }

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useState } from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import ListaArquivos, { type ItemArquivo } from '@/components/arquivos/ListaArquivos'
 
 const base = { tamanho: '2 KB', enviadoPor: null, data: '2026-11-19T12:00:00.000Z', acoes: null }
@@ -232,5 +232,95 @@ describe('ListaArquivos — cabeçalho fixo', () => {
     const { container } = render(<ListaArquivos itens={um} tipos={['imagem']} />)
     expect(container.firstElementChild).not.toHaveClass('arq-fixa')
     expect(container.querySelector('.arq-rolagem')).toBeNull()
+  })
+})
+
+describe('ListaArquivos — botão de filtros', () => {
+  const MB = 1024 * 1024
+  const f = (id: string, nome: string, categoria: ItemArquivo['categoria'], enviadoPor: string | null, tamanhoBytes: number | undefined, favorito?: boolean): ItemArquivo =>
+    ({ id, nome, subtitulo: categoria, categoria, tamanho: '1 MB', tamanhoBytes, enviadoPor, data: new Date().toISOString(), acoes: null, favorito })
+  const arquivos: ItemArquivo[] = [
+    f('a', 'foto-ana.png', 'imagem', 'Ana', 2 * MB, true),
+    f('b', 'video-ana.mp4', 'video', 'Ana', 200 * MB, false),
+    f('c', 'foto-enzo.png', 'imagem', 'Enzo', 500 * 1024, false),
+    f('d', 'laudo-bia.pdf', 'pdf', 'Bia', 3 * MB, false),
+  ]
+  const abrir = () => { fireEvent.click(screen.getByRole('button', { name: /^Filtros/ })); return screen.getByRole('dialog', { name: 'Filtrar arquivos' }) }
+  const opcao = (painel: HTMLElement, nome: string) => fireEvent.click(within(painel).getByRole('button', { name: nome }))
+  const nomes = () => screen.queryAllByRole('row').filter(r => r.hasAttribute('data-arq-id')).map(r => r.getAttribute('aria-label')?.replace(/ \(Enter abre\)$/, ''))
+  const mostra = (...n: string[]) => n.forEach(x => expect(screen.getByText(x)).toBeInTheDocument())
+
+  function Tela({ lista = arquivos, comSelecao = true }: { lista?: ItemArquivo[]; comSelecao?: boolean }) {
+    const [sel, setSel] = useState<string[]>([])
+    return <ListaArquivos itens={lista} tipos={['imagem', 'video', 'pdf']} selecao={comSelecao ? { selecionados: sel, onChange: setSel, acoes: () => null } : undefined} />
+  }
+
+  it('o seletor "Todos os tipos" virou um botão "Filtros" que abre um painel', () => {
+    render(<Tela />)
+    expect(screen.queryByRole('combobox', { name: 'Filtrar por tipo' })).toBeNull()
+    const painel = abrir()
+    for (const legenda of ['Tipo', 'Enviado em', 'Enviado por', 'Tamanho', 'Estrela']) expect(within(painel).getByText(legenda)).toBeInTheDocument()
+  })
+
+  it('filtra na hora, soma opções do mesmo filtro e combina filtros diferentes; o botão mostra quantos estão ativos', () => {
+    render(<Tela />)
+    const painel = abrir()
+    opcao(painel, 'Imagens'); opcao(painel, 'PDFs')
+    mostra('foto-ana.png', 'foto-enzo.png', 'laudo-bia.pdf')
+    expect(screen.queryByText('video-ana.mp4')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Filtros (1 ativo)' })).toBeInTheDocument()
+    opcao(painel, 'Ana')
+    mostra('foto-ana.png')
+    expect(screen.queryByText('foto-enzo.png')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Filtros (2 ativos)' })).toBeInTheDocument()
+    opcao(painel, 'Até 1 MB')
+    expect(screen.queryByText('foto-ana.png')).toBeNull()
+    expect(screen.getByText('0 arquivos (filtrado)')).toBeInTheDocument()
+  })
+
+  it('período, tamanho e estrela filtram; período personalizado mostra os campos de data', () => {
+    render(<Tela />)
+    const painel = abrir()
+    opcao(painel, 'Mais de 100 MB')
+    mostra('video-ana.mp4'); expect(screen.queryByText('foto-ana.png')).toBeNull()
+    opcao(painel, 'Mais de 100 MB')
+    opcao(painel, 'Só com estrela')
+    mostra('foto-ana.png'); expect(screen.queryByText('video-ana.mp4')).toBeNull()
+    opcao(painel, 'Só com estrela')
+    opcao(painel, 'Hoje'); mostra('foto-ana.png', 'laudo-bia.pdf')
+    opcao(painel, 'Escolher datas')
+    expect(within(painel).getByLabelText('Enviado a partir de')).toBeInTheDocument()
+    expect(within(painel).getByLabelText('Enviado até')).toBeInTheDocument()
+  })
+
+  it('etiquetas dos filtros ativos: cada uma remove o seu; "Limpar" tira todos', () => {
+    render(<Tela />)
+    const painel = abrir()
+    opcao(painel, 'Vídeos'); opcao(painel, 'Ana')
+    const etiquetas = screen.getByRole('list', { name: 'Filtros ativos' })
+    expect(within(etiquetas).getAllByRole('button').map(b => b.getAttribute('aria-label'))).toEqual(['Remover filtro: Vídeos', 'Remover filtro: Ana'])
+    fireEvent.click(within(etiquetas).getByRole('button', { name: 'Remover filtro: Ana' }))
+    expect(screen.getByRole('button', { name: 'Filtros (1 ativo)' })).toBeInTheDocument()
+    fireEvent.click(within(painel).getByRole('button', { name: 'Limpar' }))
+    expect(screen.queryByRole('list', { name: 'Filtros ativos' })).toBeNull()
+    expect(nomes()).toHaveLength(4)
+    expect(within(painel).getByRole('button', { name: 'Limpar' })).toBeDisabled()
+  })
+
+  it('só oferece os filtros que fazem sentido para a lista (sem tamanho, sem estrela, sem remetente)', () => {
+    const semDados = arquivos.map(a => ({ ...a, tamanhoBytes: undefined, favorito: undefined, enviadoPor: null }))
+    render(<Tela lista={semDados} comSelecao={false} />)
+    const painel = abrir()
+    expect(within(painel).getByText('Tipo')).toBeInTheDocument()
+    for (const legenda of ['Tamanho', 'Estrela', 'Enviado por']) expect(within(painel).queryByText(legenda)).toBeNull()
+  })
+
+  it('Esc fecha o painel e Ctrl+A dentro dele não seleciona os arquivos', () => {
+    render(<Tela />)
+    const painel = abrir()
+    fireEvent.keyDown(within(painel).getByRole('button', { name: 'Imagens' }), { key: 'a', ctrlKey: true })
+    expect(screen.queryByText(/itens? selecionados?/)).toBeNull()
+    fireEvent.keyDown(painel, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Filtrar arquivos' })).toBeNull()
   })
 })

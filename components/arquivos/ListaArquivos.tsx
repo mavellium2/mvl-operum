@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, Check, Grid2x2, LayoutGrid, List, Star } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Grid2x2, LayoutGrid, List, Star, X } from 'lucide-react'
 import SearchInput from '@/components/ui/SearchInput'
-import Select from '@/components/ui/Select'
 import GlassButton from '@/components/ui/GlassButton'
 import UserAvatar from '@/components/user/UserAvatar'
 import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import GradeArquivos from './GradeArquivos'
+import FiltroArquivos from './FiltroArquivos'
+import { agora, contarFiltros, FILTROS_ARQUIVOS_VAZIOS, passaNosFiltros, rotuloDoPeriodo, FAIXAS_TAMANHO, type FiltrosArquivos } from '@/lib/filtrosArquivos'
 import './ListaArquivos.css'
 
 /** Categoria usada no ícone e no filtro "Tipo". */
@@ -228,17 +229,17 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
 }) {
   const { modo, setModo, tamanho, setTamanho } = useVisualizacao(visualizacao)
   const [busca, setBusca] = useState('')
-  const [tipo, setTipo] = useState('')
+  const [filtros, setFiltros] = useState<FiltrosArquivos>(FILTROS_ARQUIVOS_VAZIOS)
   const [ordem, setOrdem] = useState<Ordem | null>(null)
   const ordenar = (coluna: ColunaOrdem) => setOrdem(o => (o?.coluna === coluna ? { coluna, direcao: o.direcao === 'asc' ? 'desc' : 'asc' } : { coluna, direcao: 'asc' }))
   const ariaSort = (coluna: ColunaOrdem) => (ordem?.coluna === coluna ? (ordem.direcao === 'asc' ? 'ascending' : 'descending') : undefined)
   const filtrados = useMemo(() => itens.filter(a => {
     const q = busca.trim().toLowerCase()
     if (q && !a.nome.toLowerCase().includes(q) && !(a.busca ?? '').toLowerCase().includes(q)) return false
-    if (tipo && a.categoria !== tipo) return false
+    if (!passaNosFiltros(a, filtros, agora())) return false
     if (filtroExtra && !filtroExtra.aceita(a)) return false
     return true
-  }), [itens, busca, tipo, filtroExtra])
+  }), [itens, busca, filtros, filtroExtra])
   const visiveis = useMemo(() => ordenarArquivos(filtrados, ordem), [filtrados, ordem])
   const colunas = 6 + (colunaExtra ? 1 : 0) + (selecao ? 1 : 0)
   const idsVisiveis = new Set(visiveis.map(a => a.id))
@@ -376,7 +377,17 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
     else selecao.onChange([id])
   }
 
-  const filtrado = !!(busca || tipo || filtroExtra?.ativo)
+  const filtrado = !!(busca || contarFiltros(filtros) || filtroExtra?.ativo)
+  const enviadores = useMemo(() => [...new Set(itens.map(a => a.enviadoPor).filter((n): n is string => !!n))].sort((a, b) => comparar(a, b)), [itens])
+  const opcoesTipo = tipos.map(t => ({ value: t as string, label: ROTULO_TIPO[t] }))
+  /** Etiquetas dos filtros ativos, cada uma com o jeito de tirá-la. */
+  const etiquetas: { chave: string; rotulo: string; remover: () => void }[] = [
+    ...filtros.tipos.map(t => ({ chave: `t:${t}`, rotulo: ROTULO_TIPO[t as CategoriaVisual] ?? t, remover: () => setFiltros(f => ({ ...f, tipos: f.tipos.filter(x => x !== t) })) })),
+    ...(rotuloDoPeriodo(filtros) ? [{ chave: 'periodo', rotulo: rotuloDoPeriodo(filtros), remover: () => setFiltros(f => ({ ...f, periodo: '' as const, de: '', ate: '' })) }] : []),
+    ...filtros.enviadores.map(n => ({ chave: `e:${n}`, rotulo: n, remover: () => setFiltros(f => ({ ...f, enviadores: f.enviadores.filter(x => x !== n) })) })),
+    ...filtros.tamanhos.map(t => ({ chave: `z:${t}`, rotulo: FAIXAS_TAMANHO.find(x => x.valor === t)?.rotulo ?? t, remover: () => setFiltros(f => ({ ...f, tamanhos: f.tamanhos.filter(x => x !== t) })) })),
+    ...(filtros.somenteEstrela ? [{ chave: 'estrela', rotulo: 'Com estrela', remover: () => setFiltros(f => ({ ...f, somenteEstrela: false })) }] : []),
+  ]
   const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 
   return (
@@ -386,15 +397,8 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
         <div className="min-w-[12rem] flex-1">
           <SearchInput label="Buscar arquivos" placeholder={placeholderBusca} value={busca} onChange={e => setBusca(e.target.value)} />
         </div>
-        <Select
-          ariaLabel="Filtrar por tipo"
-          className="w-full sm:w-40"
-          searchable={false}
-          value={tipo}
-          onChange={setTipo}
-          placeholder="Todos os tipos"
-          options={[{ value: '', label: 'Todos os tipos' }, ...tipos.map(t => ({ value: t, label: ROTULO_TIPO[t] }))]}
-        />
+        <FiltroArquivos filtros={filtros} onChange={setFiltros} tipos={opcoesTipo} enviadores={enviadores}
+          comTamanho={itens.some(a => typeof a.tamanhoBytes === 'number')} comEstrela={itens.some(a => a.favorito !== undefined)} />
         {filtroExtra?.elemento}
         {visualizacao && (
           <div className="flex items-center gap-3">
@@ -424,9 +428,22 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
               </p>
               <div role="toolbar" aria-label="Ações dos arquivos selecionados" className="flex items-center gap-0.5">{selecao.acoes(escolhidos)}</div>
             </div>
-          : <p className="arq-meta px-1 text-sm" aria-live="polite">
-              {visiveis.length} arquivo{visiveis.length !== 1 ? 's' : ''}{filtrado ? ' (filtrado)' : ''}
-            </p>}
+          : <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
+              <p className="arq-meta px-1 text-sm" aria-live="polite">
+                {visiveis.length} arquivo{visiveis.length !== 1 ? 's' : ''}{filtrado ? ' (filtrado)' : ''}
+              </p>
+              {etiquetas.length > 0 && (
+                <ul aria-label="Filtros ativos" className="flex flex-wrap items-center gap-1.5">
+                  {etiquetas.map(e => (
+                    <li key={e.chave}>
+                      <GlassButton variant="custom" className="arq-etiqueta pressionavel" aria-label={`Remover filtro: ${e.rotulo}`} onClick={e.remover}>
+                        {e.rotulo}<X className="h-3 w-3" aria-hidden="true" />
+                      </GlassButton>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>}
       </div>
 
       {visualizacao && modo === 'blocos' ? <div className={cabecalhoFixo ? 'arq-rolagem arq-rolagem--grade' : undefined}><GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={selecao ? clicarLinha : undefined} onMarcar={selecao ? id => { ancora.current = id; setFocoId(id); marcar(id, !selecao.selecionados.includes(id)) } : undefined} algumMarcado={escolhidos.length > 0} onAbrir={selecao ? abrirArquivo : undefined} ativoId={selecao ? ativoId : undefined} onFoco={selecao ? setFocoId : undefined} /></div> : <div className={`arq-quadro rounded-2xl ${cabecalhoFixo ? 'arq-rolagem' : 'overflow-hidden'}`}>
