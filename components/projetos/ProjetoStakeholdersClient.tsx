@@ -420,6 +420,18 @@ export default function ProjetoStakeholdersClient({
   const [quickLoading, setQuickLoading] = useState<null | 'col1' | 'dir'>(null)
 
   const [, startTransition] = useTransition()
+  /**
+   * Executa uma ação do servidor sem `startTransition`: numa transição assíncrona, o `setLoadingId` feito antes do `await`
+   * só aparece quando a ação termina (a tela parecia travada) e um erro lançado vai para o limite de erro da página.
+   * Aqui o "carregando" aparece na hora e, se a ação falhar, a tela é liberada com um aviso.
+   */
+  function iniciar(acao: () => Promise<void>) {
+    acao().catch(() => {
+      setLoadingId(null)
+      setQuickLoading(null)
+      toast('Não foi possível concluir agora. Tente novamente.', 'error')
+    })
+  }
   /** Contato que está ganhando login para virar interno (criação de membro a partir dele). */
   const [contatoOrigem, setContatoOrigem] = useState<string | null>(null)
   /** Pessoa aguardando a confirmação de "Mudar para externo/interno". */
@@ -684,7 +696,7 @@ export default function ProjetoStakeholdersClient({
       return
     }
     setQuickLoading('col1')
-    startTransition(async () => {
+    iniciar(async () => {
       const result = await createStakeholderAction({ name }, projetoId)
       setQuickLoading(null)
       if ('error' in result) {
@@ -727,7 +739,7 @@ export default function ProjetoStakeholdersClient({
     const name = searchDir.trim()
     if (!name) return
     setQuickLoading('dir')
-    startTransition(async () => {
+    iniciar(async () => {
       const result = await createStakeholderAction({ name })
       setQuickLoading(null)
       if ('error' in result) {
@@ -766,7 +778,7 @@ export default function ProjetoStakeholdersClient({
     // Conta do sistema sem contato: cria o contato da mesma pessoa e vincula como externa.
     if (s.id.startsWith('usuario:') && s.userId) {
       const userId = s.userId
-      startTransition(async () => {
+      iniciar(async () => {
         setLoadingId(s.id)
         const result = await adicionarUsuarioComoExternoAction(projetoId, userId)
         setLoadingId(null)
@@ -804,7 +816,7 @@ export default function ProjetoStakeholdersClient({
     setProjeto(prev => [...prev, unified])
     if (abrirCadastro) handleOpenEdit(unified)
 
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(s.id)
       const result = await bindStakeholderAction(projetoId, s.id)
       setLoadingId(null)
@@ -858,7 +870,7 @@ export default function ProjetoStakeholdersClient({
     setProjeto(prev => [...prev, unified])
     if (abrirCadastro) handleOpenEdit(unified)
 
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(u.id)
       const result = await addMemberAction(projetoId, u.id)
       setLoadingId(null)
@@ -901,7 +913,7 @@ export default function ProjetoStakeholdersClient({
   /** Muda a pessoa de lado neste projeto (depois da confirmação). */
   function confirmarTroca(s: StakeholderUnificado) {
     setTrocando(null)
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(s.id)
       const result = s.tipo === 'interno'
         ? await tornarExternoAction(projetoId, s.userId!)
@@ -965,9 +977,17 @@ export default function ProjetoStakeholdersClient({
       setErroInativo('Informe o motivo da inativação.')
       return
     }
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(alvo.id)
-      const r = await gravarSituacao(alvo, false, motivo)
+      let r: Awaited<ReturnType<typeof gravarSituacao>>
+      try {
+        r = await gravarSituacao(alvo, false, motivo)
+      } catch {
+        // Falha de rede ou do servidor: a tela volta a responder e o motivo digitado é preservado.
+        setLoadingId(null)
+        setErroInativo('Não foi possível inativar agora. Tente novamente.')
+        return
+      }
       setLoadingId(null)
       if ('error' in r) { setErroInativo(r.error ?? 'Erro ao inativar.'); return }
       aplicarSituacao(alvo, false, motivo)
@@ -984,9 +1004,16 @@ export default function ProjetoStakeholdersClient({
 
   function reativar(s: StakeholderUnificado) {
     if (!podeAlterarSituacao(s)) return
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(s.id)
-      const r = await gravarSituacao(s, true)
+      let r: Awaited<ReturnType<typeof gravarSituacao>>
+      try {
+        r = await gravarSituacao(s, true)
+      } catch {
+        setLoadingId(null)
+        toast('Não foi possível reativar agora. Tente novamente.', 'error')
+        return
+      }
       setLoadingId(null)
       if ('error' in r) { toast(r.error ?? 'Erro ao reativar.', 'error'); return }
       aplicarSituacao(s, true, null)
@@ -1002,11 +1029,18 @@ export default function ProjetoStakeholdersClient({
     setExcluindo(s)
   }
   function confirmarExclusao(s: StakeholderUnificado) {
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(s.id)
-      const result = s.tipo === 'interno'
-        ? await removeMemberAction(projetoId, s.userId!)
-        : await unbindStakeholderAction(projetoId, s.stakeholderId!)
+      let result: Awaited<ReturnType<typeof removeMemberAction>> | Awaited<ReturnType<typeof unbindStakeholderAction>>
+      try {
+        result = s.tipo === 'interno'
+          ? await removeMemberAction(projetoId, s.userId!)
+          : await unbindStakeholderAction(projetoId, s.stakeholderId!)
+      } catch {
+        setLoadingId(null)
+        setErroExclusao('Não foi possível excluir agora. Tente novamente.'); setExcluindo(s)
+        return
+      }
       setLoadingId(null)
       // O diálogo fecha ao confirmar: reabre com o motivo da recusa.
       if ('error' in result) { setErroExclusao(result.error ?? 'Não foi possível excluir do projeto.'); setExcluindo(s); return }
@@ -2077,7 +2111,9 @@ export default function ProjetoStakeholdersClient({
         {erroInativo && <p role="alert" className="mt-1 text-xs text-red-600">{erroInativo}</p>}
         <div className="flex justify-end gap-3 mt-4">
           <Button variant="secondary" onClick={() => setInativando(null)}>Cancelar</Button>
-          <Button variant="danger" onClick={confirmarInativacao}>Inativar</Button>
+          <Button variant="danger" onClick={confirmarInativacao} disabled={inativando !== null && loadingId === inativando.id} aria-busy={inativando !== null && loadingId === inativando.id}>
+            {inativando !== null && loadingId === inativando.id ? 'Inativando…' : 'Inativar'}
+          </Button>
         </div>
       </Modal>
 

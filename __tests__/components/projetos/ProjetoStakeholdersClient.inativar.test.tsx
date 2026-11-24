@@ -168,4 +168,33 @@ describe('inativar membro da equipe', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Inativar' }))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('gerente do projeto'))
   })
+
+  it('erro lançado pela ação (rede/servidor): o modal continua, mostra o aviso, preserva o motivo e libera o botão', async () => {
+    vi.mocked(setMembroAtivoAction).mockRejectedValue(new Error('network'))
+    renderComponent([membro()])
+    fireEvent.click(screen.getByRole('button', { name: 'Inativar Ana' }))
+    fireEvent.change(screen.getByLabelText('Motivo da inativação'), { target: { value: 'Saiu da equipe' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inativar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível inativar agora')
+    expect(screen.getByLabelText('Motivo da inativação')).toHaveValue('Saiu da equipe')
+    expect(screen.getByRole('button', { name: 'Inativar' })).toBeEnabled()
+    // Dá para tentar de novo e funciona.
+    vi.mocked(setMembroAtivoAction).mockResolvedValue({ success: true, pendentes: 0 } as never)
+    fireEvent.click(screen.getByRole('button', { name: 'Inativar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(document.querySelectorAll('[inert]')).toHaveLength(0)
+  })
+
+  it('enquanto a ação não responde, o botão mostra "Inativando…" e não aceita um segundo clique', async () => {
+    let concluir: (v: unknown) => void = () => {}
+    vi.mocked(setMembroAtivoAction).mockReturnValue(new Promise(r => { concluir = r }) as never)
+    renderComponent([membro()])
+    fireEvent.click(screen.getByRole('button', { name: 'Inativar Ana' }))
+    fireEvent.change(screen.getByLabelText('Motivo da inativação'), { target: { value: 'Saiu da equipe' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Inativar' }))
+    const pendente = await screen.findByRole('button', { name: 'Inativando…' })
+    expect(pendente).toBeDisabled()
+    concluir({ success: true, pendentes: 0 })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
 })
