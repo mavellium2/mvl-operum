@@ -24,10 +24,13 @@ const conteudo: AvaliacaoRh = {
 describe('Avaliação de R.H. — modelo "15" do professor', () => {
   it('folha com quadro, participante/rodada e os 12 critérios com as frases do modelo', () => {
     render(<FolhaAvaliacao conteudo={conteudo} sistema={sistema} versaoPadrao="v1.0.1" />)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('AVALIAÇÃO DE RECURSOS HUMANOS')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Avaliação de Desempenho dos Recursos Humanos')
     expect(screen.getByTestId('avaliacao-rh-quadro')).toHaveTextContent('Doatec')
-    expect(screen.getByText('Participante:').closest('td')).toHaveTextContent('Ana')
-    expect(screen.getByText('Avaliação:').closest('td')).toHaveTextContent('1ª Avaliação (AC)')
+    expect(screen.getByText('Nome do Participante:').closest('td')).toHaveTextContent('Ana')
+    expect(screen.getByText('Versão:').closest('td')).toHaveTextContent('v1.0.1')
+    expect(screen.getByText('Gerente do projeto:').closest('td')).toHaveTextContent('João Pedro')
+    expect(screen.getByText('Assinatura do Gerente de Projeto')).toBeInTheDocument()
+    expect(screen.getByText('Lista')).toBeInTheDocument()
 
     const linhas = [...screen.getByTestId('avaliacao-rh-criterios').querySelectorAll(':scope > table > tbody > tr')]
     expect(linhas).toHaveLength(CRITERIOS_RH.length)
@@ -46,10 +49,10 @@ describe('Avaliação de R.H. — modelo "15" do professor', () => {
     expect(marcas(linhas[2])).toEqual(['', '', '', ''])
   })
 
-  it('mostra observações, nota final e data', () => {
+  it('mostra observações, nota final (digitada) e data', () => {
     render(<FolhaAvaliacao conteudo={conteudo} sistema={sistema} versaoPadrao="v1.0.1" />)
     expect(screen.getByText('Bom desempenho no semestre.')).toBeInTheDocument()
-    expect(screen.getByText('9,5')).toBeInTheDocument()
+    expect(screen.getByText('Nota Final:').closest('td')).toHaveTextContent('9,5')
     expect(screen.getByText('20/11/2026')).toBeInTheDocument()
   })
 

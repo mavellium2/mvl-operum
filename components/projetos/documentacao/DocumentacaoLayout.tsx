@@ -40,6 +40,7 @@ interface Props {
   riscos?: RiscoListItem[]
   avaliacoesRh?: AvaliacaoRhItem[]
   podeAvaliarRh?: boolean
+  rodadasRh?: number
   gerente: boolean
   /** Membros da equipe — responsáveis/aprovadores dos documentos devem ser membros */
   membros?: MembroEquipeOption[]
@@ -47,7 +48,7 @@ interface Props {
   cadastroStakeholders?: CadastroStakeholders | null
 }
 
-export default function DocumentacaoLayout({ projetoId, atas, riscos = [], avaliacoesRh = [], podeAvaliarRh = false, gerente, membros = [], cadastroStakeholders = null }: Props) {
+export default function DocumentacaoLayout({ projetoId, atas, riscos = [], avaliacoesRh = [], podeAvaliarRh = false, rodadasRh = 2, gerente, membros = [], cadastroStakeholders = null }: Props) {
   const searchParams = useSearchParams()
 
   const raw = searchParams.get('doc') ?? 'stakeholder'
@@ -95,7 +96,7 @@ export default function DocumentacaoLayout({ projetoId, atas, riscos = [], avali
         ) : activeDoc === 'canvas' ? (
           <CanvasDocumento key={publication} membros={membros} />
         ) : activeDoc === 'avaliacao-rh' ? (
-          <AvaliacaoRhDocumento key={`${publication}-${searchParams.get('integrante') ?? ''}-${searchParams.get('rodada') ?? ''}`} projetoId={projetoId} membros={membros} avaliacoes={avaliacoesRh} permitido={podeAvaliarRh} />
+          <AvaliacaoRhDocumento key={`${publication}-${searchParams.get('integrante') ?? ''}-${searchParams.get('rodada') ?? ''}`} projetoId={projetoId} membros={membros} avaliacoes={avaliacoesRh} rodadas={rodadasRh} permitido={podeAvaliarRh} />
         ) : activeDoc === 'eap' ? (
           <EapDocument key={publication} membros={membros} />
         ) : (

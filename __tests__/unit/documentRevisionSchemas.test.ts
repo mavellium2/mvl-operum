@@ -38,14 +38,17 @@ describe('validação dos snapshots', () => {
   })
   it('avaliação de R.H. tem um recurso por integrante e rodada', () => {
     expect(() => validarRecurso('AVALIACAO_RH', '', true)).toThrow(/avaliação/)
-    expect(() => validarRecurso('AVALIACAO_RH', 'rh:3:u1', true)).toThrow(/inválida/)
+    expect(() => validarRecurso('AVALIACAO_RH', 'rh:11:u1', true)).toThrow(/inválida/)
+    expect(() => validarRecurso('AVALIACAO_RH', 'rh:3:u1', true)).not.toThrow()
     expect(() => validarRecurso('AVALIACAO_RH', 'rh:1:u1', true)).not.toThrow()
     expect(() => validarRecurso('AVALIACAO_RH', 'rh:2:u1', false)).not.toThrow()
   })
   it('avaliação de R.H. aceita os critérios do modelo e recusa conceito, rodada ou critério fora dele', () => {
     const valida = { integranteId: 'u1', integrante: 'Ana', rodada: 1, criterios: { pontualidade: 'BOM', iniciativa: null } }
     expect(validarDocumento('AVALIACAO_RH', valida)).toMatchObject({ integranteId: 'u1', rodada: 1 })
-    expect(() => validarDocumento('AVALIACAO_RH', { ...valida, rodada: 3 })).toThrow()
+    expect(() => validarDocumento('AVALIACAO_RH', { ...valida, rodada: 11 })).toThrow()
+    expect(() => validarDocumento('AVALIACAO_RH', { ...valida, rodada: 0 })).toThrow()
+    expect(validarDocumento('AVALIACAO_RH', { ...valida, rodada: 3 })).toMatchObject({ rodada: 3 })
     expect(() => validarDocumento('AVALIACAO_RH', { ...valida, criterios: { pontualidade: 'EXCELENTE' } })).toThrow()
     expect(() => validarDocumento('AVALIACAO_RH', { ...valida, criterios: { criterioInexistente: 'BOM' } })).toThrow()
   })

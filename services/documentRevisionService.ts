@@ -18,6 +18,7 @@ import { getOrCreateDocument } from './eapService'
 import { registrarAcao } from './auditoriaService'
 import { AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
 import { avaliacaoRhSchema, riscoSchema, type Risco } from '@/lib/validation/formulariosGP'
+import { MAX_RODADAS_RH, MIN_RODADAS_RH } from '@/lib/avaliacaoRh'
 import { comVersaoNoConteudo, proximaVersaoDocumento } from '@/lib/versaoDocumento'
 export {
   tipoDocumento,
@@ -251,6 +252,36 @@ async function validarAvaliacaoRh(
     select: { user: { select: { name: true } } },
   })
   if (!membro) throw new DocumentRevisionError('Integrante não está ativo no projeto', 404)
+  const projeto = await tx.project.findFirst({ where: { id: projectId, tenantId: s.tenantId }, select: { avaliacaoRhRodadas: true } })
+  if (!projeto || avaliacao.rodada > Math.max(MIN_RODADAS_RH, projeto.avaliacaoRhRodadas))
+    throw new DocumentRevisionError('Esta rodada de avaliação ainda não foi aberta no projeto', 400)
+}
+
+/** Abre a próxima rodada de avaliação (3ª, 4ª...), até o limite. Só gerente ou administrador. */
+export async function adicionarRodadaAvaliacaoRh(s: SessaoAuthz, projectId: string) {
+  await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, 'AVALIACAO_RH')
+  return prisma.$transaction(async (tx) => {
+    await bloquearProjeto(tx, s, projectId)
+    const projeto = await tx.project.findFirst({ where: { id: projectId, tenantId: s.tenantId }, select: { avaliacaoRhRodadas: true } })
+    if (!projeto) throw new DocumentRevisionError('Projeto não encontrado', 404)
+    const proxima = Math.max(MIN_RODADAS_RH, projeto.avaliacaoRhRodadas) + 1
+    if (proxima > MAX_RODADAS_RH)
+      throw new DocumentRevisionError(`O limite é de ${MAX_RODADAS_RH} rodadas de avaliação`, 400)
+    await tx.project.update({ where: { id: projectId }, data: { avaliacaoRhRodadas: proxima } })
+    await registrarAcao(
+      {
+        tenantId: s.tenantId,
+        userId: s.userId,
+        action: 'DOCUMENTO_RASCUNHO',
+        entity: 'Document',
+        entityId: projectId,
+        details: { documentType: 'AVALIACAO_RH', resourceId: '', reason: `${proxima}ª rodada de avaliação aberta` },
+      },
+      tx,
+    )
+    return { rodadas: proxima }
+  })
 }
 
 async function aplicarDocumento(

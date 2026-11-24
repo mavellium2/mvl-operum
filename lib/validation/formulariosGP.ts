@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CONCEITOS_RH, IDS_CRITERIOS_RH } from '@/lib/avaliacaoRh'
+import { CONCEITOS_RH, IDS_CRITERIOS_RH, MAX_RODADAS_RH } from '@/lib/avaliacaoRh'
 
 /**
  * Conteúdo dos formulários das aulas de Gestão de Projetos guardados como
@@ -67,7 +67,7 @@ export const riscoSchema = z
 /** Conteúdo de um formulário de risco (cada risco é um documento, como as Atas; o Nº vem do cadastro `Risco`). */
 export type Risco = z.infer<typeof riscoSchema>
 
-/** Uma avaliação de R.H. por integrante e por rodada (AC ou AF); critérios em `lib/avaliacaoRh.ts`. */
+/** Uma avaliação de R.H. por integrante e por rodada (1 a 10); critérios em `lib/avaliacaoRh.ts`. */
 const conceitoRh = z.enum(CONCEITOS_RH).nullable()
 export const avaliacaoRhSchema = z
   .object({
@@ -76,7 +76,8 @@ export const avaliacaoRhSchema = z
     integranteId: z.string().min(1).max(64),
     /** Nome do participante na data da avaliação. */
     integrante: texto(300),
-    rodada: z.union([z.literal(1), z.literal(2)]),
+    /** 1ª = AC, 2ª = AF, 3ª em diante sem sigla. */
+    rodada: z.number().int().min(1).max(MAX_RODADAS_RH),
     /** Digitada pelo gerente. */
     notaFinal: z.string().max(30).optional(),
     data: data.optional(),

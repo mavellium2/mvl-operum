@@ -1,24 +1,30 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { ArrowLeft, CheckCircle2, Clock, FileText, History, User, XCircle } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ArrowLeft, CheckCircle2, Clock, FileText, History, Plus, User, XCircle } from 'lucide-react'
 import GlassButton from '@/components/ui/GlassButton'
 import EmptyState from '@/components/ui/EmptyState'
 import Tooltip from '@/components/ui/Tooltip'
 import { Input } from '@/components/ui/Field'
-import { CampoData, CampoTexto, Folha, SecaoTabela, useEditorFolha } from '@/components/documentos/editor/folha'
+import { useToast } from '@/components/ui/Toast'
+import { fetchWithSession } from '@/lib/clientFetch'
+import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
+import { CampoAutomatico, CampoData, CampoTexto, Folha, SecaoTabela, useEditorFolha } from '@/components/documentos/editor/folha'
 import { abrirPropostas } from '@/hooks/useVersoesDocumento'
 import {
-  CONCEITOS_RH, CRITERIOS_RH, RODADAS_RH, ROTULO_CONCEITO_RH, recursoAvaliacaoRh, type ConceitoRh,
+  CONCEITOS_RH, CRITERIOS_RH, MAX_RODADAS_RH, ROTULO_CONCEITO_RH, listaRodadasRh, recursoAvaliacaoRh, rodadaRhValida, rotuloRodadaRh, siglaRodadaRh, tituloRodadaRh,
+  type ConceitoRh, type RodadaRh,
 } from '@/lib/avaliacaoRh'
 import type { AvaliacaoRh } from '@/lib/validation/formulariosGP'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
 import FormularioDocumento, { type RenderFormulario } from './FormularioDocumento'
-import { celulaGP, celulaGPCampo, FONTE_FORMULARIO, QuadroFormulario, tabelaGP, TituloFormulario } from './QuadroFormulario'
+import { linhaOuAviso } from '@/lib/linhaInstitucional'
+import { celulaGP, celulaGPCampo, FONTE_FORMULARIO, tabelaGP, TituloFormulario } from './QuadroFormulario'
 
 type Situacao = 'APPROVED' | 'PENDING' | 'REJECTED' | 'NONE'
-export interface AvaliacaoRhItem { integranteId: string; integrante: string; rodada: 1 | 2; status: Situacao; notaFinal: string }
+export interface AvaliacaoRhItem { integranteId: string; integrante: string; rodada: RodadaRh; status: Situacao; notaFinal: string }
 
 const STATUS: Record<Situacao, { rotulo: string; cls: string; Icone: typeof CheckCircle2 }> = {
   APPROVED: { rotulo: 'Aprovada', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200', Icone: CheckCircle2 },
@@ -27,7 +33,7 @@ const STATUS: Record<Situacao, { rotulo: string; cls: string; Icone: typeof Chec
   NONE: { rotulo: 'Não iniciada', cls: 'bg-slate-100 text-slate-600 ring-slate-200', Icone: FileText },
 }
 
-const hrefAvaliacao = (integranteId?: string, rodada?: 1 | 2) =>
+const hrefAvaliacao = (integranteId?: string, rodada?: RodadaRh) =>
   `?doc=avaliacao-rh${integranteId && rodada ? `&integrante=${encodeURIComponent(integranteId)}&rodada=${rodada}` : ''}`
 
 /** Nome do critério sem o marcador e os dois-pontos do modelo, para rótulos acessíveis. */
@@ -46,41 +52,69 @@ function Marca({ nome, rotulo, marcada, onMarcar }: { nome: string; rotulo: stri
 }
 
 /**
- * Folha do modelo "15 - Avaliação R.H.": quadro de identificação, participante
- * e rodada, os 12 critérios com as frases do modelo e uma marca por critério,
- * observações, nota final e data.
+ * Folha do modelo "15 - Avaliação R.H.": título com o logo, quadro de
+ * identificação (instituição, projeto, gerente, participante, versão, nota
+ * final, data e assinatura do gerente), tabela "Lista" com os 12 critérios e
+ * as frases do modelo e uma marca por critério, e as observações.
  */
-export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar, edicao }: RenderFormulario<AvaliacaoRh>) {
+export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar }: RenderFormulario<AvaliacaoRh>) {
+  const { editavel } = useEditorFolha()
   const editar = (id: string, valor: ConceitoRh) =>
     alterar?.(atual => ({ ...atual, criterios: { ...atual.criterios, [id]: valor } }))
+  const gerente = sistema.gerente.nome || 'Nenhum gerente definido no projeto.'
   return (
-    <Folha data-testid="avaliacao-rh-folha" style={{ fontFamily: FONTE_FORMULARIO, fontSize: '9pt', gap: '3mm' }}>
-      <TituloFormulario titulo="AVALIAÇÃO DE RECURSOS HUMANOS" logoUrl={sistema.logoUrl} />
-      <QuadroFormulario
-        testId="avaliacao-rh-quadro"
-        prefixoId="avaliacao-rh"
-        sistema={sistema}
-        cabecalho={conteudo.cabecalho ?? {}}
-        versaoPadrao={versaoPadrao}
-        edicao={edicao && { ...edicao, onCabecalho: cab => alterar?.(c => ({ ...c, cabecalho: cab })) }}
-      />
-      <table style={tabelaGP}>
+    <Folha data-testid="avaliacao-rh-folha" style={{ fontFamily: FONTE_FORMULARIO, fontSize: '10pt', gap: '3mm' }}>
+      <TituloFormulario titulo="Avaliação de Desempenho dos Recursos Humanos" logoUrl={sistema.logoUrl} />
+      <table data-testid="avaliacao-rh-quadro" style={tabelaGP}>
+        <colgroup><col style={{ width: '32%' }} /><col style={{ width: '50%' }} /><col style={{ width: '18%' }} /></colgroup>
         <tbody>
+          <tr><td colSpan={3} style={{ ...celulaGPCampo, background: '#bfbfbf', fontWeight: 'bold' }}><CampoAutomatico padding="1px 5px">{linhaOuAviso(sistema.instituicao)}</CampoAutomatico></td></tr>
+          <tr><td colSpan={3} style={celulaGPCampo}><CampoAutomatico padding="1px 5px"><b>Nome do projeto:</b> {sistema.nomeProjeto}</CampoAutomatico></td></tr>
           <tr>
-            <td style={celulaGP}><b>Participante:</b> {conteudo.integrante}</td>
-            <td style={celulaGP}><b>Avaliação:</b> {conteudo.rodada === 1 ? '1ª Avaliação (AC)' : '2ª Avaliação (AF)'}</td>
+            <td colSpan={2} style={celulaGPCampo}><CampoAutomatico padding="1px 5px"><b>Gerente do projeto:</b> {gerente}</CampoAutomatico></td>
+            <td style={celulaGP} />
+          </tr>
+          <tr>
+            <td colSpan={2} style={celulaGPCampo}><CampoAutomatico padding="1px 5px"><b>Nome do Participante:</b> {conteudo.integrante}</CampoAutomatico></td>
+            <td style={celulaGPCampo}><CampoAutomatico padding="1px 5px"><b>Versão:</b> {versaoPadrao}</CampoAutomatico></td>
+          </tr>
+          <tr>
+            <td colSpan={2} style={{ ...celulaGP, verticalAlign: 'middle' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2mm' }}>
+                <b>Nota Final:</b>
+                {editavel && alterar
+                  ? <Input aria-label="Nota final" value={conteudo.notaFinal ?? ''} maxLength={30} onChange={e => alterar(c => ({ ...c, notaFinal: e.target.value }))} className="w-24 text-center" />
+                  : <span>{conteudo.notaFinal}</span>}
+              </div>
+            </td>
+            <td style={{ ...celulaGP, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+              <b>Data:</b>{' '}
+              <CampoData
+                id="avaliacao-rh-data"
+                rotulo="Data da avaliação"
+                valor={conteudo.data ?? ''}
+                onChange={valor => alterar?.(c => ({ ...c, data: valor }))}
+              />
+            </td>
+          </tr>
+          <tr>
+            <td style={{ ...celulaGP, whiteSpace: 'nowrap', fontWeight: 'bold' }}>Assinatura do Gerente de Projeto</td>
+            <td colSpan={2} style={celulaGP}>
+              <AssinaturaEmLinha url={sistema.gerente.assinaturaUrl} rotulo={null} vazio={editavel ? 'Sem assinatura cadastrada pelo gerente' : undefined} />
+            </td>
           </tr>
         </tbody>
       </table>
+      <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', marginTop: '4mm' }}>Lista</div>
       <SecaoTabela
         semFaixa
-        titulo="Critérios de avaliação"
+        titulo="Lista"
         testId="avaliacao-rh-criterios"
         colunas={[
-          { rotulo: 'Critério', largura: '58%' },
-          ...CONCEITOS_RH.map(c => ({ rotulo: ROTULO_CONCEITO_RH[c], largura: '10.5%', alinhamento: 'center' as const })),
+          { rotulo: 'AVALIAÇÃO', largura: '70%', alinhamento: 'center' as const },
+          ...CONCEITOS_RH.map(c => ({ rotulo: ROTULO_CONCEITO_RH[c], largura: '7.5%', alinhamento: 'center' as const })),
         ]}
-        estiloCabecalho={{ fontSize: '9pt', padding: '1px 5px', fontWeight: 'bold', background: '#e7e6e6' }}
+        estiloCabecalho={{ fontSize: '10pt', padding: '1px 3px', fontWeight: 'bold', background: 'transparent' }}
       >
         {CRITERIOS_RH.map(criterio => {
           const marcado = conteudo.criterios?.[criterio.id] ?? null
@@ -89,8 +123,8 @@ export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar, edica
             <tr key={criterio.id} style={{ breakInside: 'avoid' }}>
               <td style={celulaGP}>
                 <div style={{ fontWeight: 'bold' }}>{criterio.titulo}</div>
-                <div>{criterio.descricao}</div>
-                <div style={{ paddingLeft: criterio.recuoFrases === 'maior' ? '6mm' : '3mm', marginTop: '1mm' }}>
+                <div style={{ paddingLeft: '3mm' }}>{criterio.descricao}</div>
+                <div style={{ paddingLeft: criterio.recuoFrases === 'maior' ? '6mm' : '3mm' }}>
                   {criterio.frases.map((frase, indice) =>
                     frase ? <div key={indice}>{frase}</div> : <div key={indice} style={{ height: '1.2em' }} />,
                   )}
@@ -110,46 +144,20 @@ export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar, edica
           )
         })}
       </SecaoTabela>
-      <table style={tabelaGP}>
-        <tbody>
-          <tr>
-            <td style={{ ...celulaGPCampo, width: '72%' }}>
-              <div style={{ padding: '1px 5px', fontWeight: 'bold' }}>Observações:</div>
-              <div style={{ minHeight: '18mm' }}>
-                <CampoTexto
-                  id="avaliacao-rh-observacoes"
-                  rotulo="Observações"
-                  pergunta="observações da avaliação"
-                  valor={conteudo.observacoes ?? ''}
-                  onChange={valor => alterar?.(c => ({ ...c, observacoes: valor }))}
-                  max={10000}
-                  compacto
-                />
-              </div>
-            </td>
-            <td style={{ ...celulaGP, width: '28%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2mm' }}>
-                <b>Nota final:</b>
-                {alterar
-                  ? <Input aria-label="Nota final" value={conteudo.notaFinal ?? ''} onChange={e => alterar(c => ({ ...c, notaFinal: e.target.value }))} className="w-24 text-center" />
-                  : <strong>{conteudo.notaFinal || '—'}</strong>}
-              </div>
-              <div style={{ marginTop: '2mm' }}>
-                <b>Data:</b>{' '}
-                <CampoData
-                  id="avaliacao-rh-data"
-                  rotulo="Data da avaliação"
-                  valor={conteudo.data ?? ''}
-                  onChange={valor => alterar?.(c => ({ ...c, data: valor }))}
-                />
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={celulaGP}><b>Gerente do projeto:</b> {sistema.gerente.nome || 'Nenhum gerente definido no projeto.'}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div style={{ marginTop: '4mm' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>Observações:</div>
+        <div style={{ minHeight: '18mm', paddingLeft: '10mm' }}>
+          <CampoTexto
+            id="avaliacao-rh-observacoes"
+            rotulo="Observações"
+            pergunta="observações da avaliação"
+            valor={conteudo.observacoes ?? ''}
+            onChange={valor => alterar?.(c => ({ ...c, observacoes: valor }))}
+            max={10000}
+            compacto
+          />
+        </div>
+      </div>
     </Folha>
   )
 }
@@ -157,7 +165,7 @@ export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar, edica
 const arquivoDaAvaliacao = (nome: string) =>
   `avaliacao-rh-${nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'integrante'}.docx`
 
-function Editor({ integrante, rodada, membros }: { integrante: MembroEquipeOption; rodada: 1 | 2; membros: MembroEquipeOption[] }) {
+function Editor({ integrante, rodada, membros }: { integrante: MembroEquipeOption; rodada: RodadaRh; membros: MembroEquipeOption[] }) {
   const resourceId = recursoAvaliacaoRh(rodada, integrante.id)
   return (
     <FormularioDocumento<AvaliacaoRh>
@@ -170,7 +178,12 @@ function Editor({ integrante, rodada, membros }: { integrante: MembroEquipeOptio
       inicial={() => ({ integranteId: integrante.id, integrante: integrante.name, rodada, notaFinal: '', observacoes: '', criterios: {}, cabecalho: {} })}
       normalizar={salvo => ({ ...salvo, integranteId: integrante.id, integrante: integrante.name, rodada, criterios: salvo.criterios ?? {}, cabecalho: salvo.cabecalho ?? {} })}
       render={FolhaAvaliacao}
-      topo={<Link href={hrefAvaliacao()} className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:underline"><ArrowLeft className="h-4 w-4" />Todas as avaliações</Link>}
+      topo={(
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link href={hrefAvaliacao()} className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:underline"><ArrowLeft className="h-4 w-4" />Todas as avaliações</Link>
+          <span className="text-sm text-slate-500">{rotuloRodadaRh(rodada)} · {integrante.name}</span>
+        </div>
+      )}
     />
   )
 }
@@ -216,14 +229,17 @@ function CartaoAvaliacao({ item, projetoId }: { item: AvaliacaoRhItem; projetoId
 
 /**
  * Avaliação de R.H. no modelo do professor: uma avaliação por integrante ativo
- * em cada rodada (AC e AF). A lista abre o editor por
- * `?doc=avaliacao-rh&integrante=<id>&rodada=<1|2>`.
+ * em cada rodada (1ª AC, 2ª AF e as seguintes, até 10). A lista abre o editor por
+ * `?doc=avaliacao-rh&integrante=<id>&rodada=<n>`; o gerente abre a próxima rodada.
  */
-export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, permitido }: { projetoId: string; membros: MembroEquipeOption[]; avaliacoes: AvaliacaoRhItem[]; permitido: boolean }) {
+export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, rodadas = 2, permitido }: { projetoId: string; membros: MembroEquipeOption[]; avaliacoes: AvaliacaoRhItem[]; rodadas?: number; permitido: boolean }) {
   const params = useSearchParams()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [adicionando, setAdicionando] = useState(false)
   const integranteId = params.get('integrante')
   const rodadaParam = Number(params.get('rodada'))
-  const rodada: 1 | 2 | null = rodadaParam === 1 || rodadaParam === 2 ? rodadaParam : null
+  const rodada: RodadaRh | null = rodadaRhValida(rodadaParam) ? rodadaParam : null
   const integrante = integranteId ? membros.find(m => m.id === integranteId) : undefined
 
   if (!permitido) {
@@ -239,16 +255,40 @@ export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, p
 
   if (integrante && rodada) return <Editor integrante={integrante} rodada={rodada} membros={membros} />
 
-  const porRodada = (r: 1 | 2) => membros.map(m =>
+  const lista = listaRodadasRh(rodadas)
+  const porRodada = (r: RodadaRh) => membros.map(m =>
     avaliacoes.find(a => a.integranteId === m.id && a.rodada === r) ?? { integranteId: m.id, integrante: m.name, rodada: r, status: 'NONE' as const, notaFinal: '' },
   )
+
+  async function adicionarRodada() {
+    if (adicionando) return
+    setAdicionando(true)
+    try {
+      const resposta = await fetchWithSession(`/api/projects/${projetoId}/avaliacao-rh/rodadas`, { method: 'POST' })
+      const dados = await resposta.json().catch(() => ({}))
+      if (!resposta.ok) { toast(dados?.error ?? 'Não foi possível abrir a próxima rodada.', 'error'); return }
+      toast(`${tituloRodadaRh(dados.rodadas)} aberta.`, 'success')
+      router.refresh()
+    } catch {
+      toast('Não foi possível abrir a próxima rodada.', 'error')
+    } finally {
+      setAdicionando(false)
+    }
+  }
 
   return (
     <div className="documento-atas-page px-4 py-6 sm:px-8">
       <div className="mx-auto max-w-5xl">
-        <header>
-          <h2 className="text-xl font-bold text-slate-900">Avaliação de R.H.</h2>
-          <p className="mt-0.5 text-sm text-slate-500">Uma avaliação por integrante ativo em cada rodada. O documento segue o modelo do professor e entra no histórico com versões e aprovação.</p>
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold text-slate-900">Avaliação de R.H.</h2>
+            <p className="mt-0.5 text-sm text-slate-500">Cada integrante ativo é avaliado duas vezes ou mais no semestre, em um documento separado por rodada. O documento segue o modelo do professor e entra no histórico com versões e aprovação.</p>
+          </div>
+          {lista.length < MAX_RODADAS_RH && (
+            <GlassButton variant="primary" type="button" onClick={adicionarRodada} disabled={adicionando} aria-busy={adicionando} className="inline-flex h-9 items-center gap-1.5 px-4 text-sm">
+              <Plus className="h-4 w-4" />{adicionando ? 'Abrindo…' : `Adicionar ${tituloRodadaRh(lista.length + 1)}`}
+            </GlassButton>
+          )}
         </header>
 
         {membros.length === 0 ? (
@@ -259,14 +299,15 @@ export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, p
             subtext="Cadastre a equipe do projeto para abrir as avaliações de cada integrante."
           />
         ) : (
-          <div className="mt-6 grid gap-5 lg:grid-cols-2">
-            {RODADAS_RH.map(({ rodada: r, titulo, sigla }) => {
+          <div data-testid="avaliacao-rh-rodadas" className="mt-6 flex snap-x gap-5 overflow-x-auto pb-3">
+            {lista.map(r => {
               const itens = porRodada(r)
               const concluidas = itens.filter(a => a.status === 'APPROVED').length
+              const sigla = siglaRodadaRh(r)
               return (
-                <section key={r} className="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby={`avaliacao-rh-rodada-${r}`}>
+                <section key={r} className="w-[min(22rem,85vw)] shrink-0 snap-start rounded-xl border border-slate-200 bg-white p-4 lg:w-[calc(50%-0.625rem)]" aria-labelledby={`avaliacao-rh-rodada-${r}`}>
                   <div className="flex items-baseline justify-between gap-3">
-                    <h3 id={`avaliacao-rh-rodada-${r}`} className="font-semibold text-slate-900">{titulo} ({sigla})</h3>
+                    <h3 id={`avaliacao-rh-rodada-${r}`} className="font-semibold text-slate-900">{tituloRodadaRh(r)}{sigla && <> – {sigla}</>}</h3>
                     <span className="text-xs text-slate-500">{concluidas} de {itens.length} aprovadas</span>
                   </div>
                   <ul className="mt-3 space-y-2">

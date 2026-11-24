@@ -1,7 +1,7 @@
 /**
  * Avaliação de Desempenho dos Recursos Humanos (ajustes de 20/11/2026), no
- * modelo "15 - Avaliação R.H." do professor. Duas rodadas no semestre:
- * 1ª Avaliação (AC) e 2ª Avaliação (AF); um documento por integrante ativo em
+ * modelo "15 - Avaliação R.H." do professor. Duas ou mais rodadas no semestre:
+ * 1ª Avaliação (AC), 2ª Avaliação (AF), 3ª... (até 10); um documento por integrante ativo em
  * cada rodada. Só o gerente do projeto e o administrador veem e editam.
  *
  * Os textos dos critérios são os do modelo, na mesma ordem e com a mesma
@@ -12,11 +12,24 @@ export const CONCEITOS_RH = ['FRACO', 'REGULAR', 'BOM', 'OTIMO'] as const
 export type ConceitoRh = (typeof CONCEITOS_RH)[number]
 export const ROTULO_CONCEITO_RH: Record<ConceitoRh, string> = { FRACO: 'Fraco', REGULAR: 'Regular', BOM: 'Bom', OTIMO: 'Ótimo' }
 
-export type RodadaRh = 1 | 2
-export const RODADAS_RH: { rodada: RodadaRh; titulo: string; sigla: string }[] = [
-  { rodada: 1, titulo: '1ª Avaliação', sigla: 'AC' },
-  { rodada: 2, titulo: '2ª Avaliação', sigla: 'AF' },
-]
+/** Rodada da avaliação: inteiro de 1 a `MAX_RODADAS_RH` (1ª = AC, 2ª = AF, depois só "3ª Avaliação" etc.). */
+export type RodadaRh = number
+export const MIN_RODADAS_RH = 2
+export const MAX_RODADAS_RH = 10
+const SIGLAS_RODADA: Record<number, string> = { 1: 'AC', 2: 'AF' }
+
+export const rodadaRhValida = (n: unknown): n is RodadaRh => Number.isInteger(n) && (n as number) >= 1 && (n as number) <= MAX_RODADAS_RH
+
+export const tituloRodadaRh = (rodada: RodadaRh) => `${rodada}ª Avaliação`
+export const siglaRodadaRh = (rodada: RodadaRh) => SIGLAS_RODADA[rodada] ?? ''
+/** "1ª Avaliação (AC)", "2ª Avaliação (AF)", "3ª Avaliação". */
+export const rotuloRodadaRh = (rodada: RodadaRh) => (siglaRodadaRh(rodada) ? `${tituloRodadaRh(rodada)} (${siglaRodadaRh(rodada)})` : tituloRodadaRh(rodada))
+
+/** Total de rodadas exibidas: as configuradas no projeto, no mínimo 2 e cobrindo qualquer rodada que já tenha documento. */
+export const totalRodadasRh = (configuradas: number | null | undefined, rodadasComDocumento: number[] = []) =>
+  Math.min(MAX_RODADAS_RH, Math.max(MIN_RODADAS_RH, configuradas ?? 0, ...rodadasComDocumento.filter(rodadaRhValida)))
+
+export const listaRodadasRh = (total: number): RodadaRh[] => Array.from({ length: Math.max(MIN_RODADAS_RH, Math.min(total, MAX_RODADAS_RH)) }, (_, i) => i + 1)
 
 export interface CriterioRh {
   id: string
@@ -101,6 +114,8 @@ export const IDS_CRITERIOS_RH = CRITERIOS_RH.map(c => c.id)
 export const recursoAvaliacaoRh = (rodada: RodadaRh, integranteId: string) => `rh:${rodada}:${integranteId}`
 
 export function lerRecursoAvaliacaoRh(resourceId: string): { rodada: RodadaRh; integranteId: string } | null {
-  const m = /^rh:([12]):([A-Za-z0-9_-]{1,58})$/.exec(resourceId)
-  return m ? { rodada: Number(m[1]) as RodadaRh, integranteId: m[2] } : null
+  const m = /^rh:([1-9][0-9]?):([A-Za-z0-9_-]{1,58})$/.exec(resourceId)
+  if (!m) return null
+  const rodada = Number(m[1])
+  return rodadaRhValida(rodada) ? { rodada, integranteId: m[2] } : null
 }
