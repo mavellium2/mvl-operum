@@ -27,6 +27,7 @@ import {
   GripVertical,
   Power,
   ArrowUpDown,
+  ArrowLeftRight,
   X,
 } from 'lucide-react'
 import AvatarUpload from '@/components/profile/AvatarUpload'
@@ -511,15 +512,37 @@ export default function ProjetoStakeholdersClient({
     : []
   const jaNoProjeto = nAdd ? projeto.find(p => normalizarBusca(p.name) === nAdd) : undefined
   const nomeExistente = Boolean(jaNoProjeto) || [...dispInterno, ...dispExterno].some(p => normalizarBusca(p.name) === nAdd)
+  // Uma pessoa pode existir como usuário (equipe) e como contato (externo): aparece uma vez só, com as duas escolhas.
+  type Candidato = { key: string; nome: string; detalhe: string | null; avatarUrl: string | null; semLogin: boolean; interno?: UsuarioDisponivel; externo?: StakeholderExterno }
   type OpcaoAdd =
-    | { key: string; tipo: 'interno'; u: UsuarioDisponivel }
-    | { key: string; tipo: 'externo'; s: StakeholderExterno }
-    | { key: string; tipo: 'criar' }
-  const opcoesAdd: OpcaoAdd[] = [
-    ...sugestoesInternos.map(u => ({ key: `i:${u.id}`, tipo: 'interno' as const, u })),
-    ...sugestoesExternos.map(s => ({ key: `e:${s.id}`, tipo: 'externo' as const, s })),
-    ...(nAdd && isAdmin && !nomeExistente ? [{ key: 'criar', tipo: 'criar' as const }] : []),
-  ]
+    | { key: string; tipo: 'equipe'; nome: string; c: Candidato }
+    | { key: string; tipo: 'externo'; nome: string; c: Candidato }
+    | { key: string; tipo: 'criar-equipe'; nome: string }
+    | { key: string; tipo: 'criar-externo'; nome: string }
+  type GrupoAdd = { key: string; nome: string; c?: Candidato; opcoes: OpcaoAdd[] }
+  const externosUsados = new Set<string>()
+  const candidatos: Candidato[] = sugestoesInternos.map(u => {
+    const externo = u.stakeholderId ? dispExterno.find(x => x.id === u.stakeholderId) : dispExterno.find(x => x.userId === u.id)
+    if (externo) externosUsados.add(externo.id)
+    return { key: `i:${u.id}`, nome: u.name, detalhe: u.email || null, avatarUrl: u.avatarUrl, semLogin: Boolean(u.semConta), interno: u, externo }
+  })
+  for (const x of sugestoesExternos) {
+    if (externosUsados.has(x.id)) continue
+    candidatos.push({ key: `e:${x.id}`, nome: x.name, detalhe: [x.company, x.email].filter(Boolean).join(' · ') || null, avatarUrl: x.logoUrl, semLogin: false, externo: x })
+  }
+  const gruposAdd: GrupoAdd[] = candidatos.slice(0, 8).map(c => ({
+    key: c.key, nome: c.nome, c,
+    opcoes: [
+      ...(c.interno ? [{ key: `${c.key}:equipe`, tipo: 'equipe' as const, nome: c.nome, c }] : []),
+      ...(c.externo ? [{ key: `${c.key}:externo`, tipo: 'externo' as const, nome: c.nome, c }] : []),
+    ],
+  }))
+  // Nome que ainda não existe em lugar nenhum: criar já na equipe ou como externo (só administrador).
+  if (nAdd && isAdmin && !nomeExistente) {
+    const nome = termoAdd.trim()
+    gruposAdd.push({ key: 'criar', nome, opcoes: [{ key: 'criar:equipe', tipo: 'criar-equipe', nome }, { key: 'criar:externo', tipo: 'criar-externo', nome }] })
+  }
+  const opcoesAdd: OpcaoAdd[] = gruposAdd.flatMap(g => g.opcoes)
   const ativoAddIdx = Math.min(ativoAdd, Math.max(opcoesAdd.length - 1, 0))
 
   // ── Form helpers
@@ -636,13 +659,13 @@ export default function ProjetoStakeholdersClient({
 
   // ── Campo "Adicionar integrante" ──
   function escolherOpcaoAdd(o: OpcaoAdd) {
-    const nome = termoAdd.trim()
     setTermoAdd('')
     setAtivoAdd(0)
-    if (o.tipo === 'criar') { handleCreateMembroDeNome(nome); return }
     // Sem abrir o cadastro: o campo segue aberto para a próxima pessoa.
-    if (o.tipo === 'interno') handleAddInterno(o.u, false)
-    else handleBindExterno(o.s, false)
+    if (o.tipo === 'criar-equipe') handleCreateMembroDeNome(o.nome)
+    else if (o.tipo === 'criar-externo') handleQuickCreateProjeto(o.nome)
+    else if (o.tipo === 'equipe') handleAddInterno(o.c.interno!, false)
+    else handleBindExterno(o.c.externo!, false)
     campoAddRef.current?.focus()
   }
 
@@ -651,13 +674,6 @@ export default function ProjetoStakeholdersClient({
     else if (e.key === 'ArrowUp' && opcoesAdd.length) { e.preventDefault(); setAtivoAdd((ativoAddIdx - 1 + opcoesAdd.length) % opcoesAdd.length) }
     else if (e.key === 'Enter') { e.preventDefault(); if (opcoesAdd[ativoAddIdx]) escolherOpcaoAdd(opcoesAdd[ativoAddIdx]) }
     else if (e.key === 'Escape' && termoAdd) { e.preventDefault(); setTermoAdd('') }
-  }
-
-  function adicionarExterna() {
-    const nome = termoAdd.trim()
-    if (nome) { handleQuickCreateProjeto(nome); return }
-    handleOpenAddMode('externo')
-    handleOpenCreateExterno()
   }
 
   // ── Criação como MEMBRO DA EQUIPE a partir das buscas ──
@@ -2145,31 +2161,44 @@ export default function ProjetoStakeholdersClient({
                   aria-autocomplete="list"
                   aria-activedescendant={opcoesAdd.length ? `adicionar-opcao-${ativoAddIdx}` : undefined}
                   autoComplete="off"
-                  placeholder="Adicionar integrante: nome ou e-mail…"
+                  placeholder="Adicionar pessoa: nome ou e-mail…"
                   value={termoAdd}
                   onChange={e => { setTermoAdd(e.target.value); setAtivoAdd(0) }}
                   onKeyDown={teclaCampoAdd}
                   className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-3 text-sm"
                 />
-                <p id="adicionar-integrante-ajuda" className="sr-only">Digite para vincular quem já existe. Se a pessoa for nova, a lista oferece criá-la e adicioná-la ao projeto. Enter adiciona a primeira opção.</p>
+                <p id="adicionar-integrante-ajuda" className="sr-only">Digite para achar quem já existe ou criar alguém novo. Para cada pessoa, escolha Equipe (com acesso ao projeto) ou Externo (parte interessada, sem acesso). Enter escolhe a opção marcada.</p>
                 {opcoesAdd.length > 0 && (
                   <ul id="adicionar-integrante-lista" role="listbox" aria-label="Pessoas para adicionar ao projeto" className="stk-sugestoes">
-                    {opcoesAdd.map((o, i) => {
-                      const nome = o.tipo === 'interno' ? o.u.name : o.tipo === 'externo' ? o.s.name : termoAdd.trim()
-                      const detalhe = o.tipo === 'interno' ? o.u.email : o.tipo === 'externo' ? [o.s.company, 'Parte interessada externa'].filter(Boolean).join(' · ') : null
-                      const rotulo = o.tipo === 'criar' ? `Criar «${nome}» e adicionar ao projeto` : `Adicionar ${nome} ao projeto`
+                    {gruposAdd.map(g => {
+                      const rotuloOpcao = (o: OpcaoAdd) =>
+                        o.tipo === 'equipe' ? `Adicionar ${o.nome} à equipe`
+                          : o.tipo === 'externo' ? `Adicionar ${o.nome} como externo`
+                            : o.tipo === 'criar-equipe' ? `Criar «${o.nome}» na equipe`
+                              : `Criar «${o.nome}» como externo`
+                      const textoOpcao = (o: OpcaoAdd) => (o.tipo === 'equipe' || o.tipo === 'criar-equipe' ? 'Equipe' : 'Externo')
                       return (
-                        <li key={o.key} id={`adicionar-opcao-${i}`} role="option" aria-selected={i === ativoAddIdx} aria-label={rotulo}
-                          onMouseDown={e => e.preventDefault()} onMouseEnter={() => setAtivoAdd(i)} onClick={() => escolherOpcaoAdd(o)} className="stk-opcao">
-                          {o.tipo === 'criar'
-                            ? <span className="stk-opcao-icone"><UserPlus className="h-4 w-4" aria-hidden="true" /></span>
-                            : <UserAvatar name={nome} avatarUrl={o.tipo === 'interno' ? o.u.avatarUrl : o.s.logoUrl} size="sm" />}
+                        <li key={g.key} role="group" aria-label={g.c ? g.nome : `Criar «${g.nome}»`} className="stk-opcao-grupo">
+                          {g.c
+                            ? <UserAvatar name={g.nome} avatarUrl={g.c.avatarUrl} size="sm" />
+                            : <span className="stk-opcao-icone"><UserPlus className="h-4 w-4" aria-hidden="true" /></span>}
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-semibold">{o.tipo === 'criar' ? <>Criar «{nome}» e adicionar ao projeto</> : nome}</span>
-                            {detalhe && <span className="stk-sub block">{detalhe}</span>}
-                            {o.tipo === 'interno' && o.u.semConta && <span className="block text-xs" style={{ color: 'var(--stk-ambar)' }}>{isAdmin ? 'Sem login · ao adicionar, você cria o login dessa pessoa' : 'Sem login · um administrador precisa criar o login'}</span>}
+                            <span className="block truncate text-sm font-semibold">{g.c ? g.nome : <>Criar «{g.nome}»</>}</span>
+                            {g.c?.detalhe && <span className="stk-sub block">{g.c.detalhe}</span>}
+                            {!g.c && <span className="stk-sub block">Ainda não existe. Escolha como entra neste projeto.</span>}
+                            {g.c?.semLogin && <span className="block text-xs" style={{ color: 'var(--stk-ambar)' }}>{isAdmin ? 'Sem login · para entrar na equipe, você cria o login dessa pessoa' : 'Sem login · para entrar na equipe, um administrador precisa criar o login'}</span>}
                           </span>
-                          <span className="stk-opcao-acao">{o.tipo === 'criar' ? 'Criar' : 'Adicionar'}</span>
+                          <span className="stk-opcao-botoes">
+                            {g.opcoes.map(o => {
+                              const idx = opcoesAdd.indexOf(o)
+                              return (
+                                <span key={o.key} id={`adicionar-opcao-${idx}`} role="option" aria-selected={idx === ativoAddIdx} aria-label={rotuloOpcao(o)}
+                                  onMouseDown={e => e.preventDefault()} onMouseEnter={() => setAtivoAdd(idx)} onClick={() => escolherOpcaoAdd(o)} className="stk-opcao">
+                                  {textoOpcao(o)}
+                                </span>
+                              )
+                            })}
+                          </span>
                         </li>
                       )
                     })}
@@ -2179,14 +2208,6 @@ export default function ProjetoStakeholdersClient({
                   <p role="status" className="stk-aviso">{jaNoProjeto ? `«${jaNoProjeto.name}» já está no projeto.` : 'Nenhuma pessoa encontrada.'}</p>
                 )}
               </div>
-            )}
-            {isAdmin && (
-              <Tooltip label="Parte interessada externa">
-                <OperumButton variant="default" type="button" onClick={adicionarExterna} disabled={quickLoading === 'col1'} aria-label="Parte interessada externa" className="inline-flex h-10 items-center gap-2 px-3.5 text-sm">
-                  {quickLoading === 'col1' ? <Spinner /> : <Building2 className="h-4 w-4" aria-hidden="true" />}
-                  <span aria-hidden="true" className={showCol3 ? 'hidden' : 'hidden lg:inline'}>Parte interessada externa</span>
-                </OperumButton>
-              </Tooltip>
             )}
           </div>
 
@@ -2292,6 +2313,14 @@ export default function ProjetoStakeholdersClient({
                                 <OperumButton variant="icon" type="button" disabled={!canReorder || exibidos[posicao + 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao + 1]))} aria-label={`Mover ${s.name} para baixo`} title="Mover para baixo"><ArrowDown className="h-4 w-4" aria-hidden="true" /></OperumButton>
                               </> : <>
                                 <Tooltip label="Editar"><AnimatedEditButton label={`Editar ${s.name}`} onClick={() => handleOpenEdit(s)} /></Tooltip>
+                                {canManage && (s.tipo === 'interno' ? Boolean(s.userId) : Boolean(s.stakeholderId)) && (
+                                  <Tooltip label={s.tipo === 'interno' ? 'Mudar para externo' : 'Mudar para interno'}>
+                                    <OperumButton variant="icon" type="button" disabled={loadingId === s.id} onClick={() => setTrocando(s)}
+                                      aria-label={`Mudar ${s.name} para ${s.tipo === 'interno' ? 'externo' : 'interno'}`}>
+                                      <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
+                                    </OperumButton>
+                                  </Tooltip>
+                                )}
                                 {podeAlterarSituacao(s) && <SituacaoButton ativo={!inativo} nome={s.name} disabled={loadingId === s.id} onClick={() => (inativo ? reativar(s) : abrirInativacao(s))} />}
                                 {canManage && <Tooltip label="Excluir do projeto"><AnimatedTrashButton effect="button" label={`Excluir ${s.name} do projeto`} disabled={loadingId === s.id} onDelete={() => handleUnlink(s)} /></Tooltip>}
                               </>}

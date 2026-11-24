@@ -102,12 +102,12 @@ const campo = () => screen.getByRole('combobox', { name: 'Adicionar integrante' 
 const digitar = (v: string) => fireEvent.change(campo(), { target: { value: v } })
 
 describe('ProjetoStakeholdersClient — criação rápida pelo campo Adicionar integrante', () => {
-  it('"Parte interessada externa" com nome digitado cria o externo e vincula ao projeto', async () => {
+  it('"Criar como externo" com nome digitado cria o externo e vincula ao projeto', async () => {
     vi.mocked(createStakeholderAction).mockResolvedValue(CRIADO as never)
     renderComponent()
 
     digitar('Nova Empresa')
-    fireEvent.click(screen.getByRole('button', { name: /Parte interessada externa/i }))
+    fireEvent.click(screen.getByRole('option', { name: 'Criar «Nova Empresa» como externo' }))
 
     await waitFor(() => {
       expect(createStakeholderAction).toHaveBeenCalledWith({ name: 'Nova Empresa' }, PROJ_ID)
@@ -118,22 +118,16 @@ describe('ProjetoStakeholdersClient — criação rápida pelo campo Adicionar i
     expect(screen.getByText('Editar Stakeholder')).toBeInTheDocument()
   })
 
-  it('nome inexistente: a mesma lista oferece criar e adicionar, abrindo o cadastro com o nome', () => {
+  it('nome inexistente: a mesma lista oferece criar na equipe ou como externo; na equipe abre o cadastro com o nome', () => {
     renderComponent()
 
     digitar('Luan')
-    fireEvent.click(screen.getByRole('option', { name: /Criar «Luan» e adicionar ao projeto/i }))
+    fireEvent.click(screen.getByRole('option', { name: /Criar «Luan» na equipe/i }))
 
     expect(screen.getByText('Novo Membro da Equipe')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Nome completo ou razão social')).toHaveValue('Luan')
     expect(screen.getByPlaceholderText('usuario@empresa.com.br')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Mínimo 8 caracteres')).toBeInTheDocument()
-  })
-
-  it('"Parte interessada externa" sem nome abre o cadastro de stakeholder externo', () => {
-    renderComponent()
-    fireEvent.click(screen.getByRole('button', { name: /Parte interessada externa/i }))
-    expect(screen.getByText('Novo Stakeholder Externo')).toBeInTheDocument()
   })
 
   it('nome que já existe no diretório: só oferece vincular, sem criar duplicata', async () => {
@@ -143,7 +137,7 @@ describe('ProjetoStakeholdersClient — criação rápida pelo campo Adicionar i
 
     digitar('empresa beta')
     expect(screen.queryByRole('option', { name: /Criar «/i })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('option', { name: /Adicionar Empresa Beta ao projeto/i }))
+    fireEvent.click(screen.getByRole('option', { name: /Adicionar Empresa Beta como externo/i }))
 
     await waitFor(() => {
       expect(bindStakeholderAction).toHaveBeenCalledWith(PROJ_ID, 'sk-existing')
@@ -157,7 +151,7 @@ describe('ProjetoStakeholdersClient — criação rápida pelo campo Adicionar i
     renderComponent()
 
     digitar('Xyz')
-    fireEvent.click(screen.getByRole('button', { name: /Parte interessada externa/i }))
+    fireEvent.click(screen.getByRole('option', { name: 'Criar «Xyz» como externo' }))
 
     await waitFor(() => expect(screen.getByText('Falha ao criar.')).toBeInTheDocument())
   })
@@ -167,7 +161,6 @@ describe('ProjetoStakeholdersClient — criação rápida pelo campo Adicionar i
 
     digitar('Xyz')
 
-    expect(screen.queryByRole('button', { name: /Parte interessada externa/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Criar «/i })).not.toBeInTheDocument()
   })
 })

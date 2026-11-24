@@ -1,15 +1,23 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import { ToastProvider } from '@/components/ui/Toast'
 
 vi.mock('@/app/actions/cadastroStakeholders', () => ({ carregarCadastroStakeholdersAction: vi.fn().mockResolvedValue({ error: 'x' }) }))
-vi.mock('@/app/actions/stakeholders', () => new Proxy({}, { get: () => vi.fn().mockResolvedValue({ success: true }) }))
+vi.mock('@/app/actions/stakeholders', () => {
+  const ok = () => vi.fn().mockResolvedValue({ success: true, cadastro: null })
+  return {
+    createStakeholderAction: ok(), updateStakeholderAction: ok(), bindStakeholderAction: ok(), unbindStakeholderAction: ok(),
+    reorderStakeholdersAction: ok(), reorderMembersAction: ok(), uploadMemberSignatureAction: ok(), setStakeholderAtivoAction: ok(),
+    adicionarUsuarioComoExternoAction: ok(), tornarExternoAction: ok(), tornarInternoAction: ok(), salvarDadosDoExternoAction: ok(), salvarEmpresaDoMembroAction: ok(),
+  }
+})
 vi.mock('@/app/actions/projects', () => ({ addMemberAction: vi.fn(), removeMemberAction: vi.fn() }))
 vi.mock('@/app/actions/projetos', () => ({ updateProjetoMemberAction: vi.fn(), setMembroAtivoAction: vi.fn() }))
 vi.mock('@/app/actions/admin', () => ({ adminCreateUserAction: vi.fn() }))
 vi.mock('@/components/profile/AvatarUpload', () => ({ default: () => null }))
 vi.mock('@/components/ui/AddressFields', () => ({ default: () => null, emptyAddress: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' } }))
 import ProjetoStakeholdersClient, { type StakeholderUnificado } from '@/components/projetos/ProjetoStakeholdersClient'
+import { tornarExternoAction, tornarInternoAction } from '@/app/actions/stakeholders'
 
 const base = { email: null, avatarUrl: null, phone: null, cep: null, logradouro: null, numero: null, complemento: null, bairro: null, cidade: null, estado: null, notes: null }
 const pessoas: StakeholderUnificado[] = [
@@ -96,5 +104,30 @@ describe('Stakeholders — lista de pessoas', () => {
   it('a página não tem cabeçalho visível repetido: só o título para leitores de tela', () => {
     montar()
     expect(screen.getByRole('heading', { level: 1, name: 'Stakeholders do projeto' })).toHaveClass('sr-only')
+  })
+
+  it('trocar de vínculo é um ícone na linha: interno vira externo com confirmação, sem cadastrar de novo', async () => {
+    montar()
+    fireEvent.click(within(linhas()[1]).getByRole('button', { name: 'Mudar Beatriz para externo' }))
+    expect(await screen.findByText(/sai da equipe deste projeto e perde o acesso/)).toBeInTheDocument()
+    expect(tornarExternoAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Mudar para externo' }))
+    await waitFor(() => expect(tornarExternoAction).toHaveBeenCalledWith('p1', 'u2'))
+  })
+
+  it('externo com login vira interno pela mesma ação; sem permissão de gerenciar, o ícone não aparece', async () => {
+    const comConta = [{ ...base, id: 'e1', tipo: 'externo', name: 'Fábio', stakeholderId: 's1', tenantId: 't1', contaId: 'u9', isActive: true } as StakeholderUnificado]
+    const { unmount } = montar('admin', comConta)
+    fireEvent.click(within(linhas()[0]).getByRole('button', { name: 'Mudar Fábio para interno' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Mudar para interno' }))
+    await waitFor(() => expect(tornarInternoAction).toHaveBeenCalledWith('p1', 's1'))
+    unmount()
+  })
+
+  it('externo sem login: o administrador é avisado de que vai criar o login (e-mail e senha), não recadastrar a pessoa', async () => {
+    montar('admin', [{ ...base, id: 'e1', tipo: 'externo', name: 'Fábio', stakeholderId: 's1', tenantId: 't1', isActive: true } as StakeholderUnificado])
+    fireEvent.click(within(linhas()[0]).getByRole('button', { name: 'Mudar Fábio para interno' }))
+    expect(await screen.findByText(/ainda não tem login\. Você vai criar o login/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar login e mudar' })).toBeInTheDocument()
   })
 })

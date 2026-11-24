@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { ToastProvider } from '@/components/ui/Toast'
 
 vi.mock('@/app/actions/cadastroStakeholders', () => ({ carregarCadastroStakeholdersAction: vi.fn().mockResolvedValue({ error: 'sem servidor no teste' }) }))
@@ -73,15 +73,16 @@ describe('Stakeholders — campo único "Adicionar integrante"', () => {
     renderComponent()
     digitar('be')
 
-    expect(screen.getByRole('option', { name: /Adicionar Beatriz Souza ao projeto/ })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /Adicionar Empresa Beta ao projeto/ })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /Criar «be» e adicionar ao projeto/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Adicionar Beatriz Souza à equipe/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Adicionar Empresa Beta como externo/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Criar «be» na equipe/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Criar «be» como externo/ })).toBeInTheDocument()
   })
 
   it('busca pela empresa também encontra o stakeholder do diretório', () => {
     renderComponent()
     digitar('s.a.')
-    expect(screen.getByRole('option', { name: /Adicionar Empresa Beta ao projeto/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Adicionar Empresa Beta como externo/ })).toBeInTheDocument()
   })
 
   it('nome exato de usuário existente: vincula com um clique, sem oferecer criar, e o campo segue focado', async () => {
@@ -89,7 +90,7 @@ describe('Stakeholders — campo único "Adicionar integrante"', () => {
     campo().focus()
     digitar('beatriz souza')
     expect(screen.queryByRole('option', { name: /Criar «/ })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('option', { name: /Adicionar Beatriz Souza ao projeto/ }))
+    fireEvent.click(screen.getByRole('option', { name: /Adicionar Beatriz Souza à equipe/ }))
 
     await waitFor(() => expect(addMemberAction).toHaveBeenCalledWith('p1', 'u7'))
     await waitFor(() => expect(screen.getByText(/"Beatriz Souza" adicionado ao projeto/)).toBeInTheDocument())
@@ -99,7 +100,7 @@ describe('Stakeholders — campo único "Adicionar integrante"', () => {
     expect(screen.queryByText('Editar Membro')).not.toBeInTheDocument()
   })
 
-  it('teclado: Enter adiciona a primeira opção e as setas mudam a opção ativa', async () => {
+  it('teclado: Enter escolhe a opção ativa e as setas mudam a opção ativa', async () => {
     renderComponent()
     digitar('be')
     expect(campo()).toHaveAttribute('aria-activedescendant', 'adicionar-opcao-0')
@@ -128,7 +129,41 @@ describe('Stakeholders — campo único "Adicionar integrante"', () => {
   it('gerente adiciona quem existe, mas não vê a opção de criar', () => {
     renderComponent('gerente')
     digitar('be')
-    expect(screen.getByRole('option', { name: /Adicionar Beatriz Souza ao projeto/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Adicionar Beatriz Souza à equipe/ })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Criar «/ })).not.toBeInTheDocument()
+  })
+
+  it('a mesma pessoa que é usuário e contato aparece uma vez, com as duas escolhas: Equipe e Externo', async () => {
+    const { adicionarUsuarioComoExternoAction } = await import('@/app/actions/stakeholders')
+    vi.mocked(adicionarUsuarioComoExternoAction).mockResolvedValue({ success: true, cadastro: null } as never)
+    render(
+      <ToastProvider>
+        <ProjetoStakeholdersClient projetoId="p1" stakeholders={[]} usuariosDisponiveis={[usuario] as never}
+          stakeholdersDisponiveis={[{ ...externo, id: 'usuario:u7', name: 'Beatriz Souza', company: null, userId: 'u7' }] as never}
+          funcoesExistentes={[]} departamentosExistentes={[]} userRole="admin" />
+      </ToastProvider>,
+    )
+    digitar('beatriz')
+    // Uma só pessoa (a outra linha do grupo é a oferta de criar um nome novo, já que "beatriz" não é o nome inteiro).
+    expect(within(screen.getByRole('listbox')).getAllByRole('group', { name: 'Beatriz Souza' })).toHaveLength(1)
+    expect(screen.getByRole('option', { name: 'Adicionar Beatriz Souza à equipe' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('option', { name: 'Adicionar Beatriz Souza como externo' }))
+    await waitFor(() => expect(adicionarUsuarioComoExternoAction).toHaveBeenCalledWith('p1', 'u7'))
+    expect(addMemberAction).not.toHaveBeenCalled()
+  })
+
+  it('quem só existe como externo só oferece Externo; quem só é usuário só oferece Equipe', () => {
+    renderComponent()
+    digitar('be')
+    expect(screen.queryByRole('option', { name: 'Adicionar Beatriz Souza como externo' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Adicionar Empresa Beta à equipe' })).not.toBeInTheDocument()
+  })
+
+  it('nome novo oferece criar na equipe ou como externo (e nada disso para o gerente)', () => {
+    renderComponent()
+    digitar('Xyz')
+    expect(screen.getByRole('option', { name: 'Criar «Xyz» na equipe' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Criar «Xyz» como externo' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Parte interessada externa/i })).not.toBeInTheDocument()
   })
 })

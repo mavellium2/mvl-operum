@@ -64,7 +64,7 @@ describe('SDD 4.4 — stakeholder novo já na tela certa', () => {
     renderComponent()
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Adicionar integrante' }), { target: { value: 'Luan' } })
-    fireEvent.click(screen.getByRole('option', { name: /Criar «Luan» e adicionar ao projeto/i }))
+    fireEvent.click(screen.getByRole('option', { name: /Criar «Luan» na equipe/i }))
     fireEvent.change(screen.getByPlaceholderText('usuario@empresa.com.br'), { target: { value: 'luan@x.com' } })
     fireEvent.change(screen.getByPlaceholderText('Mínimo 8 caracteres'), { target: { value: 'senha-forte-1' } })
     fireEvent.change(screen.getByLabelText('Remuneração mensal'), { target: { value: '300000' } })
@@ -89,7 +89,7 @@ describe('SDD 4.4 — stakeholder novo já na tela certa', () => {
     renderComponent()
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Adicionar integrante' }), { target: { value: 'Ana' } })
-    fireEvent.click(screen.getByRole('option', { name: /Criar «Ana» e adicionar ao projeto/i }))
+    fireEvent.click(screen.getByRole('option', { name: /Criar «Ana» na equipe/i }))
     fireEvent.change(screen.getByPlaceholderText('usuario@empresa.com.br'), { target: { value: 'ana@x.com' } })
     fireEvent.change(screen.getByPlaceholderText('Mínimo 8 caracteres'), { target: { value: 'senha-forte-1' } })
     fireEvent.click(screen.getByRole('button', { name: 'Criar Stakeholder' }))
@@ -98,17 +98,15 @@ describe('SDD 4.4 — stakeholder novo já na tela certa', () => {
     expect(updateProjetoMemberAction).not.toHaveBeenCalled()
   })
 
-  it('externo pelo "Adicionar ao projeto": cria já vinculado e abre o cadastro em edição', async () => {
+  it('externo criado pelo campo (Criar como externo): cria já vinculado e abre o cadastro em edição', async () => {
     vi.mocked(createStakeholderAction).mockResolvedValue({
       success: true,
       stakeholder: { id: 'sk-novo', tenantId: 't1', name: 'Girassol' },
     } as never)
     renderComponent()
 
-    fireEvent.click(screen.getByRole('button', { name: /Parte interessada externa/i }))
-    const nome = screen.getAllByRole('textbox').find(el => (el as HTMLInputElement).value === '' && el.getAttribute('type') !== 'email')!
-    fireEvent.change(nome, { target: { value: 'Girassol' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Criar Stakeholder' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Adicionar integrante' }), { target: { value: 'Girassol' } })
+    fireEvent.click(screen.getByRole('option', { name: 'Criar «Girassol» como externo' }))
 
     await waitFor(() => expect(createStakeholderAction).toHaveBeenCalled())
     expect(vi.mocked(createStakeholderAction).mock.calls[0][1]).toBe(PROJ)
