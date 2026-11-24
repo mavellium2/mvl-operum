@@ -7,9 +7,16 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
-## [1.63.0] — 2026-11-21
+## [1.63.0] — 2026-11-24
 
 - **Avaliação de R.H.:** nova seção na Documentação, no modelo "15 - Avaliação R.H." do professor. Cada integrante ativo da equipe tem uma avaliação na 1ª Avaliação (AC) e outra na 2ª Avaliação (AF), com os 12 critérios do modelo, as frases de cada critério e uma marca por conceito (Fraco, Regular, Bom, Ótimo), além de observações, nota final e data. O documento usa o mesmo fluxo de rascunho, versões, aprovação, histórico e exportação em PDF/Word dos demais formulários. Por tratar dados de gestão de pessoas, só o gerente do projeto e o administrador veem e editam as avaliações; a lista mostra o andamento de cada rodada.
+- **Avaliação de R.H., folha igual ao modelo e duas rodadas ou mais:** o título, o quadro de identificação (participante, versão, nota final digitada pelo gerente, data e assinatura do gerente) e a tabela "Lista" seguem o PDF do professor. Os integrantes são avaliados duas vezes ou mais no semestre: a 1ª é AC, a 2ª é AF e as seguintes aparecem como 3ª, 4ª Avaliação etc. (até 10). O gerente ou o administrador abre a próxima avaliação por um botão, e as colunas rolam na horizontal. O item "Avaliação de R.H." some do menu para quem não é gerente nem administrador.
+- **Canvas, formatação do cabeçalho:** Projeto, Solicitante e GP passam a habilitar a barra de Formatação (negrito, itálico, sublinhado e alinhamento), também no PDF e no Word.
+- **Canvas, Estratégia de Condução e Comunicação:** o bloco Estratégia de Condução vem do campo de mesmo nome da Declaração do Escopo, inclusive de um rascunho ainda não aprovado do próprio autor, mantendo formatação, listas e subitens. Um Canvas já criado acompanha a Declaração enquanto o bloco estiver vazio ou igual ao último texto copiado; o que a pessoa editar à mão prevalece. O bloco Comunicação recebe só os itens que falam de comunicação (por exemplo, "Os canais de comunicação serão:" com e-mail, WhatsApp, MS Teams e celular); se nada for reconhecido, fica vazio para preenchimento manual.
+- **Canvas, Word:** a exportação sai igual à folha, em uma página, com a grade de 13 blocos, os ícones, os post-its com o canto dobrado e os textos alinhados.
+- **Fotos e Vídeos, seleção no estilo Apple:** nova coluna antes do Nome com um círculo pequeno de seleção, como no Finder e nas Fotos: aparece ao passar o mouse, fica azul com ✓ quando marcado e tem um círculo de "selecionar tudo" no cabeçalho, com estado parcial. No modo Blocos, o círculo fica no canto da miniatura. A coluna só existe onde há seleção, então a tela de Arquivos do admin não muda.
+- **Visualizador de fotos e vídeos:** a seta de "anterior" volta para o lado esquerdo da tela e a de "próximo" fica no lado direito.
+- **Termo de Abertura:** na linha "Custo total" de "Macro Fases, prazos e custo", o valor total do projeto também sai em negrito, na tela, no PDF e no Word.
 
 ## [1.62.1] — 2026-11-21
 
