@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Play, Star } from 'lucide-react'
 import GlassCard from '@/components/ui/GlassCard'
 import type { KeyboardEvent, MouseEvent } from 'react'
-import { IconeArquivo, type ItemArquivo } from './ListaArquivos'
+import { CirculoSelecao, IconeArquivo, type ItemArquivo } from './ListaArquivos'
 
 const duracao = (s: number) => {
   if (!Number.isFinite(s) || s <= 0) return null
@@ -42,11 +42,15 @@ function Miniatura({ item, tamanho }: { item: ItemArquivo; tamanho: number }) {
  * Visualização em blocos (como os ícones do Finder): a arte de cada arquivo,
  * com o nome embaixo. O tamanho do bloco vem do controle deslizante da lista.
  */
-export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onClicar, onAbrir, onTecla }: {
+export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onClicar, onMarcar, algumMarcado, onAbrir, onTecla }: {
   itens: ItemArquivo[]; tamanho: number; vazio: string
   /** Com seleção: ids marcados; o clique no bloco (fora da arte e dos botões) seleciona. */
   selecionados?: string[]
   onClicar?: (e: MouseEvent, id: string) => void
+  /** Círculo de seleção no canto do bloco (alterna só este item). */
+  onMarcar?: (id: string) => void
+  /** Com algo marcado, todos os círculos ficam visíveis. */
+  algumMarcado?: boolean
   /** Com seleção: duplo clique abre. */
   onAbrir?: (item: ItemArquivo) => void
   onTecla?: (e: KeyboardEvent, item: ItemArquivo) => void
@@ -73,6 +77,10 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onC
                   <Miniatura item={a} tamanho={tamanho} />
                 </a>
               : <div className="arq-miniatura relative aspect-[4/3] overflow-hidden rounded-xl"><Miniatura item={a} tamanho={tamanho} /></div>}
+            {onMarcar && (
+              <CirculoSelecao marcado={marcado} rotulo={`Selecionar ${a.nome}`} onAlternar={() => onMarcar(a.id)}
+                className={`arq-circulo-bloco absolute left-2.5 top-2.5 z-10 ${algumMarcado ? 'arq-circulo-visivel' : ''}`} />
+            )}
             {/* Ações por cima da arte, no canto, como no Drive; aparecem no hover/foco. */}
             {a.acoes && <div className={`arq-acoes-bloco absolute right-3 top-3 z-10 flex items-center gap-0.5 rounded-xl p-0.5 ${selecionados ? 'acoes-linha-arquivo' : ''}`}>{a.acoes}</div>}
             <div className="min-w-0 px-1.5 pb-1 pt-2">

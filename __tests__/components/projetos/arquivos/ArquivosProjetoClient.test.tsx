@@ -47,7 +47,6 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação Final e Ví
     fireEvent.click(screen.getByText('5.0 MB'))
     expect(screen.getByText('1 item selecionado')).toBeInTheDocument()
     expect(screen.getByText('Visita.mp4').closest('tr')).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByRole('checkbox')).toBeNull()
     fireEvent.click(screen.getByText('2.0 KB'), { ctrlKey: true })
     expect(screen.getByText('2 itens selecionados')).toBeInTheDocument()
     fireEvent.click(screen.getByText('2.0 KB'))
@@ -55,6 +54,33 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação Final e Ví
     expect(screen.getByText('Visita.mp4').closest('tr')).toHaveAttribute('aria-selected', 'false')
     fireEvent.click(screen.getByRole('button', { name: 'Limpar seleção' }))
     expect(screen.queryByRole('toolbar')).toBeNull()
+  })
+
+  it('coluna de círculos antes do Nome: marca um item sem abrir, selecionar tudo com estado parcial', () => {
+    const abrir = vi.spyOn(window, 'open').mockReturnValue(null)
+    com(['documentos:ver'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
+    const todos = screen.getByRole('checkbox', { name: 'Selecionar todos os arquivos' })
+    expect(todos).toHaveAttribute('aria-checked', 'false')
+    const colunas = screen.getAllByRole('columnheader')
+    expect(colunas[0]).toContainElement(todos)
+    expect(colunas[1]).toHaveTextContent('Nome')
+
+    const um = screen.getByRole('checkbox', { name: 'Selecionar Visita.mp4' })
+    fireEvent.click(um)
+    expect(um).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('Visita.mp4').closest('tr')).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('1 item selecionado')).toBeInTheDocument()
+    expect(todos).toHaveAttribute('aria-checked', 'mixed')
+    expect(abrir).not.toHaveBeenCalled()
+
+    fireEvent.click(todos)
+    expect(screen.getByText('2 itens selecionados')).toBeInTheDocument()
+    expect(todos).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar Equipe.png' }))
+    expect(screen.getByText('1 item selecionado')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar Visita.mp4' }))
+    expect(screen.queryByRole('toolbar')).toBeNull()
+    abrir.mockRestore()
   })
 
   it('duplo clique e Enter abrem foto e vídeo no visualizador do Operum, com setas para navegar', () => {

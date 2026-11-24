@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import ListaArquivos, { type ItemArquivo } from '@/components/arquivos/ListaArquivos'
 
@@ -35,6 +35,31 @@ describe('ListaArquivos — modos de visualização', () => {
     render(<ListaArquivos itens={itens} tipos={['imagem', 'video']} visualizacao="teste" />)
     expect(screen.getByRole('radio', { name: 'Blocos' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('slider', { name: 'Tamanho dos blocos' })).toHaveValue('300')
+  })
+})
+
+describe('ListaArquivos — círculos de seleção', () => {
+  it('sem `selecao` não há coluna de círculos', () => {
+    render(<ListaArquivos itens={itens} tipos={['imagem', 'video']} />)
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('com `selecao`: círculo por linha e selecionar tudo; no modo Blocos o círculo fica no canto', () => {
+    window.localStorage.clear()
+    const mudou = vi.fn()
+    render(<ListaArquivos itens={itens} tipos={['imagem', 'video']} visualizacao="circ" selecao={{ selecionados: ['f1'], onChange: mudou, acoes: () => null }} />)
+    expect(screen.getByRole('checkbox', { name: 'Selecionar fachada.png' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('checkbox', { name: 'Selecionar obra.mp4' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('checkbox', { name: 'Selecionar todos os arquivos' })).toHaveAttribute('aria-checked', 'mixed')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar obra.mp4' }))
+    expect(mudou).toHaveBeenLastCalledWith(['f1', 'v1'])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar todos os arquivos' }))
+    expect(mudou).toHaveBeenLastCalledWith(['f1', 'v1'])
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Blocos' }))
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar obra.mp4' }))
+    expect(mudou).toHaveBeenLastCalledWith(['f1', 'v1'])
   })
 })
 

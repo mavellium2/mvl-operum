@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, Check, Grid2x2, LayoutGrid, List, Star } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Minus, Grid2x2, LayoutGrid, List, Star } from 'lucide-react'
 import SearchInput from '@/components/ui/SearchInput'
 import Select from '@/components/ui/Select'
 import GlassButton from '@/components/ui/GlassButton'
@@ -79,6 +79,21 @@ function TituloOrdenavel({ coluna, rotulo, ordem, onOrdenar, alinhar = 'left' }:
       data-ativa={ativa || undefined}>
       <span className="truncate">{rotulo}</span>
       <Seta className={`h-3.5 w-3.5 shrink-0 ${ativa ? '' : 'arq-seta-inativa'}`} aria-hidden="true" />
+    </GlassButton>
+  )
+}
+
+/** Círculo de seleção no estilo Apple: pequeno e vazio no hover, azul com ✓ quando marcado, traço quando parcial (cabeçalho). */
+export function CirculoSelecao({ marcado, parcial = false, rotulo, onAlternar, className = '' }: {
+  marcado: boolean; parcial?: boolean; rotulo: string; onAlternar: () => void; className?: string
+}) {
+  return (
+    <GlassButton variant="custom" type="button" role="checkbox" aria-checked={parcial ? 'mixed' : marcado} aria-label={rotulo} title={rotulo}
+      onClick={e => { e.stopPropagation(); onAlternar() }}
+      onDoubleClick={e => e.stopPropagation()}
+      data-marcado={marcado || parcial || undefined}
+      className={`arq-circulo pressionavel ${className}`}>
+      {parcial ? <Minus className="h-2.5 w-2.5" strokeWidth={3.5} aria-hidden="true" /> : marcado ? <Check className="h-2.5 w-2.5" strokeWidth={3.5} aria-hidden="true" /> : null}
     </GlassButton>
   )
 }
@@ -210,10 +225,14 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
     return true
   }), [itens, busca, tipo, filtroExtra])
   const visiveis = useMemo(() => ordenarArquivos(filtrados, ordem), [filtrados, ordem])
-  const colunas = 6 + (colunaExtra ? 1 : 0)
+  const colunas = 6 + (colunaExtra ? 1 : 0) + (selecao ? 1 : 0)
   const idsVisiveis = new Set(visiveis.map(a => a.id))
   const escolhidos = (selecao?.selecionados ?? []).filter(id => idsVisiveis.has(id))
   const marcar = (id: string, v: boolean) => selecao?.onChange(v ? [...selecao.selecionados, id] : selecao.selecionados.filter(x => x !== id))
+  const todosMarcados = visiveis.length > 0 && escolhidos.length === visiveis.length
+  const alternarTodos = () => selecao?.onChange(todosMarcados
+    ? selecao.selecionados.filter(id => !idsVisiveis.has(id))
+    : [...selecao.selecionados.filter(id => !idsVisiveis.has(id)), ...visiveis.map(a => a.id)])
   const abrirArquivo = (a: ItemArquivo) => {
     if (onAbrir) onAbrir(a, visiveis)
     else if (a.abrir) window.open(a.abrir, '_blank', 'noopener,noreferrer')
@@ -292,11 +311,18 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
             </p>}
       </div>
 
-      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={selecao ? clicarLinha : undefined} onAbrir={selecao ? abrirArquivo : undefined} onTecla={selecao ? teclaItem : undefined} /> : <div className="arq-quadro overflow-hidden rounded-2xl"
+      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={selecao ? clicarLinha : undefined} onMarcar={selecao ? id => { ancora.current = id; marcar(id, !selecao.selecionados.includes(id)) } : undefined} algumMarcado={escolhidos.length > 0} onAbrir={selecao ? abrirArquivo : undefined} onTecla={selecao ? teclaItem : undefined} /> : <div className="arq-quadro overflow-hidden rounded-2xl"
         onKeyDown={e => { if (selecao && e.key === 'Escape' && escolhidos.length) selecao.onChange([]) }}>
         <table className="w-full table-fixed text-sm">
           <thead className="arq-cabecalho">
             <tr>
+              {selecao && (
+                <th className="w-9 pl-3 pr-0 py-2 text-left">
+                  <CirculoSelecao marcado={todosMarcados} parcial={escolhidos.length > 0 && !todosMarcados}
+                    rotulo={todosMarcados ? 'Desmarcar todos os arquivos' : 'Selecionar todos os arquivos'} onAlternar={alternarTodos}
+                    className="arq-circulo-cabecalho" />
+                </th>
+              )}
               <th className="px-3 py-2 text-left" aria-sort={ariaSort('nome')}><TituloOrdenavel coluna="nome" rotulo="Nome" ordem={ordem} onOrdenar={ordenar} /></th>
               {colunaExtra && <th className="hidden w-48 px-3 py-2 text-left md:table-cell">{colunaExtra}</th>}
               <th className="hidden w-32 px-2 py-2 text-left md:table-cell" aria-sort={ariaSort('tipo')}><TituloOrdenavel coluna="tipo" rotulo="Tipo" ordem={ordem} onOrdenar={ordenar} /></th>
@@ -318,7 +344,14 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
                 onKeyDown={selecao ? e => teclaItem(e, a) : undefined}
                 aria-label={selecao ? `${a.nome}${a.abrir ? ' (Enter abre)' : ''}` : undefined}
                 className={`arq-linha ${selecao ? 'cursor-default select-none' : ''}`}>
-                <td className="px-4 py-1.5">
+                {selecao && (
+                  <td className="w-9 pl-3 pr-0 py-1.5">
+                    <CirculoSelecao marcado={escolhidos.includes(a.id)} rotulo={`Selecionar ${a.nome}`}
+                      onAlternar={() => { ancora.current = a.id; marcar(a.id, !selecao.selecionados.includes(a.id)) }}
+                      className={escolhidos.length > 0 ? 'arq-circulo-visivel' : ''} />
+                  </td>
+                )}
+                <td className={selecao ? 'px-3 py-1.5' : 'px-4 py-1.5'}>
                   <div className="flex min-w-0 items-center gap-3">
                     {visualizacao && a.previa && a.categoria === 'imagem'
                       // eslint-disable-next-line @next/next/no-img-element -- URL assinada do storage, servida por redirecionamento.
