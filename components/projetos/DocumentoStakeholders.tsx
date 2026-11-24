@@ -486,7 +486,7 @@ export default function DocumentoStakeholders({ membros = [], cadastro }: { memb
     aberto: menuAberto,
     onAbrir: setMenuAberto,
     opcoes: [
-      { rotulo: 'Stakeholder interno', descricao: 'Membro da equipe (usuário do sistema)', onClick: () => setPainel('interno') },
+      { rotulo: 'Stakeholder interno', descricao: 'Membro da equipe', onClick: () => setPainel('interno') },
       { rotulo: 'Stakeholder externo', descricao: 'Pessoa ou organização de fora da equipe', onClick: () => setPainel('externo') },
     ],
   } : undefined

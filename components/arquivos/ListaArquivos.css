@@ -102,5 +102,72 @@ tr[aria-selected='true'] .acoes-linha-arquivo,
 .arq-bloco:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: 2px; }
 
 /* Página de arquivos do projeto: o fundo da aparência preenche a área visível mesmo com poucos arquivos. */
-.arq-pagina > .project-appearance { min-height: 100%; }
-.arq-pagina > .project-appearance > .arq { min-height: 100%; }
+.arq-pagina > .project-appearance { height: 100%; }
+.arq-pagina > .project-appearance > .arq { height: 100%; }
+
+/*
+ * Seleção no estilo Apple. Azul do sistema (--arq-sel); o anel vazio usa o cinza "separator" do iOS.
+ * O círculo é pequeno (14 px), mas o alvo de clique/toque é bem maior (::after).
+ */
+.arq { --arq-sel: #007aff; --arq-anel: rgb(60 60 67 / .34); }
+body[data-operum-period='night'] .arq { --arq-sel: #0a84ff; --arq-anel: rgb(235 235 245 / .34); }
+.arq-circulo {
+  position: relative; display: inline-flex; box-sizing: border-box; flex: none; height: 14px; width: 14px; min-height: 0; min-width: 0; padding: 0; line-height: 0;
+  align-items: center; justify-content: center; border-radius: 9999px; background: transparent; box-shadow: none;
+  border: 1.25px solid var(--arq-anel); opacity: 0;
+}
+.arq-circulo::after { content: ''; position: absolute; inset: -9px; }
+/* ✓ e traço desenhados em SVG (o traço "se desenha" ao marcar). */
+.arq-circulo svg { width: 9px; height: 9px; fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.arq-circulo svg path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.arq-circulo[data-marcado] svg path { stroke-dashoffset: 0; }
+.arq-circulo[data-marcado] { background: var(--arq-sel); border-color: var(--arq-sel); box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .08), 0 .5px 1.5px rgb(0 0 0 / .18); }
+.arq-circulo-cabecalho { opacity: 1; }
+tr:hover .arq-circulo, tr:focus-within .arq-circulo, .arq-bloco:hover .arq-circulo, .arq-bloco:focus-within .arq-circulo,
+.arq-circulo-visivel, .arq-circulo[data-marcado], .arq-circulo:focus-visible { opacity: 1; }
+.arq-circulo:hover:not([data-marcado]) { border-color: color-mix(in srgb, var(--arq-sel) 75%, transparent); }
+.arq-circulo:focus-visible { outline: 3px solid color-mix(in srgb, var(--arq-sel) 40%, transparent); outline-offset: 0; }
+/* Sobre a miniatura (como nas Fotos do iOS): anel branco com fundo escuro translúcido; marcado fica azul com anel branco. */
+.arq-circulo-bloco { height: 18px; width: 18px; background: rgb(0 0 0 / .26); border: 1.5px solid #fff; box-shadow: 0 0 0 .5px rgb(0 0 0 / .22), 0 1px 3px rgb(0 0 0 / .25); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.arq-circulo-bloco svg { width: 11px; height: 11px; }
+.arq-circulo-bloco[data-marcado] { background: var(--arq-sel); border-color: #fff; }
+@media (hover: none) { .arq-circulo { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .arq-circulo { transition: opacity 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+  .arq-circulo svg path { transition: stroke-dashoffset 240ms cubic-bezier(.65, 0, .35, 1) 50ms; }
+  .arq-circulo[data-marcado] { animation: arq-circulo-pop 260ms cubic-bezier(.34, 1.56, .64, 1); }
+  @keyframes arq-circulo-pop { 0% { transform: scale(.78); } 100% { transform: scale(1); } }
+}
+@media (prefers-reduced-transparency: reduce) { .arq-circulo-bloco { -webkit-backdrop-filter: none; backdrop-filter: none; } }
+/* Linha selecionada: azul translúcido do sistema com cantos arredondados, como o Finder; foco do teclado com anel suave. */
+.arq-linha[aria-selected='true'], .arq-linha[aria-selected='true']:hover { background: color-mix(in srgb, var(--arq-sel) 13%, transparent); }
+.arq-linha[aria-selected='true'] > td:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+.arq-linha[aria-selected='true'] > td:last-child { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+.arq-linha[aria-selected='true'] .arq-nome { color: var(--arq-texto); }
+.arq-linha:focus { outline: none; }
+.arq-linha:focus-visible { outline: 3px solid color-mix(in srgb, var(--arq-sel) 40%, transparent); outline-offset: -3px; border-radius: 10px; }
+.arq-bloco:focus-visible { outline: 3px solid color-mix(in srgb, var(--arq-sel) 45%, transparent); outline-offset: 1px; }
+
+/*
+ * Cabeçalho fixo (`cabecalhoFixo`): a lista ocupa a altura disponível; busca, filtros, contador e títulos das colunas
+ * ficam parados e só os arquivos rolam. Os títulos usam fundo opaco para as linhas não aparecerem por baixo.
+ */
+.arq-fixa { display: flex; flex: 1 1 0; flex-direction: column; min-height: 0; }
+.arq-fixa > :not(.arq-rolagem) { flex: none; }
+.arq-rolagem { flex: 1 1 0; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--arq-suave) 45%, transparent) transparent; overscroll-behavior: contain; }
+.arq-rolagem--grade { padding: 4px; margin: -4px; }
+.arq-fixa .arq-cabecalho th {
+  position: sticky; top: 0; z-index: 2; border-bottom: 0;
+  background: color-mix(in srgb, var(--arq-borda) 28%, var(--ap-bg, #ffffff)); box-shadow: inset 0 -1px 0 var(--arq-borda);
+}
+/* O foco do teclado nunca fica escondido atrás do cabeçalho fixo. */
+.arq-fixa .arq-linha { scroll-margin-top: 44px; }
+
+/* Botão "Filtros": o número mostra quantos filtros estão ativos. */
+.arq-filtro-contagem { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--arq-sel, var(--arq-destaque)); color: #fff; font-size: 10px; font-weight: 700; line-height: 1; }
+/* Etiqueta de filtro ativo (com X para remover). */
+.arq-etiqueta { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; padding: 2px 6px 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; line-height: 1.2; color: var(--arq-texto); cursor: pointer;
+  background: color-mix(in srgb, var(--arq-sel, var(--arq-destaque)) 13%, transparent); border: 1px solid color-mix(in srgb, var(--arq-sel, var(--arq-destaque)) 28%, transparent); }
+.arq-etiqueta:hover { background: color-mix(in srgb, var(--arq-sel, var(--arq-destaque)) 22%, transparent); }
+.arq-etiqueta:focus-visible { outline: 2px solid var(--arq-sel, var(--arq-destaque)); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { .arq-etiqueta { transition: background-color 160ms ease; } }

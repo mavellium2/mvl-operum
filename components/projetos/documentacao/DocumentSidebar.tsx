@@ -18,6 +18,7 @@ const DOCUMENTS = [
   { id: 'riscos', label: 'Formulários de Riscos', tipo: 'RISCOS' },
   { id: 'licoes', label: 'Lições Aprendidas', tipo: 'LICOES' },
   { id: 'canvas', label: 'Canvas', tipo: 'CANVAS' },
+  { id: 'avaliacao-rh', label: 'Avaliação de R.H.', tipo: 'AVALIACAO_RH' },
   // Seções de arquivos (ajustes de 20/11/2026): ficam na Documentação, com a mesma ordenação,
   // mas abrem a própria tela (/projetos/:id/<slug>) e não têm versões para aprovar.
   ...Object.values(SECOES_ARQUIVOS).map(s => ({ id: s.slug, label: s.titulo, tipo: null })),
@@ -46,7 +47,8 @@ function usePendentes(projetoId?: string): Partial<Record<DocId, number>> {
         if (!d.tipo) return [d.id, 0] as const
         try {
           const r = await fetchWithSession(`/api/projects/${projetoId}/revisions?type=${d.tipo}&tab=historico`)
-          if (!r.ok) return [d.id, 0] as const
+          // -1: sem acesso (Avaliação de R.H. só para gerente/administrador); o item some do menu.
+          if (!r.ok) return [d.id, d.tipo === 'AVALIACAO_RH' && r.status === 403 ? -1 : 0] as const
           const data = await r.json()
           const lista: { status: string }[] = Array.isArray(data?.versions) ? data.versions : []
           return [d.id, lista.filter(v => v.status === 'PENDING').length] as const
@@ -106,7 +108,7 @@ export default function DocumentSidebar({ activeDoc, onSelect, embedded = false,
 
   const orderedDocs = order
     .map(id => DOCUMENTS.find(d => d.id === id))
-    .filter((d): d is (typeof DOCUMENTS)[number] => Boolean(d))
+    .filter((d): d is (typeof DOCUMENTS)[number] => Boolean(d) && (pendentes[d!.id] ?? 0) >= 0)
 
   return (
     <nav data-sidebar-documents={embedded || undefined} aria-label="Documentos" className={embedded ? "sidebar-document-tree" : "w-full lg:w-56 max-h-48 lg:max-h-none overflow-y-auto shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col py-4 gap-1 px-2"}>

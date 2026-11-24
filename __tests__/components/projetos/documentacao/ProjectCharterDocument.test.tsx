@@ -54,6 +54,10 @@ describe('ProjectCharterDocument — modelo "02_Project Charter" do professor', 
     expect(tabela.getByText('R$ 11,26')).toBeInTheDocument()
     expect(tabela.getByText('Custo total')).toBeInTheDocument()
     expect(tabela.getByText('R$ 39,70')).toBeInTheDocument()
+    // Custo total: rótulo e valor em negrito (ajustes de 21/11/2026).
+    expect(tabela.getByText('Custo total')).toHaveStyle({ fontWeight: 'bold' })
+    expect(tabela.getByText('R$ 39,70')).toHaveStyle({ fontWeight: 'bold' })
+    expect(tabela.getByText('R$ 11,26')).not.toHaveStyle({ fontWeight: 'bold' })
   })
 
   it('principais envolvidos agrupados, com os integrantes depois do professor', () => {

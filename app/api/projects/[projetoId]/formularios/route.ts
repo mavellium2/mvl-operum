@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifySession } from '@/lib/dal'
 import prisma from '@/lib/prisma'
 import { canProjectPermission as can } from '@/services/projectAccess'
-import { documentoVigente, listarRiscos } from '@/services/documentRevisionService'
+import { documentoVigente, listarRiscos, rascunhoDocumento } from '@/services/documentRevisionService'
 import { cabecalhoDaAta } from '@/services/ataService'
 import { gerenteDoProjeto } from '@/services/gerenteProjeto'
 
@@ -23,13 +23,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ projetoId:
       select: { justificativa: true, objetivos: true, descricaoProduto: true, restricoes: true, premissas: true },
     })
     if (!projeto) return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
-    const [cabecalho, gerente, termo, raiz, escopoDoc, partes, riscos] = await Promise.all([
+    const [cabecalho, gerente, termo, raiz, escopoDoc, escopoRascunho, partes, riscos] = await Promise.all([
       cabecalhoDaAta(tenantId, projetoId),
       gerenteDoProjeto(projetoId),
       documentoVigente(sessao, projetoId, 'CHARTER'),
       prisma.wbsNode.findFirst({ where: { projectId: projetoId, tenantId, parentId: null }, orderBy: { order: 'asc' }, select: { id: true, code: true, title: true } }),
       // Fontes do Canvas (orientações do modelo do professor).
       documentoVigente(sessao, projetoId, 'ESCOPO'),
+      // Rascunho do próprio usuário (exige editar): a Declaração ainda não aprovada também alimenta o Canvas.
+      rascunhoDocumento(sessao, projetoId, 'ESCOPO').catch(() => null),
       documentoVigente(sessao, projetoId, 'STAKEHOLDER'),
       listarRiscos(sessao, projetoId).catch(() => []),
     ])
@@ -37,7 +39,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ projetoId:
       ? await prisma.wbsNode.findMany({ where: { projectId: projetoId, tenantId, parentId: raiz.id }, orderBy: { order: 'asc' }, select: { code: true, title: true, properties: true } })
       : []
     const t = (termo?.payload ?? {}) as { justificativa?: string | null; objetivos?: string | null; descricaoProduto?: string | null; restricoes?: string | null; premissas?: string | null; macroFases?: { fase?: string; dataLimite?: string | null; custo?: string | null }[] }
-    const e = (escopoDoc?.payload ?? {}) as { descricaoProduto?: string; estrategia?: string }
+    // Fonte do Escopo: o rascunho do usuário, se for mais recente que a versão vigente; senão, a vigente.
+    const rascunhoMaisNovo = escopoRascunho && (!escopoDoc || escopoRascunho.updatedAt > (escopoDoc.approvedAt ?? escopoDoc.createdAt))
+    const e = ((rascunhoMaisNovo ? escopoRascunho.payload : escopoDoc?.payload) ?? {}) as { descricaoProduto?: string; estrategia?: string }
     const pi = (partes?.payload ?? {}) as { stakeholders?: { nome?: string }[] }
     // Macrofases: 2º nível da EAP (nós filhos da raiz); sem EAP, as do Termo vigente.
     const fasesDaEap = filhos.filter(f => f.title.trim()).map(f => {

@@ -93,6 +93,9 @@ beforeEach(() => {
   vi.mocked(reorderStakeholdersAction).mockResolvedValue({ success: true })
 })
 
+/** Linhas de pessoas da tabela (sem o cabeçalho). */
+const linhasDePessoas = () => screen.getAllByRole('row').filter(r => r.querySelector('td'))
+
 describe('ProjetoStakeholdersClient — reordenação por drag and drop', () => {
   it('renderiza os dois stakeholders na lista', () => {
     renderComponent()
@@ -104,7 +107,7 @@ describe('ProjetoStakeholdersClient — reordenação por drag and drop', () => 
     renderComponent()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
-    const items = screen.getAllByRole('listitem')
+    const items = linhasDePessoas()
     // item[0] = Empresa Beta (sk1), item[1] = Empresa Alpha (sk2)
     // drag sk1 → drop na posição de sk2 → nova ordem: [sk2, sk1]
     fireEvent.dragStart(items[0])
@@ -122,7 +125,7 @@ describe('ProjetoStakeholdersClient — reordenação por drag and drop', () => 
     renderComponent()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
-    const items = screen.getAllByRole('listitem')
+    const items = linhasDePessoas()
     fireEvent.dragStart(items[0])
     fireEvent.dragOver(items[1])
     fireEvent.drop(items[1])
@@ -138,13 +141,13 @@ describe('ProjetoStakeholdersClient — reordenação por drag and drop', () => 
     renderComponent()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
-    const items = screen.getAllByRole('listitem')
+    const items = linhasDePessoas()
     fireEvent.dragStart(items[0])
     fireEvent.dragOver(items[1])
     fireEvent.drop(items[1])
 
     await waitFor(() => {
-      const names = screen.getAllByRole('listitem').map(li => li.textContent)
+      const names = linhasDePessoas().map(li => li.textContent)
       // Após reversão, Beta deve voltar a ser o primeiro
       expect(names[0]).toContain('Empresa Beta')
     })
@@ -155,7 +158,7 @@ describe('ProjetoStakeholdersClient — reordenação por drag and drop', () => 
 describe('Stakeholders — filtros e ordenação acessível', () => {
   it('não permite arrastar fora do modo de ordenação e move por botão quando ativado', async () => {
     renderComponent()
-    const [first, second] = screen.getAllByRole('listitem')
+    const [first, second] = linhasDePessoas()
     expect(first).toHaveAttribute('draggable', 'false')
     fireEvent.dragStart(first)
     fireEvent.drop(second)
@@ -163,19 +166,21 @@ describe('Stakeholders — filtros e ordenação acessível', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
     fireEvent.click(screen.getByRole('button', { name: 'Mover Empresa Beta para baixo' }))
     await waitFor(() => expect(reorderStakeholdersAction).toHaveBeenCalledWith(PROJ_ID, ['sk2', 'sk1']))
-    expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('Empresa Alpha')
+    expect(linhasDePessoas()[0]).toHaveTextContent('Empresa Alpha')
   })
 
   it('combina busca sem acento, vínculo e empresa e recupera a lista ao limpar', () => {
     renderComponent([makeSk('sk1', 'Márcio'), { ...makeSk('sk2', 'Ana'), company: 'Outra empresa' }])
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar pessoa' }), { target: { value: 'marcio' } })
-    fireEvent.change(screen.getByRole('combobox', { name: 'Vínculo' }), { target: { value: 'externo' } })
-    fireEvent.change(screen.getByRole('combobox', { name: 'Área ou empresa' }), { target: { value: 'Empresa Teste' } })
-    expect(screen.getByRole('status')).toHaveTextContent('1 de 2 pessoas')
+    fireEvent.click(screen.getByRole('button', { name: /^Filtros/ }))
+    const painel = screen.getByRole('dialog', { name: 'Filtrar pessoas' })
+    fireEvent.click(within(painel).getByRole('button', { name: 'Externos' }))
+    fireEvent.click(within(painel).getByRole('button', { name: 'Empresa Teste' }))
+    expect(screen.getByRole('status')).toHaveTextContent('1 pessoa de 2 (filtrado)')
     expect(screen.getByRole('button', { name: 'Reordenar' })).toBeDisabled()
-    expect(within(screen.getByRole('list', { name: 'Pessoas do projeto' })).queryByText('Ana')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('table', { name: 'Pessoas do projeto' })).queryByText('Ana')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }))
-    expect(screen.getByRole('status')).toHaveTextContent('2 de 2 pessoas')
+    expect(screen.getByRole('status')).toHaveTextContent('2 pessoas')
   })
 
   it('reverte uma falha de rede lançada e permite tentar novamente', async () => {
@@ -184,9 +189,9 @@ describe('Stakeholders — filtros e ordenação acessível', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reordenar' }))
     fireEvent.click(screen.getByRole('button', { name: 'Mover Empresa Beta para baixo' }))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('A ordenação foi revertida'))
-    expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('Empresa Beta')
+    expect(linhasDePessoas()[0]).toHaveTextContent('Empresa Beta')
     fireEvent.click(screen.getByRole('button', { name: 'Mover Empresa Beta para baixo' }))
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
-    expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('Empresa Alpha')
+    expect(linhasDePessoas()[0]).toHaveTextContent('Empresa Alpha')
   })
 })

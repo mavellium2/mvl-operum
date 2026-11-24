@@ -1,4 +1,4 @@
-import { gerenteDoProjeto } from './gerenteProjeto'
+import { gerenteDoProjeto, podeAvaliarRh } from './gerenteProjeto'
 import { charterChanges } from '@/lib/charterChanges'
 import { DocumentRevisionError } from '@/lib/documentRevisionError'
 import 'server-only'
@@ -17,7 +17,8 @@ import {
 import { getOrCreateDocument } from './eapService'
 import { registrarAcao } from './auditoriaService'
 import { AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
-import { riscoSchema, type Risco } from '@/lib/validation/formulariosGP'
+import { avaliacaoRhSchema, riscoSchema, type Risco } from '@/lib/validation/formulariosGP'
+import { MAX_RODADAS_RH, MIN_RODADAS_RH } from '@/lib/avaliacaoRh'
 import { comVersaoNoConteudo, proximaVersaoDocumento } from '@/lib/versaoDocumento'
 export {
   tipoDocumento,
@@ -36,6 +37,12 @@ async function acesso(
 ) {
   await exigirPermissao(s, projectId, 'projeto:ver')
   await exigirPermissao(s, projectId, permission)
+}
+
+/** Avaliações de R.H. são dados de gestão: somente administrador ou gerente do projeto. */
+export async function acessoAvaliacaoRh(s: SessaoAuthz, projectId: string, type: DocumentType) {
+  if (type !== 'AVALIACAO_RH') return
+  if (!await podeAvaliarRh(s, projectId)) throw new DocumentRevisionError('Somente o gerente do projeto ou o administrador acessa as avaliações de R.H.', 403)
 }
 const whereDraft = (
   s: SessaoAuthz,
@@ -58,6 +65,7 @@ export async function documentoVigente(
   resourceId = '',
 ) {
   await acesso(s, projectId, 'documentos:ver')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId)
   return prisma.documentVersion.findFirst({
     where: {
@@ -77,6 +85,7 @@ export async function rascunhoDocumento(
   resourceId = '',
 ) {
   await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId, true)
   return prisma.documentDraft.findUnique({
     where: whereDraft(s, projectId, documentType, resourceId),
@@ -90,6 +99,7 @@ export async function descartarRascunho(
   resourceId = '',
 ) {
   await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId, true)
   const { count } = await prisma.documentDraft.deleteMany({
     where: { projectId, userId: s.userId, documentType, resourceId, tenantId: s.tenantId },
@@ -104,6 +114,7 @@ export async function salvarRascunho(
   resourceId = '',
 ) {
   await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId, true)
   const content = JSON.parse(
     JSON.stringify(validarDocumento(documentType, payload)),
@@ -114,6 +125,8 @@ export async function salvarRascunho(
       await validarAta(tx, s, projectId, resourceId, content)
     if (documentType === 'RISCOS')
       await validarRisco(tx, s, projectId, resourceId, content)
+    if (documentType === 'AVALIACAO_RH')
+      await validarAvaliacaoRh(tx, s, projectId, resourceId, content)
     const draft = await tx.documentDraft.upsert({
       where: whereDraft(s, projectId, documentType, resourceId),
       create: {
@@ -221,6 +234,104 @@ async function validarRisco(
     if (members !== ids.length)
       throw new DocumentRevisionError('Responsáveis devem ser membros ativos do projeto')
   }
+}
+
+/** O resourceId da avaliação é `rh:<rodada>:<integranteId>` e só vale para integrante ativo do projeto. */
+async function validarAvaliacaoRh(
+  tx: Prisma.TransactionClient,
+  s: SessaoAuthz,
+  projectId: string,
+  resourceId: string,
+  payload: unknown,
+) {
+  const avaliacao = avaliacaoRhSchema.parse(payload)
+  const esperado = `rh:${avaliacao.rodada}:${avaliacao.integranteId}`
+  if (resourceId !== esperado) throw new DocumentRevisionError('Identificação da avaliação inválida')
+  const membro = await tx.userProject.findFirst({
+    where: { projectId, userId: avaliacao.integranteId, active: true, user: { tenantId: s.tenantId, deletedAt: null, isActive: true } },
+    select: { user: { select: { name: true } } },
+  })
+  if (!membro) throw new DocumentRevisionError('Integrante não está ativo no projeto', 404)
+  const projeto = await tx.project.findFirst({ where: { id: projectId, tenantId: s.tenantId }, select: { avaliacaoRhRodadas: true } })
+  if (!projeto || avaliacao.rodada > Math.max(MIN_RODADAS_RH, projeto.avaliacaoRhRodadas))
+    throw new DocumentRevisionError('Esta rodada de avaliação ainda não foi aberta no projeto', 400)
+}
+
+/** Abre a próxima rodada de avaliação (3ª, 4ª...), até o limite. Só gerente ou administrador. */
+export async function adicionarRodadaAvaliacaoRh(s: SessaoAuthz, projectId: string) {
+  await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, 'AVALIACAO_RH')
+  return prisma.$transaction(async (tx) => {
+    await bloquearProjeto(tx, s, projectId)
+    const projeto = await tx.project.findFirst({ where: { id: projectId, tenantId: s.tenantId }, select: { avaliacaoRhRodadas: true } })
+    if (!projeto) throw new DocumentRevisionError('Projeto não encontrado', 404)
+    const proxima = Math.max(MIN_RODADAS_RH, projeto.avaliacaoRhRodadas) + 1
+    if (proxima > MAX_RODADAS_RH)
+      throw new DocumentRevisionError(`O limite é de ${MAX_RODADAS_RH} rodadas de avaliação`, 400)
+    await tx.project.update({ where: { id: projectId }, data: { avaliacaoRhRodadas: proxima } })
+    await registrarAcao(
+      {
+        tenantId: s.tenantId,
+        userId: s.userId,
+        action: 'DOCUMENTO_RASCUNHO',
+        entity: 'Document',
+        entityId: projectId,
+        details: { documentType: 'AVALIACAO_RH', resourceId: '', reason: `${proxima}ª rodada de avaliação aberta` },
+      },
+      tx,
+    )
+    return { rodadas: proxima }
+  })
+}
+
+/**
+ * Exclui a última rodada de avaliação (3ª em diante; a 1ª AC e a 2ª AF são fixas). Só gerente ou administrador.
+ * Nada é apagado do histórico: os documentos da rodada passam para um identificador de arquivo (`excl:<id>`), que a
+ * lista ignora (e que uma rodada reaberta depois não enxerga), as propostas pendentes são recusadas e os rascunhos
+ * em andamento são descartados. A exclusão fica no registro do projeto.
+ */
+export async function removerRodadaAvaliacaoRh(s: SessaoAuthz, projectId: string, rodada: number) {
+  await acesso(s, projectId, 'documentos:excluir')
+  await acessoAvaliacaoRh(s, projectId, 'AVALIACAO_RH')
+  return prisma.$transaction(async (tx) => {
+    await bloquearProjeto(tx, s, projectId)
+    const projeto = await tx.project.findFirst({ where: { id: projectId, tenantId: s.tenantId }, select: { avaliacaoRhRodadas: true } })
+    if (!projeto) throw new DocumentRevisionError('Projeto não encontrado', 404)
+    const ultima = Math.max(MIN_RODADAS_RH, projeto.avaliacaoRhRodadas)
+    if (rodada <= MIN_RODADAS_RH)
+      throw new DocumentRevisionError('A 1ª (AC) e a 2ª (AF) avaliação não podem ser excluídas', 400)
+    if (rodada !== ultima)
+      throw new DocumentRevisionError(`Só é possível excluir a última rodada (${ultima}ª Avaliação)`, 409)
+    const prefixo = `rh:${rodada}:`
+    const versoes = await tx.documentVersion.findMany({
+      where: { projectId, documentType: 'AVALIACAO_RH', resourceId: { startsWith: prefixo } },
+      select: { id: true, resourceId: true, status: true },
+    })
+    for (const v of versoes) {
+      await tx.documentVersion.update({
+        where: { id: v.id },
+        data: { resourceId: `excl:${v.resourceId}`, ...(v.status === 'PENDING' ? { status: 'REJECTED', approvedById: s.userId } : {}) },
+      })
+    }
+    await tx.documentDraft.deleteMany({ where: { projectId, tenantId: s.tenantId, documentType: 'AVALIACAO_RH', resourceId: { startsWith: prefixo } } })
+    await tx.project.update({ where: { id: projectId }, data: { avaliacaoRhRodadas: rodada - 1 } })
+    await registrarAcao(
+      {
+        tenantId: s.tenantId,
+        userId: s.userId,
+        action: 'DOCUMENTO_EXCLUIR',
+        entity: 'Document',
+        entityId: projectId,
+        details: {
+          documentType: 'AVALIACAO_RH',
+          resourceId: '',
+          reason: `${rodada}ª rodada de avaliação excluída; ${versoes.length} ${versoes.length === 1 ? 'versão preservada' : 'versões preservadas'} no histórico`,
+        },
+      },
+      tx,
+    )
+    return { rodadas: rodada - 1, versoesArquivadas: versoes.length }
+  })
 }
 
 async function aplicarDocumento(
@@ -400,6 +511,7 @@ export async function submeterDocumento(
 ) {
   const db = transaction ?? prisma
   await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, documentType)
   validarRecurso(documentType, resourceId, true)
   if (documentoPorRecurso(documentType) && !resourceId)
     throw new DocumentRevisionError('Identificação do documento obrigatória')
@@ -442,6 +554,8 @@ export async function submeterDocumento(
       await validarAta(tx, s, projectId, resourceId, content)
     if (documentType === 'RISCOS')
       await validarRisco(tx, s, projectId, resourceId, content)
+    if (documentType === 'AVALIACAO_RH')
+      await validarAvaliacaoRh(tx, s, projectId, resourceId, content)
     if (approve)
       await aplicarDocumento(
         tx,
@@ -513,6 +627,7 @@ export async function revisarDocumento(
     })
     if (!current)
       throw new DocumentRevisionError('Versão não encontrada ou já revisada')
+    await acessoAvaliacaoRh(s, projectId, current.documentType)
     if (action === 'approve' && !current.payload)
       throw new DocumentRevisionError(
         'Versão legada sem conteúdo: crie uma nova versão antes de aprovar',
@@ -567,6 +682,7 @@ export async function excluirVersao(
       where: { id: versionId, projectId },
     })
     if (!version) throw new DocumentRevisionError('Versão não encontrada', 404)
+    await acessoAvaliacaoRh(s, projectId, version.documentType)
     if (version.status === 'APPROVED')
       throw new DocumentRevisionError(
         'Versões aprovadas são preservadas no histórico',

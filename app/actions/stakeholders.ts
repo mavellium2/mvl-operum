@@ -11,6 +11,7 @@ import { lerImagemAssinatura } from '@/lib/imagemAssinatura'
 import { erroMoeda, parseMoeda } from '@/lib/dinheiro'
 import { parseHoras } from '@/lib/validation/horas'
 import { requireProjectPermission } from '@/services/projectAccess'
+import { auditarAdmin } from '@/services/auditoriaAdminService'
 import { carregarStakeholdersDoProjeto } from '@/services/stakeholdersDoProjeto'
 import {
   adicionarUsuarioComoExterno, PessoaError, salvarDadosDoExterno, salvarEmpresaDoUsuario, tornarExterno, tornarInterno,
@@ -52,12 +53,23 @@ export async function createStakeholderAction(data: StakeholderInput, projectId?
 
 export async function updateStakeholderAction(stakeholderId: string, data: StakeholderInput, projectId: string) {
   try {
-    const { tenantId } = await verifySession()
+    const sessao = await verifySession()
+    const { tenantId } = sessao
+    // Defesa em profundidade (o gateway também exige): permissão de equipe neste projeto
+    // e o contato precisa estar vinculado a ele, na mesma instituição.
+    await requireProjectPermission(sessao, projectId, 'projeto:equipe')
+    if (!(await prisma.projectStakeholder.findFirst({ where: { stakeholderId, projectId, project: { tenantId, deletedAt: null } }, select: { id: true } }))) {
+      return { error: 'Stakeholder não encontrado neste projeto.' }
+    }
     // Valores já salvos passam sem validar: dados antigos não bloqueiam a edição de outros campos.
     const atual = await prisma.stakeholder.findFirst({ where: { id: stakeholderId, tenantId }, select: { email: true, phone: true } })
     const contato = normalizarContato(data, { atual })
     if (contato.error) return { error: contato.error }
     const stakeholder = await stakeholdersApi.update(stakeholderId, contato.data as unknown as Record<string, unknown>, projectId)
+    await auditarAdmin({
+      tenantId, autorId: sessao.userId, action: 'STAKEHOLDER_EDITAR_NO_PROJETO', entity: 'Stakeholder', entityId: stakeholderId,
+      details: { projectId, campos: Object.keys(contato.data ?? {}), porGerente: sessao.role !== 'admin' },
+    })
     revalidatePath(`/projetos/${projectId}/stakeholders`)
     return { success: true, stakeholder }
   } catch (err) {
@@ -138,11 +150,16 @@ export async function reorderMembersAction(projectId: string, orderedUserIds: st
   }
 }
 
-export async function uploadMemberSignatureAction(formData: FormData, userId: string) {
+export async function uploadMemberSignatureAction(formData: FormData, userId: string, projectId?: string) {
   try {
-    const { role, userId: callerId, tenantId } = await verifySession()
+    const sessao = await verifySession()
+    const { role, userId: callerId, tenantId } = sessao
     if (role !== 'admin' && callerId !== userId) {
-      return { error: 'Não autorizado' }
+      // O gerente envia a assinatura de membro ATIVO do projeto dele (mesma instituição, nunca de um admin).
+      if (!projectId) return { error: 'Não autorizado' }
+      await requireProjectPermission(sessao, projectId, 'projeto:equipe')
+      const alvo = await prisma.userProject.findFirst({ where: { projectId, userId, active: true, user: { tenantId, deletedAt: null, role: { not: 'admin' } } }, select: { id: true } })
+      if (!alvo) return { error: 'Não autorizado' }
     }
 
     if (!(await prisma.user.findFirst({ where: { id: userId, tenantId, deletedAt: null }, select: { id: true } }))) return { error: 'Usuário não encontrado' }
@@ -161,6 +178,10 @@ export async function uploadMemberSignatureAction(formData: FormData, userId: st
 
     const signatureUrl = publicUrl(key)
     await prisma.user.update({ where: { id: userId, tenantId }, data: { signatureUrl } })
+    await auditarAdmin({
+      tenantId, autorId: callerId, action: 'USUARIO_EDITAR_NO_PROJETO', entity: 'User', entityId: userId,
+      details: { alteracoes: { signatureUrl: { de: null, para: 'atualizada' } }, projectId: projectId ?? null, porGerente: role !== 'admin' && callerId !== userId },
+    })
     return { signatureUrl }
   } catch (err) {
     console.error('[uploadMemberSignatureAction]', err)

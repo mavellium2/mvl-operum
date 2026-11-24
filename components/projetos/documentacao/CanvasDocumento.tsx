@@ -5,6 +5,7 @@ import { CampoTexto, Folha } from '@/components/documentos/editor/folha'
 import PostIt from '@/components/ui/PostIt'
 import { formatDateBR } from '@/lib/date'
 import { parseDocumentCost } from '@/lib/documentCost'
+import { comunicacaoDaEstrategia, sincronizarComEscopo } from '@/lib/canvasEstrategia'
 import { ICONES_CANVAS, IconeCanvas } from './canvas/IconesCanvas'
 import type { CabecalhoFormulario } from '@/lib/validation/formulariosGP'
 import type { CanvasConteudo } from '@/lib/validation/documentRevisionSchemas'
@@ -12,7 +13,7 @@ import type { MembroEquipeOption } from './MembroEquipeSelect'
 import FormularioDocumento, { type DadosFormularios, type RenderFormulario } from './formularios/FormularioDocumento'
 
 type Canvas = Omit<CanvasConteudo, 'cabecalho'> & { cabecalho: CabecalhoFormulario }
-type CampoCanvas = Exclude<keyof Canvas, 'cabecalho'>
+type CampoCanvas = Exclude<keyof Canvas, 'cabecalho' | 'origemEscopo'>
 
 /**
  * Layout da folha (pt). Grade de 13 blocos como no modelo do professor: em
@@ -80,7 +81,9 @@ const linhas = (itens: (string | false | null | undefined)[]) => itens.filter(Bo
  * Riscos: só o título de cada Formulário de Riscos.
  * Fases, Cronograma e Orçamento: 2º nível da EAP (ou macrofases do Termo), com
  * a data limite e o custo de cada uma.
- * Escopo não incluído, Comunicação e Solicitante ficam para a equipe escrever.
+ * Comunicação: só as partes da Estratégia de condução que falam de comunicação
+ * (lib/canvasEstrategia); sem nada que case, fica para a equipe escrever.
+ * Escopo não incluído e Solicitante ficam para a equipe escrever.
  */
 export const CANVAS_INICIAL = (sistema: DadosFormularios, membros: MembroEquipeOption[]): Canvas => {
   const fases = sistema.macroFases ?? []
@@ -94,8 +97,9 @@ export const CANVAS_INICIAL = (sistema: DadosFormularios, membros: MembroEquipeO
     escopo: sistema.escopo?.descricaoProduto || sistema.termo.descricaoProduto,
     escopoNaoIncluido: '',
     estrategia: sistema.escopo?.estrategia ?? '',
+    origemEscopo: sistema.escopo?.estrategia ? { estrategia: sistema.escopo.estrategia, ...(comunicacaoDaEstrategia(sistema.escopo.estrategia) ? { comunicacao: comunicacaoDaEstrategia(sistema.escopo.estrategia) } : {}) } : {},
     stakeholders: (sistema.stakeholders?.length ? sistema.stakeholders : membros.map(m => m.name)).join('\n'),
-    comunicacao: '',
+    comunicacao: comunicacaoDaEstrategia(sistema.escopo?.estrategia ?? ''),
     restricoes: sistema.termo.restricoes ?? '',
     premissas: sistema.termo.premissas ?? '',
     riscos: linhas((sistema.riscos ?? []).map(r => `${r.numero} - ${r.denominacao}`)),
@@ -140,13 +144,13 @@ function BlocoCanvas({ bloco, valor, alterar }: { bloco: Bloco; valor: string; a
   return (
     <>
       <IconeCanvas {...icone} x={x + 4} y={y + 4} w={ICONE} h={ICONE} />
-      <h2 className="canvas-template-titulo" style={{ left: `${x + ICONE + 8}pt`, top: `${y + 3}pt`, width: `${w - ICONE - 12}pt`, height: `${TOPO_TEXTO - 4}pt` }}>
+      <h2 className="canvas-template-titulo" data-docx-moldura="" style={{ left: `${x + ICONE + 8}pt`, top: `${y + 3}pt`, width: `${w - ICONE - 12}pt`, height: `${TOPO_TEXTO - 4}pt` }}>
         <span className="canvas-template-titulo-principal">{titulo}</span>
         {subtitulo && <span className="canvas-template-subtitulo">{subtitulo}</span>}
       </h2>
       <PostIt className="canvas-template-postit" placeholder="" foldSize={14} style={{ position: 'absolute', left: `${p.x}pt`, top: `${p.y}pt`, width: `${p.w}pt`, height: `${p.h}pt` }} />
       {/* Campo dentro do post-it, sem invadir a dobra do canto. */}
-      <div ref={campo} className="canvas-template-campo" style={{ left: `${p.x + 3}pt`, top: `${p.y + 3}pt`, width: `${p.w - 6}pt`, height: `${p.h - 12}pt`, fontSize: `${FONTE_CAMPO.base}pt` }}>
+      <div ref={campo} className="canvas-template-campo" data-docx-moldura="" style={{ left: `${p.x + 3}pt`, top: `${p.y + 3}pt`, width: `${p.w - 6}pt`, height: `${p.h - 12}pt`, fontSize: `${FONTE_CAMPO.base}pt` }}>
         <CampoTexto id={`canvas-${id}`} rotulo={nome} ajuda={`Conteúdo do bloco ${nome} do Canvas.`}
           dica={`Escreva aqui: ${nome.toLocaleLowerCase('pt-BR')}`} valor={valor}
           onChange={novo => alterar?.(atual => ({ ...atual, [id]: novo }))} max={20000} formatavel />
@@ -162,11 +166,11 @@ function CampoCabecalho({ campo, valor, alterar }: { campo: (typeof CABECALHO_CA
   const refTexto = useAjustarFonte(valor, FONTE_CABECALHO)
   return (
     <>
-      <strong className="canvas-template-label" style={{ left: `${x}pt`, top: `${topo}pt`, width: `${rotulo}pt`, height: `${altura}pt` }}>{titulo}</strong>
+      <strong className="canvas-template-label" data-docx-moldura="" style={{ left: `${x}pt`, top: `${topo}pt`, width: `${rotulo}pt`, height: `${altura}pt` }}>{titulo}</strong>
       <PostIt className="canvas-template-postit" placeholder="" foldSize={10} style={{ position: 'absolute', left: `${p.x}pt`, top: `${topo}pt`, width: `${p.w}pt`, height: `${altura}pt` }} />
-      <div ref={refTexto} className="canvas-template-campo canvas-template-campo-cabecalho" style={{ left: `${p.x + 3}pt`, top: `${topo + 3}pt`, width: `${p.w - 10}pt`, height: `${altura - 6}pt`, fontSize: `${FONTE_CABECALHO.base}pt` }}>
+      <div ref={refTexto} className="canvas-template-campo canvas-template-campo-cabecalho" data-docx-moldura="" style={{ left: `${p.x + 3}pt`, top: `${topo + 3}pt`, width: `${p.w - 10}pt`, height: `${altura - 6}pt`, fontSize: `${FONTE_CABECALHO.base}pt` }}>
         <CampoTexto id={`canvas-${id}`} rotulo={titulo.replace(':', '')} valor={valor} alinhamento="center"
-          onChange={novo => alterar?.(atual => ({ ...atual, [id]: novo }))} max={1000} />
+          onChange={novo => alterar?.(atual => ({ ...atual, [id]: novo }))} max={1000} formatavel />
       </div>
     </>
   )
@@ -194,7 +198,9 @@ export function FolhaCanvas({ conteudo, alterar }: RenderFormulario<Canvas>) {
 
 function normalizar(salvo: Canvas, sistema: DadosFormularios, membros: MembroEquipeOption[]): Canvas {
   const inicial = CANVAS_INICIAL(sistema, membros)
-  return { ...inicial, ...salvo, cabecalho: salvo.cabecalho ?? {} }
+  const completo = { ...inicial, ...salvo, cabecalho: salvo.cabecalho ?? {}, origemEscopo: salvo.origemEscopo }
+  // Estratégia e Comunicação acompanham a Declaração do Escopo enquanto não forem editadas à mão.
+  return sincronizarComEscopo(completo, sistema.escopo?.estrategia ?? '')
 }
 
 /** Estilos da folha do Canvas (posições sobre a arte de fundo, post-its, ícones e campos). */

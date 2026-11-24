@@ -6,29 +6,29 @@ import GlassCloseButton from '@/components/ui/GlassCloseButton'
 import FormActions from '@/components/ui/FormActions'
 import OperumButton from '@/components/ui/GlassButton'
 import { Input as OperumInput, Textarea as OperumTextarea } from '@/components/ui/Field'
-import Select from '@/components/ui/Select'
 import MoedaInput from '@/components/ui/MoedaInput'
 import { erroMoeda, parseMoeda } from '@/lib/dinheiro'
 import { useProjectPermissions } from '@/components/permissoes/ProjectPermissions'
 
 import PermissoesUsuario from '@/components/permissoes/PermissoesUsuario'
 
-import { Fragment, useState, useTransition, useEffect, useRef } from 'react'
+import { Fragment, useState, useTransition, useRef } from 'react'
 import {
   Plus,
   Pencil,
-  Trash2,
   UserPlus,
   Building2,
   Mail,
   Phone,
   BookUser,
-  ChevronDown,
   Users,
   ArrowUp,
   ArrowDown,
   GripVertical,
   Power,
+  ArrowUpDown,
+  ArrowLeftRight,
+  X,
 } from 'lucide-react'
 import AvatarUpload from '@/components/profile/AvatarUpload'
 import AddressFields, { type AddressValues, emptyAddress } from '@/components/ui/AddressFields'
@@ -59,9 +59,20 @@ import { parseHoras, formatHoras } from '@/lib/validation/horas'
 import { separarFuncoes } from '@/lib/funcoes'
 import { funcaoKey } from '@/lib/utils/normalize'
 import PasswordInput from '@/components/ui/PasswordInput'
+import SearchInput from '@/components/ui/SearchInput'
+import MultiCreatableSelect from '@/components/ui/MultiCreatableSelect'
+import GlassCard from '@/components/ui/GlassCard'
+import Switch from '@/components/ui/Switch'
+import Tooltip from '@/components/ui/Tooltip'
+import AnimatedEditButton from '@/components/ui/AnimatedEditButton'
+import AnimatedTrashButton from '@/components/ui/AnimatedTrashButton'
+import EmptyState from '@/components/ui/EmptyState'
+import UserAvatar from '@/components/user/UserAvatar'
+import FiltroPessoas, { contarFiltrosPessoas, FILTROS_PESSOAS_VAZIOS, type FiltrosPessoas } from './FiltroPessoas'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
-import styles from './ProjetoStakeholdersClient.module.css'
+import '@/components/arquivos/ListaArquivos.css'
+import './stakeholders.css'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -270,116 +281,16 @@ function Spinner() {
   return <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
 }
 
-// ─── MultiCreatableSelect ─────────────────────────────────────────────────────
-
-function MultiCreatableSelect({
-  values = [],
-  onChange,
-  options,
-  placeholder,
-  disabled = false,
-}: {
-  values: string[]
-  onChange: (v: string[]) => void
-  options: string[]
-  placeholder: string
-  disabled?: boolean
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-        setSearch('')
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const filteredOptions = options.filter(opt =>
-    opt.toLowerCase().includes(search.toLowerCase()) && !values.includes(opt)
-  )
-  const isExactMatch = options.some(opt => opt.toLowerCase() === search.toLowerCase().trim())
-  const showCreateOption = search.trim().length > 0 && !isExactMatch && !values.includes(search.trim())
-
-  function handleSelect(val: string) {
-    if (disabled) return
-    // "Front-End | Redatora" vira duas etiquetas; nome equivalente a uma opção existente
-    // (acento, caixa, plural) usa a existente, para não criar outra função igual.
-    const novos = separarFuncoes(val).map(nome => options.find(o => funcaoKey(o) === funcaoKey(nome)) ?? nome)
-    const lista = [...values]
-    for (const nome of novos) if (!lista.some(v => funcaoKey(v) === funcaoKey(nome))) lista.push(nome)
-    if (lista.length !== values.length) onChange(lista)
-    setSearch('')
-    setIsOpen(false)
-    inputRef.current?.focus()
-  }
-
-  function handleRemove(val: string) {
-    if (!disabled) onChange(values.filter(v => v !== val))
-  }
-
-  return (
-    <div className="relative" ref={wrapperRef}>
-      <div
-        className={`min-h-[42px] w-full px-2 py-1.5 border border-gray-200 rounded-xl text-sm flex flex-wrap gap-1.5 items-center ${
-          disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-white focus-within:ring-2 focus-within:ring-blue-500 cursor-text'
-        }`}
-        onClick={() => { if (!disabled) { setIsOpen(true); inputRef.current?.focus() } }}
-      >
-        {values.map(val => (
-          <span key={val} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium border border-slate-200">
-            {val}
-            {!disabled && (
-              <GlassCloseButton type="button" onClick={e => { e.stopPropagation(); handleRemove(val) }} className="" label="Remover" />
-            )}
-          </span>
-        ))}
-        <OperumInput
-          ref={inputRef}
-          type="text"
-          value={search}
-          disabled={disabled}
-          onChange={e => { setSearch(e.target.value); setIsOpen(true) }}
-          onFocus={() => !disabled && setIsOpen(true)}
-          placeholder={values.length === 0 ? placeholder : ''}
-          className="flex-1 min-w-[120px] outline-none bg-transparent text-sm disabled:cursor-not-allowed"
-        />
-      </div>
-      {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-xl max-h-48 overflow-y-auto py-1">
-          {filteredOptions.map(opt => (
-            <OperumButton variant="default" type="button" key={opt} onClick={() => handleSelect(opt)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 transition-colors">
-              {opt}
-            </OperumButton>
-          ))}
-          {showCreateOption && (
-            <OperumButton variant="default" type="button" onClick={() => handleSelect(search.trim())} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-blue-700 font-medium bg-blue-50/50 hover:bg-blue-50 transition-colors border-t border-gray-50">
-              <Plus className="w-3.5 h-3.5" /> Criar &quot;{search.trim()}&quot;
-            </OperumButton>
-          )}
-          {filteredOptions.length === 0 && !showCreateOption && (
-            <div className="px-4 py-3 text-sm text-gray-400 italic text-center">Sem opções</div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ─── MemberSignatureUpload ────────────────────────────────────────────────────
 
 function MemberSignatureUpload({
   userId,
+  projectId,
   initialUrl,
   onUpdate,
 }: {
   userId: string
+  projectId: string
   initialUrl: string | null
   onUpdate: (url: string) => void
 }) {
@@ -408,7 +319,7 @@ function MemberSignatureUpload({
     setError(null)
     const fd = new FormData()
     fd.append('file', file)
-    const result = await uploadMemberSignatureAction(fd, userId)
+    const result = await uploadMemberSignatureAction(fd, userId, projectId)
     if ('signatureUrl' in result && result.signatureUrl) {
       setUrl(result.signatureUrl)
       onUpdate(result.signatureUrl)
@@ -491,7 +402,10 @@ export default function ProjetoStakeholdersClient({
     painel.onFechar()
     return true
   }
-  const [showAddMenu, setShowAddMenu] = useState(false)
+  /** Campo único "Adicionar integrante" (tela Stakeholders): busca, vincula ou cria sem trocar de tela. */
+  const [termoAdd, setTermoAdd] = useState('')
+  const [ativoAdd, setAtivoAdd] = useState(0)
+  const campoAddRef = useRef<HTMLInputElement>(null)
   const [selected, setSelected] = useState<StakeholderUnificado | null>(null)
   const [isCreating, setIsCreating] = useState(!!painel?.iniciarCriacao)
 
@@ -500,14 +414,25 @@ export default function ProjetoStakeholdersClient({
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
   const [searchProjeto, setSearchProjeto] = useState('')
-  const [vinculo, setVinculo] = useState('')
-  const [area, setArea] = useState('')
+  const [filtrosPessoas, setFiltrosPessoas] = useState<FiltrosPessoas>(FILTROS_PESSOAS_VAZIOS)
   const [reorderMode, setReorderMode] = useState(false)
   const [searchDir, setSearchDir] = useState('')
   /** Criação/vínculo rápida a partir das buscas (Col 1 projeto / Col 2 diretório externo) */
   const [quickLoading, setQuickLoading] = useState<null | 'col1' | 'dir'>(null)
 
   const [, startTransition] = useTransition()
+  /**
+   * Executa uma ação do servidor sem `startTransition`: numa transição assíncrona, o `setLoadingId` feito antes do `await`
+   * só aparece quando a ação termina (a tela parecia travada) e um erro lançado vai para o limite de erro da página.
+   * Aqui o "carregando" aparece na hora e, se a ação falhar, a tela é liberada com um aviso.
+   */
+  function iniciar(acao: () => Promise<void>) {
+    acao().catch(() => {
+      setLoadingId(null)
+      setQuickLoading(null)
+      toast('Não foi possível concluir agora. Tente novamente.', 'error')
+    })
+  }
   /** Contato que está ganhando login para virar interno (criação de membro a partir dele). */
   const [contatoOrigem, setContatoOrigem] = useState<string | null>(null)
   /** Pessoa aguardando a confirmação de "Mudar para externo/interno". */
@@ -526,7 +451,6 @@ export default function ProjetoStakeholdersClient({
     const r = await carregarCadastroStakeholdersAction(projetoId)
     if ('dados' in r && r.dados) aplicarCadastro(r.dados)
   }
-  const addMenuRef = useRef<HTMLDivElement>(null)
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -534,38 +458,30 @@ export default function ProjetoStakeholdersClient({
   const [isReordering, setIsReordering] = useState(false)
   const [reorderError, setReorderError] = useState<string | null>(null)
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
-        setShowAddMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   // ── Layout
   const showCol3 = selected !== null || isCreating
-  const col2Active = addMode !== null && canManage
-  const col1Width = col2Active || showCol3 ? 'xl:w-1/3' : 'w-full'
-  const col3Width = painel ? 'min-w-0' : col2Active ? 'xl:w-1/3' : 'xl:flex-1'
+  // O diretório (coluna 2) só existe no painel do documento; na tela Stakeholders o
+  // campo "Adicionar integrante" faz o mesmo em um passo.
+  const col2Active = addMode !== null && canManage && !!painel
+  const col3Width = painel ? 'min-w-0' : 'xl:w-[30rem] xl:shrink-0'
 
   // ── Filtered lists
   const normalizarBusca = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
   const areas = [...new Set(projeto.flatMap(s => s.tipo === 'interno' ? s.departamento ?? [] : s.company ? [s.company] : []))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  const hasFilters = Boolean(searchProjeto.trim() || vinculo || area)
+  const hasFilters = Boolean(searchProjeto.trim() || contarFiltrosPessoas(filtrosPessoas))
   const canReorder = canManage && reorderMode && !hasFilters && !isReordering
   const filteredProjeto = projeto.filter(s => {
     const q = normalizarBusca(searchProjeto)
-    return (!vinculo || s.tipo === vinculo)
-      && (!area || (s.tipo === 'interno' ? s.departamento?.includes(area) : s.company === area))
+    const f = filtrosPessoas
+    return (!f.vinculos.length || f.vinculos.includes(s.tipo))
+      && (!f.situacoes.length || f.situacoes.includes(s.isActive === false ? 'inativo' : 'ativo'))
+      && (!f.areas.length || (s.tipo === 'interno' ? (s.departamento ?? []).some(d => f.areas.includes(d)) : !!s.company && f.areas.includes(s.company)))
       && [s.name, s.email ?? '', s.company ?? ''].some(value => normalizarBusca(value).includes(q))
   })
 
   function clearFilters() {
     setSearchProjeto('')
-    setVinculo('')
-    setArea('')
+    setFiltrosPessoas(FILTROS_PESSOAS_VAZIOS)
   }
 
   // Equipe primeiro, externos depois, cada grupo com o seu cabeçalho. A ordem de cada
@@ -585,31 +501,49 @@ export default function ProjetoStakeholdersClient({
     return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
   })
 
-  // Stakeholder externo do diretório que casa exatamente com a busca do Col 1
-  // (para vincular em vez de duplicar ao criar pela busca do projeto).
-  const candidatoDiretorio =
-    searchProjeto.trim().length > 0
-      ? dispExterno.find(s => s.name.toLowerCase() === searchProjeto.trim().toLowerCase())
-      : undefined
-
-  // Ao digitar na busca do projeto, sugere também quem ainda NÃO está no
-  // projeto: stakeholders do diretório global e usuários da instituição.
-  const termoProjeto = searchProjeto.trim().toLowerCase()
-  const MAX_SUGESTOES = 5
-  const sugestoesExternos = termoProjeto
-    ? dispExterno
-        .filter(s =>
-          s.name.toLowerCase().includes(termoProjeto) ||
-          (s.company ?? '').toLowerCase().includes(termoProjeto) ||
-          (s.email ?? '').toLowerCase().includes(termoProjeto),
-        )
-        .slice(0, MAX_SUGESTOES)
+  // ── Campo "Adicionar integrante": quem já existe (equipe e diretório) e a opção de criar.
+  const nAdd = normalizarBusca(termoAdd)
+  const MAX_SUGESTOES = 6
+  const sugestoesInternos = nAdd
+    ? dispInterno.filter(u => normalizarBusca(u.name).includes(nAdd) || normalizarBusca(u.email).includes(nAdd)).slice(0, MAX_SUGESTOES)
     : []
-  const sugestoesInternos = termoProjeto
-    ? dispInterno
-        .filter(u => u.name.toLowerCase().includes(termoProjeto) || u.email.toLowerCase().includes(termoProjeto))
-        .slice(0, MAX_SUGESTOES)
+  const sugestoesExternos = nAdd
+    ? dispExterno.filter(s => [s.name, s.company ?? '', s.email ?? ''].some(v => normalizarBusca(v).includes(nAdd))).slice(0, MAX_SUGESTOES)
     : []
+  const jaNoProjeto = nAdd ? projeto.find(p => normalizarBusca(p.name) === nAdd) : undefined
+  const nomeExistente = Boolean(jaNoProjeto) || [...dispInterno, ...dispExterno].some(p => normalizarBusca(p.name) === nAdd)
+  // Uma pessoa pode existir como usuário (equipe) e como contato (externo): aparece uma vez só, com as duas escolhas.
+  type Candidato = { key: string; nome: string; detalhe: string | null; avatarUrl: string | null; semLogin: boolean; interno?: UsuarioDisponivel; externo?: StakeholderExterno }
+  type OpcaoAdd =
+    | { key: string; tipo: 'equipe'; nome: string; c: Candidato }
+    | { key: string; tipo: 'externo'; nome: string; c: Candidato }
+    | { key: string; tipo: 'criar-equipe'; nome: string }
+    | { key: string; tipo: 'criar-externo'; nome: string }
+  type GrupoAdd = { key: string; nome: string; c?: Candidato; opcoes: OpcaoAdd[] }
+  const externosUsados = new Set<string>()
+  const candidatos: Candidato[] = sugestoesInternos.map(u => {
+    const externo = u.stakeholderId ? dispExterno.find(x => x.id === u.stakeholderId) : dispExterno.find(x => x.userId === u.id)
+    if (externo) externosUsados.add(externo.id)
+    return { key: `i:${u.id}`, nome: u.name, detalhe: u.email || null, avatarUrl: u.avatarUrl, semLogin: Boolean(u.semConta), interno: u, externo }
+  })
+  for (const x of sugestoesExternos) {
+    if (externosUsados.has(x.id)) continue
+    candidatos.push({ key: `e:${x.id}`, nome: x.name, detalhe: [x.company, x.email].filter(Boolean).join(' · ') || null, avatarUrl: x.logoUrl, semLogin: false, externo: x })
+  }
+  const gruposAdd: GrupoAdd[] = candidatos.slice(0, 8).map(c => ({
+    key: c.key, nome: c.nome, c,
+    opcoes: [
+      ...(c.interno ? [{ key: `${c.key}:equipe`, tipo: 'equipe' as const, nome: c.nome, c }] : []),
+      ...(c.externo ? [{ key: `${c.key}:externo`, tipo: 'externo' as const, nome: c.nome, c }] : []),
+    ],
+  }))
+  // Nome que ainda não existe em lugar nenhum: criar já na equipe ou como externo (só administrador).
+  if (nAdd && isAdmin && !nomeExistente) {
+    const nome = termoAdd.trim()
+    gruposAdd.push({ key: 'criar', nome, opcoes: [{ key: 'criar:equipe', tipo: 'criar-equipe', nome }, { key: 'criar:externo', tipo: 'criar-externo', nome }] })
+  }
+  const opcoesAdd: OpcaoAdd[] = gruposAdd.flatMap(g => g.opcoes)
+  const ativoAddIdx = Math.min(ativoAdd, Math.max(opcoesAdd.length - 1, 0))
 
   // ── Form helpers
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -714,7 +648,6 @@ export default function ProjetoStakeholdersClient({
   function handleOpenAddMode(mode: 'interno' | 'externo') {
     if (!canManage) return
     setAddMode(mode)
-    setShowAddMenu(false)
     setSearchDir('')
   }
 
@@ -724,13 +657,32 @@ export default function ProjetoStakeholdersClient({
     setSearchDir('')
   }
 
+  // ── Campo "Adicionar integrante" ──
+  function escolherOpcaoAdd(o: OpcaoAdd) {
+    setTermoAdd('')
+    setAtivoAdd(0)
+    // Sem abrir o cadastro: o campo segue aberto para a próxima pessoa.
+    if (o.tipo === 'criar-equipe') handleCreateMembroDeNome(o.nome)
+    else if (o.tipo === 'criar-externo') handleQuickCreateProjeto(o.nome)
+    else if (o.tipo === 'equipe') handleAddInterno(o.c.interno!, false)
+    else handleBindExterno(o.c.externo!, false)
+    campoAddRef.current?.focus()
+  }
+
+  function teclaCampoAdd(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'ArrowDown' && opcoesAdd.length) { e.preventDefault(); setAtivoAdd((ativoAddIdx + 1) % opcoesAdd.length) }
+    else if (e.key === 'ArrowUp' && opcoesAdd.length) { e.preventDefault(); setAtivoAdd((ativoAddIdx - 1 + opcoesAdd.length) % opcoesAdd.length) }
+    else if (e.key === 'Enter') { e.preventDefault(); if (opcoesAdd[ativoAddIdx]) escolherOpcaoAdd(opcoesAdd[ativoAddIdx]) }
+    else if (e.key === 'Escape' && termoAdd) { e.preventDefault(); setTermoAdd('') }
+  }
+
   // ── Criação como MEMBRO DA EQUIPE a partir das buscas ──
   // Abre o fluxo de criação de usuário interno (Col 2 interno + Col 3) com o
   // nome preenchido — o usuário informa e-mail/senha e o membro fica PENDENTE
   // (troca de senha no 1º acesso), igual ao "Criar e adicionar" do modo interno.
-  function handleCreateMembroDaBusca() {
+  function handleCreateMembroDeNome(nome: string) {
     if (!isAdmin) return
-    const name = searchProjeto.trim()
+    const name = nome.trim()
     if (!name) return
     handleOpenAddMode('interno')
     handleOpenCreateInterno()
@@ -748,18 +700,19 @@ export default function ProjetoStakeholdersClient({
 
   // ── Quick-create a partir das buscas (cria o stakeholder se não existir)
   // Col 1 — "Stakeholders do Projeto": cria externo + vincula ao projeto.
-  function handleQuickCreateProjeto() {
+  function handleQuickCreateProjeto(nome: string) {
     if (!canManage) return
-    const name = searchProjeto.trim()
+    const name = nome.trim()
     if (!name) return
     // Se já existe no diretório disponível, apenas vincula (evita duplicata).
+    const candidatoDiretorio = dispExterno.find(s => s.name.toLowerCase() === name.toLowerCase())
     if (candidatoDiretorio) {
       handleBindExterno(candidatoDiretorio)
-      setSearchProjeto('')
+      setTermoAdd('')
       return
     }
     setQuickLoading('col1')
-    startTransition(async () => {
+    iniciar(async () => {
       const result = await createStakeholderAction({ name }, projetoId)
       setQuickLoading(null)
       if ('error' in result) {
@@ -789,7 +742,7 @@ export default function ProjetoStakeholdersClient({
         isActive: raw.isActive ?? true,
       }
       setProjeto(prev => (prev.some(x => x.id === unified.id) ? prev : [...prev, unified]))
-      setSearchProjeto('')
+      setTermoAdd('')
       toast(`Stakeholder "${raw.name}" criado e adicionado ao projeto!`, 'success')
       // Criado só com o nome: abre o cadastro para completar os dados (SDD 4.4).
       handleOpenEdit(unified)
@@ -802,7 +755,7 @@ export default function ProjetoStakeholdersClient({
     const name = searchDir.trim()
     if (!name) return
     setQuickLoading('dir')
-    startTransition(async () => {
+    iniciar(async () => {
       const result = await createStakeholderAction({ name })
       setQuickLoading(null)
       if ('error' in result) {
@@ -836,19 +789,19 @@ export default function ProjetoStakeholdersClient({
   }
 
   // ── Bind external stakeholder
-  function handleBindExterno(s: StakeholderExterno) {
+  function handleBindExterno(s: StakeholderExterno, abrirCadastro = true) {
     if (!canManage) return
     // Conta do sistema sem contato: cria o contato da mesma pessoa e vincula como externa.
     if (s.id.startsWith('usuario:') && s.userId) {
       const userId = s.userId
-      startTransition(async () => {
+      iniciar(async () => {
         setLoadingId(s.id)
         const result = await adicionarUsuarioComoExternoAction(projetoId, userId)
         setLoadingId(null)
         if ('error' in result) { toast(result.error ?? 'Erro ao adicionar como externo.', 'error'); return }
         aplicarCadastro(result.cadastro)
         const nova = result.cadastro?.stakeholders.find(x => x.tipo === 'externo' && x.contaId === userId)
-        if (nova) handleOpenEdit(nova)
+        if (nova && abrirCadastro) handleOpenEdit(nova)
         toast(`"${s.name}" adicionado como externo neste projeto.`, 'success')
         avisarAlteracao()
       })
@@ -877,16 +830,16 @@ export default function ProjetoStakeholdersClient({
     }
     setDispExterno(prev => prev.filter(x => x.id !== s.id))
     setProjeto(prev => [...prev, unified])
-    handleOpenEdit(unified)
+    if (abrirCadastro) handleOpenEdit(unified)
 
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(s.id)
       const result = await bindStakeholderAction(projetoId, s.id)
       setLoadingId(null)
       if ('error' in result) {
         setProjeto(prev => prev.filter(x => x.id !== s.id))
         setDispExterno(prev => [...prev, s])
-        handleClearSelection()
+        if (abrirCadastro) handleClearSelection()
         toast(result.error ?? 'Erro ao vincular stakeholder.', 'error')
       } else {
         toast(`Stakeholder "${s.name}" vinculado ao projeto!`, 'success')
@@ -897,7 +850,7 @@ export default function ProjetoStakeholdersClient({
   }
 
   // ── Add internal member
-  function handleAddInterno(u: UsuarioDisponivel) {
+  function handleAddInterno(u: UsuarioDisponivel, abrirCadastro = true) {
     if (!canManage) return
     // Contato sem login: interno precisa de conta. O administrador cria o login já
     // preenchido com os dados do contato; para os demais, explica o que fazer.
@@ -931,17 +884,19 @@ export default function ProjetoStakeholdersClient({
     }
     setDispInterno(prev => prev.filter(x => x.id !== u.id))
     setProjeto(prev => [...prev, unified])
-    handleOpenEdit(unified)
+    if (abrirCadastro) handleOpenEdit(unified)
 
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(u.id)
       const result = await addMemberAction(projetoId, u.id)
       setLoadingId(null)
       if ('error' in result) {
         setProjeto(prev => prev.filter(x => x.id !== u.id))
         setDispInterno(prev => [...prev, u])
-        handleClearSelection()
+        if (abrirCadastro) handleClearSelection()
+        toast(result.error ?? 'Erro ao adicionar ao projeto.', 'error')
       } else {
+        toast(`"${u.name}" adicionado ao projeto.`, 'success')
         avisarAlteracao()
         void recarregar()
       }
@@ -974,7 +929,7 @@ export default function ProjetoStakeholdersClient({
   /** Muda a pessoa de lado neste projeto (depois da confirmação). */
   function confirmarTroca(s: StakeholderUnificado) {
     setTrocando(null)
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(s.id)
       const result = s.tipo === 'interno'
         ? await tornarExternoAction(projetoId, s.userId!)
@@ -1038,9 +993,17 @@ export default function ProjetoStakeholdersClient({
       setErroInativo('Informe o motivo da inativação.')
       return
     }
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(alvo.id)
-      const r = await gravarSituacao(alvo, false, motivo)
+      let r: Awaited<ReturnType<typeof gravarSituacao>>
+      try {
+        r = await gravarSituacao(alvo, false, motivo)
+      } catch {
+        // Falha de rede ou do servidor: a tela volta a responder e o motivo digitado é preservado.
+        setLoadingId(null)
+        setErroInativo('Não foi possível inativar agora. Tente novamente.')
+        return
+      }
       setLoadingId(null)
       if ('error' in r) { setErroInativo(r.error ?? 'Erro ao inativar.'); return }
       aplicarSituacao(alvo, false, motivo)
@@ -1057,9 +1020,16 @@ export default function ProjetoStakeholdersClient({
 
   function reativar(s: StakeholderUnificado) {
     if (!podeAlterarSituacao(s)) return
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(s.id)
-      const r = await gravarSituacao(s, true)
+      let r: Awaited<ReturnType<typeof gravarSituacao>>
+      try {
+        r = await gravarSituacao(s, true)
+      } catch {
+        setLoadingId(null)
+        toast('Não foi possível reativar agora. Tente novamente.', 'error')
+        return
+      }
       setLoadingId(null)
       if ('error' in r) { toast(r.error ?? 'Erro ao reativar.', 'error'); return }
       aplicarSituacao(s, true, null)
@@ -1075,11 +1045,18 @@ export default function ProjetoStakeholdersClient({
     setExcluindo(s)
   }
   function confirmarExclusao(s: StakeholderUnificado) {
-    startTransition(async () => {
+    iniciar(async () => {
       setLoadingId(s.id)
-      const result = s.tipo === 'interno'
-        ? await removeMemberAction(projetoId, s.userId!)
-        : await unbindStakeholderAction(projetoId, s.stakeholderId!)
+      let result: Awaited<ReturnType<typeof removeMemberAction>> | Awaited<ReturnType<typeof unbindStakeholderAction>>
+      try {
+        result = s.tipo === 'interno'
+          ? await removeMemberAction(projetoId, s.userId!)
+          : await unbindStakeholderAction(projetoId, s.stakeholderId!)
+      } catch {
+        setLoadingId(null)
+        setErroExclusao('Não foi possível excluir agora. Tente novamente.'); setExcluindo(s)
+        return
+      }
       setLoadingId(null)
       // O diálogo fecha ao confirmar: reabre com o motivo da recusa.
       if ('error' in result) { setErroExclusao(result.error ?? 'Não foi possível excluir do projeto.'); setExcluindo(s); return }
@@ -1402,7 +1379,7 @@ export default function ProjetoStakeholdersClient({
     if (selected.tipo === 'interno' && selected.userId) {
       setLoadingId('form')
       const result = await updateProjetoMemberAction(selected.userId, projetoId, {
-        ...(isAdmin && formState.name.trim() && { name: formState.name.trim() }),
+        ...(podeEditarCampos && formState.name.trim() && { name: formState.name.trim() }),
         ...(isAdmin && formState.email.trim() && { email: formState.email.trim() }),
         avatarUrl: formState.avatarUrl || undefined,
         phone: formState.phone || undefined,
@@ -1436,7 +1413,7 @@ export default function ProjetoStakeholdersClient({
                 ...x,
                 company: formState.company || null,
                 competence: formState.competence || null,
-                ...(isAdmin && formState.name.trim() && { name: formState.name.trim() }),
+                ...(podeEditarCampos && formState.name.trim() && { name: formState.name.trim() }),
                 ...(isAdmin && formState.email.trim() && { email: formState.email.trim() }),
                 avatarUrl: formState.avatarUrl || x.avatarUrl,
                 phone: formState.phone || null,
@@ -1462,6 +1439,10 @@ export default function ProjetoStakeholdersClient({
     }
   }
 
+  // Admin edita tudo. O gerente (projeto:equipe) edita o cadastro da equipe e dos externos
+  // deste projeto, menos a conta de um administrador. E-mail de login, remuneração, horas,
+  // cargos e papel de gerente continuam só do administrador (o servidor também barra).
+  const podeEditarCampos = isAdmin || (canManage && !(selected?.tipo === 'interno' && selected.userRole === 'admin'))
   const horasCheck = parseHoras(formState.horasDiarias)
 
   const col3Title = isCreating && addMode === 'interno'
@@ -1482,7 +1463,7 @@ export default function ProjetoStakeholdersClient({
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">
-                {addMode === 'interno' ? 'Usuários do Sistema' : 'Diretório de Stakeholders'}
+                {addMode === 'interno' ? 'Membros da equipe' : 'Diretório de Stakeholders'}
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">
                 {addMode === 'interno' ? `${dispInterno.length} disponíveis` : `${dispExterno.length} disponíveis`}
@@ -1660,33 +1641,40 @@ export default function ProjetoStakeholdersClient({
     <>
       {/* ── COLUMN 3 — Formulário de Edição ── */}
       {showCol3 && (
-        <div className={`${col3Width} w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in slide-in-from-right-4 duration-300 flex flex-col max-h-[calc(100vh-6rem)]`}>
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
-            <h2 className="text-sm font-semibold text-gray-900">{col3Title}</h2>
-            <GlassCloseButton type="button" onClick={handleClearSelection} className="p-2 rounded-xl    transition-colors" label="Fechar" />
+        <GlassCard as="section" aria-label={col3Title} className={`${col3Width} stk-painel w-full animate-in slide-in-from-right-4 duration-300 xl:max-h-full`}>
+          <div className="stk-painel-cab">
+            {selected && !isCreating && <UserAvatar name={selected.name} avatarUrl={formState.avatarUrl || null} size="lg" />}
+            <div className="min-w-0 flex-1">
+              <h2>{selected && !isCreating ? selected.name : col3Title}</h2>
+              {selected && !isCreating && <p><span>{col3Title}</span> · {selected.tipo === 'interno' ? 'Equipe do projeto' : 'Externo'}</p>}
+            </div>
+            <GlassCloseButton type="button" onClick={handleClearSelection} label="Fechar" />
           </div>
 
-          <div className="px-5 py-5 space-y-4 overflow-y-auto flex-1 min-h-0">
+          <div className="stk-painel-corpo">
 
             {isAdmin && selected?.tipo === 'interno' && selected.userId && !isCreating && (
-              <details className="rounded-xl border border-gray-200 p-3">
-                <summary className="cursor-pointer text-sm font-medium text-blue-700">Permissões neste projeto</summary>
+              <details className="stk-config mt-4 !block">
+                <summary className="cursor-pointer text-sm font-medium" style={{ color: 'var(--arq-sel)' }}>Permissões neste projeto</summary>
                 <div className="pt-3"><PermissoesUsuario key={`${selected.userId}:${projetoId}`} userId={selected.userId} projectId={projetoId} /></div>
               </details>
             )}
+            <section className="stk-secao">
+              <h3>Perfil</h3>
+              <div className="stk-campos">
             {/* Avatar */}
             <div className="flex justify-center pb-2">
               <AvatarUpload
                 name={formState.name || 'S'}
                 avatarUrl={formState.avatarUrl || null}
                 onChange={url => setField('avatarUrl', url)}
-                disabled={!isAdmin}
+                disabled={!podeEditarCampos}
               />
             </div>
 
             {/* Nome */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="stk-rotulo">
                 Nome <span className="text-red-400">*</span>
               </label>
               <OperumInput
@@ -1694,7 +1682,7 @@ export default function ProjetoStakeholdersClient({
                 autoFocus
                 value={formState.name}
                 onChange={e => setField('name', e.target.value)}
-                disabled={!isAdmin}
+                disabled={!podeEditarCampos}
                 placeholder="Nome completo ou razão social"
                 className={`${inputCls} ${disabledCls}`}
               />
@@ -1704,7 +1692,7 @@ export default function ProjetoStakeholdersClient({
             {isCreating && addMode === 'interno' && (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="stk-rotulo">
                     E-mail <span className="text-red-400">*</span>
                   </label>
                   <EmailInput
@@ -1716,7 +1704,7 @@ export default function ProjetoStakeholdersClient({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="stk-rotulo">
                     Senha <span className="text-red-400">*</span>
                   </label>
                   <PasswordInput
@@ -1742,23 +1730,23 @@ export default function ProjetoStakeholdersClient({
             {(
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Empresa / Instituição</label>
+                  <label className="stk-rotulo">Empresa / Instituição</label>
                   <OperumInput
                     type="text"
                     value={formState.company}
                     onChange={e => setField('company', e.target.value)}
-                    disabled={!isAdmin}
+                    disabled={!podeEditarCampos}
                     placeholder="Ex: Universidade Federal"
                     className={`${inputCls} ${disabledCls}`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Competência</label>
+                  <label className="stk-rotulo">Competência</label>
                   <OperumInput
                     type="text"
                     value={formState.competence}
                     onChange={e => setField('competence', e.target.value)}
-                    disabled={!isAdmin}
+                    disabled={!podeEditarCampos}
                     placeholder="Ex: Educação, TI"
                     className={`${inputCls} ${disabledCls}`}
                   />
@@ -1766,15 +1754,87 @@ export default function ProjetoStakeholdersClient({
               </div>
             )}
 
+              </div>
+            </section>
+
             {/* Dados do projeto: os mesmos para interno e externo (remuneração, horas, valores,
                 funções e departamentos). Também na criação (SDD 4.4). Gerente e assinatura
                 são só do interno, porque dependem de acesso ao sistema. */}
-            {(
-              <>
+            <section className="stk-secao">
+              <h3>Função no projeto</h3>
+              <div className="stk-campos">
+                {(selected?.tipo === 'interno' || (isCreating && !selected && addMode === 'interno')) && <div className="stk-config">
+                    <p>Gerente do projeto<small>Concede acesso de gerência</small></p>
+                    <Switch
+                      compact
+                      label="Gerente do projeto"
+                      checked={formState.isGerente}
+                      disabled={!isAdmin}
+                      onCheckedChange={() => {
+                        if (!isAdmin) return
+                        const GERENTE_LABEL = 'Gerente de Projeto'
+                        setFormState(f => {
+                          const next = !f.isGerente
+                          const cargos = next
+                            ? f.cargos.includes(GERENTE_LABEL) ? f.cargos : [...f.cargos, GERENTE_LABEL]
+                            : f.cargos.filter(c => c !== GERENTE_LABEL)
+                          return { ...f, isGerente: next, cargos }
+                        })
+                      }}
+                    />
+                  </div>}
+
+                <div>
+                  <label className="stk-rotulo">Cargos / Funções</label>
+                  <MultiCreatableSelect
+                    values={formState.cargos}
+                    onChange={v => setField('cargos', v)}
+                    options={funcoesExistentes}
+                    placeholder="Adicionar cargo..."
+                    ariaLabel="Cargos / Funções"
+                    separar={separarFuncoes}
+                    chave={funcaoKey}
+                    disabled={!isAdmin}
+                  />
+                </div>
+
+                <div>
+                  <label className="stk-rotulo">Departamentos</label>
+                  <MultiCreatableSelect
+                    values={formState.departamento}
+                    onChange={v => setField('departamento', v)}
+                    options={departamentosExistentes}
+                    placeholder="Adicionar departamento..."
+                    ariaLabel="Departamentos"
+                    separar={separarFuncoes}
+                    chave={funcaoKey}
+                    disabled={!podeEditarCampos}
+                  />
+                </div>
+
+                {selected?.isGerente && selected.userId && (
+                  <MemberSignatureUpload
+                    userId={selected.userId}
+                    projectId={projetoId}
+                    initialUrl={selected.signatureUrl ?? null}
+                    onUpdate={url => {
+                      setSelected(prev => prev ? { ...prev, signatureUrl: url } : prev)
+                      setProjeto(prev =>
+                        prev.map(x => x.id === selected.id ? { ...x, signatureUrl: url } : x),
+                      )
+                    }}
+                  />
+                )}
+              </div>
+            </section>
+
+            <section className="stk-secao">
+              <h3>Remuneração e horas</h3>
+              <div className="stk-campos">
                 {/* Remuneração + Horas por dia */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="stk-campos stk-campos--2">
                   <div>
-                    <label htmlFor="field-remuneracao" className="block text-xs font-medium text-gray-600 mb-1">Remuneração mensal</label>
+                    <label htmlFor="field-remuneracao" className="stk-rotulo">Remuneração mensal</label>
                     <MoedaInput
                       id="field-remuneracao"
                       value={formState.remuneracao}
@@ -1786,7 +1846,7 @@ export default function ProjetoStakeholdersClient({
                     />
                   </div>
                   <div>
-                    <label htmlFor="field-horas-diarias" className="block text-xs font-medium text-gray-600 mb-1">Horas por dia</label>
+                    <label htmlFor="field-horas-diarias" className="stk-rotulo">Horas por dia</label>
                     {/* Texto, não type="number": no Firefox o number com vírgula ("8,5") chegava vazio. */}
                     <OperumInput
                       id="field-horas-diarias"
@@ -1800,7 +1860,7 @@ export default function ProjetoStakeholdersClient({
                       aria-describedby="field-horas-diarias-ajuda"
                       className={`${inputCls} ${disabledCls} ${horasCheck.erro ? 'border-red-400 focus:ring-red-300' : ''}`}
                     />
-                    <p id="field-horas-diarias-ajuda" className={`mt-1 text-[11px] ${horasCheck.erro ? 'text-red-600' : 'text-gray-400'}`}>
+                    <p id="field-horas-diarias-ajuda" className="mt-1 text-[11px]" style={{ color: horasCheck.erro ? 'var(--stk-vermelho)' : 'var(--arq-suave)' }}>
                       {horasCheck.erro
                         ?? (horasCheck.valor !== null && formState.horasDiarias.includes(':')
                           ? `= ${formatHoras(horasCheck.valor)} h`
@@ -1820,97 +1880,35 @@ export default function ProjetoStakeholdersClient({
                   const valorHora = valid ? (remNum / 30) / horasNum : null
                   const valorMinuto = valid ? (remNum / 30) / horasNum / 60 : null
                   return (
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 mb-1">Valor/dia</p>
-                        <p data-testid="valor-dia" className="text-sm font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-                          {valorDia !== null ? fmtBRL(valorDia) : '—'}
-                        </p>
+                    <div className="stk-valores">
+                      <div className="stk-valor">
+                        <span>Valor/dia</span>
+                        <strong data-testid="valor-dia">{valorDia !== null ? fmtBRL(valorDia) : '—'}</strong>
                       </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 mb-1">Valor/hora</p>
-                        <p data-testid="valor-hora" className="text-sm font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-                          {valorHora !== null ? fmtBRL(valorHora) : '—'}
-                        </p>
+                      <div className="stk-valor">
+                        <span>Valor/hora</span>
+                        <strong data-testid="valor-hora">{valorHora !== null ? fmtBRL(valorHora) : '—'}</strong>
                       </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 mb-1">Valor/minuto</p>
-                        <p data-testid="valor-minuto" className="text-sm font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-                          {valorMinuto !== null ? fmtBRL(valorMinuto) : '—'}
-                        </p>
+                      <div className="stk-valor">
+                        <span>Valor/minuto</span>
+                        <strong data-testid="valor-minuto">{valorMinuto !== null ? fmtBRL(valorMinuto) : '—'}</strong>
                       </div>
                     </div>
                   )
                 })()}
 
-                {(selected?.tipo === 'interno' || (isCreating && !selected && addMode === 'interno')) && <div className="flex items-center justify-between py-1">
-                    <div>
-                      <span className="text-xs font-medium text-gray-600">Gerente do Projeto</span>
-                      <p className="text-[10px] text-gray-400">Concede acesso de gerência</p>
-                    </div>
-                    <OperumButton variant="custom"
-                      type="button"
-                      onClick={() => {
-                        if (!isAdmin) return
-                        const GERENTE_LABEL = 'Gerente de Projeto'
-                        setFormState(f => {
-                          const next = !f.isGerente
-                          const cargos = next
-                            ? f.cargos.includes(GERENTE_LABEL) ? f.cargos : [...f.cargos, GERENTE_LABEL]
-                            : f.cargos.filter(c => c !== GERENTE_LABEL)
-                          return { ...f, isGerente: next, cargos }
-                        })
-                      }}
-                      disabled={!isAdmin}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shrink-0 ${formState.isGerente ? 'bg-blue-600' : 'bg-gray-200'} ${!isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${formState.isGerente ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </OperumButton>
-                </div>}
+              </div>
+            </section>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Cargos / Funções</label>
-                  <MultiCreatableSelect
-                    values={formState.cargos}
-                    onChange={v => setField('cargos', v)}
-                    options={funcoesExistentes}
-                    placeholder="Adicionar cargo..."
-                    disabled={!isAdmin}
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Departamentos</label>
-                  <MultiCreatableSelect
-                    values={formState.departamento}
-                    onChange={v => setField('departamento', v)}
-                    options={departamentosExistentes}
-                    placeholder="Adicionar departamento..."
-                    disabled={!isAdmin}
-                  />
-                </div>
-
-                {selected?.isGerente && selected.userId && (
-                  <MemberSignatureUpload
-                    userId={selected.userId}
-                    initialUrl={selected.signatureUrl ?? null}
-                    onUpdate={url => {
-                      setSelected(prev => prev ? { ...prev, signatureUrl: url } : prev)
-                      setProjeto(prev =>
-                        prev.map(x => x.id === selected.id ? { ...x, signatureUrl: url } : x),
-                      )
-                    }}
-                  />
-                )}
-              </>
-            )}
-
-            <hr className="border-gray-100" />
+            <section className="stk-secao">
+              <h3>Contato</h3>
+              <div className="stk-campos">
 
             {/* E-mail — oculto ao criar usuário (já aparece no bloco de criação acima) */}
             {!(isCreating && addMode === 'interno') && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1.5">
+                <label className="stk-rotulo">
                   <Mail className="w-3.5 h-3.5" /> E-mail
                 </label>
                 <EmailInput
@@ -1925,13 +1923,13 @@ export default function ProjetoStakeholdersClient({
 
             {/* Telefone */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1.5">
+              <label className="stk-rotulo">
                 <Phone className="w-3.5 h-3.5" /> Telefone
               </label>
               <TelefoneInput
                 value={formState.phone}
                 onValueChange={v => setField('phone', v)}
-                disabled={!isAdmin}
+                disabled={!podeEditarCampos}
                 className={`${inputCls} ${disabledCls}`}
               />
             </div>
@@ -1940,41 +1938,38 @@ export default function ProjetoStakeholdersClient({
             <AddressFields
               values={formState.address}
               onChange={(field, value) => setFormState(f => ({ ...f, address: { ...f.address, [field]: value } }))}
-              disabled={!isAdmin}
+              disabled={!podeEditarCampos}
             />
 
-            {/* Observações */}
+              </div>
+            </section>
+
+            <section className="stk-secao">
+              <h3>Observações</h3>
+              <div className="stk-campos">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Observações</label>
+              <label className="stk-rotulo">Observações</label>
               <OperumTextarea
                 value={formState.notes}
                 onChange={e => setField('notes', e.target.value)}
-                disabled={!isAdmin}
+                disabled={!podeEditarCampos}
                 rows={3}
                 placeholder="Anotações internas…"
                 className={`${inputCls} ${disabledCls} resize-none`}
               />
             </div>
 
-          </div>
+              </div>
+            </section>
 
-          {/* Rodapé fixo — sempre visível, mesmo com o formulário rolando por dentro */}
-          <div className="px-5 py-4 border-t border-gray-100 bg-white shrink-0 space-y-3">
-            {!isAdmin && (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-                Você está em modo somente leitura. Apenas administradores podem editar.
-              </p>
-            )}
-
-            {formError && (
-              <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>
-            )}
-
+            {selected && !isCreating && (podeAlterarSituacao(selected) || canManage) && (
+              <section className="stk-secao">
+                <h3>Situação no projeto</h3>
             {selected && !isCreating && podeAlterarSituacao(selected) && (
-              <div className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${selected.isActive === false ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
-                <p className="text-xs text-gray-600 min-w-0">
+              <div className={`stk-config ${selected.isActive === false ? 'stk-config--inativo' : ''}`}>
+                <p>
                   {selected.isActive === false
-                    ? <>Inativo{selected.inactiveReason ? <>: <span className="text-red-700">{selected.inactiveReason}</span></> : null}</>
+                    ? <>Inativo{selected.inactiveReason ? <small style={{ color: 'var(--stk-vermelho)' }}>Motivo: {selected.inactiveReason}</small> : null}</>
                     : selected.tipo === 'interno' ? 'Ativo no projeto' : 'Stakeholder ativo'}
                 </p>
                 <SituacaoButton
@@ -1987,24 +1982,46 @@ export default function ProjetoStakeholdersClient({
             )}
 
             {selected && !isCreating && canManage && (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs text-gray-600 min-w-0">
+              <div className="stk-config">
+                <p>
                   {selected.tipo === 'interno' ? 'Interno neste projeto (equipe, com acesso)' : 'Externo neste projeto (sem acesso)'}
                 </p>
                 <OperumButton variant="default" type="button" disabled={loadingId === selected.id}
                   onClick={() => setTrocando(selected)}
-                  className="shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700">
+                  className="shrink-0 px-3 py-1.5 text-xs">
                   {loadingId === selected.id ? <Spinner /> : null}
                   {selected.tipo === 'interno' ? 'Mudar para externo' : 'Mudar para interno'}
                 </OperumButton>
               </div>
             )}
 
-            <FormActions className="flex gap-2">
+              </section>
+            )}
+
+          </div>
+
+          {/* Rodapé fixo — sempre visível, mesmo com o formulário rolando por dentro */}
+          <div className="stk-painel-rodape">
+            {!podeEditarCampos && (
+              <p className="stk-nota stk-nota--aviso">
+                Você está em modo somente leitura. Apenas administradores podem editar.
+              </p>
+            )}
+            {podeEditarCampos && !isAdmin && (
+              <p className="stk-nota stk-nota--info">
+                Como gerente, você edita os dados cadastrais. E-mail de login, remuneração, horas, cargos e gerência ficam com o administrador.
+              </p>
+            )}
+
+            {formError && (
+              <p role="alert" className="stk-nota stk-nota--erro">{formError}</p>
+            )}
+
+            <FormActions surface="none" className="flex gap-2">
               <OperumButton variant="default"
                 type="button"
                 onClick={handleClearSelection}
-                className="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 text-sm"
               >
                 Cancelar
               </OperumButton>
@@ -2013,7 +2030,7 @@ export default function ProjetoStakeholdersClient({
                   type="button"
                   onClick={handleSave}
                   disabled={loadingId === 'form' || Boolean(horasCheck.erro)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="flex flex-1 items-center justify-center gap-2 px-4 py-2.5 text-sm"
                 >
                   {loadingId === 'form' && <Spinner />}
                   {isCreating ? 'Criar Stakeholder' : 'Salvar Dados'}
@@ -2021,7 +2038,7 @@ export default function ProjetoStakeholdersClient({
               )}
             </FormActions>
           </div>
-        </div>
+        </GlassCard>
       )}
     </>
   )
@@ -2060,7 +2077,7 @@ export default function ProjetoStakeholdersClient({
 
   if (painel) {
     return (
-      <DetailPanel floating label={painel.modo === 'interno' ? 'Adicionar membro da equipe' : 'Adicionar stakeholder externo'} className="gap-3 [&>*]:!w-full">
+      <DetailPanel floating label={painel.modo === 'interno' ? 'Adicionar membro da equipe' : 'Adicionar stakeholder externo'} className="arq gap-3 [&>*]:!w-full">
         {inativando === null && (showCol3 ? coluna3 : coluna2)}
         {dialogoTroca}
         {dialogoExclusao}
@@ -2070,8 +2087,23 @@ export default function ProjetoStakeholdersClient({
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  const etiquetasFiltro: { chave: string; rotulo: string; remover: () => void }[] = [
+    ...filtrosPessoas.vinculos.map(v => ({ chave: `v:${v}`, rotulo: v === 'interno' ? 'Equipe' : 'Externos', remover: () => setFiltrosPessoas(f => ({ ...f, vinculos: f.vinculos.filter(x => x !== v) })) })),
+    ...filtrosPessoas.situacoes.map(v => ({ chave: `s:${v}`, rotulo: v === 'ativo' ? 'Ativos' : 'Inativos', remover: () => setFiltrosPessoas(f => ({ ...f, situacoes: f.situacoes.filter(x => x !== v) })) })),
+    ...filtrosPessoas.areas.map(a => ({ chave: `a:${a}`, rotulo: a, remover: () => setFiltrosPessoas(f => ({ ...f, areas: f.areas.filter(x => x !== a) })) })),
+  ]
+  /** Função da pessoa: até duas etiquetas e "+N" para o resto. */
+  const etiquetasFuncao = (s: StakeholderUnificado) => {
+    const funcoes = s.cargos?.length ? s.cargos : s.competence ? [s.competence] : []
+    return funcoes.length
+      ? <span className="stk-chips">{funcoes.slice(0, 2).map(f => <span key={f} className="stk-chip stk-chip--neutro" title={f}>{f}</span>)}{funcoes.length > 2 && <span className="stk-chip stk-chip--neutro" title={funcoes.slice(2).join(', ')}>+{funcoes.length - 2}</span>}</span>
+      : <span className="arq-meta">—</span>
+  }
+
   return (
-    <div className="flex flex-col xl:flex-row gap-6 items-start">
+    <div className="arq flex h-full min-h-0 flex-col overflow-y-auto px-3 py-3 sm:px-5 sm:py-4 xl:overflow-hidden">
+      {/* Título só para leitores de tela: a seção já aparece no menu do projeto. */}
+      <h1 className="sr-only">Stakeholders do projeto</h1>
       <Modal isOpen={inativando !== null} onClose={() => setInativando(null)} title="Inativar stakeholder">
         <p className="text-sm text-gray-600 mb-3">
           {inativando ? <>Informe por que <strong>{inativando.name}</strong> foi inativado. O motivo fica registrado e aparece no cadastro.</> : null}
@@ -2095,261 +2127,232 @@ export default function ProjetoStakeholdersClient({
         {erroInativo && <p role="alert" className="mt-1 text-xs text-red-600">{erroInativo}</p>}
         <div className="flex justify-end gap-3 mt-4">
           <Button variant="secondary" onClick={() => setInativando(null)}>Cancelar</Button>
-          <Button variant="danger" onClick={confirmarInativacao}>Inativar</Button>
+          <Button variant="danger" onClick={confirmarInativacao} disabled={inativando !== null && loadingId === inativando.id} aria-busy={inativando !== null && loadingId === inativando.id}>
+            {inativando !== null && loadingId === inativando.id ? 'Inativando…' : 'Inativar'}
+          </Button>
         </div>
       </Modal>
 
-      {/* ── COLUMN 1 — Lista Unificada ── */}
-      <div className={`${col1Width} w-full min-w-0 bg-white rounded-2xl border border-gray-200 ${styles.listPanel}`}>
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5 border-b border-gray-100">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Stakeholders do Projeto</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              {projeto.length} pessoa{projeto.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          {canManage && (
-            <div className="relative" ref={addMenuRef}>
-              <OperumButton variant="custom" type="button"
-                onClick={() => setShowAddMenu(v => !v)}
-                title="Adicionar"
-                aria-expanded={showAddMenu}
-                aria-controls="stakeholder-add-menu"
-                onKeyDown={e => { if (e.key === 'Escape') setShowAddMenu(false) }}
-                className="inline-flex min-h-11 items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-              >
-                <Plus className="w-4 h-4" aria-hidden="true" />
-                Adicionar pessoa
-                <ChevronDown className="w-3 h-3" />
+      <div className="flex min-h-0 flex-1 flex-col gap-4 xl:flex-row">
+        {/* Lista: barra de ferramentas e cabeçalho da tabela ficam parados; só as pessoas rolam. */}
+        <div className="arq-fixa min-h-[26rem] min-w-0 xl:min-h-0">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="min-w-[12rem] flex-1">
+              <SearchInput label="Buscar pessoa" placeholder="Buscar por nome, e-mail ou empresa…" value={searchProjeto} onChange={e => { setSearchProjeto(e.target.value); setReorderMode(false) }} />
+            </div>
+            <FiltroPessoas filtros={filtrosPessoas} onChange={f => { setFiltrosPessoas(f); setReorderMode(false) }} areas={areas} compacto={showCol3} />
+            {canManage && projeto.length > 1 && (
+              <OperumButton variant="default" type="button" disabled={hasFilters || isReordering} aria-pressed={reorderMode} aria-label={reorderMode ? 'Finalizar ordenação' : 'Reordenar'} title={reorderMode ? 'Finalizar ordenação' : 'Reordenar'} onClick={() => setReorderMode(v => !v)} className="inline-flex h-10 items-center gap-2 px-3.5 text-sm">
+                <ArrowUpDown className="h-4 w-4" aria-hidden="true" /><span aria-hidden="true" className={showCol3 ? 'hidden' : 'hidden sm:inline'}>{reorderMode ? 'Finalizar ordenação' : 'Reordenar'}</span>
               </OperumButton>
-              {showAddMenu && (
-                <div id="stakeholder-add-menu" onKeyDown={e => { if (e.key === 'Escape') { setShowAddMenu(false); (addMenuRef.current?.querySelector('button') as HTMLButtonElement | null)?.focus() } }} className="absolute right-0 top-full mt-1 w-60 bg-white rounded-xl border border-gray-100 shadow-xl z-50 py-1 animate-in fade-in duration-150">
-                  <OperumButton variant="default" type="button"
-                    onClick={() => handleOpenAddMode('interno')}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                  >
-                    <Users className="w-4 h-4 text-blue-500" />
-                    Vincular Membro da Equipe
-                  </OperumButton>
-                  <OperumButton variant="default" type="button"
-                    onClick={() => handleOpenAddMode('externo')}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                  >
-                    <Building2 className="w-4 h-4 text-slate-500" />
-                    Stakeholder Externo
-                  </OperumButton>
-                </div>
-              )}
+            )}
+            {canManage && (
+              <div className={`stk-adicionar w-full ${showCol3 ? 'sm:w-[15rem]' : 'sm:w-[21rem]'}`}>
+                <UserPlus className="stk-adicionar-icone" aria-hidden="true" />
+                <OperumInput
+                  id="adicionar-integrante"
+                  ref={campoAddRef}
+                  type="text"
+                  role="combobox"
+                  aria-label="Adicionar integrante"
+                  aria-describedby="adicionar-integrante-ajuda"
+                  aria-expanded={opcoesAdd.length > 0}
+                  aria-controls="adicionar-integrante-lista"
+                  aria-autocomplete="list"
+                  aria-activedescendant={opcoesAdd.length ? `adicionar-opcao-${ativoAddIdx}` : undefined}
+                  autoComplete="off"
+                  placeholder="Adicionar pessoa: nome ou e-mail…"
+                  value={termoAdd}
+                  onChange={e => { setTermoAdd(e.target.value); setAtivoAdd(0) }}
+                  onKeyDown={teclaCampoAdd}
+                  className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-3 text-sm"
+                />
+                <p id="adicionar-integrante-ajuda" className="sr-only">Digite para achar quem já existe ou criar alguém novo. Para cada pessoa, escolha Equipe (com acesso ao projeto) ou Externo (parte interessada, sem acesso). Enter escolhe a opção marcada.</p>
+                {opcoesAdd.length > 0 && (
+                  <ul id="adicionar-integrante-lista" role="listbox" aria-label="Pessoas para adicionar ao projeto" className="stk-sugestoes">
+                    {gruposAdd.map(g => {
+                      const rotuloOpcao = (o: OpcaoAdd) =>
+                        o.tipo === 'equipe' ? `Adicionar ${o.nome} à equipe`
+                          : o.tipo === 'externo' ? `Adicionar ${o.nome} como externo`
+                            : o.tipo === 'criar-equipe' ? `Criar «${o.nome}» na equipe`
+                              : `Criar «${o.nome}» como externo`
+                      const textoOpcao = (o: OpcaoAdd) => (o.tipo === 'equipe' || o.tipo === 'criar-equipe' ? 'Equipe' : 'Externo')
+                      return (
+                        <li key={g.key} role="group" aria-label={g.c ? g.nome : `Criar «${g.nome}»`} className="stk-opcao-grupo">
+                          {g.c
+                            ? <UserAvatar name={g.nome} avatarUrl={g.c.avatarUrl} size="sm" />
+                            : <span className="stk-opcao-icone"><UserPlus className="h-4 w-4" aria-hidden="true" /></span>}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold">{g.c ? g.nome : <>Criar «{g.nome}»</>}</span>
+                            {g.c?.detalhe && <span className="stk-sub block">{g.c.detalhe}</span>}
+                            {!g.c && <span className="stk-sub block">Ainda não existe. Escolha como entra neste projeto.</span>}
+                            {g.c?.semLogin && <span className="block text-xs" style={{ color: 'var(--stk-ambar)' }}>{isAdmin ? 'Sem login · para entrar na equipe, você cria o login dessa pessoa' : 'Sem login · para entrar na equipe, um administrador precisa criar o login'}</span>}
+                          </span>
+                          <span className="stk-opcao-botoes">
+                            {g.opcoes.map(o => {
+                              const idx = opcoesAdd.indexOf(o)
+                              return (
+                                <span key={o.key} id={`adicionar-opcao-${idx}`} role="option" aria-selected={idx === ativoAddIdx} aria-label={rotuloOpcao(o)}
+                                  onMouseDown={e => e.preventDefault()} onMouseEnter={() => setAtivoAdd(idx)} onClick={() => escolherOpcaoAdd(o)} className="stk-opcao">
+                                  {textoOpcao(o)}
+                                </span>
+                              )
+                            })}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                {nAdd && opcoesAdd.length === 0 && (
+                  <p role="status" className="stk-aviso">{jaNoProjeto ? `«${jaNoProjeto.name}» já está no projeto.` : 'Nenhuma pessoa encontrada.'}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Linha de estado: contador, filtros ativos e dica da reordenação. */}
+          <div className="mb-2 flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1.5">
+            <p role="status" className="arq-meta px-1 text-sm">
+              {isReordering ? 'Salvando ordem…' : `${filteredProjeto.length} ${filteredProjeto.length === 1 ? 'pessoa' : 'pessoas'}${hasFilters ? ` de ${projeto.length} (filtrado)` : ''}`}
+            </p>
+            {etiquetasFiltro.length > 0 && (
+              <ul aria-label="Filtros ativos" className="flex flex-wrap items-center gap-1.5">
+                {etiquetasFiltro.map(e => (
+                  <li key={e.chave}>
+                    <OperumButton variant="custom" type="button" className="arq-etiqueta pressionavel" aria-label={`Remover filtro: ${e.rotulo}`} onClick={e.remover}>
+                      {e.rotulo}<X className="h-3 w-3" aria-hidden="true" />
+                    </OperumButton>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {hasFilters && <OperumButton variant="ghost" type="button" className="px-2 py-1 text-xs" onClick={clearFilters}>Limpar filtros</OperumButton>}
+            {reorderMode && <p className="arq-meta text-sm">Arraste ou use as setas para mover pessoas dentro do mesmo grupo. Cada movimento é salvo automaticamente.</p>}
+          </div>
+
+          {reorderError && <p role="alert" className="arq-erro mb-2 rounded-lg px-1 text-sm">{reorderError}</p>}
+
+          {filteredProjeto.length === 0 ? (
+            <EmptyState
+              className="rounded-2xl"
+              icon={<BookUser className="mx-auto mb-4 h-12 w-12 opacity-40" aria-hidden="true" />}
+              heading={projeto.length === 0 ? 'Este projeto ainda não tem pessoas' : 'Nenhuma pessoa encontrada'}
+              subtext={projeto.length === 0 ? (canManage ? 'Use o campo Adicionar integrante para vincular ou criar a primeira pessoa.' : 'Peça ao gerente para vincular as pessoas do projeto.') : 'Tente outro termo ou limpe os filtros para ver todas as pessoas.'}
+              action={hasFilters ? { label: 'Limpar filtros', onClick: clearFilters } : undefined}
+            />
+          ) : (
+            <div className="arq-quadro arq-rolagem stk-quadro rounded-2xl">
+              <table className="stk-tabela" aria-label="Pessoas do projeto" aria-busy={isReordering}>
+                <thead className="arq-cabecalho">
+                  <tr>
+                    {reorderMode && <th className="px-2 py-2.5" style={{ width: 36 }}><span className="sr-only">Mover</span></th>}
+                    <th className="px-3 py-2.5">Pessoa</th>
+                    <th className="stk-col-funcao px-3 py-2.5" style={{ width: '24%' }}>Função</th>
+                    <th className="stk-col-area px-3 py-2.5" style={{ width: '20%' }}>Área / empresa</th>
+                    <th className="stk-col-remun px-3 py-2.5" style={{ width: 150, textAlign: 'right' }}>Remuneração</th>
+                    <th className="px-3 py-2.5" style={{ width: 150 }}><span className="sr-only">Ações</span></th>
+                  </tr>
+                </thead>
+                <tbody aria-busy={isReordering} className={isReordering ? 'opacity-70' : undefined}>
+                  {exibidos.map((s, posicao) => {
+                    // Índice real em `projeto`: o arrastar reordena essa lista, não a filtrada/agrupada.
+                    const index = projeto.indexOf(s)
+                    const novoGrupo = s.tipo !== exibidos[posicao - 1]?.tipo
+                    const inativo = s.isActive === false
+                    const salario = s.remuneracao ?? s.hourlyRate
+                    return (
+                      <Fragment key={s.id}>
+                        {novoGrupo && (
+                          <tr role="presentation" data-testid={`grupo-${s.tipo}`} className="stk-grupo">
+                            {/* Uma célula por coluna (e não colSpan): o colSpan criaria colunas fantasma quando as colunas se escondem. */}
+                            {reorderMode && <td />}
+                            <td style={{ whiteSpace: 'nowrap', overflow: 'visible' }}>{s.tipo === 'interno' ? 'Membros da equipe' : 'Stakeholders externos'}<span>{s.tipo === 'interno' ? totalEquipe : totalExternos}</span></td>
+                            <td className="stk-col-funcao" />
+                            <td className="stk-col-area" />
+                            <td className="stk-col-remun" />
+                            <td />
+                          </tr>
+                        )}
+                        <tr
+                          aria-selected={selected?.id === s.id}
+                          data-inativo={inativo ? '' : undefined}
+                          draggable={canReorder}
+                          onDragStart={() => handleDragStart(index)}
+                          onDragOver={e => handleDragOver(e, index)}
+                          onDrop={e => handleDrop(e, index)}
+                          onDragEnd={handleDragEnd}
+                          className={`arq-linha stk-linha ${draggedIndex === index ? 'stk-linha--arrastando' : ''} ${dragOverIndex === index && draggedIndex !== index ? 'stk-linha--alvo' : ''}`}
+                        >
+                          {reorderMode && <td className="stk-celula"><GripVertical className="stk-alca h-4 w-4" aria-hidden="true" /></td>}
+                          <td className="stk-celula">
+                            <div className="stk-pessoa">
+                              <span className="stk-avatar shrink-0"><UserAvatar name={s.name} avatarUrl={s.avatarUrl} size="md" /></span>
+                              <div className="min-w-0">
+                                <p className="stk-nome">
+                                  <span title={s.name}>{s.name}</span>
+                                  {s.isGerente && <span className="stk-chip">Gerente</span>}
+                                  {inativo && <span className="stk-chip stk-chip--inativo">Inativo</span>}
+                                </p>
+                                {s.email && <p className="stk-sub" title={s.email}>{s.email}</p>}
+                                {inativo && s.inactiveReason && <p className="stk-motivo">Motivo: {s.inactiveReason}</p>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="stk-celula stk-col-funcao">{etiquetasFuncao(s)}</td>
+                          <td className="stk-celula stk-col-area"><span className="arq-meta block truncate" title={[s.departamento?.join(', '), s.company].filter(Boolean).join(' · ')}>{[s.departamento?.join(', '), s.company].filter(Boolean).join(' · ') || '—'}</span></td>
+                          <td className="stk-celula stk-col-remun stk-remun">
+                            {salario != null
+                              ? <>{salario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<small>{s.remuneracao != null ? '/mês' : '/h'}</small></>
+                              : <span className="arq-meta" aria-label="Não informada">—</span>}
+                          </td>
+                          <td className="stk-celula">
+                            <div className={`stk-acoes ${reorderMode ? 'stk-acoes--fixas' : ''}`}>
+                              {reorderMode ? <>
+                                <OperumButton variant="icon" type="button" disabled={!canReorder || posicao === 0 || exibidos[posicao - 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao - 1]))} aria-label={`Mover ${s.name} para cima`} title="Mover para cima"><ArrowUp className="h-4 w-4" aria-hidden="true" /></OperumButton>
+                                <OperumButton variant="icon" type="button" disabled={!canReorder || exibidos[posicao + 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao + 1]))} aria-label={`Mover ${s.name} para baixo`} title="Mover para baixo"><ArrowDown className="h-4 w-4" aria-hidden="true" /></OperumButton>
+                              </> : <>
+                                <Tooltip label="Editar"><AnimatedEditButton label={`Editar ${s.name}`} onClick={() => handleOpenEdit(s)} /></Tooltip>
+                                {canManage && (s.tipo === 'interno' ? Boolean(s.userId) : Boolean(s.stakeholderId)) && (
+                                  <Tooltip label={s.tipo === 'interno' ? 'Mudar para externo' : 'Mudar para interno'}>
+                                    <OperumButton variant="icon" type="button" disabled={loadingId === s.id} onClick={() => setTrocando(s)}
+                                      aria-label={`Mudar ${s.name} para ${s.tipo === 'interno' ? 'externo' : 'interno'}`}>
+                                      <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
+                                    </OperumButton>
+                                  </Tooltip>
+                                )}
+                                {podeAlterarSituacao(s) && <SituacaoButton ativo={!inativo} nome={s.name} disabled={loadingId === s.id} onClick={() => (inativo ? reativar(s) : abrirInativacao(s))} />}
+                                {canManage && <Tooltip label="Excluir do projeto"><AnimatedTrashButton effect="button" label={`Excluir ${s.name} do projeto`} disabled={loadingId === s.id} onDelete={() => handleUnlink(s)} /></Tooltip>}
+                              </>}
+                            </div>
+                          </td>
+                        </tr>
+                      </Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-4 px-5 py-4 border-b border-gray-100">
-          <label className="flex-1 min-w-0 basis-56 text-sm font-medium text-gray-700">
-            Buscar pessoa
-            <OperumInput
-              type="search"
-              placeholder="Buscar por nome, e-mail ou empresa…"
-              value={searchProjeto}
-              onChange={e => { setSearchProjeto(e.target.value); setReorderMode(false) }}
-              className={`${inputCls} mt-2 text-base sm:text-sm`}
-            />
-          </label>
-          <div className="flex-1 basis-28 min-w-0 text-sm font-medium text-gray-700">
-            <span className="mb-2 block">Vínculo</span>
-            <Select ariaLabel="Vínculo" searchable={false} placeholder="Todos os vínculos" value={vinculo} onChange={v => { setVinculo(v); setReorderMode(false) }}
-              options={[{ value: '', label: 'Todos os vínculos' }, { value: 'interno', label: 'Equipe' }, { value: 'externo', label: 'Externos' }]} />
-          </div>
-          <div className="flex-1 basis-28 min-w-0 text-sm font-medium text-gray-700">
-            <span className="mb-2 block">Área ou empresa</span>
-            <Select ariaLabel="Área ou empresa" placeholder="Todas as áreas e empresas" value={area} onChange={v => { setArea(v); setReorderMode(false) }}
-              options={[{ value: '', label: 'Todas as áreas e empresas' }, ...areas.map(value => ({ value, label: value }))]} />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
-          <p role="status" className="text-sm text-gray-600">{isReordering ? 'Salvando ordem…' : `${filteredProjeto.length} de ${projeto.length} pessoas`}</p>
-          <div className="flex flex-wrap gap-2">
-            {hasFilters && <Button variant="secondary" onClick={clearFilters}>Limpar filtros</Button>}
-            {canManage && projeto.length > 1 && <Button variant="secondary" disabled={hasFilters || isReordering} aria-pressed={reorderMode} onClick={() => setReorderMode(v => !v)}>{reorderMode ? 'Finalizar ordenação' : 'Reordenar'}</Button>}
-          </div>
-        </div>
-        {reorderMode && <p className="px-5 pb-3 text-sm text-gray-600">Arraste ou use as setas para mover pessoas dentro do mesmo grupo. Cada movimento é salvo automaticamente.</p>}
-
-        {/* Reorder error feedback */}
-        {reorderError && (
-          <p role="alert" className="mx-4 mt-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{reorderError}</p>
-        )}
-
-        {/* List */}
-        {filteredProjeto.length === 0 ? (
-          <div className="px-5 py-10 text-center">
-            <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-              <BookUser className="w-5 h-5 text-gray-300" />
-            </div>
-            <p className="text-base font-medium text-gray-900">{projeto.length === 0 ? 'Este projeto ainda não tem pessoas' : 'Nenhuma pessoa encontrada'}</p>
-            <p className="text-sm text-gray-600 mt-2">{projeto.length === 0 ? canManage ? 'Use Adicionar pessoa para vincular alguém da equipe ou um stakeholder externo.' : 'Peça ao gerente para vincular as pessoas do projeto.' : 'Tente outro termo ou limpe os filtros para ver todas as pessoas.'}</p>
-            {hasFilters && <Button variant="secondary" className="mt-4" onClick={clearFilters}>Limpar filtros</Button>}
-          </div>
-        ) : (
-          <ul aria-label="Pessoas do projeto" aria-busy={isReordering} className={isReordering ? 'opacity-70' : undefined}>
-            {exibidos.map((s, posicao) => {
-              // Índice real em `projeto`: o arrastar reordena essa lista, não a filtrada/agrupada.
-              const index = projeto.indexOf(s)
-              const novoGrupo = s.tipo !== exibidos[posicao - 1]?.tipo
-              return (
-              <Fragment key={s.id}>
-              {novoGrupo && (
-                <li
-                  role="presentation"
-                  data-testid={`grupo-${s.tipo}`}
-                  className="flex items-center justify-between px-5 py-3 text-sm font-semibold text-gray-700 bg-gray-50 border-y border-gray-100"
-                >
-                  <span>{s.tipo === 'interno' ? 'Membros da equipe' : 'Stakeholders externos'}</span>
-                  <span className="font-medium text-gray-600">{s.tipo === 'interno' ? totalEquipe : totalExternos}</span>
-                </li>
-              )}
-              <li
-                draggable={canReorder}
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={e => handleDragOver(e, index)}
-                onDrop={e => handleDrop(e, index)}
-                onDragEnd={handleDragEnd}
-                className={`${styles.personRow} border-b border-gray-100 ${selected?.id === s.id ? 'bg-blue-50' : 'bg-white'} ${draggedIndex === index ? 'opacity-50' : ''} ${dragOverIndex === index && draggedIndex !== index ? 'ring-2 ring-inset ring-blue-500' : ''}`}
-              >
-                <div className={`${styles.identity} flex items-center gap-3 min-w-0`}>
-                  {reorderMode && <GripVertical className="w-4 h-4 shrink-0 text-gray-500" aria-hidden="true" />}
-                  <Avatar name={s.name} url={s.avatarUrl} />
-                  <div className="min-w-0">
-                    <p className={`text-base font-semibold break-words ${s.isActive === false ? 'text-red-700' : 'text-gray-900'}`}>{s.name}</p>
-                    {s.email && <p className="text-sm text-gray-600 break-all mt-1">{s.email}</p>}
-                    {s.isActive === false && <><p className="text-sm font-medium text-red-700 mt-1">Inativo</p>{s.inactiveReason && <p className="text-sm text-red-700 break-words mt-1">Motivo: {s.inactiveReason}</p>}</>}
-                  </div>
-                </div>
-                <div className="min-w-0"><span className={styles.fieldLabel}>Função</span><p className="text-sm text-gray-700 break-words">{s.cargos?.join(', ') || s.competence || 'Não informada'}</p></div>
-                <div className="min-w-0"><span className={styles.fieldLabel}>Área / empresa</span><p className="text-sm text-gray-600 break-words">{[s.departamento?.join(', '), s.company].filter(Boolean).join(' · ') || 'Não informada'}</p></div>
-                <div className="text-sm text-gray-700 tabular-nums"><span className={styles.fieldLabel}>Remuneração</span>{(s.remuneracao ?? s.hourlyRate) != null ? <>{(s.remuneracao ?? s.hourlyRate)!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<span className="block text-sm text-gray-600">{s.remuneracao != null ? 'por mês' : 'por hora'}</span></> : <span aria-label="Não informada">—</span>}</div>
-                <div className={`${styles.rowActions} flex flex-wrap items-center gap-1`}>
-                  {reorderMode ? <>
-                    <OperumButton variant="custom" type="button" disabled={!canReorder || posicao === 0 || exibidos[posicao - 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao - 1]))} aria-label={`Mover ${s.name} para cima`} className={styles.actionButton}><ArrowUp className="w-4 h-4" aria-hidden="true" /></OperumButton>
-                    <OperumButton variant="custom" type="button" disabled={!canReorder || exibidos[posicao + 1]?.tipo !== s.tipo} onClick={() => movePerson(index, projeto.indexOf(exibidos[posicao + 1]))} aria-label={`Mover ${s.name} para baixo`} className={styles.actionButton}><ArrowDown className="w-4 h-4" aria-hidden="true" /></OperumButton>
-                  </> : <>
-                    <OperumButton variant="custom" type="button" onClick={() => handleOpenEdit(s)} title="Editar" aria-label={`Editar ${s.name}`} className={`${styles.actionButton} text-blue-700`}><Pencil className="w-4 h-4" aria-hidden="true" /><span>Editar</span></OperumButton>
-                    {podeAlterarSituacao(s) && <SituacaoButton ativo={s.isActive !== false} nome={s.name} disabled={loadingId === s.id} onClick={() => (s.isActive === false ? reativar(s) : abrirInativacao(s))} />}
-                    {canManage && <OperumButton variant="danger" type="button" onClick={() => handleUnlink(s)} disabled={loadingId === s.id} title="Excluir do projeto" aria-label={`Excluir ${s.name} do projeto`} className={`${styles.actionButton} text-gray-600 hover:text-red-700`}>{loadingId === s.id ? <Spinner /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}</OperumButton>}
-                  </>}
-                </div>
-              </li>
-              </Fragment>
-              )
-            })}
-          </ul>
-        )}
-
-        {/* Adicionar a partir da busca: diretório global, usuários e criação */}
-        {isAdmin && termoProjeto && (
-          <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-slate-50/50" aria-label="Adicionar ao projeto">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Adicionar ao projeto</p>
-
-            {sugestoesExternos.length > 0 && (
-              <div>
-                <p className="text-[11px] font-semibold text-slate-500 mb-1">Diretório de stakeholders</p>
-                <ul className="space-y-1">
-                  {sugestoesExternos.map(s => (
-                    <li key={s.id} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-100">
-                      <Avatar name={s.name} url={s.logoUrl} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
-                        {s.company && <p className="text-[11px] text-gray-400 truncate">{s.company}</p>}
-                      </div>
-                      <OperumButton variant="default" type="button"
-                        onClick={() => { handleBindExterno(s); setSearchProjeto('') }}
-                        disabled={loadingId === s.id}
-                        aria-label={`Vincular "${s.name}" ao projeto`}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-                      >
-                        {loadingId === s.id ? <Spinner /> : <UserPlus className="w-3.5 h-3.5" />}
-                        Vincular
-                      </OperumButton>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {sugestoesInternos.length > 0 && (
-              <div>
-                <p className="text-[11px] font-semibold text-slate-500 mb-1">Usuários da instituição</p>
-                <ul className="space-y-1">
-                  {sugestoesInternos.map(u => (
-                    <li key={u.id} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-100">
-                      <Avatar name={u.name} url={u.avatarUrl} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{u.name}</p>
-                        <p className="text-[11px] text-gray-400 truncate">{u.email}</p>
-                      </div>
-                      <OperumButton variant="default" type="button"
-                        onClick={() => { handleAddInterno(u); setSearchProjeto('') }}
-                        disabled={loadingId === u.id}
-                        aria-label={`Adicionar "${u.name}" ao projeto`}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-                      >
-                        {loadingId === u.id ? <Spinner /> : <UserPlus className="w-3.5 h-3.5" />}
-                        Adicionar
-                      </OperumButton>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Criar: só quando não há um externo com o mesmo nome (evita duplicata) */}
-            {!candidatoDiretorio && (
-              <div className="flex flex-col gap-2 items-stretch">
-                <OperumButton variant="default" type="button"
-                  onClick={handleCreateMembroDaBusca}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors"
-                >
-                  <Users className="w-4 h-4" />
-                  Criar &quot;{searchProjeto.trim()}&quot; como membro da equipe
-                </OperumButton>
-                <OperumButton variant="default" type="button"
-                  onClick={handleQuickCreateProjeto}
-                  disabled={quickLoading === 'col1'}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors disabled:opacity-50"
-                >
-                  {quickLoading === 'col1' ? <Spinner /> : <Building2 className="w-4 h-4" />}
-                  Criar &quot;{searchProjeto.trim()}&quot; como externo
-                </OperumButton>
-              </div>
-            )}
-          </div>
-        )}
+        {coluna2}
+        {coluna3}
       </div>
-
-      {coluna2}
-      {coluna3}
       {dialogoTroca}
       {dialogoExclusao}
     </div>
   )
 }
 
-/** Botão com texto para inativar/reativar: só o ícone não era encontrado. */
+/** Inativar/reativar: botão de ícone com rótulo acessível (o texto está no aria-label e na dica). */
 function SituacaoButton({ ativo, nome, disabled, onClick }: { ativo: boolean; nome: string; disabled?: boolean; onClick: () => void }) {
   return (
-    <OperumButton variant="default"
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={ativo ? `Inativar ${nome}` : `Reativar ${nome}`}
-      title={ativo ? 'Inativar (com motivo)' : 'Reativar'}
-      className={`inline-flex min-h-11 items-center gap-1 px-2 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-40 shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${ativo
-        ? 'text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100'
-        : 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100'}`}
-    >
-      <Power className="w-3.5 h-3.5" aria-hidden="true" />
-      {ativo ? 'Inativar' : 'Reativar'}
-    </OperumButton>
+    <Tooltip label={ativo ? 'Inativar (com motivo)' : 'Reativar'}>
+      <OperumButton variant="icon" type="button" onClick={onClick} disabled={disabled}
+        aria-label={ativo ? `Inativar ${nome}` : `Reativar ${nome}`}>
+        <Power className="h-4 w-4" aria-hidden="true" style={{ color: ativo ? 'var(--stk-ambar)' : '#248a3d' }} />
+      </OperumButton>
+    </Tooltip>
   )
 }

@@ -65,6 +65,8 @@ model Project {
   endDate   DateTime?
   /// Cor do cabeçalho da coluna virtual Backlog no quadro (hex ou nulo = padrão).
   backlogColor String?
+  /// Rodadas de Avaliação de R.H. abertas no semestre (mínimo 2: AC e AF; o gerente adiciona as seguintes).
+  avaliacaoRhRodadas Int @default(2)
 
   justificativa     String? @db.Text
   objetivos         String? @db.Text
@@ -748,6 +750,7 @@ enum DocumentType {
   RISCOS
   LICOES
   CANVAS
+  AVALIACAO_RH
 }
 
 model DocumentVersion {

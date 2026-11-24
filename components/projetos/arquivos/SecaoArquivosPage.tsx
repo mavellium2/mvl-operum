@@ -20,7 +20,7 @@ export default async function SecaoArquivosPage({ params, categoria }: { params:
     notFound()
   }
   return (
-    <div className="arq-pagina h-full overflow-y-auto">
+    <div className="arq-pagina h-full overflow-hidden">
       {/* Aparência do projeto (manhã/dia/tarde/noite), como nas demais telas do projeto. */}
       <ProjectAppearance enabled>
       <ArquivosProjetoClient

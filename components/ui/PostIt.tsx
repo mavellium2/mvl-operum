@@ -38,7 +38,7 @@ export default function PostIt({
       style={{ ...style, width: width ?? style?.width ?? 240, height: height ?? style?.height ?? 180, ...(foldSize !== undefined ? { '--post-it-fold-size': typeof foldSize === 'number' ? `${foldSize}px` : foldSize } : {}) } as CSSProperties}
       aria-label={ariaLabel}
     >
-      <div className="post-it__face" aria-hidden="true" />
+      <div className="post-it__face" data-docx-postit="" aria-hidden="true" />
       <div className="post-it__content">
         {children ?? <span className="post-it__placeholder">{placeholder}</span>}
       </div>

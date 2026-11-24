@@ -236,7 +236,7 @@ const ProjectCharterDocument = forwardRef<HTMLDivElement, CharterDocumentProps &
             <tr>
               <td style={{ ...celulaModelo, borderBottom: 'none', borderLeft: 'none' }} />
               <td style={{ ...celulaModelo, textAlign: 'right', fontWeight: 'bold' }}>Custo total</td>
-              <td style={{ ...celulaModelo, textAlign: 'right' }}>{moeda(total)}</td>
+              <td style={{ ...celulaModelo, textAlign: 'right', fontWeight: 'bold' }}>{moeda(total)}</td>
             </tr>
           }
         >

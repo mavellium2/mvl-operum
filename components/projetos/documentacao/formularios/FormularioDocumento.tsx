@@ -21,7 +21,7 @@ import { safeAvatarUrl } from '@/lib/validation/avatarUrl'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
 import type { EdicaoQuadro, SistemaFormulario } from './QuadroFormulario'
 
-export type TipoFormulario = 'ESCOPO' | 'RISCOS' | 'LICOES' | 'CANVAS'
+export type TipoFormulario = 'ESCOPO' | 'RISCOS' | 'LICOES' | 'CANVAS' | 'AVALIACAO_RH'
 
 /** Dados do sistema devolvidos por `/formularios` (comuns + específicos de cada documento). */
 export interface DadosFormularios extends SistemaFormulario {

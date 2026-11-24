@@ -141,21 +141,24 @@ export default function VisualizadorMidia({ itens, indice, onIndice, onClose }: 
         onClick={e => { if (e.target === e.currentTarget) onClose() }}>
         {/* key: trocar de arquivo remonta a mídia (vídeo anterior para, zoom e carregamento reiniciam). */}
         <Midia key={atual.id} item={atual} zoom={zoom} onZoom={setZoom} />
+        {/* O posicionamento fica num contêiner próprio: o Tooltip envolve o botão num <span relative>, que serviria de referência ao absolute e juntaria as duas setas no meio. */}
         {temAnterior && (
-          <Tooltip label="Anterior (←)">
-            <GlassButton variant="custom" aria-label="Anterior" onClick={() => irPara(indice - 1)}
-              className="vm-seta pressionavel absolute left-3 top-1/2 -translate-y-1/2 sm:left-6">
-              <ChevronLeft className="h-6 w-6" aria-hidden="true" />
-            </GlassButton>
-          </Tooltip>
+          <div className="vm-seta-posicao vm-seta-anterior absolute left-3 top-1/2 z-10 -translate-y-1/2 sm:left-6">
+            <Tooltip label="Anterior (←)">
+              <GlassButton variant="custom" aria-label="Anterior" onClick={() => irPara(indice - 1)} className="vm-seta pressionavel">
+                <ChevronLeft className="h-6 w-6" aria-hidden="true" />
+              </GlassButton>
+            </Tooltip>
+          </div>
         )}
         {temProximo && (
-          <Tooltip label="Próximo (→)">
-            <GlassButton variant="custom" aria-label="Próximo" onClick={() => irPara(indice + 1)}
-              className="vm-seta pressionavel absolute right-3 top-1/2 -translate-y-1/2 sm:right-6">
-              <ChevronRight className="h-6 w-6" aria-hidden="true" />
-            </GlassButton>
-          </Tooltip>
+          <div className="vm-seta-posicao vm-seta-proximo absolute right-3 top-1/2 z-10 -translate-y-1/2 sm:right-6">
+            <Tooltip label="Próximo (→)">
+              <GlassButton variant="custom" aria-label="Próximo" onClick={() => irPara(indice + 1)} className="vm-seta pressionavel">
+                <ChevronRight className="h-6 w-6" aria-hidden="true" />
+              </GlassButton>
+            </Tooltip>
+          </div>
         )}
       </div>
     </div>,

@@ -2,7 +2,7 @@ import {
   AlignmentType, BorderStyle, Document, Footer, HeadingLevel, HeightRule, HorizontalPositionRelativeFrom, ImageRun,
   LineRuleType, PageNumber, PageOrientation, Paragraph, ShadingType, Table, TableCell, TableLayoutType,
   TableRow, TabStopType, TextRun, TextWrappingType, VerticalPositionRelativeFrom, WidthType,
-  type IBorderOptions,
+  FrameAnchorType, type IBorderOptions, type IFrameOptions,
 } from 'docx'
 import { baixarImagem, infoDaImagem } from './imagemDocx'
 
@@ -245,7 +245,7 @@ function tabDoSegmento(l: Linha, caixa: Caixa) {
   return { type: TabStopType.LEFT, position: tw(l.tokens[0].rect.left - caixa.left) }
 }
 
-function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
+function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number, frame?: IFrameOptions) {
   const saida: { p: Paragraph; topo: number; fim: number }[] = []
   let cursor = topoInicial
   const grupos: Linha[][] = []
@@ -291,6 +291,8 @@ function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
     const livreDir = al === AlignmentType.CENTER || al === AlignmentType.LEFT
     const esq = linha ? 0 : Math.max(0, cb.left - caixa.left - (livreEsq ? folga : 0))
     const dir = linha ? 0 : Math.max(0, caixa.right - cb.right - (livreDir ? folga : 0))
+    // Espaços digitados no começo (subitens de lista recuados): só nas molduras, onde o texto é posicionado como na tela.
+    const recuoLinha = frame && !linha && (al === AlignmentType.LEFT || al === AlignmentType.JUSTIFIED) ? Math.round((g[0].tokens[0].rect.left - cb.left) * 10) / 10 : 0
     const filhos: TextRun[] = []
     // Palavras seguidas com o mesmo estilo formam um só trecho (fica fácil editar no Word).
     const posicao = Math.round(elevar * 2)
@@ -326,7 +328,7 @@ function paragrafos(linhas: Linha[], caixa: Caixa, topoInicial: number) {
     saida.push({
       topo, fim: topo + passo * g.length,
       p: new Paragraph({
-        heading: nivelTitulo(bloco), alignment: al, indent: { left: tw(esq), right: tw(dir) }, keepLines: true,
+        heading: nivelTitulo(bloco), alignment: al, indent: { left: tw(esq), right: tw(dir), ...(recuoLinha > 0 ? { firstLine: tw(recuoLinha) } : {}) }, keepLines: true, ...(frame ? { frame } : {}),
         ...(linha ? { tabStops: linha.map(l => tabDoSegmento(l, caixa)) } : {}),
         spacing: { before: tw(topo - cursor), after: 0, line: tw(passo), lineRule: LineRuleType.EXACT },
         children: filhos,
@@ -405,7 +407,7 @@ function tabela(els: HTMLTableElement[], caixaPagina: Caixa, imagens: Flutuante[
 /** Elemento com borda nos quatro lados (fora de tabela): no Word vira uma tabela de uma célula. */
 function ehCaixa(el: HTMLElement): boolean {
   const tag = el.tagName.toLowerCase()
-  if (['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'img', 'svg'].includes(tag) || el.closest('table,svg') || !visivel(el)) return false
+  if (['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'img', 'svg'].includes(tag) || el.closest('table,svg') || el.hasAttribute('data-docx-postit') || !visivel(el)) return false
   const cs = getComputedStyle(el)
   return (['top', 'right', 'bottom', 'left'] as const).every(l => px(cs.getPropertyValue(`border-${l}-width`)) > 0 && !['none', 'hidden'].includes(cs.getPropertyValue(`border-${l}-style`)))
 }
@@ -458,6 +460,15 @@ function svgSozinho(svg: SVGSVGElement, w: number, h: number): string {
   copia.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
   copia.setAttribute('width', String(w)); copia.setAttribute('height', String(h))
   copia.removeAttribute('style')
+  // Preenchimentos vindos de CSS (ex.: sombra da aba do post-it) não existem no arquivo isolado.
+  const formas = svg.querySelectorAll('path,rect,circle,ellipse,polygon'), formasCopia = copia.querySelectorAll('path,rect,circle,ellipse,polygon')
+  formas.forEach((f, i) => {
+    if (f.hasAttribute('fill')) return
+    const cs = getComputedStyle(f)
+    if (cs.fill === 'rgb(0, 0, 0)' && cs.fillOpacity === '1') return
+    if (cs.fill === 'none') formasCopia[i]?.setAttribute('fill', 'none')
+    else { const c = corHex(cs.fill); if (c) { formasCopia[i]?.setAttribute('fill', `#${c}`); const a = /rgba\([^)]*,\s*([\d.]+)\)/.exec(cs.fill); const op = a ? Number(a[1]) : Number(cs.fillOpacity); if (op < 1) formasCopia[i]?.setAttribute('fill-opacity', String(op)) } }
+  })
   const originais = svg.querySelectorAll('text'), copias = copia.querySelectorAll('text')
   originais.forEach((t, i) => {
     const cs = getComputedStyle(t)
@@ -507,7 +518,8 @@ async function imagemFlutuante(f: Flutuante, pagina: DOMRect): Promise<ImageRun>
   })
 }
 
-interface Decoracao { x: number; y: number; w: number; h: number; cor: string; atras: boolean }
+/** `svg`: forma própria (ex.: post-it com o canto cortado) no lugar do retângulo liso. */
+interface Decoracao { x: number; y: number; w: number; h: number; cor: string; atras: boolean; svg?: string }
 
 /**
  * Fundos e bordas de elementos que não são células de tabela (caixas cinza, linha de
@@ -525,6 +537,15 @@ function decoracoes(pagina: HTMLElement, caixas: HTMLElement[]): Decoracao[] {
     if (r.width <= 0 || r.height <= 0) return
     const cs = getComputedStyle(el)
     const fundo = corHex(cs.backgroundColor)
+    // Post-it: folha com o canto inferior direito cortado na diagonal (a aba dobrada é um SVG à parte).
+    if (el.hasAttribute('data-docx-postit')) {
+      const dobra = el.parentElement?.querySelector('.post-it__fold')?.getBoundingClientRect().width ?? 14
+      const b = px(cs.borderTopWidth), c = corHex(cs.borderTopColor) ?? '292929', m = b / 2
+      const pts = [[m, m], [r.width - m, m], [r.width - m, r.height - dobra], [r.width - dobra, r.height - m], [m, r.height - m]].map(q => q.map(n => +n.toFixed(2)).join(',')).join(' ')
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${r.width}" height="${r.height}" viewBox="0 0 ${r.width} ${r.height}"><polygon points="${pts}" fill="#${fundo ?? 'FFFFCC'}" stroke="#${c}" stroke-width="${b}" stroke-linejoin="miter"/></svg>`
+      saida.push({ x: r.left, y: r.top, w: r.width, h: r.height, cor: fundo ?? 'FFFFCC', atras: true, svg })
+      return
+    }
     if (fundo && fundo !== 'FFFFFF') saida.push({ x: r.left, y: r.top, w: r.width, h: r.height, cor: fundo, atras: true })
     const lados = [
       ['top', r.left, r.top, r.width, null], ['bottom', r.left, null, r.width, null],
@@ -563,9 +584,9 @@ function pngDaCor(cor: string): Promise<Uint8Array> {
 
 /** Retângulo vetorial (nítido em qualquer zoom, como a borda da tela), com PNG de reserva. */
 async function retangulo(d: Decoracao, pagina: DOMRect): Promise<ImageRun> {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${d.w}" height="${d.h}" viewBox="0 0 ${d.w} ${d.h}" preserveAspectRatio="none"><rect width="${d.w}" height="${d.h}" fill="#${d.cor}" shape-rendering="crispEdges"/></svg>`
+  const svg = d.svg ?? `<svg xmlns="http://www.w3.org/2000/svg" width="${d.w}" height="${d.h}" viewBox="0 0 ${d.w} ${d.h}" preserveAspectRatio="none"><rect width="${d.w}" height="${d.h}" fill="#${d.cor}" shape-rendering="crispEdges"/></svg>`
   return new ImageRun({
-    type: 'svg', data: new TextEncoder().encode(svg), fallback: { type: 'png', data: await pngDaCor(d.cor) },
+    type: 'svg', data: new TextEncoder().encode(svg), fallback: { type: 'png', data: d.svg ? await pngDoSvg(svg, d.w, d.h) : await pngDaCor(d.cor) },
     altText: { name: 'Fundo', description: 'Fundo', title: 'Fundo' },
     transformation: { width: d.w, height: d.h },
     floating: {
@@ -573,6 +594,24 @@ async function retangulo(d: Decoracao, pagina: DOMRect): Promise<ImageRun> {
       verticalPosition: { relative: VerticalPositionRelativeFrom.PAGE, offset: emu(d.y - pagina.top) },
       wrap: { type: TextWrappingType.NONE }, allowOverlap: true, lockAnchor: true, behindDocument: d.atras,
     },
+  })
+}
+
+/**
+ * Textos de elementos marcados com `data-docx-moldura` (campos posicionados em
+ * folhas de layout fixo, como o Canvas): cada um vira um quadro de texto (moldura)
+ * do Word na mesma posição e tamanho da tela, sem entrar no fluxo da página. Assim
+ * blocos lado a lado não se misturam nas linhas e nada sai do lugar.
+ */
+function molduras(pagina: HTMLElement, pr: DOMRect): Paragraph[] {
+  return [...pagina.querySelectorAll<HTMLElement>('[data-docx-moldura]')].filter(visivel).flatMap(el => {
+    const r = el.getBoundingClientRect()
+    if (r.width <= 0 || r.height <= 0) return []
+    const frame: IFrameOptions = {
+      type: 'absolute', position: { x: tw(r.left - pr.left), y: tw(r.top - pr.top) }, width: tw(r.width), height: tw(r.height),
+      anchor: { horizontal: FrameAnchorType.PAGE, vertical: FrameAnchorType.PAGE }, rule: HeightRule.EXACT, anchorLock: true,
+    }
+    return paragrafos(linhasDe(tokensDe(el, () => false)), { left: r.left, right: r.right }, r.top, frame).map(x => x.p)
   })
 }
 
@@ -646,7 +685,7 @@ export async function folhaParaDocx(raiz: HTMLElement, titulo: string): Promise<
       if (visivel(svg) && !svg.parentElement?.closest('svg') && !svg.closest('table') && svg.getBoundingClientRect().width > 0) imagens.push(posicaoSvg(svg))
     })
     const caixas = [...pagina.querySelectorAll<HTMLElement>('*')].filter(ehCaixa).filter((c, _, todas) => !todas.some(o => o !== c && o.contains(c)))
-    const linhasSoltas = linhasDe(tokensDe(pagina, el => el.tagName === 'TABLE' || el.tagName.toLowerCase() === 'svg' || caixas.includes(el as HTMLElement)))
+    const linhasSoltas = linhasDe(tokensDe(pagina, el => el.tagName === 'TABLE' || el.tagName.toLowerCase() === 'svg' || el.hasAttribute('data-docx-moldura') || caixas.includes(el as HTMLElement)))
     type Item = { topo: number; tipo: 'tabela'; els: HTMLTableElement[] } | { topo: number; tipo: 'linhas'; linhas: Linha[] } | { topo: number; tipo: 'caixa'; el: HTMLElement }
     // Tabelas encostadas (até 2 px entre uma e outra) formam um bloco só.
     const blocosTabela: HTMLTableElement[][] = []
@@ -696,7 +735,7 @@ export async function folhaParaDocx(raiz: HTMLElement, titulo: string): Promise<
     ]
     // Início da página: parágrafo de 1 pt (quebra de página e âncora das imagens da folha).
     filhos.push(minimo({ pageBreakBefore: n > 0, children: flutuantes }))
-    filhos.push(...corpo)
+    filhos.push(...corpo, ...molduras(pagina, pr))
   }
   filhos.push(minimo())
 

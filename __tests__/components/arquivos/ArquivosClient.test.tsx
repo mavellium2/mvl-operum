@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import ArquivosClient from '@/components/arquivos/ArquivosClient'
 import { escolherOpcao, opcoesDo } from '../../helpers/select'
 
@@ -27,7 +27,8 @@ describe('ArquivosClient — links', () => {
 
   it('filtro "Links" mostra só os links', async () => {
     render(<ArquivosClient initialAttachments={anexos} />)
-    escolherOpcao(screen.getByRole('combobox', { name: 'Filtrar por tipo' }), 'Links')
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Filtrar arquivos' })).getByRole('button', { name: 'Links' }))
     expect(screen.queryByText('eap.png')).not.toBeInTheDocument()
     expect(screen.getByText('Aula da EAP')).toBeInTheDocument()
     expect(screen.getByText('Link estranho')).toBeInTheDocument()

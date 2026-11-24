@@ -38,6 +38,8 @@ do token, com as mesmas permissões. Um token sem o escopo `write` só lê.
 | Painel `/admin`: usuários, funções, departamentos, projetos da instituição | Só se admin | Sim | Não | Não | Não |
 | Definir permissões das funções e ajustes por usuário | Só se admin | Sim | Não | Não | Não |
 | Atribuir cargos e o papel de gerente | Só se admin | Sim | Não | Não | Não |
+| Editar nome, foto, telefone, endereço, observações, empresa, departamento e assinatura de membro ativo do projeto (e os próprios) e o cadastro dos externos do projeto³ | Só se admin | Sim | Sim | Não | Não |
+| Alterar e-mail de login, remuneração/horas, senha, ativo da conta ou a conta de um admin | Só se admin | Sim | Não | Não | Não |
 | Escrever no catálogo de funções, permissões e departamentos (API) | Só se admin | Sim | Não | Não | Não |
 | Criar e editar etiquetas (globais da instituição) | — | Sim | Sim² | Sim² | Não |
 | Ler a auditoria (`/audit`) | Só se admin | Sim | Não | Não | Não |
@@ -45,6 +47,7 @@ do token, com as mesmas permissões. Um token sem o escopo `write` só lê.
 | Parar o próprio timer | — | Sim | Sim | Sim (basta ver o projeto) | Não |
 
 ¹ Precisa também ser admin para abrir a tela, porque o layout de `/admin` exige `role = 'admin'` (D4).
+³ Exige `projeto:equipe` no projeto (padrão do gerente). Só a equipe ATIVA do projeto e da mesma instituição; auditado como `USUARIO_EDITAR_NO_PROJETO` / `STAKEHOLDER_EDITAR_NO_PROJETO`.
 ² Basta ter `quadro:cards` em qualquer projeto da instituição (D6).
 
 ## Dentro de um projeto
