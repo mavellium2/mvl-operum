@@ -286,7 +286,12 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
         vazio={secao.vazio}
         placeholderBusca={`Buscar em ${secao.titulo}`}
         visualizacao={secao.blocos ? `projeto-${categoria}` : undefined}
-        selecao={{ selecionados, onChange: setSelecionados, acoes: acoesSelecao }}
+        selecao={{
+          selecionados, onChange: setSelecionados, acoes: acoesSelecao,
+          // Atalhos: Delete/Backspace pedem a exclusão (com confirmação) e F2 renomeia, só para quem tem permissão.
+          onExcluir: podeExcluir ? ids => setExcluir(doId(ids)) : undefined,
+          onRenomear: podeEnviar ? id => { const a = arquivos.find(x => x.id === id); if (a) abrirRenomear(a) } : undefined,
+        }}
         onAbrir={abrir}
         acoesTopo={podeEnviar && (
           <GlassButton variant="primary" type="button" onClick={() => seletor.current?.click()} className="inline-flex h-10 items-center gap-1.5 px-4 text-sm">

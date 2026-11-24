@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { useState } from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import ListaArquivos, { type ItemArquivo } from '@/components/arquivos/ListaArquivos'
 
@@ -87,5 +88,123 @@ describe('ListaArquivos — ordenação pelos títulos', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Ordenar por Data/ }))
     expect(nomes()).toEqual(['a.mp4', 'b10.png', 'B2.png'])
     expect(nome.closest('th')).not.toHaveAttribute('aria-sort')
+  })
+})
+
+describe('ListaArquivos — teclado e ordem do Tab', () => {
+  const base2 = { tamanho: '1 KB', enviadoPor: null, data: '2026-11-19T12:00:00.000Z' }
+  const lista: ItemArquivo[] = ['alfa.png', 'beta.png', 'carta.png', 'delta.png'].map((nome, i) => ({
+    ...base2, id: `i${i}`, nome, subtitulo: 'image/png', categoria: 'imagem' as const, abrir: `/x/${i}`,
+    acoes: <button type="button">Ação de {nome}</button>,
+  }))
+  function Controlada({ onExcluir, onRenomear, onAbrir }: { onExcluir?: (ids: string[]) => void; onRenomear?: (id: string) => void; onAbrir?: () => void }) {
+    const [sel, setSel] = useState<string[]>([])
+    return <>
+      <p data-testid="sel">{sel.join(',')}</p>
+      <ListaArquivos itens={lista} tipos={['imagem']} onAbrir={onAbrir} selecao={{ selecionados: sel, onChange: setSel, acoes: () => null, onExcluir, onRenomear }} />
+    </>
+  }
+  const linha = (nome: string) => screen.getByRole('row', { name: new RegExp(nome) })
+  const sel = () => screen.getByTestId('sel').textContent
+
+  it('Tab: só a primeira linha e as ações dela entram na ordem; círculos das linhas ficam de fora', () => {
+    render(<Controlada />)
+    const linhas = screen.getAllByRole('row').filter(r => r.hasAttribute('data-arq-id'))
+    expect(linhas.map(r => r.tabIndex)).toEqual([0, -1, -1, -1])
+    expect(screen.getByRole('button', { name: 'Ação de alfa.png' }).tabIndex).toBe(0)
+    expect(screen.getByRole('button', { name: 'Ação de beta.png' }).tabIndex).toBe(-1)
+    expect(screen.getByRole('checkbox', { name: 'Selecionar alfa.png' }).tabIndex).toBe(-1)
+    // O círculo de "selecionar todos" continua na sequência do Tab.
+    expect(screen.getByRole('checkbox', { name: 'Selecionar todos os arquivos' }).tabIndex).toBe(0)
+  })
+
+  it('setas movem o foco e selecionam; o ponto de Tab acompanha o foco', () => {
+    render(<Controlada />)
+    linha('alfa').focus()
+    fireEvent.keyDown(linha('alfa'), { key: 'ArrowDown' })
+    expect(sel()).toBe('i1')
+    expect(linha('beta')).toHaveFocus()
+    expect(linha('beta').tabIndex).toBe(0)
+    expect(linha('alfa').tabIndex).toBe(-1)
+    expect(screen.getByRole('button', { name: 'Ação de beta.png' }).tabIndex).toBe(0)
+    fireEvent.keyDown(linha('beta'), { key: 'ArrowUp' })
+    expect(sel()).toBe('i0')
+    fireEvent.keyDown(linha('alfa'), { key: 'End' })
+    expect(sel()).toBe('i3')
+    fireEvent.keyDown(linha('delta'), { key: 'Home' })
+    expect(sel()).toBe('i0')
+  })
+
+  it('Shift+seta estende a seleção; Ctrl+seta só move o foco; Espaço marca e desmarca', () => {
+    render(<Controlada />)
+    linha('alfa').focus()
+    fireEvent.keyDown(linha('alfa'), { key: 'ArrowDown' })
+    fireEvent.keyDown(linha('beta'), { key: 'ArrowDown', shiftKey: true })
+    fireEvent.keyDown(linha('carta'), { key: 'ArrowDown', shiftKey: true })
+    expect(sel()).toBe('i1,i2,i3')
+    fireEvent.keyDown(linha('delta'), { key: 'ArrowUp', ctrlKey: true })
+    expect(sel()).toBe('i1,i2,i3')
+    expect(linha('carta')).toHaveFocus()
+    fireEvent.keyDown(linha('carta'), { key: ' ' })
+    expect(sel()).toBe('i1,i3')
+    fireEvent.keyDown(linha('carta'), { key: ' ' })
+    expect(sel()).toBe('i1,i3,i2')
+  })
+
+  it('Ctrl+A e ⌘+A selecionam tudo; Esc limpa', () => {
+    render(<Controlada />)
+    linha('alfa').focus()
+    fireEvent.keyDown(linha('alfa'), { key: 'a', ctrlKey: true })
+    expect(sel()).toBe('i0,i1,i2,i3')
+    fireEvent.keyDown(linha('alfa'), { key: 'Escape' })
+    expect(sel()).toBe('')
+    fireEvent.keyDown(linha('alfa'), { key: 'a', metaKey: true })
+    expect(sel()).toBe('i0,i1,i2,i3')
+  })
+
+  it('Ctrl+A com o foco solto na página seleciona tudo, mas não dentro da busca', () => {
+    render(<Controlada />)
+    fireEvent.keyDown(document.body, { key: 'a', ctrlKey: true })
+    expect(sel()).toBe('i0,i1,i2,i3')
+    fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape' })
+    fireEvent.keyDown(linha('alfa'), { key: 'Escape' })
+    const busca = screen.getByRole('searchbox')
+    busca.focus()
+    fireEvent.keyDown(busca, { key: 'a', ctrlKey: true })
+    expect(sel()).toBe('')
+  })
+
+  it('Enter abre, Delete pede a exclusão da seleção (ou da linha), F2 renomeia; sem os callbacks, nada acontece', () => {
+    const onExcluir = vi.fn(); const onRenomear = vi.fn(); const onAbrir = vi.fn()
+    const { unmount } = render(<Controlada onExcluir={onExcluir} onRenomear={onRenomear} onAbrir={onAbrir} />)
+    linha('alfa').focus()
+    fireEvent.keyDown(linha('alfa'), { key: 'Enter' })
+    expect(onAbrir).toHaveBeenCalledWith(expect.objectContaining({ id: 'i0' }), expect.any(Array))
+    fireEvent.keyDown(linha('alfa'), { key: 'Delete' })
+    expect(onExcluir).toHaveBeenLastCalledWith(['i0'])
+    fireEvent.keyDown(linha('alfa'), { key: 'a', ctrlKey: true })
+    fireEvent.keyDown(linha('alfa'), { key: 'Backspace' })
+    expect(onExcluir).toHaveBeenLastCalledWith(['i0', 'i1', 'i2', 'i3'])
+    fireEvent.keyDown(linha('beta'), { key: 'F2' })
+    expect(onRenomear).toHaveBeenCalledWith('i1')
+    unmount()
+    render(<Controlada />)
+    fireEvent.keyDown(linha('alfa'), { key: 'Delete' })
+    fireEvent.keyDown(linha('alfa'), { key: 'F2' })
+    expect(sel()).toBe('')
+  })
+
+  it('digitar o começo do nome vai até o arquivo', () => {
+    render(<Controlada />)
+    linha('alfa').focus()
+    fireEvent.keyDown(linha('alfa'), { key: 'd', timeStamp: 1000 })
+    expect(sel()).toBe('i3')
+    expect(linha('delta')).toHaveFocus()
+  })
+
+  it('teclas na própria linha não valem para botões dentro dela (Espaço no botão não seleciona a linha)', () => {
+    render(<Controlada />)
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Ação de alfa.png' }), { key: ' ' })
+    expect(sel()).toBe('')
   })
 })

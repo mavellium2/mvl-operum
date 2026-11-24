@@ -105,27 +105,45 @@ tr[aria-selected='true'] .acoes-linha-arquivo,
 .arq-pagina > .project-appearance { min-height: 100%; }
 .arq-pagina > .project-appearance > .arq { min-height: 100%; }
 
-/* Círculo de seleção no estilo Apple (Finder/Fotos): 13 px, de traço fino; azul do sistema com ✓ branco quando marcado.
-   Aparece no hover/foco da linha ou do bloco e fica fixo quando marcado ou com algo selecionado. */
+/*
+ * Seleção no estilo Apple. Azul do sistema (--arq-sel); o anel vazio usa o cinza "separator" do iOS.
+ * O círculo é pequeno (14 px), mas o alvo de clique/toque é bem maior (::after).
+ */
+.arq { --arq-sel: #007aff; --arq-anel: rgb(60 60 67 / .34); }
+body[data-operum-period='night'] .arq { --arq-sel: #0a84ff; --arq-anel: rgb(235 235 245 / .34); }
 .arq-circulo {
-  --arq-apple-azul: #007aff;
-  position: relative; display: inline-flex; box-sizing: border-box; flex: none; height: 13px; width: 13px; min-height: 0; min-width: 0; padding: 0; line-height: 0; align-items: center; justify-content: center;
-  border-radius: 9999px; color: #fff; background: transparent; box-shadow: none;
-  border: 1px solid color-mix(in srgb, var(--arq-suave) 70%, transparent); opacity: 0;
+  position: relative; display: inline-flex; box-sizing: border-box; flex: none; height: 14px; width: 14px; min-height: 0; min-width: 0; padding: 0; line-height: 0;
+  align-items: center; justify-content: center; border-radius: 9999px; background: transparent; box-shadow: none;
+  border: 1.25px solid var(--arq-anel); opacity: 0;
 }
-/* Área de toque maior que o desenho (o círculo é pequeno, o alvo não). */
 .arq-circulo::after { content: ''; position: absolute; inset: -9px; }
-.arq-circulo svg { width: 8px; height: 8px; }
-body[data-operum-period='night'] .arq-circulo { --arq-apple-azul: #0a84ff; }
+/* ✓ e traço desenhados em SVG (o traço "se desenha" ao marcar). */
+.arq-circulo svg { width: 9px; height: 9px; fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.arq-circulo svg path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.arq-circulo[data-marcado] svg path { stroke-dashoffset: 0; }
+.arq-circulo[data-marcado] { background: var(--arq-sel); border-color: var(--arq-sel); box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .08), 0 .5px 1.5px rgb(0 0 0 / .18); }
 .arq-circulo-cabecalho { opacity: 1; }
 tr:hover .arq-circulo, tr:focus-within .arq-circulo, .arq-bloco:hover .arq-circulo, .arq-bloco:focus-within .arq-circulo,
 .arq-circulo-visivel, .arq-circulo[data-marcado], .arq-circulo:focus-visible { opacity: 1; }
-.arq-circulo[data-marcado] { background: var(--arq-apple-azul); border-color: var(--arq-apple-azul); }
-.arq-circulo:focus-visible { outline: 2px solid var(--arq-apple-azul); outline-offset: 2px; }
+.arq-circulo:hover:not([data-marcado]) { border-color: color-mix(in srgb, var(--arq-sel) 75%, transparent); }
+.arq-circulo:focus-visible { outline: 3px solid color-mix(in srgb, var(--arq-sel) 40%, transparent); outline-offset: 0; }
 /* Sobre a miniatura (como nas Fotos do iOS): anel branco com fundo escuro translúcido; marcado fica azul com anel branco. */
-.arq-circulo-bloco { height: 16px; width: 16px; background: rgb(0 0 0 / .28); border: 1.5px solid #fff; box-shadow: 0 0 0 .5px rgb(0 0 0 / .25); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
-.arq-circulo-bloco svg { width: 9px; height: 9px; }
-.arq-circulo-bloco[data-marcado] { background: var(--arq-apple-azul); border-color: #fff; }
+.arq-circulo-bloco { height: 18px; width: 18px; background: rgb(0 0 0 / .26); border: 1.5px solid #fff; box-shadow: 0 0 0 .5px rgb(0 0 0 / .22), 0 1px 3px rgb(0 0 0 / .25); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.arq-circulo-bloco svg { width: 11px; height: 11px; }
+.arq-circulo-bloco[data-marcado] { background: var(--arq-sel); border-color: #fff; }
 @media (hover: none) { .arq-circulo { opacity: 1; } }
-@media (prefers-reduced-motion: no-preference) { .arq-circulo { transition: opacity 140ms ease, background-color 140ms ease, border-color 140ms ease; } }
+@media (prefers-reduced-motion: no-preference) {
+  .arq-circulo { transition: opacity 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+  .arq-circulo svg path { transition: stroke-dashoffset 240ms cubic-bezier(.65, 0, .35, 1) 50ms; }
+  .arq-circulo[data-marcado] { animation: arq-circulo-pop 260ms cubic-bezier(.34, 1.56, .64, 1); }
+  @keyframes arq-circulo-pop { 0% { transform: scale(.78); } 100% { transform: scale(1); } }
+}
 @media (prefers-reduced-transparency: reduce) { .arq-circulo-bloco { -webkit-backdrop-filter: none; backdrop-filter: none; } }
+/* Linha selecionada: azul translúcido do sistema com cantos arredondados, como o Finder; foco do teclado com anel suave. */
+.arq-linha[aria-selected='true'], .arq-linha[aria-selected='true']:hover { background: color-mix(in srgb, var(--arq-sel) 13%, transparent); }
+.arq-linha[aria-selected='true'] > td:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+.arq-linha[aria-selected='true'] > td:last-child { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+.arq-linha[aria-selected='true'] .arq-nome { color: var(--arq-texto); }
+.arq-linha:focus { outline: none; }
+.arq-linha:focus-visible { outline: 3px solid color-mix(in srgb, var(--arq-sel) 40%, transparent); outline-offset: -3px; border-radius: 10px; }
+.arq-bloco:focus-visible { outline: 3px solid color-mix(in srgb, var(--arq-sel) 45%, transparent); outline-offset: 1px; }

@@ -195,4 +195,27 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação Final e Ví
     expect(screen.queryByRole('region', { name: 'Envios de arquivos' })).toBeNull()
     vi.unstubAllGlobals()
   })
+
+  it('atalhos: Delete abre a confirmação de exclusão e F2 o renomear, só com permissão; Ctrl+A seleciona tudo', () => {
+    com(['documentos:ver', 'documentos:editar', 'documentos:excluir'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
+    const linha = screen.getByText('Equipe.png').closest('tr') as HTMLElement
+    linha.focus()
+    fireEvent.keyDown(linha, { key: 'a', ctrlKey: true })
+    expect(screen.getByText('2 itens selecionados')).toBeInTheDocument()
+    fireEvent.keyDown(linha, { key: 'Delete' })
+    expect(screen.getByText('Excluir 2 arquivos?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.keyDown(linha, { key: 'F2' })
+    expect(screen.getByDisplayValue('Equipe.png')).toBeInTheDocument()
+  })
+
+  it('sem permissão de excluir ou editar, Delete e F2 não fazem nada', () => {
+    com(['documentos:ver'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
+    const linha = screen.getByText('Equipe.png').closest('tr') as HTMLElement
+    fireEvent.keyDown(linha, { key: 'Delete' })
+    fireEvent.keyDown(linha, { key: 'F2' })
+    expect(screen.queryByText(/^Excluir/)).toBeNull()
+    expect(screen.queryByDisplayValue('Equipe.png')).toBeNull()
+  })
 })
+

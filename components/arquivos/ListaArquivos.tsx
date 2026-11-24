@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, Check, Minus, Grid2x2, LayoutGrid, List, Star } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Grid2x2, LayoutGrid, List, Star } from 'lucide-react'
 import SearchInput from '@/components/ui/SearchInput'
 import Select from '@/components/ui/Select'
 import GlassButton from '@/components/ui/GlassButton'
@@ -83,17 +83,23 @@ function TituloOrdenavel({ coluna, rotulo, ordem, onOrdenar, alinhar = 'left' }:
   )
 }
 
-/** Círculo de seleção no estilo Apple: pequeno e vazio no hover, azul com ✓ quando marcado, traço quando parcial (cabeçalho). */
-export function CirculoSelecao({ marcado, parcial = false, rotulo, onAlternar, className = '' }: {
-  marcado: boolean; parcial?: boolean; rotulo: string; onAlternar: () => void; className?: string
+/**
+ * Círculo de seleção no estilo Apple: anel fino e vazio; azul com ✓ desenhado quando marcado; traço quando parcial
+ * (cabeçalho). Nas linhas e blocos fica fora da ordem do Tab (`tabIndex={-1}`): o teclado usa Espaço na própria linha.
+ */
+export function CirculoSelecao({ marcado, parcial = false, rotulo, onAlternar, className = '', tabIndex }: {
+  marcado: boolean; parcial?: boolean; rotulo: string; onAlternar: () => void; className?: string; tabIndex?: number
 }) {
   return (
     <GlassButton variant="custom" type="button" role="checkbox" aria-checked={parcial ? 'mixed' : marcado} aria-label={rotulo} title={rotulo}
+      tabIndex={tabIndex}
       onClick={e => { e.stopPropagation(); onAlternar() }}
       onDoubleClick={e => e.stopPropagation()}
       data-marcado={marcado || parcial || undefined}
       className={`arq-circulo pressionavel ${className}`}>
-      {parcial ? <Minus strokeWidth={3.5} aria-hidden="true" /> : marcado ? <Check strokeWidth={3.5} aria-hidden="true" /> : null}
+      <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+        <path pathLength={1} d={parcial ? 'M3.1 6h5.8' : 'M2.9 6.4l2.1 2.2 4.1-4.9'} />
+      </svg>
     </GlassButton>
   )
 }
@@ -104,6 +110,10 @@ export interface SelecaoArquivos {
   onChange: (ids: string[]) => void
   /** Ações para os arquivos selecionados que estão visíveis (respeitando busca e filtros). */
   acoes: (ids: string[]) => ReactNode
+  /** Atalhos Delete/Backspace: pede para excluir (o chamador confirma). Sem ele, a tecla não faz nada. */
+  onExcluir?: (ids: string[]) => void
+  /** Atalho F2: renomear o arquivo da linha. Sem ele, a tecla não faz nada. */
+  onRenomear?: (id: string) => void
 }
 
 const TAMANHO_MIN = 120
@@ -237,22 +247,125 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
     if (onAbrir) onAbrir(a, visiveis)
     else if (a.abrir) window.open(a.abrir, '_blank', 'noopener,noreferrer')
   }
-  /** Teclado na linha/bloco: Enter abre, Espaço seleciona (Ctrl/⌘ soma). */
-  function teclaItem(e: KeyboardEvent, a: ItemArquivo) {
-    if (!selecao || e.target !== e.currentTarget) return
-    if (e.key === 'Enter') { e.preventDefault(); abrirArquivo(a) }
-    if (e.key === ' ') { e.preventDefault(); ancora.current = a.id; if (e.ctrlKey || e.metaKey) marcar(a.id, !selecao.selecionados.includes(a.id)); else selecao.onChange([a.id]) }
-  }
   const ancora = useRef<string | null>(null)
+  const raiz = useRef<HTMLDivElement>(null)
+  const emBlocos = !!visualizacao && modo === 'blocos'
+  /** Item com o foco do teclado (um só ponto de parada do Tab na lista, como no Finder). */
+  const [focoId, setFocoId] = useState<string | null>(null)
+  const ativoId = focoId && idsVisiveis.has(focoId) ? focoId : (visiveis[0]?.id ?? null)
+  const digitado = useRef({ texto: '', em: 0 })
+
+  const itemDom = (id: string) => [...(raiz.current?.querySelectorAll<HTMLElement>('[data-arq-id]') ?? [])].find(el => el.dataset.arqId === id)
+  const focarItem = (id: string) => { setFocoId(id); itemDom(id)?.focus() }
+  /** Quantos blocos cabem por linha (para as setas ↑ ↓ na grade). */
+  const colunasDaGrade = () => {
+    const itensDom = [...(raiz.current?.querySelectorAll<HTMLElement>('[data-arq-id]') ?? [])]
+    if (!itensDom.length) return 1
+    const topo = itensDom[0].getBoundingClientRect().top
+    const n = itensDom.findIndex(el => Math.abs(el.getBoundingClientRect().top - topo) > 4)
+    return Math.max(1, n === -1 ? itensDom.length : n)
+  }
+  /** Seleciona do item-âncora até `ate`, na ordem exibida. Devolve falso sem âncora. */
+  const intervalo = (ate: string) => {
+    if (!selecao || !ancora.current) return false
+    const ids = visiveis.map(a => a.id)
+    const [de, fim] = [ids.indexOf(ancora.current), ids.indexOf(ate)].sort((x, y) => x - y)
+    if (de < 0) return false
+    selecao.onChange(ids.slice(de, fim + 1))
+    return true
+  }
+  const selecionarTodos = () => { if (selecao) selecao.onChange([...new Set([...selecao.selecionados, ...visiveis.map(a => a.id)])]) }
+  const limparSelecao = () => { if (selecao) selecao.onChange(selecao.selecionados.filter(id => !idsVisiveis.has(id))) }
+
+  /**
+   * Teclado da lista (como no Finder e no Drive): ↑ ↓ (e ← → nos blocos) movem e selecionam; Shift estende; Ctrl/⌘ só move;
+   * Home/End/PageUp/PageDown; Espaço marca/desmarca; Enter abre; F2 renomeia; Delete exclui; Ctrl/⌘+A seleciona tudo;
+   * Esc limpa; digitar o começo do nome vai até o arquivo.
+   */
+  function teclado(e: KeyboardEvent<HTMLDivElement>) {
+    if (!selecao || e.defaultPrevented) return
+    const alvo = e.target as HTMLElement
+    if (alvo.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="menu"], [role="listbox"], [data-glass-select-panel]')) return
+    const mod = e.ctrlKey || e.metaKey
+    if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') { e.preventDefault(); selecionarTodos(); return }
+    if (e.key === 'Escape') { if (escolhidos.length) { e.preventDefault(); limparSelecao() } return }
+    // Teclas de navegação só valem com o foco na própria linha ou bloco (botões e links dentro dele usam Enter/Espaço).
+    const linha = alvo.closest<HTMLElement>('[data-arq-id]')
+    if (!linha || alvo !== linha) return
+    const id = linha.dataset.arqId as string
+    const n = visiveis.length
+    const i = visiveis.findIndex(a => a.id === id)
+    if (i < 0) return
+    const colunas = emBlocos ? colunasDaGrade() : 1
+    let destino = -1
+    switch (e.key) {
+      case 'ArrowDown': destino = i + colunas <= n - 1 ? i + colunas : (i >= Math.floor((n - 1) / colunas) * colunas ? i : n - 1); break
+      case 'ArrowUp': destino = Math.max(0, i - colunas); break
+      case 'ArrowRight': if (emBlocos) destino = Math.min(n - 1, i + 1); break
+      case 'ArrowLeft': if (emBlocos) destino = Math.max(0, i - 1); break
+      case 'Home': destino = 0; break
+      case 'End': destino = n - 1; break
+      case 'PageDown': destino = Math.min(n - 1, i + 10); break
+      case 'PageUp': destino = Math.max(0, i - 10); break
+    }
+    if (destino >= 0) {
+      e.preventDefault()
+      const novo = visiveis[destino].id
+      if (e.shiftKey) { if (!ancora.current) ancora.current = id; intervalo(novo) }
+      else if (!mod) { ancora.current = novo; selecao.onChange([novo]) }
+      focarItem(novo)
+      return
+    }
+    switch (e.key) {
+      case 'Enter': e.preventDefault(); abrirArquivo(visiveis[i]); return
+      case ' ': e.preventDefault(); ancora.current = id; marcar(id, !selecao.selecionados.includes(id)); return
+      case 'Delete': case 'Backspace':
+        if (selecao.onExcluir) { e.preventDefault(); selecao.onExcluir(escolhidos.includes(id) ? escolhidos : [id]) }
+        return
+      case 'F2': if (selecao.onRenomear) { e.preventDefault(); selecao.onRenomear(id) } return
+    }
+    // Digitar o começo do nome leva ao arquivo (como no Finder); letras seguidas dentro de 0,7 s formam a busca.
+    if (e.key.length === 1 && !mod && !e.altKey) {
+      const agora = e.timeStamp
+      const d = digitado.current
+      d.texto = agora - d.em > 700 ? e.key.toLowerCase() : d.texto + e.key.toLowerCase()
+      d.em = agora
+      const depois = [...visiveis.slice(i + 1), ...visiveis.slice(0, i + 1)]
+      const achado = (d.texto.length > 1 ? [visiveis[i], ...depois] : depois).find(a => a.nome.toLowerCase().startsWith(d.texto))
+      if (achado) { e.preventDefault(); ancora.current = achado.id; selecao.onChange([achado.id]); focarItem(achado.id) }
+    }
+  }
+
+  // Ctrl/⌘+A com o foco solto na página (nenhum campo, nenhum diálogo aberto) também seleciona tudo.
+  const todosRef = useRef(selecionarTodos)
+  useEffect(() => { todosRef.current = selecionarTodos })
+  const temSelecao = !!selecao
+  useEffect(() => {
+    if (!temSelecao) return
+    const aoTeclar = (e: globalThis.KeyboardEvent) => {
+      if (e.defaultPrevented || e.altKey || e.shiftKey || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'a') return
+      if (e.target !== document.body || document.querySelector('[role="dialog"], [aria-modal="true"]')) return
+      e.preventDefault(); todosRef.current()
+    }
+    document.addEventListener('keydown', aoTeclar)
+    return () => document.removeEventListener('keydown', aoTeclar)
+  }, [temSelecao])
+
+  // Ordem do Tab: só o item ativo (e as ações dele) entra na sequência; as demais linhas ficam a uma seta de distância.
+  useEffect(() => {
+    if (!temSelecao) return
+    raiz.current?.querySelectorAll<HTMLElement>('[data-arq-id]').forEach(item => {
+      const ativo = item.dataset.arqId === ativoId
+      item.querySelectorAll<HTMLElement>('button:not(.arq-circulo), a[href], input').forEach(el => { el.tabIndex = ativo ? 0 : -1 })
+    })
+  })
+
   /** Clique na linha ou no bloco, como no Drive: seleciona só ela; Ctrl/⌘ alterna; Shift seleciona o intervalo. */
   function clicarLinha(e: MouseEvent, id: string) {
     // Com seleção, nome e miniatura não são links: um clique seleciona, o duplo clique abre (como no Drive).
     if (!selecao || (e.target as HTMLElement).closest('button, input, label')) return
-    if (e.shiftKey && ancora.current) {
-      const ids = visiveis.map(a => a.id)
-      const [de, ate] = [ids.indexOf(ancora.current), ids.indexOf(id)].sort((x, y) => x - y)
-      if (de >= 0) { selecao.onChange(ids.slice(de, ate + 1)); return }
-    }
+    setFocoId(id)
+    if (e.shiftKey && intervalo(id)) return
     ancora.current = id
     if (e.ctrlKey || e.metaKey) marcar(id, !selecao.selecionados.includes(id))
     else selecao.onChange([id])
@@ -262,7 +375,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
   const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 
   return (
-    <div className="arq">
+    <div ref={raiz} className="arq" onKeyDown={teclado}>
       {/* Barra de ferramentas única: busca e filtros à esquerda; visualização e ações gerais à direita. */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="min-w-[12rem] flex-1">
@@ -311,8 +424,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
             </p>}
       </div>
 
-      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={selecao ? clicarLinha : undefined} onMarcar={selecao ? id => { ancora.current = id; marcar(id, !selecao.selecionados.includes(id)) } : undefined} algumMarcado={escolhidos.length > 0} onAbrir={selecao ? abrirArquivo : undefined} onTecla={selecao ? teclaItem : undefined} /> : <div className="arq-quadro overflow-hidden rounded-2xl"
-        onKeyDown={e => { if (selecao && e.key === 'Escape' && escolhidos.length) selecao.onChange([]) }}>
+      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={selecao ? clicarLinha : undefined} onMarcar={selecao ? id => { ancora.current = id; setFocoId(id); marcar(id, !selecao.selecionados.includes(id)) } : undefined} algumMarcado={escolhidos.length > 0} onAbrir={selecao ? abrirArquivo : undefined} ativoId={selecao ? ativoId : undefined} onFoco={selecao ? setFocoId : undefined} /> : <div className="arq-quadro overflow-hidden rounded-2xl">
         <table className="w-full table-fixed text-sm">
           <thead className="arq-cabecalho">
             <tr>
@@ -340,14 +452,15 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
               <tr key={a.id} aria-selected={selecao ? escolhidos.includes(a.id) : undefined}
                 onClick={selecao ? e => clicarLinha(e, a.id) : undefined}
                 onDoubleClick={selecao && a.abrir ? e => { if (!(e.target as HTMLElement).closest('button, input')) abrirArquivo(a) } : undefined}
-                tabIndex={selecao ? 0 : undefined}
-                onKeyDown={selecao ? e => teclaItem(e, a) : undefined}
+                data-arq-id={selecao ? a.id : undefined}
+                tabIndex={selecao ? (a.id === ativoId ? 0 : -1) : undefined}
+                onFocus={selecao ? e => { if (e.target === e.currentTarget) setFocoId(a.id) } : undefined}
                 aria-label={selecao ? `${a.nome}${a.abrir ? ' (Enter abre)' : ''}` : undefined}
                 className={`arq-linha ${selecao ? 'cursor-default select-none' : ''}`}>
                 {selecao && (
                   <td className="w-8 pl-3 pr-0 py-1.5">
-                    <CirculoSelecao marcado={escolhidos.includes(a.id)} rotulo={`Selecionar ${a.nome}`}
-                      onAlternar={() => { ancora.current = a.id; marcar(a.id, !selecao.selecionados.includes(a.id)) }}
+                    <CirculoSelecao marcado={escolhidos.includes(a.id)} rotulo={`Selecionar ${a.nome}`} tabIndex={-1}
+                      onAlternar={() => { ancora.current = a.id; setFocoId(a.id); marcar(a.id, !selecao.selecionados.includes(a.id)) }}
                       className={escolhidos.length > 0 ? 'arq-circulo-visivel' : ''} />
                   </td>
                 )}

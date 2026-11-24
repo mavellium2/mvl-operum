@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Play, Star } from 'lucide-react'
 import GlassCard from '@/components/ui/GlassCard'
-import type { KeyboardEvent, MouseEvent } from 'react'
+import type { MouseEvent } from 'react'
 import { CirculoSelecao, IconeArquivo, type ItemArquivo } from './ListaArquivos'
 
 const duracao = (s: number) => {
@@ -42,7 +42,7 @@ function Miniatura({ item, tamanho }: { item: ItemArquivo; tamanho: number }) {
  * Visualização em blocos (como os ícones do Finder): a arte de cada arquivo,
  * com o nome embaixo. O tamanho do bloco vem do controle deslizante da lista.
  */
-export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onClicar, onMarcar, algumMarcado, onAbrir, onTecla }: {
+export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onClicar, onMarcar, algumMarcado, onAbrir, ativoId, onFoco }: {
   itens: ItemArquivo[]; tamanho: number; vazio: string
   /** Com seleção: ids marcados; o clique no bloco (fora da arte e dos botões) seleciona. */
   selecionados?: string[]
@@ -53,7 +53,9 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onC
   algumMarcado?: boolean
   /** Com seleção: duplo clique abre. */
   onAbrir?: (item: ItemArquivo) => void
-  onTecla?: (e: KeyboardEvent, item: ItemArquivo) => void
+  /** Bloco com o foco do teclado (um só ponto de parada do Tab) e aviso de que um bloco recebeu o foco. As teclas são tratadas pela lista. */
+  ativoId?: string | null
+  onFoco?: (id: string) => void
 }) {
   if (itens.length === 0) {
     return <div className="arq-quadro arq-meta rounded-2xl px-4 py-10 text-center text-sm">{vazio}</div>
@@ -67,8 +69,9 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onC
           <GlassCard as="article" interactive aria-selected={selecionados ? marcado : undefined}
             onClick={onClicar ? e => onClicar(e, a.id) : undefined}
             onDoubleClick={onAbrir ? e => { if (!(e.target as HTMLElement).closest('button, input')) onAbrir(a) } : undefined}
-            onKeyDown={onTecla ? e => onTecla(e, a) : undefined}
-            tabIndex={onClicar ? 0 : undefined}
+            data-arq-id={onClicar ? a.id : undefined}
+            onFocus={onFoco ? e => { if (e.target === e.currentTarget) onFoco(a.id) } : undefined}
+            tabIndex={onClicar ? (a.id === (ativoId ?? itens[0]?.id) ? 0 : -1) : undefined}
             aria-label={onClicar ? `${a.nome}${a.abrir ? ' (Enter abre)' : ''}` : undefined}
             className={`arq-bloco bloco-arquivo group relative flex h-full flex-col overflow-hidden !rounded-2xl p-1.5 ${onClicar ? 'cursor-default select-none' : ''}`}>
             {a.abrir && !onClicar
@@ -78,7 +81,7 @@ export default function GradeArquivos({ itens, tamanho, vazio, selecionados, onC
                 </a>
               : <div className="arq-miniatura relative aspect-[4/3] overflow-hidden rounded-xl"><Miniatura item={a} tamanho={tamanho} /></div>}
             {onMarcar && (
-              <CirculoSelecao marcado={marcado} rotulo={`Selecionar ${a.nome}`} onAlternar={() => onMarcar(a.id)}
+              <CirculoSelecao marcado={marcado} rotulo={`Selecionar ${a.nome}`} tabIndex={-1} onAlternar={() => onMarcar(a.id)}
                 className={`arq-circulo-bloco absolute left-2.5 top-2.5 z-10 ${algumMarcado ? 'arq-circulo-visivel' : ''}`} />
             )}
             {/* Ações por cima da arte, no canto, como no Drive; aparecem no hover/foco. */}
