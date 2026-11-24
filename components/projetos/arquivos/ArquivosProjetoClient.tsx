@@ -268,7 +268,7 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
   }
 
   return (
-    <div className="arq px-3 py-3 sm:px-5 sm:py-4">
+    <div className="arq flex h-full flex-col px-3 py-3 sm:px-5 sm:py-4">
       {/* Título só para leitores de tela: a seção já aparece no menu do projeto. */}
       <h1 className="sr-only">{secao.titulo}</h1>
       {podeEnviar && (
@@ -279,8 +279,9 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
 
 
       {/* Arrastar arquivos do computador para cá envia direto (como no Drive). */}
-      <ZonaSoltarArquivos ativa={podeEnviar} destino={secao.titulo} onSoltar={lista => void escolher(lista)} className="min-h-[calc(100vh-10rem)] rounded-2xl">
+      <ZonaSoltarArquivos ativa={podeEnviar} destino={secao.titulo} onSoltar={lista => void escolher(lista)} className="flex min-h-0 flex-1 flex-col rounded-2xl">
       <ListaArquivos
+        cabecalhoFixo
         itens={itens}
         tipos={secao.tiposVisuais}
         vazio={secao.vazio}

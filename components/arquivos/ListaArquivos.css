@@ -102,8 +102,8 @@ tr[aria-selected='true'] .acoes-linha-arquivo,
 .arq-bloco:focus-visible { outline: 2px solid var(--arq-destaque); outline-offset: 2px; }
 
 /* Página de arquivos do projeto: o fundo da aparência preenche a área visível mesmo com poucos arquivos. */
-.arq-pagina > .project-appearance { min-height: 100%; }
-.arq-pagina > .project-appearance > .arq { min-height: 100%; }
+.arq-pagina > .project-appearance { height: 100%; }
+.arq-pagina > .project-appearance > .arq { height: 100%; }
 
 /*
  * Seleção no estilo Apple. Azul do sistema (--arq-sel); o anel vazio usa o cinza "separator" do iOS.
@@ -147,3 +147,18 @@ tr:hover .arq-circulo, tr:focus-within .arq-circulo, .arq-bloco:hover .arq-circu
 .arq-linha:focus { outline: none; }
 .arq-linha:focus-visible { outline: 3px solid color-mix(in srgb, var(--arq-sel) 40%, transparent); outline-offset: -3px; border-radius: 10px; }
 .arq-bloco:focus-visible { outline: 3px solid color-mix(in srgb, var(--arq-sel) 45%, transparent); outline-offset: 1px; }
+
+/*
+ * Cabeçalho fixo (`cabecalhoFixo`): a lista ocupa a altura disponível; busca, filtros, contador e títulos das colunas
+ * ficam parados e só os arquivos rolam. Os títulos usam fundo opaco para as linhas não aparecerem por baixo.
+ */
+.arq-fixa { display: flex; flex: 1 1 0; flex-direction: column; min-height: 0; }
+.arq-fixa > :not(.arq-rolagem) { flex: none; }
+.arq-rolagem { flex: 1 1 0; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--arq-suave) 45%, transparent) transparent; overscroll-behavior: contain; }
+.arq-rolagem--grade { padding: 4px; margin: -4px; }
+.arq-fixa .arq-cabecalho th {
+  position: sticky; top: 0; z-index: 2; border-bottom: 0;
+  background: color-mix(in srgb, var(--arq-borda) 28%, var(--ap-bg, #ffffff)); box-shadow: inset 0 -1px 0 var(--arq-borda);
+}
+/* O foco do teclado nunca fica escondido atrás do cabeçalho fixo. */
+.arq-fixa .arq-linha { scroll-margin-top: 44px; }

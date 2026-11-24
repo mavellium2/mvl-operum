@@ -203,7 +203,7 @@ export function IconeArquivo({ categoria }: { categoria: CategoriaVisual }) {
  * Lista de arquivos com busca, filtro por tipo, contador e tabela. Base comum
  * do menu Arquivos (admin) e das seções de arquivos do projeto.
  */
-export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, placeholderBusca = 'Buscar por nome…', vazio = 'Nenhum arquivo encontrado', visualizacao, selecao, acoesTopo, onAbrir }: {
+export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, placeholderBusca = 'Buscar por nome…', vazio = 'Nenhum arquivo encontrado', visualizacao, selecao, acoesTopo, onAbrir, cabecalhoFixo = false }: {
   itens: ItemArquivo[]
   /** Opções do filtro "Tipo", na ordem. */
   tipos: CategoriaVisual[]
@@ -220,6 +220,11 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
   acoesTopo?: ReactNode
   /** Abrir no próprio Operum (duplo clique/Enter), recebendo a lista na ordem exibida; sem ele, abre `abrir` em nova aba. */
   onAbrir?: (item: ItemArquivo, lista: ItemArquivo[]) => void
+  /**
+   * Preenche a altura do espaço onde está (o pai precisa ser uma coluna flex com `min-height: 0`): a barra de
+   * ferramentas, o contador e o cabeçalho da tabela ficam parados e só os arquivos rolam. Sem ele, a página rola inteira.
+   */
+  cabecalhoFixo?: boolean
 }) {
   const { modo, setModo, tamanho, setTamanho } = useVisualizacao(visualizacao)
   const [busca, setBusca] = useState('')
@@ -375,7 +380,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
   const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 
   return (
-    <div ref={raiz} className="arq" onKeyDown={teclado}>
+    <div ref={raiz} className={`arq${cabecalhoFixo ? ' arq-fixa' : ''}`} onKeyDown={teclado}>
       {/* Barra de ferramentas única: busca e filtros à esquerda; visualização e ações gerais à direita. */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="min-w-[12rem] flex-1">
@@ -424,7 +429,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
             </p>}
       </div>
 
-      {visualizacao && modo === 'blocos' ? <GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={selecao ? clicarLinha : undefined} onMarcar={selecao ? id => { ancora.current = id; setFocoId(id); marcar(id, !selecao.selecionados.includes(id)) } : undefined} algumMarcado={escolhidos.length > 0} onAbrir={selecao ? abrirArquivo : undefined} ativoId={selecao ? ativoId : undefined} onFoco={selecao ? setFocoId : undefined} /> : <div className="arq-quadro overflow-hidden rounded-2xl">
+      {visualizacao && modo === 'blocos' ? <div className={cabecalhoFixo ? 'arq-rolagem arq-rolagem--grade' : undefined}><GradeArquivos itens={visiveis} tamanho={tamanho} vazio={vazio} selecionados={selecao ? escolhidos : undefined} onClicar={selecao ? clicarLinha : undefined} onMarcar={selecao ? id => { ancora.current = id; setFocoId(id); marcar(id, !selecao.selecionados.includes(id)) } : undefined} algumMarcado={escolhidos.length > 0} onAbrir={selecao ? abrirArquivo : undefined} ativoId={selecao ? ativoId : undefined} onFoco={selecao ? setFocoId : undefined} /></div> : <div className={`arq-quadro rounded-2xl ${cabecalhoFixo ? 'arq-rolagem' : 'overflow-hidden'}`}>
         <table className="w-full table-fixed text-sm">
           <thead className="arq-cabecalho">
             <tr>

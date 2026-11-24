@@ -208,3 +208,29 @@ describe('ListaArquivos — teclado e ordem do Tab', () => {
     expect(sel()).toBe('')
   })
 })
+
+describe('ListaArquivos — cabeçalho fixo', () => {
+  const um: ItemArquivo[] = [{ id: 'f1', nome: 'fachada.png', subtitulo: 'image/png', categoria: 'imagem', tamanho: '2 KB', enviadoPor: null, data: '2026-11-19T12:00:00.000Z', acoes: null }]
+  beforeEach(() => window.localStorage.clear())
+
+  it('com `cabecalhoFixo`, só a tabela rola (barra de ferramentas e contador ficam fora da área de rolagem)', () => {
+    const { container } = render(<ListaArquivos itens={um} tipos={['imagem']} cabecalhoFixo />)
+    expect(container.firstElementChild).toHaveClass('arq-fixa')
+    const rolagem = container.querySelector('.arq-rolagem') as HTMLElement
+    expect(rolagem).toContainElement(screen.getByRole('table'))
+    expect(rolagem).not.toContainElement(screen.getByRole('searchbox'))
+    expect(rolagem).not.toContainElement(screen.getByText('1 arquivo'))
+  })
+
+  it('no modo Blocos, a grade é que rola', () => {
+    const { container } = render(<ListaArquivos itens={um} tipos={['imagem']} visualizacao="fixa" cabecalhoFixo />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Blocos' }))
+    expect(container.querySelector('.arq-rolagem')).toContainElement(screen.getByRole('list', { name: 'Arquivos em blocos' }))
+  })
+
+  it('sem a opção, o comportamento é o de sempre (a página rola)', () => {
+    const { container } = render(<ListaArquivos itens={um} tipos={['imagem']} />)
+    expect(container.firstElementChild).not.toHaveClass('arq-fixa')
+    expect(container.querySelector('.arq-rolagem')).toBeNull()
+  })
+})

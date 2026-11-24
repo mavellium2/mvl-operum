@@ -217,5 +217,11 @@ describe('ArquivosProjetoClient — Fotos e Vídeos / Apresentação Final e Ví
     expect(screen.queryByText(/^Excluir/)).toBeNull()
     expect(screen.queryByDisplayValue('Equipe.png')).toBeNull()
   })
+
+  it('a lista do projeto usa cabeçalho fixo: só os arquivos rolam', () => {
+    const { container } = com(['documentos:ver'], <ArquivosProjetoClient projetoId="p1" categoria="FOTOS_VIDEOS" iniciais={arquivos} />)
+    expect(container.querySelector('.arq-fixa')).toBeInTheDocument()
+    expect(container.querySelector('.arq-rolagem')).toContainElement(screen.getByRole('table'))
+  })
 })
 
