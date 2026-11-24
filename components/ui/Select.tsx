@@ -32,7 +32,8 @@ export interface SelectProps {
   /** Valor de uma linha de propriedades (painel lateral): texto com seta, fundo só ao passar o mouse. */
   propriedade?: boolean
   searchable?: boolean
-  onCreate?: () => void
+  /** Recebe o texto digitado na busca, para pré-preencher o cadastro. */
+  onCreate?: (query: string) => void
   createLabel?: string
 }
 
@@ -73,7 +74,7 @@ export default function Select({ options, value, onChange, placeholder = 'Seleci
   function choose(index: number) {
     if (index === visible.length && onCreate) {
       close(true)
-      onCreate()
+      onCreate(query.trim())
     } else if (visible[index] && !visible[index].disabled) {
       close(true)
       onChange?.(visible[index].value)

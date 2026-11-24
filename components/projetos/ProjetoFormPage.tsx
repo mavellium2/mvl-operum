@@ -12,6 +12,7 @@ import GlassCard from '@/components/ui/GlassCard'
 import GlassButton from '@/components/ui/GlassButton'
 import GlassSegmentedControl from '@/components/ui/GlassSegmentedControl'
 import Select from '@/components/ui/Select'
+import CriarGerenteDialog from '@/components/projetos/CriarGerenteDialog'
 import AnimatedTrashButton from '@/components/ui/AnimatedTrashButton'
 import ExpandableFieldGroup from '@/components/ui/ExpandableFieldGroup'
 import { useFloatingPanelFocus } from '@/hooks/useFloatingPanelFocus'
@@ -150,6 +151,8 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   /** Gerente atual (nome e foto), vindo do projeto: aparece mesmo sem a lista de usuários. */
   const [gerenteAtual, setGerenteAtual] = useState<Usuario | null>(null)
+  /** Cadastro rápido do gerente aberto (nome digitado no campo). */
+  const [criandoGerente, setCriandoGerente] = useState<string | null>(null)
   const [departamentosExistentes, setDepartamentosExistentes] = useState<string[]>([])
   const [campoErro, setCampoErro] = useState<string | null>(null)
   const [validacaoAtiva, setValidacaoAtiva] = useState(false)
@@ -799,7 +802,7 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
               <h3 className={tituloLateral}>Propriedades</h3>
               <Propriedade Icone={UserRound} rotulo="Gerente" htmlFor="projeto-gerente">
                 <Select id="projeto-gerente" propriedade disabled={!canAssignRoles} name="initialMemberId" placeholder="Designar depois" value={form.initialMemberId} onChange={v => alterarCampo('initialMemberId', v)}
-                  options={opcoesGerente} />
+                  options={opcoesGerente} onCreate={canAssignRoles ? nome => setCriandoGerente(nome) : undefined} createLabel="Criar e designar como gerente" />
               </Propriedade>
               <Propriedade Icone={CalendarDays} rotulo="Início">
                 <SeletorData ariaLabel="Data de início" error={erroCampo('startDate')} value={form.startDate} onChange={iso => setForm(prev => ({ ...prev, startDate: iso }))} className={propriedadeInput} />
@@ -909,6 +912,12 @@ function ProjetoFormContent({ canAssignRoles }: { canAssignRoles: boolean }) {
         </div>
       </main>
 
+      {criandoGerente !== null && <CriarGerenteDialog nomeInicial={criandoGerente} onClose={() => setCriandoGerente(null)} onCriado={u => {
+        setUsuarios(prev => [...prev.filter(x => x.id !== u.id), { id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl, isActive: true }])
+        alterarCampo('initialMemberId', u.id)
+        setCriandoGerente(null)
+        toast(`${u.name} criado e designado como gerente.`, 'success')
+      }} />}
       {confirmarNovoSalvamento && <Modal isOpen title="Salvar como nova versão?" className="phase-delete-dialog" onClose={() => { if (!isPending) setConfirmarNovoSalvamento(false) }}>
         <p className="phase-delete-muted text-sm leading-relaxed">A versão ativa é a v{estadoVersoes.ativa}. Este salvamento substitui o estado atual e cria a v{estadoVersoes.ultima + 1}. As versões anteriores continuam disponíveis no histórico.</p>
         {error && <p role="alert" className="mt-3 text-sm text-rose-400">{error}</p>}
