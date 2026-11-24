@@ -63,8 +63,8 @@ describe('SDD 4.4 — stakeholder novo já na tela certa', () => {
     vi.mocked(updateProjetoMemberAction).mockResolvedValue({ success: true } as never)
     renderComponent()
 
-    fireEvent.change(screen.getByPlaceholderText('Buscar por nome, e-mail ou empresa…'), { target: { value: 'Luan' } })
-    fireEvent.click(screen.getByRole('button', { name: /Criar "Luan" como membro da equipe/i }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Adicionar integrante' }), { target: { value: 'Luan' } })
+    fireEvent.click(screen.getByRole('option', { name: /Criar «Luan» e adicionar ao projeto/i }))
     fireEvent.change(screen.getByPlaceholderText('usuario@empresa.com.br'), { target: { value: 'luan@x.com' } })
     fireEvent.change(screen.getByPlaceholderText('Mínimo 8 caracteres'), { target: { value: 'senha-forte-1' } })
     fireEvent.change(screen.getByLabelText('Remuneração mensal'), { target: { value: '300000' } })
@@ -88,8 +88,8 @@ describe('SDD 4.4 — stakeholder novo já na tela certa', () => {
     vi.mocked(addMemberAction).mockResolvedValue({ success: true } as never)
     renderComponent()
 
-    fireEvent.change(screen.getByPlaceholderText('Buscar por nome, e-mail ou empresa…'), { target: { value: 'Ana' } })
-    fireEvent.click(screen.getByRole('button', { name: /Criar "Ana" como membro da equipe/i }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Adicionar integrante' }), { target: { value: 'Ana' } })
+    fireEvent.click(screen.getByRole('option', { name: /Criar «Ana» e adicionar ao projeto/i }))
     fireEvent.change(screen.getByPlaceholderText('usuario@empresa.com.br'), { target: { value: 'ana@x.com' } })
     fireEvent.change(screen.getByPlaceholderText('Mínimo 8 caracteres'), { target: { value: 'senha-forte-1' } })
     fireEvent.click(screen.getByRole('button', { name: 'Criar Stakeholder' }))
@@ -105,9 +105,7 @@ describe('SDD 4.4 — stakeholder novo já na tela certa', () => {
     } as never)
     renderComponent()
 
-    fireEvent.click(screen.getByTitle('Adicionar'))
-    fireEvent.click(screen.getByRole('button', { name: 'Stakeholder Externo' }))
-    fireEvent.click(screen.getByTitle('Novo stakeholder'))
+    fireEvent.click(screen.getByRole('button', { name: /Parte interessada externa/i }))
     const nome = screen.getAllByRole('textbox').find(el => (el as HTMLInputElement).value === '' && el.getAttribute('type') !== 'email')!
     fireEvent.change(nome, { target: { value: 'Girassol' } })
     fireEvent.click(screen.getByRole('button', { name: 'Criar Stakeholder' }))

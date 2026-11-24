@@ -33,7 +33,7 @@ export async function auditarAdmin(p: {
   tenantId: string
   autorId: string
   action: string
-  entity: 'User' | 'Tenant'
+  entity: 'User' | 'Tenant' | 'Stakeholder'
   entityId?: string
   details?: Record<string, unknown>
 }): Promise<void> {

@@ -23,7 +23,6 @@ import {
   Mail,
   Phone,
   BookUser,
-  ChevronDown,
   Users,
   ArrowUp,
   ArrowDown,
@@ -376,10 +375,12 @@ function MultiCreatableSelect({
 
 function MemberSignatureUpload({
   userId,
+  projectId,
   initialUrl,
   onUpdate,
 }: {
   userId: string
+  projectId: string
   initialUrl: string | null
   onUpdate: (url: string) => void
 }) {
@@ -408,7 +409,7 @@ function MemberSignatureUpload({
     setError(null)
     const fd = new FormData()
     fd.append('file', file)
-    const result = await uploadMemberSignatureAction(fd, userId)
+    const result = await uploadMemberSignatureAction(fd, userId, projectId)
     if ('signatureUrl' in result && result.signatureUrl) {
       setUrl(result.signatureUrl)
       onUpdate(result.signatureUrl)
@@ -491,7 +492,10 @@ export default function ProjetoStakeholdersClient({
     painel.onFechar()
     return true
   }
-  const [showAddMenu, setShowAddMenu] = useState(false)
+  /** Campo único "Adicionar integrante" (tela Stakeholders): busca, vincula ou cria sem trocar de tela. */
+  const [termoAdd, setTermoAdd] = useState('')
+  const [ativoAdd, setAtivoAdd] = useState(0)
+  const campoAddRef = useRef<HTMLInputElement>(null)
   const [selected, setSelected] = useState<StakeholderUnificado | null>(null)
   const [isCreating, setIsCreating] = useState(!!painel?.iniciarCriacao)
 
@@ -526,7 +530,6 @@ export default function ProjetoStakeholdersClient({
     const r = await carregarCadastroStakeholdersAction(projetoId)
     if ('dados' in r && r.dados) aplicarCadastro(r.dados)
   }
-  const addMenuRef = useRef<HTMLDivElement>(null)
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -534,19 +537,11 @@ export default function ProjetoStakeholdersClient({
   const [isReordering, setIsReordering] = useState(false)
   const [reorderError, setReorderError] = useState<string | null>(null)
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
-        setShowAddMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   // ── Layout
   const showCol3 = selected !== null || isCreating
-  const col2Active = addMode !== null && canManage
+  // O diretório (coluna 2) só existe no painel do documento; na tela Stakeholders o
+  // campo "Adicionar integrante" faz o mesmo em um passo.
+  const col2Active = addMode !== null && canManage && !!painel
   const col1Width = col2Active || showCol3 ? 'xl:w-1/3' : 'w-full'
   const col3Width = painel ? 'min-w-0' : col2Active ? 'xl:w-1/3' : 'xl:flex-1'
 
@@ -585,31 +580,27 @@ export default function ProjetoStakeholdersClient({
     return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
   })
 
-  // Stakeholder externo do diretório que casa exatamente com a busca do Col 1
-  // (para vincular em vez de duplicar ao criar pela busca do projeto).
-  const candidatoDiretorio =
-    searchProjeto.trim().length > 0
-      ? dispExterno.find(s => s.name.toLowerCase() === searchProjeto.trim().toLowerCase())
-      : undefined
-
-  // Ao digitar na busca do projeto, sugere também quem ainda NÃO está no
-  // projeto: stakeholders do diretório global e usuários da instituição.
-  const termoProjeto = searchProjeto.trim().toLowerCase()
-  const MAX_SUGESTOES = 5
-  const sugestoesExternos = termoProjeto
-    ? dispExterno
-        .filter(s =>
-          s.name.toLowerCase().includes(termoProjeto) ||
-          (s.company ?? '').toLowerCase().includes(termoProjeto) ||
-          (s.email ?? '').toLowerCase().includes(termoProjeto),
-        )
-        .slice(0, MAX_SUGESTOES)
+  // ── Campo "Adicionar integrante": quem já existe (equipe e diretório) e a opção de criar.
+  const nAdd = normalizarBusca(termoAdd)
+  const MAX_SUGESTOES = 6
+  const sugestoesInternos = nAdd
+    ? dispInterno.filter(u => normalizarBusca(u.name).includes(nAdd) || normalizarBusca(u.email).includes(nAdd)).slice(0, MAX_SUGESTOES)
     : []
-  const sugestoesInternos = termoProjeto
-    ? dispInterno
-        .filter(u => u.name.toLowerCase().includes(termoProjeto) || u.email.toLowerCase().includes(termoProjeto))
-        .slice(0, MAX_SUGESTOES)
+  const sugestoesExternos = nAdd
+    ? dispExterno.filter(s => [s.name, s.company ?? '', s.email ?? ''].some(v => normalizarBusca(v).includes(nAdd))).slice(0, MAX_SUGESTOES)
     : []
+  const jaNoProjeto = nAdd ? projeto.find(p => normalizarBusca(p.name) === nAdd) : undefined
+  const nomeExistente = Boolean(jaNoProjeto) || [...dispInterno, ...dispExterno].some(p => normalizarBusca(p.name) === nAdd)
+  type OpcaoAdd =
+    | { key: string; tipo: 'interno'; u: UsuarioDisponivel }
+    | { key: string; tipo: 'externo'; s: StakeholderExterno }
+    | { key: string; tipo: 'criar' }
+  const opcoesAdd: OpcaoAdd[] = [
+    ...sugestoesInternos.map(u => ({ key: `i:${u.id}`, tipo: 'interno' as const, u })),
+    ...sugestoesExternos.map(s => ({ key: `e:${s.id}`, tipo: 'externo' as const, s })),
+    ...(nAdd && isAdmin && !nomeExistente ? [{ key: 'criar', tipo: 'criar' as const }] : []),
+  ]
+  const ativoAddIdx = Math.min(ativoAdd, Math.max(opcoesAdd.length - 1, 0))
 
   // ── Form helpers
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -714,7 +705,6 @@ export default function ProjetoStakeholdersClient({
   function handleOpenAddMode(mode: 'interno' | 'externo') {
     if (!canManage) return
     setAddMode(mode)
-    setShowAddMenu(false)
     setSearchDir('')
   }
 
@@ -724,13 +714,39 @@ export default function ProjetoStakeholdersClient({
     setSearchDir('')
   }
 
+  // ── Campo "Adicionar integrante" ──
+  function escolherOpcaoAdd(o: OpcaoAdd) {
+    const nome = termoAdd.trim()
+    setTermoAdd('')
+    setAtivoAdd(0)
+    if (o.tipo === 'criar') { handleCreateMembroDeNome(nome); return }
+    // Sem abrir o cadastro: o campo segue aberto para a próxima pessoa.
+    if (o.tipo === 'interno') handleAddInterno(o.u, false)
+    else handleBindExterno(o.s, false)
+    campoAddRef.current?.focus()
+  }
+
+  function teclaCampoAdd(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'ArrowDown' && opcoesAdd.length) { e.preventDefault(); setAtivoAdd((ativoAddIdx + 1) % opcoesAdd.length) }
+    else if (e.key === 'ArrowUp' && opcoesAdd.length) { e.preventDefault(); setAtivoAdd((ativoAddIdx - 1 + opcoesAdd.length) % opcoesAdd.length) }
+    else if (e.key === 'Enter') { e.preventDefault(); if (opcoesAdd[ativoAddIdx]) escolherOpcaoAdd(opcoesAdd[ativoAddIdx]) }
+    else if (e.key === 'Escape' && termoAdd) { e.preventDefault(); setTermoAdd('') }
+  }
+
+  function adicionarExterna() {
+    const nome = termoAdd.trim()
+    if (nome) { handleQuickCreateProjeto(nome); return }
+    handleOpenAddMode('externo')
+    handleOpenCreateExterno()
+  }
+
   // ── Criação como MEMBRO DA EQUIPE a partir das buscas ──
   // Abre o fluxo de criação de usuário interno (Col 2 interno + Col 3) com o
   // nome preenchido — o usuário informa e-mail/senha e o membro fica PENDENTE
   // (troca de senha no 1º acesso), igual ao "Criar e adicionar" do modo interno.
-  function handleCreateMembroDaBusca() {
+  function handleCreateMembroDeNome(nome: string) {
     if (!isAdmin) return
-    const name = searchProjeto.trim()
+    const name = nome.trim()
     if (!name) return
     handleOpenAddMode('interno')
     handleOpenCreateInterno()
@@ -748,14 +764,15 @@ export default function ProjetoStakeholdersClient({
 
   // ── Quick-create a partir das buscas (cria o stakeholder se não existir)
   // Col 1 — "Stakeholders do Projeto": cria externo + vincula ao projeto.
-  function handleQuickCreateProjeto() {
+  function handleQuickCreateProjeto(nome: string) {
     if (!canManage) return
-    const name = searchProjeto.trim()
+    const name = nome.trim()
     if (!name) return
     // Se já existe no diretório disponível, apenas vincula (evita duplicata).
+    const candidatoDiretorio = dispExterno.find(s => s.name.toLowerCase() === name.toLowerCase())
     if (candidatoDiretorio) {
       handleBindExterno(candidatoDiretorio)
-      setSearchProjeto('')
+      setTermoAdd('')
       return
     }
     setQuickLoading('col1')
@@ -789,7 +806,7 @@ export default function ProjetoStakeholdersClient({
         isActive: raw.isActive ?? true,
       }
       setProjeto(prev => (prev.some(x => x.id === unified.id) ? prev : [...prev, unified]))
-      setSearchProjeto('')
+      setTermoAdd('')
       toast(`Stakeholder "${raw.name}" criado e adicionado ao projeto!`, 'success')
       // Criado só com o nome: abre o cadastro para completar os dados (SDD 4.4).
       handleOpenEdit(unified)
@@ -836,7 +853,7 @@ export default function ProjetoStakeholdersClient({
   }
 
   // ── Bind external stakeholder
-  function handleBindExterno(s: StakeholderExterno) {
+  function handleBindExterno(s: StakeholderExterno, abrirCadastro = true) {
     if (!canManage) return
     // Conta do sistema sem contato: cria o contato da mesma pessoa e vincula como externa.
     if (s.id.startsWith('usuario:') && s.userId) {
@@ -848,7 +865,7 @@ export default function ProjetoStakeholdersClient({
         if ('error' in result) { toast(result.error ?? 'Erro ao adicionar como externo.', 'error'); return }
         aplicarCadastro(result.cadastro)
         const nova = result.cadastro?.stakeholders.find(x => x.tipo === 'externo' && x.contaId === userId)
-        if (nova) handleOpenEdit(nova)
+        if (nova && abrirCadastro) handleOpenEdit(nova)
         toast(`"${s.name}" adicionado como externo neste projeto.`, 'success')
         avisarAlteracao()
       })
@@ -877,7 +894,7 @@ export default function ProjetoStakeholdersClient({
     }
     setDispExterno(prev => prev.filter(x => x.id !== s.id))
     setProjeto(prev => [...prev, unified])
-    handleOpenEdit(unified)
+    if (abrirCadastro) handleOpenEdit(unified)
 
     startTransition(async () => {
       setLoadingId(s.id)
@@ -886,7 +903,7 @@ export default function ProjetoStakeholdersClient({
       if ('error' in result) {
         setProjeto(prev => prev.filter(x => x.id !== s.id))
         setDispExterno(prev => [...prev, s])
-        handleClearSelection()
+        if (abrirCadastro) handleClearSelection()
         toast(result.error ?? 'Erro ao vincular stakeholder.', 'error')
       } else {
         toast(`Stakeholder "${s.name}" vinculado ao projeto!`, 'success')
@@ -897,7 +914,7 @@ export default function ProjetoStakeholdersClient({
   }
 
   // ── Add internal member
-  function handleAddInterno(u: UsuarioDisponivel) {
+  function handleAddInterno(u: UsuarioDisponivel, abrirCadastro = true) {
     if (!canManage) return
     // Contato sem login: interno precisa de conta. O administrador cria o login já
     // preenchido com os dados do contato; para os demais, explica o que fazer.
@@ -931,7 +948,7 @@ export default function ProjetoStakeholdersClient({
     }
     setDispInterno(prev => prev.filter(x => x.id !== u.id))
     setProjeto(prev => [...prev, unified])
-    handleOpenEdit(unified)
+    if (abrirCadastro) handleOpenEdit(unified)
 
     startTransition(async () => {
       setLoadingId(u.id)
@@ -940,8 +957,10 @@ export default function ProjetoStakeholdersClient({
       if ('error' in result) {
         setProjeto(prev => prev.filter(x => x.id !== u.id))
         setDispInterno(prev => [...prev, u])
-        handleClearSelection()
+        if (abrirCadastro) handleClearSelection()
+        toast(result.error ?? 'Erro ao adicionar ao projeto.', 'error')
       } else {
+        toast(`"${u.name}" adicionado ao projeto.`, 'success')
         avisarAlteracao()
         void recarregar()
       }
@@ -1402,7 +1421,7 @@ export default function ProjetoStakeholdersClient({
     if (selected.tipo === 'interno' && selected.userId) {
       setLoadingId('form')
       const result = await updateProjetoMemberAction(selected.userId, projetoId, {
-        ...(isAdmin && formState.name.trim() && { name: formState.name.trim() }),
+        ...(podeEditarCampos && formState.name.trim() && { name: formState.name.trim() }),
         ...(isAdmin && formState.email.trim() && { email: formState.email.trim() }),
         avatarUrl: formState.avatarUrl || undefined,
         phone: formState.phone || undefined,
@@ -1436,7 +1455,7 @@ export default function ProjetoStakeholdersClient({
                 ...x,
                 company: formState.company || null,
                 competence: formState.competence || null,
-                ...(isAdmin && formState.name.trim() && { name: formState.name.trim() }),
+                ...(podeEditarCampos && formState.name.trim() && { name: formState.name.trim() }),
                 ...(isAdmin && formState.email.trim() && { email: formState.email.trim() }),
                 avatarUrl: formState.avatarUrl || x.avatarUrl,
                 phone: formState.phone || null,
@@ -1462,6 +1481,10 @@ export default function ProjetoStakeholdersClient({
     }
   }
 
+  // Admin edita tudo. O gerente (projeto:equipe) edita o cadastro da equipe e dos externos
+  // deste projeto, menos a conta de um administrador. E-mail de login, remuneração, horas,
+  // cargos e papel de gerente continuam só do administrador (o servidor também barra).
+  const podeEditarCampos = isAdmin || (canManage && !(selected?.tipo === 'interno' && selected.userRole === 'admin'))
   const horasCheck = parseHoras(formState.horasDiarias)
 
   const col3Title = isCreating && addMode === 'interno'
@@ -1482,7 +1505,7 @@ export default function ProjetoStakeholdersClient({
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50/50">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">
-                {addMode === 'interno' ? 'Usuários do Sistema' : 'Diretório de Stakeholders'}
+                {addMode === 'interno' ? 'Membros da equipe' : 'Diretório de Stakeholders'}
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">
                 {addMode === 'interno' ? `${dispInterno.length} disponíveis` : `${dispExterno.length} disponíveis`}
@@ -1680,7 +1703,7 @@ export default function ProjetoStakeholdersClient({
                 name={formState.name || 'S'}
                 avatarUrl={formState.avatarUrl || null}
                 onChange={url => setField('avatarUrl', url)}
-                disabled={!isAdmin}
+                disabled={!podeEditarCampos}
               />
             </div>
 
@@ -1694,7 +1717,7 @@ export default function ProjetoStakeholdersClient({
                 autoFocus
                 value={formState.name}
                 onChange={e => setField('name', e.target.value)}
-                disabled={!isAdmin}
+                disabled={!podeEditarCampos}
                 placeholder="Nome completo ou razão social"
                 className={`${inputCls} ${disabledCls}`}
               />
@@ -1747,7 +1770,7 @@ export default function ProjetoStakeholdersClient({
                     type="text"
                     value={formState.company}
                     onChange={e => setField('company', e.target.value)}
-                    disabled={!isAdmin}
+                    disabled={!podeEditarCampos}
                     placeholder="Ex: Universidade Federal"
                     className={`${inputCls} ${disabledCls}`}
                   />
@@ -1758,7 +1781,7 @@ export default function ProjetoStakeholdersClient({
                     type="text"
                     value={formState.competence}
                     onChange={e => setField('competence', e.target.value)}
-                    disabled={!isAdmin}
+                    disabled={!podeEditarCampos}
                     placeholder="Ex: Educação, TI"
                     className={`${inputCls} ${disabledCls}`}
                   />
@@ -1886,13 +1909,14 @@ export default function ProjetoStakeholdersClient({
                     onChange={v => setField('departamento', v)}
                     options={departamentosExistentes}
                     placeholder="Adicionar departamento..."
-                    disabled={!isAdmin}
+                    disabled={!podeEditarCampos}
                   />
                 </div>
 
                 {selected?.isGerente && selected.userId && (
                   <MemberSignatureUpload
                     userId={selected.userId}
+                    projectId={projetoId}
                     initialUrl={selected.signatureUrl ?? null}
                     onUpdate={url => {
                       setSelected(prev => prev ? { ...prev, signatureUrl: url } : prev)
@@ -1931,7 +1955,7 @@ export default function ProjetoStakeholdersClient({
               <TelefoneInput
                 value={formState.phone}
                 onValueChange={v => setField('phone', v)}
-                disabled={!isAdmin}
+                disabled={!podeEditarCampos}
                 className={`${inputCls} ${disabledCls}`}
               />
             </div>
@@ -1940,7 +1964,7 @@ export default function ProjetoStakeholdersClient({
             <AddressFields
               values={formState.address}
               onChange={(field, value) => setFormState(f => ({ ...f, address: { ...f.address, [field]: value } }))}
-              disabled={!isAdmin}
+              disabled={!podeEditarCampos}
             />
 
             {/* Observações */}
@@ -1949,7 +1973,7 @@ export default function ProjetoStakeholdersClient({
               <OperumTextarea
                 value={formState.notes}
                 onChange={e => setField('notes', e.target.value)}
-                disabled={!isAdmin}
+                disabled={!podeEditarCampos}
                 rows={3}
                 placeholder="Anotações internas…"
                 className={`${inputCls} ${disabledCls} resize-none`}
@@ -1960,9 +1984,14 @@ export default function ProjetoStakeholdersClient({
 
           {/* Rodapé fixo — sempre visível, mesmo com o formulário rolando por dentro */}
           <div className="px-5 py-4 border-t border-gray-100 bg-white shrink-0 space-y-3">
-            {!isAdmin && (
+            {!podeEditarCampos && (
               <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
                 Você está em modo somente leitura. Apenas administradores podem editar.
+              </p>
+            )}
+            {podeEditarCampos && !isAdmin && (
+              <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                Como gerente, você edita os dados cadastrais. E-mail de login, remuneração, horas, cargos e gerência ficam com o administrador.
               </p>
             )}
 
@@ -2109,41 +2138,80 @@ export default function ProjetoStakeholdersClient({
               {projeto.length} pessoa{projeto.length !== 1 ? 's' : ''}
             </p>
           </div>
-          {canManage && (
-            <div className="relative" ref={addMenuRef}>
-              <OperumButton variant="custom" type="button"
-                onClick={() => setShowAddMenu(v => !v)}
-                title="Adicionar"
-                aria-expanded={showAddMenu}
-                aria-controls="stakeholder-add-menu"
-                onKeyDown={e => { if (e.key === 'Escape') setShowAddMenu(false) }}
-                className="inline-flex min-h-11 items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-              >
-                <Plus className="w-4 h-4" aria-hidden="true" />
-                Adicionar pessoa
-                <ChevronDown className="w-3 h-3" />
-              </OperumButton>
-              {showAddMenu && (
-                <div id="stakeholder-add-menu" onKeyDown={e => { if (e.key === 'Escape') { setShowAddMenu(false); (addMenuRef.current?.querySelector('button') as HTMLButtonElement | null)?.focus() } }} className="absolute right-0 top-full mt-1 w-60 bg-white rounded-xl border border-gray-100 shadow-xl z-50 py-1 animate-in fade-in duration-150">
-                  <OperumButton variant="default" type="button"
-                    onClick={() => handleOpenAddMode('interno')}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                  >
-                    <Users className="w-4 h-4 text-blue-500" />
-                    Vincular Membro da Equipe
-                  </OperumButton>
-                  <OperumButton variant="default" type="button"
-                    onClick={() => handleOpenAddMode('externo')}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                  >
-                    <Building2 className="w-4 h-4 text-slate-500" />
-                    Stakeholder Externo
-                  </OperumButton>
-                </div>
+        </div>
+
+        {canManage && (
+          <div className="px-5 py-4 border-b border-gray-100 bg-slate-50/50">
+            <label htmlFor="adicionar-integrante" className="block text-sm font-medium text-gray-700">Adicionar integrante</label>
+            <div className="mt-2 flex flex-wrap items-start gap-2">
+              <div className="relative flex-1 min-w-0 basis-64">
+                <OperumInput
+                  id="adicionar-integrante"
+                  ref={campoAddRef}
+                  type="text"
+                  role="combobox"
+                  aria-expanded={opcoesAdd.length > 0}
+                  aria-controls="adicionar-integrante-lista"
+                  aria-autocomplete="list"
+                  aria-activedescendant={opcoesAdd.length ? `adicionar-opcao-${ativoAddIdx}` : undefined}
+                  autoComplete="off"
+                  placeholder="Digite o nome ou e-mail da pessoa…"
+                  value={termoAdd}
+                  onChange={e => { setTermoAdd(e.target.value); setAtivoAdd(0) }}
+                  onKeyDown={teclaCampoAdd}
+                  className={`${inputCls} text-base sm:text-sm`}
+                />
+                {opcoesAdd.length > 0 && (
+                  <ul id="adicionar-integrante-lista" role="listbox" aria-label="Pessoas para adicionar ao projeto" className="mt-1 max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg p-1">
+                    {opcoesAdd.map((o, i) => {
+                      const ativa = i === ativoAddIdx
+                      const nome = o.tipo === 'interno' ? o.u.name : o.tipo === 'externo' ? o.s.name : termoAdd.trim()
+                      const detalhe = o.tipo === 'interno' ? o.u.email : o.tipo === 'externo' ? [o.s.company, 'Parte interessada externa'].filter(Boolean).join(' · ') : null
+                      const rotulo = o.tipo === 'criar' ? `Criar «${nome}» e adicionar ao projeto` : `Adicionar ${nome} ao projeto`
+                      return (
+                        <li
+                          key={o.key}
+                          id={`adicionar-opcao-${i}`}
+                          role="option"
+                          aria-selected={ativa}
+                          aria-label={rotulo}
+                          onMouseDown={e => e.preventDefault()}
+                          onMouseEnter={() => setAtivoAdd(i)}
+                          onClick={() => escolherOpcaoAdd(o)}
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors ${ativa ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                        >
+                          {o.tipo === 'criar'
+                            ? <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700"><UserPlus className="w-4 h-4" aria-hidden="true" /></span>
+                            : <Avatar name={nome} url={o.tipo === 'interno' ? o.u.avatarUrl : o.s.logoUrl} size="sm" />}
+                          <span className="min-w-0 flex-1">
+                            <span className={`block truncate text-sm ${o.tipo === 'criar' ? 'font-semibold text-blue-700' : 'font-medium text-gray-900'}`}>
+                              {o.tipo === 'criar' ? <>Criar «{nome}» e adicionar ao projeto</> : nome}
+                            </span>
+                            {detalhe && <span className="block truncate text-xs text-gray-600">{detalhe}</span>}
+                            {o.tipo === 'interno' && o.u.semConta && <span className="block text-xs text-amber-700">{isAdmin ? 'Sem login · ao adicionar, você cria o login dessa pessoa' : 'Sem login · um administrador precisa criar o login'}</span>}
+                          </span>
+                          <span className="shrink-0 text-xs font-semibold text-blue-700">{o.tipo === 'criar' ? 'Criar' : 'Adicionar'}</span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                {nAdd && opcoesAdd.length === 0 && (
+                  <p role="status" className="mt-2 text-sm text-gray-600">
+                    {jaNoProjeto ? `«${jaNoProjeto.name}» já está no projeto.` : 'Nenhuma pessoa encontrada.'}
+                  </p>
+                )}
+              </div>
+              {isAdmin && (
+                <OperumButton variant="default" type="button" onClick={adicionarExterna} disabled={quickLoading === 'col1'} className="min-h-11">
+                  {quickLoading === 'col1' ? <Spinner /> : <Building2 className="w-4 h-4" aria-hidden="true" />}
+                  Parte interessada externa
+                </OperumButton>
               )}
             </div>
-          )}
-        </div>
+            <p className="mt-2 text-xs text-gray-600">Digite para vincular quem já existe. Se a pessoa for nova, a lista oferece criá-la e adicioná-la ao projeto. Enter adiciona a primeira opção.</p>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-4 px-5 py-4 border-b border-gray-100">
           <label className="flex-1 min-w-0 basis-56 text-sm font-medium text-gray-700">
@@ -2188,7 +2256,7 @@ export default function ProjetoStakeholdersClient({
               <BookUser className="w-5 h-5 text-gray-300" />
             </div>
             <p className="text-base font-medium text-gray-900">{projeto.length === 0 ? 'Este projeto ainda não tem pessoas' : 'Nenhuma pessoa encontrada'}</p>
-            <p className="text-sm text-gray-600 mt-2">{projeto.length === 0 ? canManage ? 'Use Adicionar pessoa para vincular alguém da equipe ou um stakeholder externo.' : 'Peça ao gerente para vincular as pessoas do projeto.' : 'Tente outro termo ou limpe os filtros para ver todas as pessoas.'}</p>
+            <p className="text-sm text-gray-600 mt-2">{projeto.length === 0 ? canManage ? 'Use o campo Adicionar integrante para vincular ou criar a primeira pessoa.' : 'Peça ao gerente para vincular as pessoas do projeto.' : 'Tente outro termo ou limpe os filtros para ver todas as pessoas.'}</p>
             {hasFilters && <Button variant="secondary" className="mt-4" onClick={clearFilters}>Limpar filtros</Button>}
           </div>
         ) : (
@@ -2244,86 +2312,6 @@ export default function ProjetoStakeholdersClient({
               )
             })}
           </ul>
-        )}
-
-        {/* Adicionar a partir da busca: diretório global, usuários e criação */}
-        {isAdmin && termoProjeto && (
-          <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-slate-50/50" aria-label="Adicionar ao projeto">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Adicionar ao projeto</p>
-
-            {sugestoesExternos.length > 0 && (
-              <div>
-                <p className="text-[11px] font-semibold text-slate-500 mb-1">Diretório de stakeholders</p>
-                <ul className="space-y-1">
-                  {sugestoesExternos.map(s => (
-                    <li key={s.id} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-100">
-                      <Avatar name={s.name} url={s.logoUrl} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
-                        {s.company && <p className="text-[11px] text-gray-400 truncate">{s.company}</p>}
-                      </div>
-                      <OperumButton variant="default" type="button"
-                        onClick={() => { handleBindExterno(s); setSearchProjeto('') }}
-                        disabled={loadingId === s.id}
-                        aria-label={`Vincular "${s.name}" ao projeto`}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-                      >
-                        {loadingId === s.id ? <Spinner /> : <UserPlus className="w-3.5 h-3.5" />}
-                        Vincular
-                      </OperumButton>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {sugestoesInternos.length > 0 && (
-              <div>
-                <p className="text-[11px] font-semibold text-slate-500 mb-1">Usuários da instituição</p>
-                <ul className="space-y-1">
-                  {sugestoesInternos.map(u => (
-                    <li key={u.id} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-100">
-                      <Avatar name={u.name} url={u.avatarUrl} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{u.name}</p>
-                        <p className="text-[11px] text-gray-400 truncate">{u.email}</p>
-                      </div>
-                      <OperumButton variant="default" type="button"
-                        onClick={() => { handleAddInterno(u); setSearchProjeto('') }}
-                        disabled={loadingId === u.id}
-                        aria-label={`Adicionar "${u.name}" ao projeto`}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-                      >
-                        {loadingId === u.id ? <Spinner /> : <UserPlus className="w-3.5 h-3.5" />}
-                        Adicionar
-                      </OperumButton>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Criar: só quando não há um externo com o mesmo nome (evita duplicata) */}
-            {!candidatoDiretorio && (
-              <div className="flex flex-col gap-2 items-stretch">
-                <OperumButton variant="default" type="button"
-                  onClick={handleCreateMembroDaBusca}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors"
-                >
-                  <Users className="w-4 h-4" />
-                  Criar &quot;{searchProjeto.trim()}&quot; como membro da equipe
-                </OperumButton>
-                <OperumButton variant="default" type="button"
-                  onClick={handleQuickCreateProjeto}
-                  disabled={quickLoading === 'col1'}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors disabled:opacity-50"
-                >
-                  {quickLoading === 'col1' ? <Spinner /> : <Building2 className="w-4 h-4" />}
-                  Criar &quot;{searchProjeto.trim()}&quot; como externo
-                </OperumButton>
-              </div>
-            )}
-          </div>
         )}
       </div>
 

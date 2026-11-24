@@ -24,6 +24,7 @@ import { parseHoras } from '@/lib/validation/horas'
 import { dependenciasDoProjeto, mensagemDeBloqueio, type DependenciaProjeto } from '@/services/projetoDependencias'
 import { salvarProjetoEditor } from '@/services/projetoEditorService'
 import { syncProjetoDepartamentos } from '@/services/projetoDepartamentos'
+import { auditarAdmin, dadosDoUsuario, diferencas } from '@/services/auditoriaAdminService'
 
 
 export async function createProjetoAction(
@@ -468,8 +469,14 @@ export async function updateProjetoMemberAction(
     const isAdmin = role === 'admin'
     data = { ...data }
     await requireProjectPermission({ role, tenantId, userId: sessionUserId }, projetoId, 'projeto:equipe')
-    const member = await prisma.userProject.findFirst({ where: { projectId: projetoId, userId, user: { tenantId, deletedAt: null } }, select: { id: true, funcoes: FUNCOES_ORDENADAS } })
+    // Quem não é admin (o gerente) só edita membros ATIVOS deste projeto e da mesma
+    // instituição, e nunca a conta de um administrador.
+    const member = await prisma.userProject.findFirst({
+      where: { projectId: projetoId, userId, ...(isAdmin ? {} : { active: true }), user: { tenantId, deletedAt: null } },
+      select: { id: true, funcoes: FUNCOES_ORDENADAS, user: { select: { role: true } } },
+    })
     if (!member) throw new Error('Membro não encontrado neste projeto')
+    if (!isAdmin && member.user?.role === 'admin') throw new Error('Só o administrador edita os dados de um administrador')
     // E-mail só é alterado pelo administrador; para os demais nem é validado.
     if (!isAdmin) delete data.email
     if (typeof data.email === 'string' || typeof data.phone === 'string') {
@@ -539,13 +546,18 @@ export async function updateProjetoMemberAction(
     if ('avatarUrl' in profileData) {
       userUpdateData.avatarUrl = validateAvatarUrl(profileData.avatarUrl)
     }
-    if (isAdmin) {
-      if (name?.trim()) userUpdateData.name = name.trim()
-      if (email?.trim()) userUpdateData.email = email.trim()
-    }
+    // Nome: o gerente também edita (não é credencial). E-mail é o login da conta: só o admin.
+    if (name?.trim()) userUpdateData.name = name.trim().slice(0, 200)
+    if (isAdmin && email?.trim()) userUpdateData.email = email.trim()
+    const antes = await dadosDoUsuario(userId, tenantId).catch(() => null)
     await prisma.user.update({
       where: { id: userId, tenantId, deletedAt: null },
       data: userUpdateData,
+    })
+    const depois = await dadosDoUsuario(userId, tenantId).catch(() => null)
+    await auditarAdmin({
+      tenantId, autorId: sessionUserId, action: 'USUARIO_EDITAR_NO_PROJETO', entity: 'User', entityId: userId,
+      details: { alteracoes: diferencas(antes, depois), projectId: projetoId, porGerente: !isAdmin },
     })
 
     // 2a. Funções: cada uma um vínculo com o cadastro (reaproveita a equivalente; cria só
