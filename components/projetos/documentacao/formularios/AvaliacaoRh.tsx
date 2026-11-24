@@ -7,7 +7,6 @@ import { ArrowLeft, CheckCircle2, Clock, FileText, History, Plus, User, XCircle 
 import GlassButton from '@/components/ui/GlassButton'
 import EmptyState from '@/components/ui/EmptyState'
 import Tooltip from '@/components/ui/Tooltip'
-import { Input } from '@/components/ui/Field'
 import { useToast } from '@/components/ui/Toast'
 import { fetchWithSession } from '@/lib/clientFetch'
 import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
@@ -79,12 +78,13 @@ export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar }: Ren
             <td style={celulaGPCampo}><CampoAutomatico padding="1px 5px"><b>Versão:</b> {versaoPadrao}</CampoAutomatico></td>
           </tr>
           <tr>
-            <td colSpan={2} style={{ ...celulaGP, verticalAlign: 'middle' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2mm' }}>
-                <b>Nota Final:</b>
-                {editavel && alterar
-                  ? <Input aria-label="Nota final" value={conteudo.notaFinal ?? ''} maxLength={30} onChange={e => alterar(c => ({ ...c, notaFinal: e.target.value }))} className="w-24 text-center" />
-                  : <span>{conteudo.notaFinal}</span>}
+            <td colSpan={2} style={celulaGPCampo}>
+              {/* Digitada pelo gerente. CampoTexto: o mesmo campo dos demais documentos (foco, paginação, "Limpar campo"). */}
+              <div className="flex items-start" style={{ paddingLeft: 5 }}>
+                <b>Nota Final:</b>&nbsp;
+                <div style={{ flex: 1 }}>
+                  <CampoTexto id="avaliacao-rh-nota" rotulo="Nota final" ajuda="Nota final do participante, digitada pelo gerente (ex.: 9,5)." pergunta="nota final" valor={conteudo.notaFinal ?? ''} onChange={valor => alterar?.(c => ({ ...c, notaFinal: valor }))} max={30} linha compacto />
+                </div>
               </div>
             </td>
             <td style={{ ...celulaGP, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>

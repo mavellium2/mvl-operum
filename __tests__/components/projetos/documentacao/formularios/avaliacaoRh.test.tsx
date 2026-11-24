@@ -65,4 +65,17 @@ describe('Avaliação de R.H. — modelo "15" do professor', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'QUALIDADE: Fraco' }))
     expect(atual.criterios.qualidade).toBe('FRACO')
   })
+
+  it('na edição, o gerente digita a nota final no campo da folha', () => {
+    let atual: AvaliacaoRh = { ...conteudo, notaFinal: '' }
+    const alterar = vi.fn((fn: (c: AvaliacaoRh) => AvaliacaoRh) => { atual = fn(atual) })
+    render(editavel(<FolhaAvaliacao conteudo={atual} sistema={sistema} versaoPadrao="v1.0.1" alterar={alterar} />))
+    const campo = screen.getByRole('textbox', { name: 'Nota final' })
+    expect(campo).not.toBeDisabled()
+    expect(campo).not.toHaveAttribute('readonly')
+    fireEvent.change(campo, { target: { value: '10' } })
+    expect(alterar).toHaveBeenCalled()
+    expect(atual.notaFinal).toBe('10')
+  })
 })
+
