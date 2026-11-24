@@ -156,9 +156,10 @@ export type CapaConteudo = z.infer<typeof capaSchema>
 /** Canvas do projeto: blocos independentes editados e versionados como um documento. */
 export const canvasSchema = z.object({
   cabecalho: cabecalhoFormularioSchema.optional(),
-  projeto: z.string().max(500),
-  solicitante: z.string().max(1000),
-  gerente: z.string().max(1000),
+  // Cabeçalho com formatação (negrito, alinhamento): a marcação conta no limite.
+  projeto: z.string().max(2000),
+  solicitante: z.string().max(2000),
+  gerente: z.string().max(2000),
   justificativa: z.string().max(20000),
   objetivos: z.string().max(20000),
   escopo: z.string().max(20000),
@@ -172,6 +173,8 @@ export const canvasSchema = z.object({
   fases: z.string().max(20000),
   cronograma: z.string().max(20000),
   orcamento: z.string().max(20000),
+  /** Texto da Declaração do Escopo copiado por último para Estratégia e Comunicação (regra em lib/canvasEstrategia). */
+  origemEscopo: z.object({ estrategia: z.string().max(20000), comunicacao: z.string().max(20000) }).partial().optional(),
 }).strict()
 export type CanvasConteudo = z.infer<typeof canvasSchema>
 

@@ -53,7 +53,7 @@ function montar() {
 
 async function partes(doc: Awaited<ReturnType<typeof folhaParaDocx>>) {
   const zip = await JSZip.loadAsync(await Packer.toBuffer(doc))
-  return { corpo: await zip.file('word/document.xml').async('string') as string, rodape: await zip.file('word/footer1.xml').async('string') as string }
+  return { corpo: await zip.file('word/document.xml').async('string') as string, rodape: (await zip.file('word/footer1.xml')?.async('string') ?? '') as string }
 }
 
 describe('Word a partir da folha desenhada', () => {
@@ -85,5 +85,24 @@ describe('Word a partir da folha desenhada', () => {
     raiz.append(segunda)
     const { corpo } = await partes(await folhaParaDocx(raiz, 'Teste'))
     expect(corpo.match(/<w:pageBreakBefore\/>/g)).toHaveLength(1)
+  })
+  it('campos posicionados (data-docx-moldura) viram molduras do Word na posição da tela, fora do fluxo da página', async () => {
+    document.body.innerHTML = `
+      <div id="raiz">
+        <div data-folha="" data-r="0,0,1123,794" style="padding: 0; font-family: Arial">
+          <div data-docx-moldura="" data-r="20,100,200,120" style="font-size: 12px; line-height: 15px"><div data-r="20,100,200,15">Esquerda</div><div data-r="20,115,200,15" style="padding-left: 0">    - subitem</div></div>
+          <div data-docx-moldura="" data-r="300,100,200,120" style="font-size: 12px; line-height: 15px"><div data-r="300,100,200,15">Direita</div></div>
+        </div>
+      </div>`
+    const { corpo } = await partes(await folhaParaDocx(document.getElementById('raiz')!, 'Canvas'))
+    const molduras = [...corpo.matchAll(/<w:framePr [^>]*\/>/g)].map(m => m[0])
+    expect(molduras.length).toBeGreaterThanOrEqual(2)
+    expect(molduras[0]).toContain('w:x="300"') // 20 px
+    expect(molduras[0]).toContain('w:y="1500"') // 100 px
+    expect(molduras[0]).toContain('w:w="3000"') // 200 px
+    expect(molduras[0]).toContain('w:hRule="exact"')
+    expect(molduras.some(m => m.includes('w:x="4500"'))).toBe(true) // 300 px
+    expect(corpo).toContain('Esquerda')
+    expect(corpo).toContain('Direita')
   })
 })
