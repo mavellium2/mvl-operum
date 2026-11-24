@@ -93,7 +93,7 @@ export function CirculoSelecao({ marcado, parcial = false, rotulo, onAlternar, c
       onDoubleClick={e => e.stopPropagation()}
       data-marcado={marcado || parcial || undefined}
       className={`arq-circulo pressionavel ${className}`}>
-      {parcial ? <Minus className="h-2.5 w-2.5" strokeWidth={3.5} aria-hidden="true" /> : marcado ? <Check className="h-2.5 w-2.5" strokeWidth={3.5} aria-hidden="true" /> : null}
+      {parcial ? <Minus strokeWidth={3.5} aria-hidden="true" /> : marcado ? <Check strokeWidth={3.5} aria-hidden="true" /> : null}
     </GlassButton>
   )
 }
@@ -317,7 +317,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
           <thead className="arq-cabecalho">
             <tr>
               {selecao && (
-                <th className="w-9 pl-3 pr-0 py-2 text-left">
+                <th className="w-8 pl-3 pr-0 py-2 text-left">
                   <CirculoSelecao marcado={todosMarcados} parcial={escolhidos.length > 0 && !todosMarcados}
                     rotulo={todosMarcados ? 'Desmarcar todos os arquivos' : 'Selecionar todos os arquivos'} onAlternar={alternarTodos}
                     className="arq-circulo-cabecalho" />
@@ -345,7 +345,7 @@ export default function ListaArquivos({ itens, tipos, colunaExtra, filtroExtra, 
                 aria-label={selecao ? `${a.nome}${a.abrir ? ' (Enter abre)' : ''}` : undefined}
                 className={`arq-linha ${selecao ? 'cursor-default select-none' : ''}`}>
                 {selecao && (
-                  <td className="w-9 pl-3 pr-0 py-1.5">
+                  <td className="w-8 pl-3 pr-0 py-1.5">
                     <CirculoSelecao marcado={escolhidos.includes(a.id)} rotulo={`Selecionar ${a.nome}`}
                       onAlternar={() => { ancora.current = a.id; marcar(a.id, !selecao.selecionados.includes(a.id)) }}
                       className={escolhidos.length > 0 ? 'arq-circulo-visivel' : ''} />

@@ -105,16 +105,17 @@ tr[aria-selected='true'] .acoes-linha-arquivo,
 .arq-pagina > .project-appearance { min-height: 100%; }
 .arq-pagina > .project-appearance > .arq { min-height: 100%; }
 
-/* Círculo de seleção no estilo Apple (Finder/Fotos): pequeno, de traço fino; azul do sistema com ✓ branco quando marcado.
+/* Círculo de seleção no estilo Apple (Finder/Fotos): 13 px, de traço fino; azul do sistema com ✓ branco quando marcado.
    Aparece no hover/foco da linha ou do bloco e fica fixo quando marcado ou com algo selecionado. */
 .arq-circulo {
   --arq-apple-azul: #007aff;
-  position: relative; display: inline-flex; height: 1rem; width: 1rem; min-height: 0; padding: 0; align-items: center; justify-content: center;
+  position: relative; display: inline-flex; box-sizing: border-box; flex: none; height: 13px; width: 13px; min-height: 0; min-width: 0; padding: 0; line-height: 0; align-items: center; justify-content: center;
   border-radius: 9999px; color: #fff; background: transparent; box-shadow: none;
   border: 1px solid color-mix(in srgb, var(--arq-suave) 70%, transparent); opacity: 0;
 }
 /* Área de toque maior que o desenho (o círculo é pequeno, o alvo não). */
-.arq-circulo::after { content: ''; position: absolute; inset: -8px; }
+.arq-circulo::after { content: ''; position: absolute; inset: -9px; }
+.arq-circulo svg { width: 8px; height: 8px; }
 body[data-operum-period='night'] .arq-circulo { --arq-apple-azul: #0a84ff; }
 .arq-circulo-cabecalho { opacity: 1; }
 tr:hover .arq-circulo, tr:focus-within .arq-circulo, .arq-bloco:hover .arq-circulo, .arq-bloco:focus-within .arq-circulo,
@@ -122,7 +123,8 @@ tr:hover .arq-circulo, tr:focus-within .arq-circulo, .arq-bloco:hover .arq-circu
 .arq-circulo[data-marcado] { background: var(--arq-apple-azul); border-color: var(--arq-apple-azul); }
 .arq-circulo:focus-visible { outline: 2px solid var(--arq-apple-azul); outline-offset: 2px; }
 /* Sobre a miniatura (como nas Fotos do iOS): anel branco com fundo escuro translúcido; marcado fica azul com anel branco. */
-.arq-circulo-bloco { background: rgb(0 0 0 / .28); border: 1.5px solid #fff; box-shadow: 0 0 0 .5px rgb(0 0 0 / .25); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.arq-circulo-bloco { height: 16px; width: 16px; background: rgb(0 0 0 / .28); border: 1.5px solid #fff; box-shadow: 0 0 0 .5px rgb(0 0 0 / .25); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.arq-circulo-bloco svg { width: 9px; height: 9px; }
 .arq-circulo-bloco[data-marcado] { background: var(--arq-apple-azul); border-color: #fff; }
 @media (hover: none) { .arq-circulo { opacity: 1; } }
 @media (prefers-reduced-motion: no-preference) { .arq-circulo { transition: opacity 140ms ease, background-color 140ms ease, border-color 140ms ease; } }
