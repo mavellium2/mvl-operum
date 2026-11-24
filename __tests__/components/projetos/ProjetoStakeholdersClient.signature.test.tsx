@@ -99,7 +99,7 @@ describe('ProjetoStakeholdersClient — campo de assinatura digital', () => {
     const gerente = makeInterno({ isGerente: true, cargos: ['Gerente de Projeto'] })
     renderComponent([gerente])
 
-    fireEvent.click(screen.getByTitle('Editar'))
+    fireEvent.click(screen.getByRole('button', { name: /^Editar / }))
 
     await waitFor(() => {
       expect(screen.getByTestId('member-signature-upload')).toBeInTheDocument()
@@ -110,7 +110,7 @@ describe('ProjetoStakeholdersClient — campo de assinatura digital', () => {
     const membro = makeInterno({ isGerente: false, cargos: ['Desenvolvedor'] })
     renderComponent([membro])
 
-    fireEvent.click(screen.getByTitle('Editar'))
+    fireEvent.click(screen.getByRole('button', { name: /^Editar / }))
 
     await waitFor(() => {
       expect(screen.queryByTestId('member-signature-upload')).not.toBeInTheDocument()

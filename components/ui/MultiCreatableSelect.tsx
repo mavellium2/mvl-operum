@@ -17,6 +17,10 @@ interface MultiCreatableSelectProps {
   disabled?: boolean
   /** Rótulo acessível do campo de digitação. */
   ariaLabel?: string
+  /** Divide o texto digitado em vários valores (ex.: "Front-End | Redatora" vira duas etiquetas). */
+  separar?: (texto: string) => string[]
+  /** Chave de comparação: valores com a mesma chave são o mesmo (acento, caixa, plural); um valor novo usa o nome da opção existente. */
+  chave?: (valor: string) => string
 }
 
 export default function MultiCreatableSelect({
@@ -26,6 +30,8 @@ export default function MultiCreatableSelect({
   placeholder = 'Adicionar...',
   disabled = false,
   ariaLabel,
+  separar,
+  chave,
 }: MultiCreatableSelectProps) {
   const [inputValue, setInputValue] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -63,9 +69,14 @@ export default function MultiCreatableSelect({
     !values.includes(inputValue.trim())
 
   function addValue(val: string) {
-    const trimmed = val.trim()
-    if (!trimmed || values.includes(trimmed)) return
-    onChange([...values, trimmed])
+    const novos = (separar ? separar(val) : [val]).map(n => n.trim()).filter(Boolean)
+    const lista = [...values]
+    for (const bruto of novos) {
+      const nome = chave ? (options.find(o => chave(o) === chave(bruto)) ?? bruto) : bruto
+      if (chave ? lista.some(v => chave(v) === chave(nome)) : lista.includes(nome)) continue
+      lista.push(nome)
+    }
+    if (lista.length !== values.length) onChange(lista)
     setInputValue('')
     inputRef.current?.focus()
   }

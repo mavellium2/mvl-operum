@@ -138,7 +138,7 @@ describe('SDD 4.5 — horas por dia fracionadas e validadas', () => {
         />
       </ToastProvider>,
     )
-    fireEvent.click(screen.getByTitle('Editar'))
+    fireEvent.click(screen.getByRole('button', { name: /^Editar / }))
     return screen.getByLabelText('Horas por dia')
   }
 

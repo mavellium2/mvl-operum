@@ -78,7 +78,7 @@ describe('inativar stakeholder com motivo', () => {
     vi.mocked(setStakeholderAtivoAction).mockResolvedValue({ success: true, stakeholder: {} } as never)
     renderComponent([externo({ isActive: false, inactiveReason: 'Saiu do projeto' })])
 
-    expect(screen.getByText('Girassol').className).toContain('text-red-700')
+    expect(screen.getByText('Girassol').closest('tr')).toHaveAttribute('data-inativo')
     expect(screen.getByText('Motivo: Saiu do projeto')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reativar Girassol' }))
@@ -133,12 +133,12 @@ describe('inativar membro da equipe', () => {
     isActive: true, ...over,
   })
 
-  it('o botão tem texto e aparece também para membros; avisa que perde o acesso', async () => {
+  it('o botão de inativar tem nome acessível e aparece também para membros; avisa que perde o acesso', async () => {
     vi.mocked(setMembroAtivoAction).mockResolvedValue({ success: true, pendentes: 2 } as never)
     renderComponent([membro()])
 
     const botao = screen.getByRole('button', { name: 'Inativar Ana' })
-    expect(botao).toHaveTextContent('Inativar')
+    expect(botao).toHaveAccessibleName('Inativar Ana')
     fireEvent.click(botao)
     expect(screen.getByText(/perde o acesso ao projeto/)).toBeInTheDocument()
 
@@ -148,7 +148,7 @@ describe('inativar membro da equipe', () => {
     await waitFor(() => expect(setMembroAtivoAction).toHaveBeenCalledWith('p1', 'u1', false, 'Saiu da equipe'))
     expect(setStakeholderAtivoAction).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.getByText('Motivo: Saiu da equipe')).toBeInTheDocument())
-    expect(screen.getByText('Ana').className).toContain('text-red-700')
+    expect(screen.getByText('Ana').closest('tr')).toHaveAttribute('data-inativo')
     expect(await screen.findByText(/2 card\(s\) precisam de outro responsável/)).toBeInTheDocument()
   })
 

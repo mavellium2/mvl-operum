@@ -83,7 +83,7 @@ function renderWithInterno(member = makeInterno('m1', 'Joao Silva')) {
     </ToastProvider>,
   )
   // click pencil edit button to open detail panel
-  fireEvent.click(screen.getByTitle('Editar'))
+  fireEvent.click(screen.getByRole('button', { name: /^Editar / }))
   return { container }
 }
 
@@ -155,7 +155,7 @@ describe('ProjetoStakeholdersClient — externo com os mesmos dados do interno',
           funcoesExistentes={[]} departamentosExistentes={[]} userRole="admin" />
       </ToastProvider>,
     )
-    fireEvent.click(screen.getByTitle('Editar'))
+    fireEvent.click(screen.getByRole('button', { name: /^Editar / }))
   }
 
   it('mostra remuneração, horas por dia e calcula dia, hora e minuto também para externo', () => {
@@ -192,7 +192,7 @@ describe('ProjetoStakeholdersClient — excluir do projeto', () => {
       </ToastProvider>,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Excluir Joao Silva do projeto' }))
-    expect(screen.getByText(/Só é possível sem tarefas aqui/)).toBeInTheDocument()
+    expect(await screen.findByText(/Só é possível sem tarefas aqui/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Excluir do projeto' }))
     await vi.waitFor(() => expect(removeMemberAction).toHaveBeenCalledWith(PROJ_ID, 'u-m1'))
     expect(await screen.findByRole('alert')).toHaveTextContent('responsável por 2 card(s)')

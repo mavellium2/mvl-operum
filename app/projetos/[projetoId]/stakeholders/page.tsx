@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/dal'
 import ProjetoStakeholdersClient from '@/components/projetos/ProjetoStakeholdersClient'
 import { carregarStakeholdersDoProjeto } from '@/services/stakeholdersDoProjeto'
+import ProjectAppearance from '@/components/aparencia/ProjectAppearance'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -22,8 +23,9 @@ export default async function ProjetoStakeholdersPage({ params }: { params: Prom
   if (!dados) notFound()
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    // Altura da janela: a lista e o painel de edição rolam por dentro (como nas telas de arquivos), com a aparência do projeto.
+    <div className="arq-pagina h-full overflow-hidden">
+      <ProjectAppearance enabled>
         <ProjetoStakeholdersClient
           projetoId={projetoId}
           stakeholders={dados.stakeholders}
@@ -33,7 +35,7 @@ export default async function ProjetoStakeholdersPage({ params }: { params: Prom
           departamentosExistentes={dados.departamentosExistentes}
           userRole={userRole}
         />
-      </main>
+      </ProjectAppearance>
     </div>
   )
 }
