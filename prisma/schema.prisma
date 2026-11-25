@@ -67,6 +67,8 @@ model Project {
   backlogColor String?
   /// Rodadas de Avaliação de R.H. abertas no semestre (mínimo 2: AC e AF; o gerente adiciona as seguintes).
   avaliacaoRhRodadas Int @default(2)
+  /// Títulos das rodadas de Avaliação de R.H. definidos pelo gerente ({"1": "1ª Avaliação – AC"}); ausente = título padrão.
+  avaliacaoRhTitulos Json?
 
   justificativa     String? @db.Text
   objetivos         String? @db.Text

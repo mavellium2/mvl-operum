@@ -43,3 +43,17 @@ describe('Avaliação de R.H. — catálogo do modelo', () => {
     expect(listaRodadasRh(0)).toEqual([1, 2])
   })
 })
+
+import { lerTitulosRodadaRh, nomeRodadaRh } from '@/lib/avaliacaoRh'
+import { describe as d2, expect as e2, it as i2 } from 'vitest'
+d2('títulos personalizados das rodadas', () => {
+  i2('usa o título do gerente ou o padrão', () => {
+    e2(nomeRodadaRh(1)).toBe('1ª Avaliação – AC')
+    e2(nomeRodadaRh(3)).toBe('3ª Avaliação')
+    e2(nomeRodadaRh(1, { '1': 'Avaliação inicial' })).toBe('Avaliação inicial')
+  })
+  i2('lê só texto de rodadas válidas', () => {
+    e2(lerTitulosRodadaRh({ '1': ' A ', '99': 'x', '2': 3, 'z': 'y' })).toEqual({ '1': 'A' })
+    e2(lerTitulosRodadaRh(null)).toEqual({})
+  })
+})

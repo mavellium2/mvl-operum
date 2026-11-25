@@ -7,6 +7,12 @@ As versões até 1.6.0 foram reconstruídas retroativamente a partir do históri
 1.0.0 marca a entrada em produção na arquitetura de microsserviços, e cada marco de
 funcionalidade depois disso é uma versão MINOR.
 
+## [1.64.0] — 2026-11-25
+
+- **Stakeholders, adicionar pessoa:** ao clicar no campo "Adicionar pessoa", a lista já mostra todos os usuários e contatos disponíveis (e rola). Ao digitar, filtra por nome, sobrenome ou e-mail, em qualquer ordem. Se o nome não existir, aparece "Criar «nome»": o gerente cria como externo e o administrador também na equipe (que exige criar o login). Antes, o gerente via só "Nenhuma pessoa encontrada". Esc fecha a lista.
+- **Avaliação de R.H., títulos das rodadas editáveis:** o gerente renomeia cada rodada (ícone de lápis) conforme a terminologia da sua organização, já que AC e AF são termos da Fatec. Vazio volta ao título padrão. Nova coluna `Project.avaliacaoRhTitulos` e `PATCH /api/projects/:id/avaliacao-rh/rodadas`.
+- **Avaliação de R.H., rádios centralizados:** na edição, as bolinhas dos critérios a partir de "Senso de responsabilidade" ficavam no topo da célula; agora ficam centralizadas como as primeiras. O documento exportado mantém a posição do X do modelo.
+
 ## [1.63.0] — 2026-11-24
 
 - **Avaliação de R.H.:** nova seção na Documentação, no modelo "15 - Avaliação R.H." do professor. Cada integrante ativo da equipe tem uma avaliação na 1ª Avaliação (AC) e outra na 2ª Avaliação (AF), com os 12 critérios do modelo, as frases de cada critério e uma marca por conceito (Fraco, Regular, Bom, Ótimo), além de observações, nota final e data. O documento usa o mesmo fluxo de rascunho, versões, aprovação, histórico e exportação em PDF/Word dos demais formulários. Por tratar dados de gestão de pessoas, só o gerente do projeto e o administrador veem e editam as avaliações; a lista mostra o andamento de cada rodada.

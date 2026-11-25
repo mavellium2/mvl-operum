@@ -156,11 +156,12 @@ describe('ProjetoStakeholdersClient — criação rápida pelo campo Adicionar i
     await waitFor(() => expect(screen.getByText('Falha ao criar.')).toBeInTheDocument())
   })
 
-  it('gerente não vê as opções de criar', () => {
+  it('gerente só pode criar como externo (equipe exige login de administrador)', () => {
     renderComponent([], [], 'gerente')
 
     digitar('Xyz')
 
-    expect(screen.queryByRole('option', { name: /Criar «/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Criar «Xyz» na equipe/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Criar «Xyz» como externo/i })).toBeInTheDocument()
   })
 })

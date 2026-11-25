@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { Input } from '@/components/ui/Field'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, CheckCircle2, Clock, FileText, History, Plus, User, XCircle } from 'lucide-react'
+import { ArrowLeft, Check, CheckCircle2, Clock, FileText, History, Pencil, Plus, User, X, XCircle } from 'lucide-react'
 import GlassButton from '@/components/ui/GlassButton'
 import EmptyState from '@/components/ui/EmptyState'
 import Tooltip from '@/components/ui/Tooltip'
@@ -15,8 +16,8 @@ import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import { CampoAutomatico, CampoData, CampoTexto, Folha, SecaoTabela, useEditorFolha } from '@/components/documentos/editor/folha'
 import { abrirPropostas } from '@/hooks/useVersoesDocumento'
 import {
-  CONCEITOS_RH, CRITERIOS_RH, MAX_RODADAS_RH, MIN_RODADAS_RH, ROTULO_CONCEITO_RH, listaRodadasRh, recursoAvaliacaoRh, rodadaRhValida, rotuloRodadaRh, siglaRodadaRh, tituloRodadaRh,
-  type ConceitoRh, type RodadaRh,
+  CONCEITOS_RH, CRITERIOS_RH, MAX_RODADAS_RH, MIN_RODADAS_RH, ROTULO_CONCEITO_RH, listaRodadasRh, MAX_TITULO_RODADA_RH, nomeRodadaRh, recursoAvaliacaoRh, rodadaRhValida, tituloRodadaRh,
+  type ConceitoRh, type RodadaRh, type TitulosRodadaRh,
 } from '@/lib/avaliacaoRh'
 import type { AvaliacaoRh } from '@/lib/validation/formulariosGP'
 import type { MembroEquipeOption } from '../MembroEquipeSelect'
@@ -46,7 +47,7 @@ function Marca({ nome, rotulo, marcada, onMarcar }: { nome: string; rotulo: stri
   if (!editavel || !onMarcar) return <span aria-label={rotulo}>{marcada ? 'X' : ''}</span>
   // Rádio nativo: controle de escolha (permitido fora da base dos campos de texto).
   return (
-    <label className="flex h-full w-full cursor-pointer items-center justify-center transition-colors hover:bg-blue-50 focus-within:outline focus-within:outline-2 focus-within:outline-blue-500">
+    <label className="flex min-h-6 w-full cursor-pointer items-center justify-center transition-colors hover:bg-blue-50 focus-within:outline focus-within:outline-2 focus-within:outline-blue-500">
       <input type="radio" name={nome} checked={marcada} onChange={onMarcar} aria-label={rotulo} className="h-3 w-3 cursor-pointer accent-blue-600" />
     </label>
   )
@@ -60,6 +61,7 @@ function Marca({ nome, rotulo, marcada, onMarcar }: { nome: string; rotulo: stri
  */
 export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar }: RenderFormulario<AvaliacaoRh>) {
   const { editavel } = useEditorFolha()
+  // Na edição os rádios ficam centralizados na linha toda; no documento, o X segue a posição do modelo.
   const editar = (id: string, valor: ConceitoRh) =>
     alterar?.(atual => ({ ...atual, criterios: { ...atual.criterios, [id]: valor } }))
   const gerente = sistema.gerente.nome || 'Nenhum gerente definido no projeto.'
@@ -120,7 +122,7 @@ export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar }: Ren
       >
         {CRITERIOS_RH.map(criterio => {
           const marcado = conteudo.criterios?.[criterio.id] ?? null
-          const verticalAlign = criterio.marcaNoTopo ? 'top' : 'middle'
+          const verticalAlign = criterio.marcaNoTopo && !editavel ? 'top' : 'middle'
           return (
             <tr key={criterio.id} style={{ breakInside: 'avoid' }}>
               <td style={celulaGP}>
@@ -167,7 +169,7 @@ export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar }: Ren
 const arquivoDaAvaliacao = (nome: string) =>
   `avaliacao-rh-${nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'integrante'}.docx`
 
-function Editor({ integrante, rodada, membros }: { integrante: MembroEquipeOption; rodada: RodadaRh; membros: MembroEquipeOption[] }) {
+function Editor({ integrante, rodada, membros, titulos }: { integrante: MembroEquipeOption; rodada: RodadaRh; membros: MembroEquipeOption[]; titulos: TitulosRodadaRh }) {
   const resourceId = recursoAvaliacaoRh(rodada, integrante.id)
   return (
     <FormularioDocumento<AvaliacaoRh>
@@ -183,7 +185,7 @@ function Editor({ integrante, rodada, membros }: { integrante: MembroEquipeOptio
       topo={(
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <Link href={hrefAvaliacao()} className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:underline"><ArrowLeft className="h-4 w-4" />Todas as avaliações</Link>
-          <span className="text-sm text-slate-500">{rotuloRodadaRh(rodada)} · {integrante.name}</span>
+          <span className="text-sm text-slate-500">{nomeRodadaRh(rodada, titulos)} · {integrante.name}</span>
         </div>
       )}
     />
@@ -234,12 +236,15 @@ function CartaoAvaliacao({ item, projetoId }: { item: AvaliacaoRhItem; projetoId
  * em cada rodada (1ª AC, 2ª AF e as seguintes, até 10). A lista abre o editor por
  * `?doc=avaliacao-rh&integrante=<id>&rodada=<n>`; o gerente abre a próxima rodada.
  */
-export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, rodadas = 2, permitido }: { projetoId: string; membros: MembroEquipeOption[]; avaliacoes: AvaliacaoRhItem[]; rodadas?: number; permitido: boolean }) {
+export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, rodadas = 2, titulos = {}, permitido }: { projetoId: string; membros: MembroEquipeOption[]; avaliacoes: AvaliacaoRhItem[]; rodadas?: number; titulos?: TitulosRodadaRh; permitido: boolean }) {
   const params = useSearchParams()
   const router = useRouter()
   const { toast } = useToast()
   const [adicionando, setAdicionando] = useState(false)
   const [excluir, setExcluir] = useState<RodadaRh | null>(null)
+  const [editando, setEditando] = useState<RodadaRh | null>(null)
+  const [rascunho, setRascunho] = useState('')
+  const [salvandoTitulo, setSalvandoTitulo] = useState(false)
   const integranteId = params.get('integrante')
   const rodadaParam = Number(params.get('rodada'))
   const rodada: RodadaRh | null = rodadaRhValida(rodadaParam) ? rodadaParam : null
@@ -256,7 +261,7 @@ export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, r
     )
   }
 
-  if (integrante && rodada) return <Editor integrante={integrante} rodada={rodada} membros={membros} />
+  if (integrante && rodada) return <Editor integrante={integrante} rodada={rodada} membros={membros} titulos={titulos} />
 
   const lista = listaRodadasRh(rodadas)
   const porRodada = (r: RodadaRh) => membros.map(m =>
@@ -292,6 +297,24 @@ export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, r
       toast('Não foi possível excluir a rodada.', 'error')
     }
   }
+  async function salvarTitulo(r: RodadaRh) {
+    if (salvandoTitulo) return
+    setSalvandoTitulo(true)
+    try {
+      const resposta = await fetchWithSession(`/api/projects/${projetoId}/avaliacao-rh/rodadas`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rodada: r, titulo: rascunho.trim() }),
+      })
+      const dados = await resposta.json().catch(() => ({}))
+      if (!resposta.ok) { toast(dados?.error ?? 'Não foi possível renomear a rodada.', 'error'); return }
+      toast('Título da rodada atualizado.', 'success')
+      setEditando(null)
+      router.refresh()
+    } catch {
+      toast('Não foi possível renomear a rodada.', 'error')
+    } finally {
+      setSalvandoTitulo(false)
+    }
+  }
   const salvasNaRodada = (r: RodadaRh) => porRodada(r).filter(a => a.status !== 'NONE').length
 
   return (
@@ -321,11 +344,35 @@ export default function AvaliacaoRhDocumento({ projetoId, membros, avaliacoes, r
             {lista.map(r => {
               const itens = porRodada(r)
               const concluidas = itens.filter(a => a.status === 'APPROVED').length
-              const sigla = siglaRodadaRh(r)
+              const nome = nomeRodadaRh(r, titulos)
               return (
                 <section key={r} className="w-[min(22rem,85vw)] shrink-0 snap-start rounded-xl border border-slate-200 bg-white p-4 lg:w-[calc(50%-0.625rem)]" aria-labelledby={`avaliacao-rh-rodada-${r}`}>
                   <div className="flex items-baseline justify-between gap-3">
-                    <h3 id={`avaliacao-rh-rodada-${r}`} className="font-semibold text-slate-900">{tituloRodadaRh(r)}{sigla && <> – {sigla}</>}</h3>
+                    {editando === r ? (
+                      <form className="flex min-w-0 flex-1 items-center gap-1" onSubmit={e => { e.preventDefault(); void salvarTitulo(r) }}>
+                        <Input
+                          autoFocus
+                          aria-label={`Título da ${tituloRodadaRh(r)}`}
+                          value={rascunho}
+                          maxLength={MAX_TITULO_RODADA_RH}
+                          placeholder={nomeRodadaRh(r, null)}
+                          onChange={e => setRascunho(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Escape') setEditando(null) }}
+                          className="h-8 min-w-0 flex-1 px-2 text-sm"
+                        />
+                        <GlassButton variant="custom" type="submit" disabled={salvandoTitulo} aria-busy={salvandoTitulo} aria-label="Salvar título" className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-50"><Check className="h-4 w-4" /></GlassButton>
+                        <GlassButton variant="custom" type="button" aria-label="Cancelar" onClick={() => setEditando(null)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"><X className="h-4 w-4" /></GlassButton>
+                      </form>
+                    ) : (
+                      <h3 id={`avaliacao-rh-rodada-${r}`} className="flex min-w-0 items-center gap-1 font-semibold text-slate-900">
+                        <span className="truncate">{nome}</span>
+                        <Tooltip label="Renomear a rodada">
+                          <GlassButton variant="custom" type="button" aria-label={`Renomear a ${tituloRodadaRh(r)}`} onClick={() => { setRascunho(titulos[String(r)] ?? ''); setEditando(r) }} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </GlassButton>
+                        </Tooltip>
+                      </h3>
+                    )}
                     <span className="flex items-center gap-2">
                       <span className="text-xs text-slate-500">{concluidas} de {itens.length} aprovadas</span>
                       {/* Só a última rodada, da 3ª em diante (AC e AF são fixas), pode ser excluída. */}

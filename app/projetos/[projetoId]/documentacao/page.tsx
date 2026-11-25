@@ -11,7 +11,7 @@ import prisma from '@/lib/prisma'
 import { FUNCOES_ORDENADAS, nomesDasFuncoes } from '@/services/funcoesDaPessoa'
 import { carregarStakeholdersDoProjeto } from '@/services/stakeholdersDoProjeto'
 import { podeAvaliarRh as podeAvaliarRhDoProjeto } from '@/services/gerenteProjeto'
-import { lerRecursoAvaliacaoRh, MIN_RODADAS_RH, totalRodadasRh } from '@/lib/avaliacaoRh'
+import { lerRecursoAvaliacaoRh, lerTitulosRodadaRh, MIN_RODADAS_RH, totalRodadasRh, type TitulosRodadaRh } from '@/lib/avaliacaoRh'
 import type { AvaliacaoRh } from '@/lib/validation/formulariosGP'
 import type { AvaliacaoRhItem } from '@/components/projetos/documentacao/formularios/AvaliacaoRh'
 
@@ -90,6 +90,7 @@ export default async function DocumentacaoPage({ params, searchParams }: { param
 
   let avaliacoesRh: AvaliacaoRhItem[] = []
   let rodadasRh = MIN_RODADAS_RH
+  let titulosRh: TitulosRodadaRh = {}
   if (doc === 'avaliacao-rh' && podeAvaliarRh) {
     const versoes = await prisma.documentVersion.findMany({
       where: { projectId: projetoId, documentType: 'AVALIACAO_RH' },
@@ -106,6 +107,7 @@ export default async function DocumentacaoPage({ params, searchParams }: { param
         ? [{ integranteId: recurso.integranteId, integrante: p.integrante, rodada: recurso.rodada, status: v.status as AvaliacaoRhItem['status'], notaFinal: p.notaFinal ?? '' }]
         : []
     })
+    titulosRh = lerTitulosRodadaRh(project.avaliacaoRhTitulos)
     rodadasRh = totalRodadasRh(project.avaliacaoRhRodadas, avaliacoesRh.map(a => a.rodada))
   }
 
@@ -118,6 +120,7 @@ export default async function DocumentacaoPage({ params, searchParams }: { param
         avaliacoesRh={avaliacoesRh}
         podeAvaliarRh={podeAvaliarRh}
         rodadasRh={rodadasRh}
+        titulosRh={titulosRh}
         gerente={gerente}
         membros={membros}
         cadastroStakeholders={cadastroStakeholders}
