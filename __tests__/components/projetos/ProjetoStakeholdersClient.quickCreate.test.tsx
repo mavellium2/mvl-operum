@@ -28,7 +28,7 @@ vi.mock('@/app/actions/projetos', () => ({
 }))
 
 vi.mock('@/app/actions/admin', () => ({
-  adminCreateUserAction: vi.fn(),
+  gerenteCreateUserAction: vi.fn(),
 }))
 
 vi.mock('@/components/profile/AvatarUpload', () => ({
@@ -156,12 +156,12 @@ describe('ProjetoStakeholdersClient — criação rápida pelo campo Adicionar i
     await waitFor(() => expect(screen.getByText('Falha ao criar.')).toBeInTheDocument())
   })
 
-  it('gerente só pode criar como externo (equipe exige login de administrador)', () => {
+  it('gerente também cria na equipe ou como externo (monta a própria equipe)', () => {
     renderComponent([], [], 'gerente')
 
     digitar('Xyz')
 
-    expect(screen.queryByRole('option', { name: /Criar «Xyz» na equipe/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Criar «Xyz» na equipe/i })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Criar «Xyz» como externo/i })).toBeInTheDocument()
   })
 })

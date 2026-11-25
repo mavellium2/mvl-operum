@@ -19,7 +19,7 @@ vi.mock('@/app/actions/stakeholders', () => ({
 }))
 vi.mock('@/app/actions/projects', () => ({ addMemberAction: vi.fn(), removeMemberAction: vi.fn() }))
 vi.mock('@/app/actions/projetos', () => ({ updateProjetoMemberAction: vi.fn() }))
-vi.mock('@/app/actions/admin', () => ({ adminCreateUserAction: vi.fn() }))
+vi.mock('@/app/actions/admin', () => ({ gerenteCreateUserAction: vi.fn() }))
 vi.mock('@/components/profile/AvatarUpload', () => ({ default: () => null }))
 vi.mock('@/components/ui/AddressFields', () => ({
   default: () => null,
@@ -29,7 +29,7 @@ vi.mock('@/components/permissoes/ProjectPermissions', () => ({ useProjectPermiss
 
 import ProjetoStakeholdersClient from '@/components/projetos/ProjetoStakeholdersClient'
 import { bindStakeholderAction, createStakeholderAction, updateStakeholderAction } from '@/app/actions/stakeholders'
-import { adminCreateUserAction } from '@/app/actions/admin'
+import { gerenteCreateUserAction } from '@/app/actions/admin'
 import { addMemberAction } from '@/app/actions/projects'
 
 const externo = {
@@ -80,7 +80,7 @@ describe('cadastro de Stakeholders em painel (documento Partes Interessadas)', (
 describe('cadastro interno em painel — seleção para o campo de origem', () => {
   it('inicia criação interna e devolve a pessoa recém-criada e vinculada antes de fechar', async () => {
     const onSelecionado = vi.fn(), onFechar = vi.fn(), onAlterado = vi.fn()
-    vi.mocked(adminCreateUserAction).mockResolvedValue({ user: {
+    vi.mocked(gerenteCreateUserAction).mockResolvedValue({ user: {
       id: 'u-novo', name: 'Nova pessoa', email: 'nova@example.com', avatarUrl: null, role: 'user',
     } } as never)
     vi.mocked(addMemberAction).mockResolvedValue({ success: true } as never)
@@ -92,7 +92,7 @@ describe('cadastro interno em painel — seleção para o campo de origem', () =
     fireEvent.change(screen.getByPlaceholderText('Mínimo 8 caracteres'), { target: { value: 'Senha1234!' } })
     fireEvent.click(screen.getByRole('button', { name: 'Criar Stakeholder' }))
     await waitFor(() => expect(onFechar).toHaveBeenCalledOnce())
-    expect(adminCreateUserAction).toHaveBeenCalledWith(expect.objectContaining({ name: 'Nova pessoa', email: 'nova@example.com', forcePasswordChange: true }))
+    expect(gerenteCreateUserAction).toHaveBeenCalledWith('p1', expect.objectContaining({ name: 'Nova pessoa', email: 'nova@example.com', forcePasswordChange: true }))
     expect(addMemberAction).toHaveBeenCalledWith('p1', 'u-novo')
     expect(onSelecionado).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'u-novo', userId: 'u-novo', tipo: 'interno', name: 'Nova pessoa', forcePasswordChange: true }))
     expect(onAlterado).toHaveBeenCalledOnce()

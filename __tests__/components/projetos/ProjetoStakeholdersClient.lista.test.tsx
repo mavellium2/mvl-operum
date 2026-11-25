@@ -13,7 +13,7 @@ vi.mock('@/app/actions/stakeholders', () => {
 })
 vi.mock('@/app/actions/projects', () => ({ addMemberAction: vi.fn(), removeMemberAction: vi.fn() }))
 vi.mock('@/app/actions/projetos', () => ({ updateProjetoMemberAction: vi.fn(), setMembroAtivoAction: vi.fn() }))
-vi.mock('@/app/actions/admin', () => ({ adminCreateUserAction: vi.fn() }))
+vi.mock('@/app/actions/admin', () => ({ gerenteCreateUserAction: vi.fn() }))
 vi.mock('@/components/profile/AvatarUpload', () => ({ default: () => null }))
 vi.mock('@/components/ui/AddressFields', () => ({ default: () => null, emptyAddress: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' } }))
 import ProjetoStakeholdersClient, { type StakeholderUnificado } from '@/components/projetos/ProjetoStakeholdersClient'

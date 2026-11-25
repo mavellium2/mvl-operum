@@ -19,7 +19,7 @@ vi.mock('@/app/actions/stakeholders', () => ({
 }))
 vi.mock('@/app/actions/projects', () => ({ addMemberAction: vi.fn(), removeMemberAction: vi.fn() }))
 vi.mock('@/app/actions/projetos', () => ({ updateProjetoMemberAction: vi.fn() }))
-vi.mock('@/app/actions/admin', () => ({ adminCreateUserAction: vi.fn() }))
+vi.mock('@/app/actions/admin', () => ({ gerenteCreateUserAction: vi.fn() }))
 vi.mock('@/components/profile/AvatarUpload', () => ({
   default: ({ name }: { name: string }) => <div data-testid="avatar-upload">{name}</div>,
 }))
@@ -32,7 +32,7 @@ import ProjetoStakeholdersClient, { type StakeholderUnificado } from '@/componen
 import { createStakeholderAction } from '@/app/actions/stakeholders'
 import { addMemberAction } from '@/app/actions/projects'
 import { updateProjetoMemberAction } from '@/app/actions/projetos'
-import { adminCreateUserAction } from '@/app/actions/admin'
+import { gerenteCreateUserAction } from '@/app/actions/admin'
 
 const PROJ = 'p1'
 
@@ -56,7 +56,7 @@ beforeEach(() => vi.clearAllMocks())
 
 describe('SDD 4.4 — stakeholder novo já na tela certa', () => {
   it('membro da equipe: grava remuneração e horas junto com a criação e abre o cadastro em edição', async () => {
-    vi.mocked(adminCreateUserAction).mockResolvedValue({
+    vi.mocked(gerenteCreateUserAction).mockResolvedValue({
       user: { id: 'u-novo', name: 'Luan', email: 'luan@x.com', avatarUrl: null, role: 'member' },
     } as never)
     vi.mocked(addMemberAction).mockResolvedValue({ success: true } as never)
@@ -82,7 +82,7 @@ describe('SDD 4.4 — stakeholder novo já na tela certa', () => {
   })
 
   it('membro sem dados do projeto preenchidos: não chama a atualização à toa, mas abre em edição', async () => {
-    vi.mocked(adminCreateUserAction).mockResolvedValue({
+    vi.mocked(gerenteCreateUserAction).mockResolvedValue({
       user: { id: 'u-novo', name: 'Ana', email: 'ana@x.com', avatarUrl: null, role: 'member' },
     } as never)
     vi.mocked(addMemberAction).mockResolvedValue({ success: true } as never)

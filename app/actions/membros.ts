@@ -3,7 +3,7 @@
 import { emailValido, formatEmail, MENSAGEM_EMAIL_INVALIDO } from '@/lib/contato'
 import { verifySession } from '@/lib/dal'
 import { isProjectManager } from '@/services/projectRoleService'
-import { adminCreateUserAction } from './admin'
+import { gerenteCreateUserAction } from './admin'
 import { addMemberAction } from './projects'
 
 export interface MembroCriado {
@@ -18,8 +18,7 @@ export interface MembroCriado {
  * ele precisa trocar a senha no primeiro acesso para concluir o cadastro. Isso
  * sinaliza que o membro foi criado de forma simplificada e ainda aguarda regularização.
  *
- * A criação de usuários é restrita a administradores (camada de auth); gerentes
- * recebem um erro claro em caso de falta de permissão.
+ * Administrador e gerente do projeto podem criar (o gerente monta a própria equipe).
  */
 export async function criarMembroEquipeAction(input: {
   projetoId: string
@@ -49,14 +48,7 @@ export async function criarMembroEquipeAction(input: {
       return { error: 'Acesso restrito a gerentes e administradores do projeto.' }
     }
 
-    if (session.role !== 'admin') {
-      return {
-        error:
-          'Somente administradores podem criar novos membros da equipe. Solicite a um administrador que crie o usuário.',
-      }
-    }
-
-    const created = await adminCreateUserAction({
+    const created = await gerenteCreateUserAction(input.projetoId, {
       name,
       email,
       password,

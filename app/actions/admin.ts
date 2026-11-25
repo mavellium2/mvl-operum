@@ -12,6 +12,8 @@ import { exigirOperadorDaPlataforma } from '@/lib/platformOperator'
 import prisma from '@/lib/prisma'
 import { auditarAdmin, comAuditoriaDeUsuario, dadosDoUsuario, diferencas } from '@/services/auditoriaAdminService'
 import { notificarPendenciasDoMembroInativo } from '@/services/membroInativo'
+import { adminCreateUser } from '@/services/adminService'
+import { isProjectManager } from '@/services/projectRoleService'
 import { CONTA_INATIVADA, motivoDaContaInativada } from '@/lib/contaInativada'
 
 async function requireAdmin() {
@@ -32,7 +34,7 @@ export async function listUsersAction() {
   }
 }
 
-export async function adminCreateUserAction(data: {
+type DadosNovoUsuario = {
   name: string
   email: string
   password: string
@@ -48,21 +50,59 @@ export async function adminCreateUserAction(data: {
   cidade?: string
   estado?: string
   notes?: string
-}) {
+}
+
+async function criarUsuarioNoTenant(session: { tenantId: string; userId: string }, data: DadosNovoUsuario) {
+  const contato = normalizarContato(data, { emailObrigatorio: true })
+  if (contato.error) return { error: contato.error }
+  const user = await adminApi.createUser(contato.data as Record<string, unknown>)
+  const novoId = (user as { id?: string } | null)?.id
+  if (novoId) {
+    const depois = await dadosDoUsuario(novoId, session.tenantId).catch(() => null)
+    await auditarAdmin({
+      tenantId: session.tenantId, autorId: session.userId, action: 'USUARIO_CRIAR', entity: 'User', entityId: novoId,
+      details: { alteracoes: diferencas(null, depois) },
+    })
+  }
+  revalidatePath('/admin/users')
+  return { user }
+}
+
+export async function adminCreateUserAction(data: DadosNovoUsuario) {
   try {
     const session = await requireAdmin()
-    const contato = normalizarContato(data, { emailObrigatorio: true })
-    if (contato.error) return { error: contato.error }
-    const user = await adminApi.createUser(contato.data as Record<string, unknown>)
-    const novoId = (user as { id?: string } | null)?.id
-    if (novoId) {
-      const depois = await dadosDoUsuario(novoId, session.tenantId).catch(() => null)
-      await auditarAdmin({
-        tenantId: session.tenantId, autorId: session.userId, action: 'USUARIO_CRIAR', entity: 'User', entityId: novoId,
-        details: { alteracoes: diferencas(null, depois) },
-      })
+    return await criarUsuarioNoTenant(session, data)
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Erro ao criar usuário' }
+  }
+}
+
+/**
+ * O gerente do projeto cria a conta de um membro da equipe (o professor/admin cria o projeto e o gerente
+ * monta a equipe). Nunca cria administrador: `isAdmin` é descartado. A conta nasce no tenant do gerente
+ * e é auditada como qualquer outra criação.
+ */
+export async function gerenteCreateUserAction(projetoId: string, data: DadosNovoUsuario) {
+  try {
+    const session = await verifySession()
+    if (session.role !== 'admin' && !(await isProjectManager(session.userId, projetoId))) {
+      return { error: 'Acesso restrito a gerentes e administradores do projeto.' }
     }
-    revalidatePath('/admin/users')
+    if (session.role === 'admin') return await criarUsuarioNoTenant(session, data)
+    // O auth-service só cria conta para administrador, então o gerente grava direto no banco da aplicação,
+    // com o mesmo hash, a mesma checagem de e-mail único por instituição e sem privilégio (`isAdmin` descartado).
+    const contato = normalizarContato({ ...data, isAdmin: undefined }, { emailObrigatorio: true })
+    if (contato.error) return { error: contato.error }
+    const dados = contato.data as unknown as DadosNovoUsuario
+    if (typeof dados.password !== 'string' || dados.password.length < 8 || dados.password.length > 128) return { error: 'A senha deve ter entre 8 e 128 caracteres.' }
+    const existente = await prisma.user.findFirst({ where: { email: dados.email, tenantId: session.tenantId, deletedAt: null }, select: { id: true } })
+    if (existente) return { error: 'Email já cadastrado' }
+    const user = await adminCreateUser({ ...dados, isAdmin: false, tenantId: session.tenantId })
+    const depois = await dadosDoUsuario(user.id, session.tenantId).catch(() => null)
+    await auditarAdmin({
+      tenantId: session.tenantId, autorId: session.userId, action: 'USUARIO_CRIAR', entity: 'User', entityId: user.id,
+      details: { alteracoes: diferencas(null, depois), projectId: projetoId, porGerente: true },
+    })
     return { user }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Erro ao criar usuário' }

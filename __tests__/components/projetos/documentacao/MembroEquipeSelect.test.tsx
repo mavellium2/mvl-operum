@@ -27,7 +27,7 @@ vi.mock('@/app/actions/stakeholders', () => ({
 }))
 vi.mock('@/app/actions/projects', () => ({ addMemberAction: vi.fn(), removeMemberAction: vi.fn() }))
 vi.mock('@/app/actions/projetos', () => ({ updateProjetoMemberAction: vi.fn() }))
-vi.mock('@/app/actions/admin', () => ({ adminCreateUserAction: vi.fn() }))
+vi.mock('@/app/actions/admin', () => ({ gerenteCreateUserAction: vi.fn() }))
 vi.mock('@/components/profile/AvatarUpload', () => ({ default: () => null }))
 vi.mock('@/components/ui/AddressFields', () => ({
   default: () => null,
@@ -37,7 +37,7 @@ vi.mock('@/components/permissoes/ProjectPermissions', () => ({ useProjectPermiss
 
 
 import { carregarCadastroStakeholdersAction } from '@/app/actions/cadastroStakeholders'
-import { adminCreateUserAction } from '@/app/actions/admin'
+import { gerenteCreateUserAction } from '@/app/actions/admin'
 import { addMemberAction } from '@/app/actions/projects'
 
 const MEMBROS = [
@@ -96,7 +96,7 @@ describe('MembroEquipeSelect', () => {
   })
 
   it('devolve o novo membro a onCriarMembro e onChange e mantém a pessoa selecionada', async () => {
-    vi.mocked(adminCreateUserAction).mockResolvedValue({ user: {
+    vi.mocked(gerenteCreateUserAction).mockResolvedValue({ user: {
       id: 'pedro', name: 'Pedro', email: 'pedro@test.com', avatarUrl: null, role: 'user',
     } } as never)
     const { onChange, onCriarMembro } = renderSelect()
@@ -121,7 +121,7 @@ describe('MembroEquipeSelect', () => {
   })
 
   it('falha na criação mantém o painel e não devolve uma pessoa inexistente', async () => {
-    vi.mocked(adminCreateUserAction).mockResolvedValue({ error: 'Sem permissão para criar usuário' } as never)
+    vi.mocked(gerenteCreateUserAction).mockResolvedValue({ error: 'Sem permissão para criar usuário' } as never)
     const { onChange, onCriarMembro } = renderSelect()
     await userEvent.click(screen.getByRole('button', { name: 'Criar novo membro da equipe' }))
     await preencherFormulario()

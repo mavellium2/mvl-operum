@@ -22,7 +22,7 @@ vi.mock('@/app/actions/projects', () => ({
   removeMemberAction: vi.fn(),
 }))
 vi.mock('@/app/actions/projetos', () => ({ updateProjetoMemberAction: vi.fn() }))
-vi.mock('@/app/actions/admin', () => ({ adminCreateUserAction: vi.fn() }))
+vi.mock('@/app/actions/admin', () => ({ gerenteCreateUserAction: vi.fn() }))
 vi.mock('@/components/profile/AvatarUpload', () => ({ default: () => null }))
 vi.mock('@/components/ui/AddressFields', () => ({
   default: () => null,
@@ -126,11 +126,11 @@ describe('Stakeholders — campo único "Adicionar integrante"', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
-  it('gerente adiciona quem existe e só cria como externo', () => {
+  it('gerente adiciona quem existe e cria na equipe ou como externo', () => {
     renderComponent('gerente')
     digitar('be')
     expect(screen.getByRole('option', { name: /Adicionar Beatriz Souza à equipe/ })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /Criar «be» na equipe/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Criar «be» na equipe/ })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Criar «be» como externo/ })).toBeInTheDocument()
   })
 
