@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { verifySession } from '@/lib/dal'
 import { isSafeStorageUrl } from '@/lib/storageUrl'
-import { excluirArquivo, renomearArquivo, svgParaExibir, urlDeAcesso } from '@/services/arquivosProjetoService'
+import { excluirArquivo, imagemParaPrevia, renomearArquivo, svgParaExibir, urlDeAcesso } from '@/services/arquivosProjetoService'
 import { erroArquivos } from '../erros'
 
 const SVG_HEADERS = {
@@ -19,7 +19,26 @@ export async function GET(req: Request, { params }: Ctx) {
   const { projetoId, arquivoId } = await params
   const { tenantId, role, userId } = await verifySession()
   try {
-    const baixar = new URL(req.url).searchParams.get('baixar') === '1'
+    const busca = new URL(req.url).searchParams
+    const baixar = busca.get('baixar') === '1'
+    if (busca.get('previa') === '1') {
+      // Miniatura de imagem: URL estável e cache privado no navegador (o conteúdo de um arquivo não muda; renomear
+      // só troca o nome). Sem isso, a URL assinada nova a cada visita fazia baixar todas as fotos de novo.
+      const imagem = await imagemParaPrevia({ tenantId, role, userId }, projetoId, arquivoId)
+      if (imagem) {
+        if (imagem.etag && req.headers.get('if-none-match') === imagem.etag) { void imagem.corpo.cancel(); return new Response(null, { status: 304, headers: { ETag: imagem.etag } }) }
+        return new Response(imagem.corpo, {
+          headers: {
+            'Content-Type': imagem.tipo,
+            'Cache-Control': 'private, max-age=86400',
+            'X-Content-Type-Options': 'nosniff',
+            'Content-Disposition': 'inline',
+            ...(imagem.tamanho ? { 'Content-Length': String(imagem.tamanho) } : {}),
+            ...(imagem.etag ? { ETag: imagem.etag } : {}),
+          },
+        })
+      }
+    }
     if (!baixar) {
       // SVG sai pela origem do app: com CSP sandbox e default-src 'none', nada nele executa (ADR-042).
       const svg = await svgParaExibir({ tenantId, role, userId }, projetoId, arquivoId)

@@ -29,35 +29,29 @@ export default async function DocumentacaoPage({ params, searchParams }: { param
 
   if (!(await canProjectPermission({ tenantId, role, userId }, projetoId, 'documentos:ver'))) notFound()
 
-  let atas: Awaited<ReturnType<typeof listarAtasPorProjeto>> = []
-  try {
-    atas = await listarAtasPorProjeto(projetoId)
-  } catch (err) {
-    console.error('[DocumentacaoPage] falha ao listar atas:', err)
-  }
-  // Formulários de Riscos: só quando o documento aberto é o de riscos.
-  let riscos: RiscoListItem[] = []
-  if (doc === 'riscos') {
-    try {
-      riscos = await listarRiscos({ tenantId, role, userId }, projetoId)
-    } catch (err) {
-      console.error('[DocumentacaoPage] falha ao listar riscos:', err)
-    }
-  }
-  const gerente = await canProjectPermission({ tenantId, role, userId }, projetoId, 'documentos:excluir')
-  const podeAvaliarRh = await podeAvaliarRhDoProjeto({ role, userId }, projetoId)
-
-  // "Adicionar parte interessada" reaproveita o cadastro da tela Stakeholders: só para quem
-  // gerencia a equipe e só quando o documento aberto é o de Partes Interessadas.
+  const sessao = { tenantId, role, userId }
+  // Só o que o documento aberto usa, e as consultas independentes em paralelo (antes: em sequência, e a lista
+  // completa de atas, com presentes, ações e anexos, era carregada em qualquer documento).
   const abrindoPartes = !doc || doc === 'stakeholder'
-  const podeCadastrar = abrindoPartes && await canProjectPermission({ tenantId, role, userId }, projetoId, 'projeto:equipe')
-  const dadosCadastro = podeCadastrar ? await carregarStakeholdersDoProjeto(tenantId, projetoId) : null
-  const cadastroStakeholders = dadosCadastro ? { ...dadosCadastro, userRole: (role === 'admin' ? 'admin' : 'gerente') as 'admin' | 'gerente' } : null
+  const [atas, riscos, gerente, podeAvaliarRh, podeCadastrar] = await Promise.all([
+    doc === 'atas'
+      ? listarAtasPorProjeto(projetoId).catch(err => { console.error('[DocumentacaoPage] falha ao listar atas:', err); return [] as Awaited<ReturnType<typeof listarAtasPorProjeto>> })
+      : Promise.resolve([] as Awaited<ReturnType<typeof listarAtasPorProjeto>>),
+    // Formulários de Riscos: só quando o documento aberto é o de riscos.
+    doc === 'riscos'
+      ? listarRiscos(sessao, projetoId).catch(err => { console.error('[DocumentacaoPage] falha ao listar riscos:', err); return [] as RiscoListItem[] })
+      : Promise.resolve([] as RiscoListItem[]),
+    canProjectPermission(sessao, projetoId, 'documentos:excluir'),
+    podeAvaliarRhDoProjeto({ role, userId }, projetoId),
+    // "Adicionar parte interessada" reaproveita o cadastro da tela Stakeholders: só para quem
+    // gerencia a equipe e só quando o documento aberto é o de Partes Interessadas.
+    abrindoPartes ? canProjectPermission(sessao, projetoId, 'projeto:equipe') : Promise.resolve(false),
+  ])
 
   // Membros da equipe (responsáveis/aprovadores dos documentos devem ser membros).
   // `pendente` indica cadastro iniciado de forma simples e ainda não concluído (1º acesso).
-  const membros = (
-    await prisma.userProject.findMany({
+  const [linhasMembros, dadosCadastro] = await Promise.all([
+    prisma.userProject.findMany({
       where: { projectId: projetoId, active: true },
       include: {
         user: {
@@ -74,8 +68,11 @@ export default async function DocumentacaoPage({ params, searchParams }: { param
         funcoes: FUNCOES_ORDENADAS,
       },
       orderBy: { order: 'asc' },
-    })
-  )
+    }),
+    podeCadastrar ? carregarStakeholdersDoProjeto(tenantId, projetoId) : Promise.resolve(null),
+  ])
+  const cadastroStakeholders = dadosCadastro ? { ...dadosCadastro, userRole: (role === 'admin' ? 'admin' : 'gerente') as 'admin' | 'gerente' } : null
+  const membros = linhasMembros
     .filter(up => up.user.deletedAt === null && up.user.isActive)
     .map(up => {
       const cargos = nomesDasFuncoes(up.funcoes)

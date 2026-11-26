@@ -93,6 +93,14 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
   const [tituloAlteracao, setTituloAlteracao] = useState('')
   const [salvando, setSalvando] = useState(false)
 
+  // O rascunho é pedido junto com os dados do sistema, não depois deles (eram duas idas ao servidor em fila).
+  const rascunhoPedido = useRef<{ chave: unknown; promessa: Promise<unknown> } | null>(null)
+  const pedirRascunho = useCallback(<R,>(): Promise<R | null> => {
+    if (rascunhoPedido.current?.chave !== rascunho) rascunhoPedido.current = { chave: rascunho, promessa: rascunho.recuperar<R>() }
+    return rascunhoPedido.current.promessa as Promise<R | null>
+  }, [rascunho])
+  useEffect(() => { if (canEdit) void pedirRascunho() }, [canEdit, pedirRascunho])
+
   useEffect(() => {
     if (!projetoId) return
     let ativo = true
@@ -124,10 +132,10 @@ export default function FormularioDocumento<T>({ tipo, documento, titulo, arquiv
       setBase(JSON.stringify(partida))
       autosaveReset.current?.(JSON.stringify(atual))
     }
-    if (canEdit) void rascunho.recuperar<T>().then(aplicar)
+    if (canEdit) void pedirRascunho<T>().then(aplicar)
     else aplicar(null)
     return () => { ativo = false }
-  }, [sistema, vigentePayload, canEdit, rascunho, conteudo, inicial, membros, ajustar])
+  }, [sistema, vigentePayload, canEdit, pedirRascunho, conteudo, inicial, membros, ajustar])
 
   const alterar = useCallback((fn: (atual: T) => T) => setConteudo(c => (c === null ? c : fn(c))), [])
 

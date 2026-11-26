@@ -129,6 +129,21 @@ export async function urlDeAcesso(s: SessaoAuthz, projetoId: string, id: string,
   }), { expiresIn: EXPIRA_ACESSO_S })
 }
 
+/**
+ * Prévia de imagem (miniatura da grade) pela origem do app, numa URL estável: o navegador guarda em cache e não
+ * baixa a foto de novo a cada visita, como acontecia com a URL assinada, que muda a cada pedido. Só imagens que não
+ * são SVG (o SVG tem o caminho próprio, com CSP sandbox); null para os demais tipos.
+ */
+export async function imagemParaPrevia(s: SessaoAuthz, projetoId: string, id: string) {
+  await acesso(s, projetoId, 'documentos:ver')
+  const arquivo = await prisma.arquivoProjeto.findFirst({ where: { id, projetoId, tenantId: s.tenantId, deletedAt: null }, select: { tipo: true, chave: true } })
+  if (!arquivo) throw new ArquivoProjetoError('Arquivo não encontrado', 404)
+  if (!arquivo.tipo.startsWith('image/') || arquivo.tipo === SVG) return null
+  const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: arquivo.chave }))
+  if (!obj.Body) return null
+  return { corpo: obj.Body.transformToWebStream(), tipo: arquivo.tipo, tamanho: obj.ContentLength ?? null, etag: obj.ETag ?? null }
+}
+
 /** Conteúdo do SVG para exibir pela origem do app (com CSP sandbox); null se o arquivo não for SVG. */
 export async function svgParaExibir(s: SessaoAuthz, projetoId: string, id: string): Promise<string | null> {
   await acesso(s, projetoId, 'documentos:ver')

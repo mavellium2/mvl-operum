@@ -95,16 +95,17 @@ export const entradaDoUsuario = cache(
 )
 
 /** Permissões do usuário no projeto. */
+/** Memorizado por requisição (argumentos primitivos): uma página chega a verificar várias permissões do mesmo projeto. */
+const projetoAtivoDoTenant = cache(async (projectId: string, tenantId: string) =>
+  Boolean(await prisma.project.findFirst({ where: { id: projectId, tenantId, deletedAt: null }, select: { id: true } })))
+
 export async function permissoesNoProjeto(
   userId: string,
   tenantId: string,
   role: string,
   projectId: string,
 ): Promise<Set<Permissao>> {
-  if (role === 'admin') {
-    const project = await prisma.project.findFirst({ where: { id: projectId, tenantId, deletedAt: null }, select: { id: true } })
-    return new Set(project ? TODAS : [])
-  }
+  if (role === 'admin') return new Set((await projetoAtivoDoTenant(projectId, tenantId)) ? TODAS : [])
   return resolverPermissoes(await entradaDoUsuario(userId, tenantId, projectId))
 }
 

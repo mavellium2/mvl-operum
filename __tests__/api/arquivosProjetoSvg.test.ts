@@ -5,16 +5,17 @@ vi.mock('@/lib/dal', () => ({ verifySession: vi.fn().mockResolvedValue({ tenantI
 vi.mock('@/lib/storageUrl', () => ({ isSafeStorageUrl: () => true }))
 vi.mock('@/services/arquivosProjetoService', () => ({
   svgParaExibir: vi.fn(),
+  imagemParaPrevia: vi.fn(),
   urlDeAcesso: vi.fn().mockResolvedValue('https://minio.operum.adm.br/obj'),
   excluirArquivo: vi.fn(), renomearArquivo: vi.fn(),
   ArquivoProjetoError: class extends Error {},
 }))
 
 import { GET } from '@/app/api/projects/[projetoId]/arquivos/[arquivoId]/route'
-import { svgParaExibir, urlDeAcesso } from '@/services/arquivosProjetoService'
+import { imagemParaPrevia, svgParaExibir, urlDeAcesso } from '@/services/arquivosProjetoService'
 
 const ctx = { params: Promise.resolve({ projetoId: 'p1', arquivoId: 'a1' }) }
-beforeEach(() => vi.mocked(svgParaExibir).mockReset())
+beforeEach(() => { vi.mocked(svgParaExibir).mockReset(); vi.mocked(imagemParaPrevia).mockReset(); vi.mocked(urlDeAcesso).mockClear() })
 
 describe('GET arquivo do projeto', () => {
   it('SVG sai pela origem do app com CSP sandbox e nosniff', async () => {
@@ -33,5 +34,20 @@ describe('GET arquivo do projeto', () => {
     expect(baixar.status).toBe(302)
     expect(svgParaExibir).toHaveBeenCalledTimes(1)
     expect(urlDeAcesso).toHaveBeenLastCalledWith(expect.anything(), 'p1', 'a1', true)
+  })
+  it('prévia de imagem: URL estável, servida pela origem com cache privado no navegador', async () => {
+    vi.mocked(imagemParaPrevia).mockResolvedValue({ corpo: new Blob(['png']).stream(), tipo: 'image/png', tamanho: 3, etag: '"e1"' })
+    const res = await GET(new Request('http://app/api/projects/p1/arquivos/a1?previa=1'), ctx)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe('image/png')
+    expect(res.headers.get('cache-control')).toBe('private, max-age=86400')
+    expect(res.headers.get('etag')).toBe('"e1"')
+    expect(await res.text()).toBe('png')
+    expect(urlDeAcesso).not.toHaveBeenCalled()
+  })
+  it('prévia de algo que não é imagem cai no caminho normal (redirecionamento)', async () => {
+    vi.mocked(imagemParaPrevia).mockResolvedValue(null)
+    vi.mocked(svgParaExibir).mockResolvedValue(null)
+    expect((await GET(new Request('http://app/api/projects/p1/arquivos/a1?previa=1'), ctx)).status).toBe(302)
   })
 })

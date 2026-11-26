@@ -8,7 +8,7 @@ import AssinaturaEmLinha from '@/components/documentos/AssinaturaEmLinha'
 import {
   ATA_ASSINATURAS_POR_LINHA, ATA_ESPACO_MM, ataAssinantes, ataComUmaLinhaVazia, ataCopias, ataData, ataNumero, ataPessoa,
   type AtaExportData,
-} from '@/lib/exports/ataDocx'
+} from '@/lib/ataModelo'
 import type { MembroEquipeOption } from '@/components/projetos/documentacao/MembroEquipeSelect'
 import {
   Assinaturas, Cabecalho, CampoAutomatico, CampoData, CampoPessoa, CampoTexto, CINZA_CLARO, Folha, LinhaLista, Quadro,
