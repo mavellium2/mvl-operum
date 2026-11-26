@@ -13,6 +13,7 @@ funcionalidade depois disso é uma versão MINOR.
 - **Stakeholders, adicionar pessoa:** ao clicar no campo "Adicionar pessoa", a lista já mostra todos os usuários e contatos disponíveis (e rola). Ao digitar, filtra por nome, sobrenome ou e-mail, em qualquer ordem. Se o nome não existir, aparece "Criar «nome»": o gerente cria como externo e o administrador também na equipe (que exige criar o login). Antes, o gerente via só "Nenhuma pessoa encontrada". Esc fecha a lista.
 - **Avaliação de R.H., títulos das rodadas editáveis:** o gerente renomeia cada rodada (ícone de lápis) conforme a terminologia da sua organização, já que AC e AF são termos da Fatec. Vazio volta ao título padrão. Nova coluna `Project.avaliacaoRhTitulos` e `PATCH /api/projects/:id/avaliacao-rh/rodadas`.
 - **Avaliação de R.H., rádios centralizados:** na edição, as bolinhas dos critérios a partir de "Senso de responsabilidade" ficavam no topo da célula; agora ficam centralizadas como as primeiras. O documento exportado mantém a posição do X do modelo.
+- **Aparência inicial sem aviso no console:** o script que aplica a cor do tema antes da hidratação virou um `<script>` comum no `<head>` do layout raiz. O `<Script strategy="beforeInteractive">` era recriado no cliente e o React acusava "Encountered a script tag while rendering React component".
 
 ## [1.63.0] — 2026-11-24
 
