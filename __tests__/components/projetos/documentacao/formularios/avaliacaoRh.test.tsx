@@ -77,5 +77,17 @@ describe('Avaliação de R.H. — modelo "15" do professor', () => {
     expect(alterar).toHaveBeenCalled()
     expect(atual.notaFinal).toBe('10')
   })
-})
 
+  it('na edição, os rádios ficam no meio da linha em todos os critérios (inclusive os que no modelo têm o X no topo)', () => {
+    // Como no app: o FormularioDocumento chama a folha fora do EditorFolhaProvider; só `alterar` indica edição.
+    render(<FolhaAvaliacao conteudo={conteudo} sistema={sistema} versaoPadrao="v1.0.1" alterar={vi.fn()} />)
+    for (const nome of ['COMPORTAMENTO NO TRABALHO', 'COLABORAÇÃO COM GRUPO', 'CONHECIMENTO DO TRABALHO', 'INICIATIVA', 'PONTUALIDADE / ASSIDUIDADE']) {
+      expect(screen.getByLabelText(`${nome}: Bom`).closest('td')).toHaveStyle({ verticalAlign: 'middle' })
+    }
+  })
+
+  it('no documento, o X dos critérios marcados no topo segue o modelo', () => {
+    render(<FolhaAvaliacao conteudo={{ ...conteudo, criterios: { iniciativa: 'BOM' } }} sistema={sistema} versaoPadrao="v1.0.1" />)
+    expect(screen.getByLabelText('INICIATIVA: Bom').closest('td')).toHaveStyle({ verticalAlign: 'top' })
+  })
+})

@@ -60,7 +60,9 @@ function Marca({ nome, rotulo, marcada, onMarcar }: { nome: string; rotulo: stri
  * as frases do modelo e uma marca por critério, e as observações.
  */
 export function FolhaAvaliacao({ conteudo, sistema, versaoPadrao, alterar }: RenderFormulario<AvaliacaoRh>) {
-  const { editavel } = useEditorFolha()
+  // `render` é chamado como função pelo FormularioDocumento, fora do EditorFolhaProvider: useEditorFolha()
+  // aqui sempre diria "não editável". `alterar` só chega quando a folha está em edição.
+  const editavel = Boolean(alterar)
   // Na edição os rádios ficam centralizados na linha toda; no documento, o X segue a posição do modelo.
   const editar = (id: string, valor: ConceitoRh) =>
     alterar?.(atual => ({ ...atual, criterios: { ...atual.criterios, [id]: valor } }))
