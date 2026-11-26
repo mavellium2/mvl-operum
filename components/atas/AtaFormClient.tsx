@@ -19,7 +19,7 @@ import HistoricoDocumento from '@/components/projetos/documentacao/HistoricoDocu
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useReactToPrint } from 'react-to-print'
 import AtaDocument, { TITULO_ATA, type EdicaoAta } from './AtaDocument'
-import { ATA_PLANO_DO_PROJETO, type AtaExportData } from '@/lib/exports/ataDocx'
+import { ATA_PLANO_DO_PROJETO, type AtaExportData } from '@/lib/ataModelo'
 import { useRouter } from 'next/navigation'
 import { criarAtaAction, atualizarAtaAction, enviarAnexoAtaAction } from '@/app/actions/atas'
 import { type MemberOption } from '@/components/atas/MemberSelect'

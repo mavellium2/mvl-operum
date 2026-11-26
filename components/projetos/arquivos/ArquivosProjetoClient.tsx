@@ -214,7 +214,8 @@ export default function ArquivosProjetoClient({ projetoId, categoria, iniciais }
       enviadoPor: a.enviadoPor,
       enviadoPorAvatar: a.enviadoPorAvatar,
       data: a.enviadoEm,
-      previa: href,
+      // Imagem: prévia pela origem do app, com cache no navegador; vídeo segue pela URL assinada (precisa de Range).
+      previa: visualDoTipo(a.tipo) === 'imagem' ? `${href}?previa=1` : href,
       abrir: href,
       favorito: a.favorito,
       // Ações da linha (aparecem no hover/foco), como no Drive.

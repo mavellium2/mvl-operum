@@ -54,7 +54,7 @@ import { addMemberAction, removeMemberAction } from '@/app/actions/projects'
 import { EmailInput, TelefoneInput } from '@/components/ui/ContatoInputs'
 import { erroEmail, erroTelefone } from '@/lib/contato'
 import { updateProjetoMemberAction, setMembroAtivoAction } from '@/app/actions/projetos'
-import { adminCreateUserAction } from '@/app/actions/admin'
+import { gerenteCreateUserAction } from '@/app/actions/admin'
 import { parseHoras, formatHoras } from '@/lib/validation/horas'
 import { separarFuncoes } from '@/lib/funcoes'
 import { funcaoKey } from '@/lib/utils/normalize'
@@ -405,6 +405,7 @@ export default function ProjetoStakeholdersClient({
   /** Campo único "Adicionar integrante" (tela Stakeholders): busca, vincula ou cria sem trocar de tela. */
   const [termoAdd, setTermoAdd] = useState('')
   const [ativoAdd, setAtivoAdd] = useState(0)
+  const [abertoAdd, setAbertoAdd] = useState(false)
   const campoAddRef = useRef<HTMLInputElement>(null)
   const [selected, setSelected] = useState<StakeholderUnificado | null>(null)
   const [isCreating, setIsCreating] = useState(!!painel?.iniciarCriacao)
@@ -504,11 +505,20 @@ export default function ProjetoStakeholdersClient({
   // ── Campo "Adicionar integrante": quem já existe (equipe e diretório) e a opção de criar.
   const nAdd = normalizarBusca(termoAdd)
   const MAX_SUGESTOES = 6
-  const sugestoesInternos = nAdd
-    ? dispInterno.filter(u => normalizarBusca(u.name).includes(nAdd) || normalizarBusca(u.email).includes(nAdd)).slice(0, MAX_SUGESTOES)
+  // Todos os termos precisam aparecer (em qualquer ordem): "silva dyonisio" acha "Mirian Silva Ponsiliaque Dyonisio".
+  const termosAdd = nAdd.split(/\s+/).filter(Boolean)
+  const casaBusca = (...campos: string[]) => {
+    const texto = normalizarBusca(campos.join(' '))
+    return termosAdd.every(t => texto.includes(t))
+  }
+  // Campo vazio e em foco: mostra todos os usuários e contatos disponíveis (a lista rola).
+  const listarTodos = abertoAdd && !nAdd
+  const limite = listarTodos ? Number.MAX_SAFE_INTEGER : MAX_SUGESTOES
+  const sugestoesInternos = nAdd || listarTodos
+    ? dispInterno.filter(u => casaBusca(u.name, u.email)).slice(0, limite)
     : []
-  const sugestoesExternos = nAdd
-    ? dispExterno.filter(s => [s.name, s.company ?? '', s.email ?? ''].some(v => normalizarBusca(v).includes(nAdd))).slice(0, MAX_SUGESTOES)
+  const sugestoesExternos = nAdd || listarTodos
+    ? dispExterno.filter(s => casaBusca(s.name, s.company ?? '', s.email ?? '')).slice(0, limite)
     : []
   const jaNoProjeto = nAdd ? projeto.find(p => normalizarBusca(p.name) === nAdd) : undefined
   const nomeExistente = Boolean(jaNoProjeto) || [...dispInterno, ...dispExterno].some(p => normalizarBusca(p.name) === nAdd)
@@ -530,7 +540,7 @@ export default function ProjetoStakeholdersClient({
     if (externosUsados.has(x.id)) continue
     candidatos.push({ key: `e:${x.id}`, nome: x.name, detalhe: [x.company, x.email].filter(Boolean).join(' · ') || null, avatarUrl: x.logoUrl, semLogin: false, externo: x })
   }
-  const gruposAdd: GrupoAdd[] = candidatos.slice(0, 8).map(c => ({
+  const gruposAdd: GrupoAdd[] = candidatos.slice(0, listarTodos ? candidatos.length : 8).map(c => ({
     key: c.key, nome: c.nome, c,
     opcoes: [
       ...(c.interno ? [{ key: `${c.key}:equipe`, tipo: 'equipe' as const, nome: c.nome, c }] : []),
@@ -538,7 +548,8 @@ export default function ProjetoStakeholdersClient({
     ],
   }))
   // Nome que ainda não existe em lugar nenhum: criar já na equipe ou como externo (só administrador).
-  if (nAdd && isAdmin && !nomeExistente) {
+  // Gerente e administrador criam na equipe (com login) ou como externo.
+  if (nAdd && canManage && !nomeExistente) {
     const nome = termoAdd.trim()
     gruposAdd.push({ key: 'criar', nome, opcoes: [{ key: 'criar:equipe', tipo: 'criar-equipe', nome }, { key: 'criar:externo', tipo: 'criar-externo', nome }] })
   }
@@ -637,7 +648,7 @@ export default function ProjetoStakeholdersClient({
   }
 
   function handleOpenCreateInterno() {
-    if (!isAdmin) return
+    if (!canManage) return
     setSelected(null)
     setIsCreating(true)
     setFormError(null)
@@ -673,7 +684,7 @@ export default function ProjetoStakeholdersClient({
     if (e.key === 'ArrowDown' && opcoesAdd.length) { e.preventDefault(); setAtivoAdd((ativoAddIdx + 1) % opcoesAdd.length) }
     else if (e.key === 'ArrowUp' && opcoesAdd.length) { e.preventDefault(); setAtivoAdd((ativoAddIdx - 1 + opcoesAdd.length) % opcoesAdd.length) }
     else if (e.key === 'Enter') { e.preventDefault(); if (opcoesAdd[ativoAddIdx]) escolherOpcaoAdd(opcoesAdd[ativoAddIdx]) }
-    else if (e.key === 'Escape' && termoAdd) { e.preventDefault(); setTermoAdd('') }
+    else if (e.key === 'Escape' && (termoAdd || abertoAdd)) { e.preventDefault(); setTermoAdd(''); setAbertoAdd(false) }
   }
 
   // ── Criação como MEMBRO DA EQUIPE a partir das buscas ──
@@ -681,7 +692,7 @@ export default function ProjetoStakeholdersClient({
   // nome preenchido — o usuário informa e-mail/senha e o membro fica PENDENTE
   // (troca de senha no 1º acesso), igual ao "Criar e adicionar" do modo interno.
   function handleCreateMembroDeNome(nome: string) {
-    if (!isAdmin) return
+    if (!canManage) return
     const name = nome.trim()
     if (!name) return
     handleOpenAddMode('interno')
@@ -690,7 +701,7 @@ export default function ProjetoStakeholdersClient({
   }
 
   function handleCreateMembroDoDiretorio() {
-    if (!isAdmin) return
+    if (!canManage) return
     const name = searchDir.trim()
     if (!name) return
     handleOpenAddMode('interno')
@@ -855,7 +866,6 @@ export default function ProjetoStakeholdersClient({
     // Contato sem login: interno precisa de conta. O administrador cria o login já
     // preenchido com os dados do contato; para os demais, explica o que fazer.
     if (u.semConta && u.stakeholderId) {
-      if (!isAdmin) { toast(`Para usar "${u.name}" como interno, um administrador precisa criar o login dessa pessoa.`, 'error'); return }
       abrirCriacaoDeLogin(u.stakeholderId)
       return
     }
@@ -936,8 +946,7 @@ export default function ProjetoStakeholdersClient({
         : await tornarInternoAction(projetoId, s.stakeholderId!)
       setLoadingId(null)
       if ('semConta' in result && result.semConta) {
-        if (isAdmin) abrirCriacaoDeLogin(s.stakeholderId!)
-        else toast(`Para mudar "${s.name}" para interno, um administrador precisa criar o login dessa pessoa.`, 'error')
+        abrirCriacaoDeLogin(s.stakeholderId!)
         return
       }
       if ('error' in result) { toast(result.error ?? 'Não foi possível mudar.', 'error'); return }
@@ -1140,13 +1149,13 @@ export default function ProjetoStakeholdersClient({
 
     // Create new internal user (tenant member)
     if (isCreating && !selected && addMode === 'interno') {
-      if (!isAdmin) return
+      if (!canManage) return
       if (!formState.name.trim() || !formState.email.trim() || !formState.password.trim()) {
         setFormError('Nome, e-mail e senha são obrigatórios.')
         return
       }
       setLoadingId('form')
-      const result = await adminCreateUserAction({
+      const result = await gerenteCreateUserAction(projetoId, {
         name: formState.name.trim(),
         email: formState.email.trim(),
         password: formState.password,
@@ -1592,7 +1601,7 @@ export default function ProjetoStakeholdersClient({
                         {u.email && <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5">
                           <Mail className="w-3 h-3 shrink-0" />{u.email}
                         </p>}
-                        {u.semConta && <p className="text-[11px] text-amber-700 mt-0.5">{isAdmin ? 'Sem login · ao adicionar, você cria o login dessa pessoa' : 'Sem login · um administrador precisa criar o login'}</p>}
+                        {u.semConta && <p className="text-[11px] text-amber-700 mt-0.5">Sem login · ao adicionar, você cria o login dessa pessoa</p>}
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
                         <OperumButton variant="default" type="button"
@@ -2063,14 +2072,11 @@ export default function ProjetoStakeholdersClient({
       onClose={() => setTrocando(null)}
       onConfirm={() => { if (trocando) confirmarTroca(trocando) }}
       title={trocando?.tipo === 'interno' ? 'Mudar para externo' : 'Mudar para interno'}
-      confirmLabel={trocando?.tipo === 'interno' ? 'Mudar para externo' : semLoginParaInterno ? (isAdmin ? 'Criar login e mudar' : 'Entendi') : 'Mudar para interno'}
-      confirmDisabled={semLoginParaInterno && !isAdmin}
+      confirmLabel={trocando?.tipo === 'interno' ? 'Mudar para externo' : semLoginParaInterno ? 'Criar login e mudar' : 'Mudar para interno'}
       message={trocando?.tipo === 'interno'
         ? `${trocando.name} sai da equipe deste projeto e perde o acesso a ele. Continua nas partes interessadas como externo, com remuneração, horas, funções e departamento. Os cards em que é responsável continuam com essa pessoa.`
         : semLoginParaInterno
-          ? (isAdmin
-            ? `${trocando?.name ?? ''} ainda não tem login. Você vai criar o login (e-mail e senha) e a pessoa entra na equipe deste projeto.`
-            : `${trocando?.name ?? ''} ainda não tem login no sistema. Peça a um administrador para criar o login e mudar para interno.`)
+          ? `${trocando?.name ?? ''} ainda não tem login. Você vai criar o login (e-mail e senha) e a pessoa entra na equipe deste projeto.`
           : `${trocando?.name ?? ''} entra na equipe deste projeto e passa a ter acesso a ele, com a remuneração e as horas que já estavam no cadastro.`}
     />
   )
@@ -2156,19 +2162,21 @@ export default function ProjetoStakeholdersClient({
                   role="combobox"
                   aria-label="Adicionar integrante"
                   aria-describedby="adicionar-integrante-ajuda"
-                  aria-expanded={opcoesAdd.length > 0}
+                  aria-expanded={abertoAdd && opcoesAdd.length > 0}
                   aria-controls="adicionar-integrante-lista"
                   aria-autocomplete="list"
                   aria-activedescendant={opcoesAdd.length ? `adicionar-opcao-${ativoAddIdx}` : undefined}
                   autoComplete="off"
-                  placeholder="Adicionar pessoa: nome ou e-mail…"
+                  placeholder="Adicionar pessoa: nome, sobrenome ou e-mail…"
                   value={termoAdd}
-                  onChange={e => { setTermoAdd(e.target.value); setAtivoAdd(0) }}
+                  onChange={e => { setTermoAdd(e.target.value); setAtivoAdd(0); setAbertoAdd(true) }}
+                  onFocus={() => setAbertoAdd(true)}
+                  onBlur={() => setAbertoAdd(false)}
                   onKeyDown={teclaCampoAdd}
                   className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-3 text-sm"
                 />
-                <p id="adicionar-integrante-ajuda" className="sr-only">Digite para achar quem já existe ou criar alguém novo. Para cada pessoa, escolha Equipe (com acesso ao projeto) ou Externo (parte interessada, sem acesso). Enter escolhe a opção marcada.</p>
-                {opcoesAdd.length > 0 && (
+                <p id="adicionar-integrante-ajuda" className="sr-only">Ao focar, a lista mostra todos. Digite para filtrar por nome ou sobrenome, ou criar alguém novo. Para cada pessoa, escolha Equipe (com acesso ao projeto) ou Externo (parte interessada, sem acesso). Enter escolhe a opção marcada.</p>
+                {abertoAdd && opcoesAdd.length > 0 && (
                   <ul id="adicionar-integrante-lista" role="listbox" aria-label="Pessoas para adicionar ao projeto" className="stk-sugestoes">
                     {gruposAdd.map(g => {
                       const rotuloOpcao = (o: OpcaoAdd) =>
@@ -2186,7 +2194,7 @@ export default function ProjetoStakeholdersClient({
                             <span className="block truncate text-sm font-semibold">{g.c ? g.nome : <>Criar «{g.nome}»</>}</span>
                             {g.c?.detalhe && <span className="stk-sub block">{g.c.detalhe}</span>}
                             {!g.c && <span className="stk-sub block">Ainda não existe. Escolha como entra neste projeto.</span>}
-                            {g.c?.semLogin && <span className="block text-xs" style={{ color: 'var(--stk-ambar)' }}>{isAdmin ? 'Sem login · para entrar na equipe, você cria o login dessa pessoa' : 'Sem login · para entrar na equipe, um administrador precisa criar o login'}</span>}
+                            {g.c?.semLogin && <span className="block text-xs" style={{ color: 'var(--stk-ambar)' }}>Sem login · para entrar na equipe, você cria o login dessa pessoa</span>}
                           </span>
                           <span className="stk-opcao-botoes">
                             {g.opcoes.map(o => {
@@ -2204,7 +2212,7 @@ export default function ProjetoStakeholdersClient({
                     })}
                   </ul>
                 )}
-                {nAdd && opcoesAdd.length === 0 && (
+                {abertoAdd && nAdd && opcoesAdd.length === 0 && (
                   <p role="status" className="stk-aviso">{jaNoProjeto ? `«${jaNoProjeto.name}» já está no projeto.` : 'Nenhuma pessoa encontrada.'}</p>
                 )}
               </div>

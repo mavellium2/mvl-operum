@@ -6,7 +6,7 @@ import OperumButton from '@/components/ui/GlassButton'
 import { CopiaParaImpressao } from '@/components/documentos/editor/folha'
 import { useToast } from '@/components/ui/Toast'
 import { fetchWithSession } from '@/lib/clientFetch'
-import type { AtaExportData } from '@/lib/exports/ataDocx'
+import type { AtaExportData } from '@/lib/ataModelo'
 import AtaDocument from './AtaDocument'
 
 /** Datas chegam como texto no JSON; a folha usa Date. */

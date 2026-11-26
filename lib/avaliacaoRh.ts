@@ -25,6 +25,20 @@ export const siglaRodadaRh = (rodada: RodadaRh) => SIGLAS_RODADA[rodada] ?? ''
 /** "1ª Avaliação (AC)", "2ª Avaliação (AF)", "3ª Avaliação". */
 export const rotuloRodadaRh = (rodada: RodadaRh) => (siglaRodadaRh(rodada) ? `${tituloRodadaRh(rodada)} (${siglaRodadaRh(rodada)})` : tituloRodadaRh(rodada))
 
+/** Títulos personalizados por rodada (chave = número da rodada). */
+export type TitulosRodadaRh = Record<string, string>
+export const MAX_TITULO_RODADA_RH = 60
+/** Título da rodada: o definido pelo gerente ou, na falta dele, "1ª Avaliação – AC" / "3ª Avaliação". */
+export const nomeRodadaRh = (rodada: RodadaRh, titulos?: TitulosRodadaRh | null) =>
+  titulos?.[String(rodada)]?.trim() || (siglaRodadaRh(rodada) ? `${tituloRodadaRh(rodada)} – ${siglaRodadaRh(rodada)}` : tituloRodadaRh(rodada))
+/** Lê o JSON do banco ignorando o que não for texto de rodada válida. */
+export const lerTitulosRodadaRh = (json: unknown): TitulosRodadaRh => {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return {}
+  const saida: TitulosRodadaRh = {}
+  for (const [k, v] of Object.entries(json)) if (rodadaRhValida(Number(k)) && typeof v === 'string' && v.trim()) saida[k] = v.trim().slice(0, MAX_TITULO_RODADA_RH)
+  return saida
+}
+
 /** Total de rodadas exibidas: as configuradas no projeto, no mínimo 2 e cobrindo qualquer rodada que já tenha documento. */
 export const totalRodadasRh = (configuradas: number | null | undefined, rodadasComDocumento: number[] = []) =>
   Math.min(MAX_RODADAS_RH, Math.max(MIN_RODADAS_RH, configuradas ?? 0, ...rodadasComDocumento.filter(rodadaRhValida)))

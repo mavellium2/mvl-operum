@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Play, Star } from 'lucide-react'
 import GlassCard from '@/components/ui/GlassCard'
 import type { MouseEvent } from 'react'
@@ -24,18 +24,37 @@ function Miniatura({ item, tamanho }: { item: ItemArquivo; tamanho: number }) {
     return <img src={item.previa} alt="" loading="lazy" decoding="async" draggable={false} onError={() => setFalhou(true)}
       className="h-full w-full object-contain" />
   }
-  return <>
+  return <MiniaturaVideo item={item} tamanho={tamanho} tempo={tempo} onTempo={setTempo} onFalha={() => setFalhou(true)} />
+}
+
+/**
+ * Vídeo só é montado quando o bloco chega perto da tela: com dezenas de vídeos, cada `<video preload="metadata">`
+ * começava a baixar ao abrir a página, mesmo fora da vista, e travava as demais requisições.
+ */
+function MiniaturaVideo({ item, tamanho, tempo, onTempo, onFalha }: { item: ItemArquivo; tamanho: number; tempo: string | null; onTempo: (t: string | null) => void; onFalha: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visivel, setVisivel] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || visivel) return
+    // Sem IntersectionObserver (navegador muito antigo): mostra já, no próximo quadro.
+    if (typeof IntersectionObserver === 'undefined') { const id = requestAnimationFrame(() => setVisivel(true)); return () => cancelAnimationFrame(id) }
+    const obs = new IntersectionObserver(entradas => { if (entradas.some(e => e.isIntersecting)) { setVisivel(true); obs.disconnect() } }, { rootMargin: '200px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [visivel])
+  return <div ref={ref} className="h-full w-full">
     {/* #t=0.1: o navegador mostra o primeiro quadro sem baixar o vídeo inteiro. */}
-    <video src={`${item.previa}#t=0.1`} preload="metadata" muted playsInline tabIndex={-1} aria-hidden="true"
-      onLoadedMetadata={e => setTempo(duracao(e.currentTarget.duration))} onError={() => setFalhou(true)}
-      className="pointer-events-none h-full w-full object-contain" />
+    {visivel && <video src={`${item.previa}#t=0.1`} preload="metadata" muted playsInline tabIndex={-1} aria-hidden="true"
+      onLoadedMetadata={e => onTempo(duracao(e.currentTarget.duration))} onError={onFalha}
+      className="pointer-events-none h-full w-full object-contain" />}
     <span aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
       <span className="flex items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm" style={{ width: Math.max(28, tamanho / 5), height: Math.max(28, tamanho / 5) }}>
         <Play className="h-1/2 w-1/2 translate-x-[6%] fill-current" />
       </span>
     </span>
     {tempo && <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">{tempo}</span>}
-  </>
+  </div>
 }
 
 /**

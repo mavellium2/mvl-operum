@@ -22,7 +22,7 @@ vi.mock('@/app/actions/projects', () => ({
   removeMemberAction: vi.fn(),
 }))
 vi.mock('@/app/actions/projetos', () => ({ updateProjetoMemberAction: vi.fn() }))
-vi.mock('@/app/actions/admin', () => ({ adminCreateUserAction: vi.fn() }))
+vi.mock('@/app/actions/admin', () => ({ gerenteCreateUserAction: vi.fn() }))
 vi.mock('@/components/profile/AvatarUpload', () => ({ default: () => null }))
 vi.mock('@/components/ui/AddressFields', () => ({
   default: () => null,
@@ -126,11 +126,23 @@ describe('Stakeholders — campo único "Adicionar integrante"', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
-  it('gerente adiciona quem existe, mas não vê a opção de criar', () => {
+  it('gerente adiciona quem existe e cria na equipe ou como externo', () => {
     renderComponent('gerente')
     digitar('be')
     expect(screen.getByRole('option', { name: /Adicionar Beatriz Souza à equipe/ })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /Criar «/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Criar «be» na equipe/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Criar «be» como externo/ })).toBeInTheDocument()
+  })
+
+  it('ao focar o campo vazio, lista todos; sobrenome e termos fora de ordem também acham', () => {
+    renderComponent()
+    fireEvent.focus(campo())
+    expect(screen.getByRole('option', { name: /Adicionar Beatriz Souza à equipe/ })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Adicionar Empresa Beta como externo/ })).toBeInTheDocument()
+    digitar('souza beatriz')
+    expect(screen.getByRole('option', { name: /Adicionar Beatriz Souza à equipe/ })).toBeInTheDocument()
+    digitar('souza')
+    expect(screen.getByRole('option', { name: /Adicionar Beatriz Souza à equipe/ })).toBeInTheDocument()
   })
 
   it('a mesma pessoa que é usuário e contato aparece uma vez, com as duas escolhas: Equipe e Externo', async () => {

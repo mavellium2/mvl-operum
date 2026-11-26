@@ -26,7 +26,7 @@ vi.mock('@/app/actions/projetos', () => ({
 }))
 
 vi.mock('@/app/actions/admin', () => ({
-  adminCreateUserAction: vi.fn(),
+  gerenteCreateUserAction: vi.fn(),
 }))
 
 vi.mock('@/components/profile/AvatarUpload', () => ({

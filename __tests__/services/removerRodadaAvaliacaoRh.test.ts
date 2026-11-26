@@ -37,7 +37,7 @@ describe('removerRodadaAvaliacaoRh', () => {
     expect(tx.documentVersion.update).toHaveBeenCalledWith({ where: { id: 'v1' }, data: { resourceId: 'excl:rh:4:u1' } })
     expect(tx.documentVersion.update).toHaveBeenCalledWith({ where: { id: 'v2' }, data: { resourceId: 'excl:rh:4:u2', status: 'REJECTED', approvedById: 'u1' } })
     expect(tx.documentDraft.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'p1', tenantId: 't1', documentType: 'AVALIACAO_RH', resourceId: { startsWith: 'rh:4:' } } })
-    expect(tx.project.update).toHaveBeenCalledWith({ where: { id: 'p1' }, data: { avaliacaoRhRodadas: 3 } })
+    expect(tx.project.update).toHaveBeenCalledWith({ where: { id: 'p1' }, data: { avaliacaoRhRodadas: 3, avaliacaoRhTitulos: expect.anything() } })
     expect(registrarAcao).toHaveBeenCalledWith(expect.objectContaining({ action: 'DOCUMENTO_EXCLUIR', details: expect.objectContaining({ documentType: 'AVALIACAO_RH' }) }), tx)
   })
 

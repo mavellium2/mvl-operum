@@ -47,6 +47,8 @@ export type WbsAction =
   | { type: 'SET_SYNC_STATUS'; payload: Partial<WbsTreeState['sync']> }
   | { type: 'RESET_TREE'; payload?: { rootTitle?: string } }
   | { type: 'SET_TREE'; payload: { nodes: Record<string, WbsNodeClient>; rootId: string | null; serverVersion: number } }
+  /** Edição local reaplicada sobre a versão atual do servidor (conflito resolvido sem intervenção): mantém seleção e edição em curso. */
+  | { type: 'MERGE_TREE'; payload: { nodes: Record<string, WbsNodeClient>; rootId: string | null; serverVersion: number } }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -676,6 +678,20 @@ export function wbsReducer(state: WbsTreeState, action: WbsAction): WbsTreeState
         editingNodeId: null,
         history: pushHistory(state),
         sync: { ...state.sync, status: 'DIRTY' },
+      }
+    }
+
+    case 'MERGE_TREE': {
+      const { nodes, rootId, serverVersion } = action.payload
+      return {
+        ...state,
+        nodes,
+        rootId,
+        selectedNodeIds: state.selectedNodeIds.filter(id => nodes[id]),
+        editingNodeId: state.editingNodeId && nodes[state.editingNodeId] ? state.editingNodeId : null,
+        // O histórico guarda árvores sem o que veio do servidor: desfazer apagaria os vínculos novos.
+        history: { past: [], future: [] },
+        sync: { ...state.sync, status: 'DIRTY', serverVersion },
       }
     }
 

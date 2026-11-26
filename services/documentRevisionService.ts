@@ -18,7 +18,7 @@ import { getOrCreateDocument } from './eapService'
 import { registrarAcao } from './auditoriaService'
 import { AtualizarAtaSchema } from '@/lib/validation/ataSchemas'
 import { avaliacaoRhSchema, riscoSchema, type Risco } from '@/lib/validation/formulariosGP'
-import { MAX_RODADAS_RH, MIN_RODADAS_RH } from '@/lib/avaliacaoRh'
+import { MAX_RODADAS_RH, MAX_TITULO_RODADA_RH, MIN_RODADAS_RH, lerTitulosRodadaRh } from '@/lib/avaliacaoRh'
 import { comVersaoNoConteudo, proximaVersaoDocumento } from '@/lib/versaoDocumento'
 export {
   tipoDocumento,
@@ -284,6 +284,29 @@ export async function adicionarRodadaAvaliacaoRh(s: SessaoAuthz, projectId: stri
   })
 }
 
+/** Renomeia uma rodada (ou volta ao título padrão com `titulo` vazio). Só gerente ou administrador. */
+export async function renomearRodadaAvaliacaoRh(s: SessaoAuthz, projectId: string, rodada: number, titulo: string) {
+  await acesso(s, projectId, 'documentos:editar')
+  await acessoAvaliacaoRh(s, projectId, 'AVALIACAO_RH')
+  const novo = titulo.trim().slice(0, MAX_TITULO_RODADA_RH)
+  return prisma.$transaction(async (tx) => {
+    await bloquearProjeto(tx, s, projectId)
+    const projeto = await tx.project.findFirst({ where: { id: projectId, tenantId: s.tenantId }, select: { avaliacaoRhRodadas: true, avaliacaoRhTitulos: true } })
+    if (!projeto) throw new DocumentRevisionError('Projeto não encontrado', 404)
+    if (rodada > Math.max(MIN_RODADAS_RH, projeto.avaliacaoRhRodadas)) throw new DocumentRevisionError('Esta rodada de avaliação ainda não foi aberta no projeto', 400)
+    const titulos = lerTitulosRodadaRh(projeto.avaliacaoRhTitulos)
+    if (novo) titulos[String(rodada)] = novo
+    else delete titulos[String(rodada)]
+    await tx.project.update({ where: { id: projectId }, data: { avaliacaoRhTitulos: Object.keys(titulos).length ? titulos : Prisma.DbNull } })
+    await registrarAcao(
+      { tenantId: s.tenantId, userId: s.userId, action: 'DOCUMENTO_RASCUNHO', entity: 'Document', entityId: projectId,
+        details: { documentType: 'AVALIACAO_RH', resourceId: '', reason: `${rodada}ª rodada de avaliação renomeada` } },
+      tx,
+    )
+    return { rodada, titulos }
+  })
+}
+
 /**
  * Exclui a última rodada de avaliação (3ª em diante; a 1ª AC e a 2ª AF são fixas). Só gerente ou administrador.
  * Nada é apagado do histórico: os documentos da rodada passam para um identificador de arquivo (`excl:<id>`), que a
@@ -295,7 +318,7 @@ export async function removerRodadaAvaliacaoRh(s: SessaoAuthz, projectId: string
   await acessoAvaliacaoRh(s, projectId, 'AVALIACAO_RH')
   return prisma.$transaction(async (tx) => {
     await bloquearProjeto(tx, s, projectId)
-    const projeto = await tx.project.findFirst({ where: { id: projectId, tenantId: s.tenantId }, select: { avaliacaoRhRodadas: true } })
+    const projeto = await tx.project.findFirst({ where: { id: projectId, tenantId: s.tenantId }, select: { avaliacaoRhRodadas: true, avaliacaoRhTitulos: true } })
     if (!projeto) throw new DocumentRevisionError('Projeto não encontrado', 404)
     const ultima = Math.max(MIN_RODADAS_RH, projeto.avaliacaoRhRodadas)
     if (rodada <= MIN_RODADAS_RH)
@@ -314,7 +337,9 @@ export async function removerRodadaAvaliacaoRh(s: SessaoAuthz, projectId: string
       })
     }
     await tx.documentDraft.deleteMany({ where: { projectId, tenantId: s.tenantId, documentType: 'AVALIACAO_RH', resourceId: { startsWith: prefixo } } })
-    await tx.project.update({ where: { id: projectId }, data: { avaliacaoRhRodadas: rodada - 1 } })
+    const titulosRestantes = lerTitulosRodadaRh(projeto.avaliacaoRhTitulos)
+    delete titulosRestantes[String(rodada)]
+    await tx.project.update({ where: { id: projectId }, data: { avaliacaoRhRodadas: rodada - 1, avaliacaoRhTitulos: Object.keys(titulosRestantes).length ? titulosRestantes : Prisma.DbNull } })
     await registrarAcao(
       {
         tenantId: s.tenantId,
