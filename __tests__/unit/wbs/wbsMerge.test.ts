@@ -34,6 +34,31 @@ describe('mesclarRascunho', () => {
     expect(r.conflitos).toEqual([expect.objectContaining({ nodeId: 'a', tipo: 'alterado', motivo: expect.stringContaining('Versão do colega') })])
   })
 
+  it('sincronização gravou o card no item enquanto a pessoa renomeava: aplica o título e mantém o vínculo, sem conflito', () => {
+    const local = base(); local.nodes.a.title = 'Tarefa 2'
+    const servidor = base(); servidor.nodes.a.properties = { cardId: 'c1' } as WbsNodeClient['properties']
+    const r = mesclarRascunho(base(), local, servidor)
+    expect(r.conflitos).toEqual([])
+    expect(r.arvore.nodes.a.title).toBe('Tarefa 2')
+    expect(r.arvore.nodes.a.properties).toEqual({ cardId: 'c1' })
+  })
+
+  it('propriedades diferentes dos dois lados se somam; a mesma propriedade com valores diferentes é conflito', () => {
+    const local = base(); local.nodes.a.properties = { description: 'minha' } as WbsNodeClient['properties']
+    const servidor = base(); servidor.nodes.a.properties = { cardId: 'c1' } as WbsNodeClient['properties']
+    expect(mesclarRascunho(base(), local, servidor).arvore.nodes.a.properties).toEqual({ cardId: 'c1', description: 'minha' })
+    const servidor2 = base(); servidor2.nodes.a.properties = { description: 'outra' } as WbsNodeClient['properties']
+    expect(mesclarRascunho(base(), local, servidor2).conflitos).toHaveLength(1)
+  })
+
+  it('remover um item em que a sincronização só gravou o card não é conflito', () => {
+    const local = base(); delete local.nodes.b; local.nodes.f1.childrenIds = ['a']
+    const servidor = base(); servidor.nodes.b.properties = { cardId: 'c9' } as WbsNodeClient['properties']
+    const r = mesclarRascunho(base(), local, servidor)
+    expect(r.conflitos).toEqual([])
+    expect(r.arvore.nodes.b).toBeUndefined()
+  })
+
   it('itens criados entram no pai, inclusive filhos de itens criados', () => {
     const local = arvore(...Object.values(base().nodes), n('novo', 'f1', 2, 'Nova'), n('neto', 'novo', 0, 'Neta'))
     const r = mesclarRascunho(base(), local, base())

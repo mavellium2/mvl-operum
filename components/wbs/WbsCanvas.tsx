@@ -8,7 +8,7 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 import { computeLayout, resolveDropPosition, NODE_W, NODE_H } from '@/lib/wbsLayout'
 import { fitWbsViewport } from '@/lib/wbsViewport'
 import { measureNodeWidths } from '@/lib/wbsMedidas'
-import type { ArvoreEap, ResultadoMescla } from '@/lib/wbsMerge'
+import { mesclarRascunho, type ArvoreEap, type ResultadoMescla } from '@/lib/wbsMerge'
 import { apagarRascunho, lerRascunho, salvarRascunho, type RascunhoEap } from '@/lib/wbsRascunho'
 import RecuperarRascunhoEap from './RecuperarRascunhoEap'
 import { elaboradoresDe } from '@/lib/elaboradores'
@@ -228,14 +228,26 @@ function WbsCanvasInner({ projetoId, tenantId, userId, canEdit, initialView = 'c
         setRascunho(r => { if (r?.motivo === 'falha') { apagarRascunho(tenantId, userId, projetoId); return null } return r })
         dispatch({ type: 'SET_SYNC_STATUS', payload: { status: stateRef.current.nodes === s.nodes ? 'IDLE' : 'DIRTY', serverVersion: res.serverVersion, lastSavedAt: Date.now() } })
       } else if (res.conflict) {
-        // A EAP mudou no servidor (outra pessoa ou a sincronização com as sprints):
-        // guarda a edição local ANTES de carregar a versão atual, para recuperar depois.
+        // A EAP mudou no servidor (outra pessoa ou a sincronização com as sprints, que roda ao
+        // abrir EAP, planilha, quadro e documentos e grava vínculos de card/sprint nos nós).
+        // Guarda a edição local ANTES de carregar a versão atual, para recuperar depois.
         const guardado = preservarRascunho(s, 'conflito')
         const atual = await getWbsTreeAction(projetoId)
-        if (atual.ok) {
+        // Mescla campo a campo a edição mais recente (inclusive o que a pessoa fez durante o
+        // salvamento). Sem conflito real, reaplica e salva de novo em silêncio.
+        const recente = stateRef.current
+        const mescla = atual.ok ? mesclarRascunho(baseRef.current, { rootId: recente.rootId, nodes: recente.nodes }, { rootId: atual.rootId, nodes: atual.nodes }) : null
+        if (atual.ok && mescla && mescla.conflitos.length === 0) {
+          arvoresDoServidor.add(atual.nodes)
+          baseRef.current = { rootId: atual.rootId, nodes: atual.nodes }
+          apagarRascunho(tenantId, userId, projetoId)
+          dispatch({ type: 'MERGE_TREE', payload: { nodes: mescla.arvore.nodes, rootId: mescla.arvore.rootId, serverVersion: atual.serverVersion } })
+        } else if (atual.ok) {
+          // Conflito real (o mesmo campo mudou dos dois lados): guarda a edição mais recente e pede revisão.
+          const comRecente = recente.nodes === s.nodes ? guardado : preservarRascunho(recente, 'conflito')
           arvoresDoServidor.add(atual.nodes)
           dispatch({ type: 'SET_TREE', payload: { nodes: atual.nodes, rootId: atual.rootId, serverVersion: atual.serverVersion } })
-          setRascunho(guardado)
+          setRascunho(comRecente)
           toast('A EAP foi atualizada no servidor enquanto você editava. Suas alterações foram guardadas: revise e reaplique.', 'warning')
         } else {
           setRascunho(guardado)

@@ -5,8 +5,10 @@ import type { WbsNodeClient } from '@/types/wbs'
  * rascunho e permitir recuperar edições em conflitos de salvamento").
  *
  * Mescla em três vias: `base` (a versão do servidor sobre a qual a pessoa editou),
- * `local` (a edição dela) e `servidor` (a versão atual). Por nó e por aspecto
- * (conteúdo: título, layout, estilo, propriedades; posição: pai e ordem):
+ * `local` (a edição dela) e `servidor` (a versão atual). Por nó e por campo
+ * (título, layout, estilo, cada chave de `properties`; posição: pai e ordem). Assim a
+ * sincronização com as sprints, que só grava `cardId`/`sprintId`, não conflita com
+ * um título editado ao mesmo tempo:
  * - só a pessoa mudou → aplica a mudança dela;
  * - só o servidor mudou, ou os dois mudaram igual → fica o servidor;
  * - os dois mudaram diferente → conflito: fica o servidor (não sobrescreve o
@@ -28,6 +30,43 @@ export interface ResultadoMescla {
 
 const conteudo = (n: WbsNodeClient) => JSON.stringify([n.title, n.layout, n.style, n.properties ?? {}])
 const posicao = (n: WbsNodeClient) => JSON.stringify([n.parentId, n.order])
+const semVinculo = (n: WbsNodeClient): WbsNodeClient => {
+  const { cardId: _c, sprintId: _s, ...resto } = (n.properties ?? {}) as Record<string, unknown>
+  void _c; void _s
+  return { ...n, properties: resto as WbsNodeClient['properties'] }
+}
+const igual = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+
+/**
+ * Mescla campo a campo o conteúdo de um nó que a pessoa alterou. Devolve o nó resultante
+ * (sobre a versão do servidor) e se houve conflito: o mesmo campo mudou dos dois lados
+ * com valores diferentes (aí fica o do servidor).
+ */
+function mesclarConteudo(b: WbsNodeClient, l: WbsNodeClient, s: WbsNodeClient): { no: WbsNodeClient; conflito: boolean; aplicou: boolean } {
+  let conflito = false
+  let aplicou = false
+  const escolher = <T,>(vb: T, vl: T, vs: T): T => {
+    if (igual(vl, vb) || igual(vl, vs)) return vs
+    if (igual(vs, vb)) { aplicou = true; return vl }
+    conflito = true
+    return vs
+  }
+  const pb = (b.properties ?? {}) as Record<string, unknown>, pl = (l.properties ?? {}) as Record<string, unknown>, ps = (s.properties ?? {}) as Record<string, unknown>
+  const properties: Record<string, unknown> = { ...ps }
+  for (const k of new Set([...Object.keys(pb), ...Object.keys(pl), ...Object.keys(ps)])) {
+    const v = escolher(pb[k], pl[k], ps[k])
+    if (v === undefined) delete properties[k]
+    else properties[k] = v
+  }
+  const no: WbsNodeClient = {
+    ...s,
+    title: escolher(b.title, l.title, s.title),
+    layout: escolher(b.layout, l.layout, s.layout),
+    style: escolher(b.style, l.style, s.style),
+    properties: properties as WbsNodeClient['properties'],
+  }
+  return { no, conflito, aplicou }
+}
 
 /** O que a pessoa mudou em relação à base (para mostrar o que ficou pendente). */
 export function alteracoesLocais(base: ArvoreEap, local: ArvoreEap): Alteracao[] {
@@ -79,12 +118,10 @@ export function mesclarRascunho(base: ArvoreEap, local: ArvoreEap, servidor: Arv
       continue
     }
     if (mudouConteudo) {
-      if (conteudo(s) === conteudo(b)) {
-        nodes[id] = { ...nodes[id], title: l.title, layout: l.layout, style: l.style, properties: l.properties }
-        aplicadas.push({ nodeId: id, titulo: l.title, tipo: 'alterado' })
-      } else if (conteudo(s) !== conteudo(l)) {
-        conflitos.push({ nodeId: id, titulo: l.title, tipo: 'alterado', motivo: `também foi alterado no servidor (agora "${s.title}")` })
-      }
+      const { no, conflito, aplicou } = mesclarConteudo(b, l, s)
+      nodes[id] = { ...nodes[id], title: no.title, layout: no.layout, style: no.style, properties: no.properties }
+      if (aplicou) aplicadas.push({ nodeId: id, titulo: no.title, tipo: 'alterado' })
+      if (conflito) conflitos.push({ nodeId: id, titulo: l.title, tipo: 'alterado', motivo: `também foi alterado no servidor (agora "${s.title}")` })
     }
     if (mudouPosicao) {
       if (posicao(s) === posicao(b)) {
@@ -105,7 +142,8 @@ export function mesclarRascunho(base: ArvoreEap, local: ArvoreEap, servidor: Arv
   for (const [id, b] of Object.entries(base.nodes)) {
     if (local.nodes[id] || !servidor.nodes[id]) continue
     const s = servidor.nodes[id]
-    if (conteudo(s) === conteudo(b) && posicao(s) === posicao(b)) remover.add(id)
+    // Vínculo gravado pela sincronização (card/sprint) não impede a exclusão: o servidor exclui o que estiver ligado.
+    if (conteudo(semVinculo(s)) === conteudo(semVinculo(b)) && posicao(s) === posicao(b)) remover.add(id)
     else conflitos.push({ nodeId: id, titulo: b.title, tipo: 'removido', motivo: 'foi alterado no servidor depois' })
   }
   // Não remove pai de quem continua na árvore (ex.: filho criado por outra pessoa).

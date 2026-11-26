@@ -752,3 +752,16 @@ describe('SET_EAP_FORMAT (Organizar sem fase selecionada)', () => {
     expect(act(s, { type: 'SET_EAP_FORMAT', payload: { layout: 'ESQUERDA' } })).toBe(s)
   })
 })
+
+describe('MERGE_TREE (conflito resolvido sem intervenção)', () => {
+  it('troca a árvore, mantém seleção e edição dos itens que continuam e marca para salvar com a versão nova', () => {
+    const s0 = { ...makeState({ r: node('r', null, 0, ['a', 'b']), a: node('a', 'r', 0, []), b: node('b', 'r', 1, []) }), selectedNodeIds: ['a', 'b'], editingNodeId: 'a' }
+    const nodes = { r: node('r', null, 0, ['a']), a: { ...node('a', 'r', 0, []), properties: { cardId: 'c1' } } }
+    const s1 = act(s0, { type: 'MERGE_TREE', payload: { nodes, rootId: 'r', serverVersion: 7 } })
+    expect(s1.nodes).toBe(nodes)
+    expect(s1.selectedNodeIds).toEqual(['a'])
+    expect(s1.editingNodeId).toBe('a')
+    expect(s1.sync).toMatchObject({ status: 'DIRTY', serverVersion: 7 })
+    expect(s1.history).toEqual({ past: [], future: [] })
+  })
+})
