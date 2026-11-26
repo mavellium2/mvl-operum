@@ -129,19 +129,54 @@ export async function urlDeAcesso(s: SessaoAuthz, projetoId: string, id: string,
   }), { expiresIn: EXPIRA_ACESSO_S })
 }
 
+/** Largura da miniatura da grade (os blocos vão até ~320 px; 480 cobre telas de alta densidade). */
+const LARGURA_PREVIA = 480
+/** Miniatura guardada ao lado do original no storage, gerada na primeira visualização. */
+export const chaveDaPrevia = (chave: string) => `${chave}.previa-${LARGURA_PREVIA}.webp`
+/** Fotos acima disto (em pixels) não são reduzidas: evita imagem forjada para estourar memória. */
+const LIMITE_PIXELS = 100_000_000
+
+async function lerObjeto(chave: string): Promise<Buffer | null> {
+  try {
+    const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: chave }))
+    return obj.Body ? Buffer.from(await obj.Body.transformToByteArray()) : null
+  } catch (e) {
+    if ((e as { name?: string }).name === 'NoSuchKey') return null
+    throw e
+  }
+}
+
 /**
- * Prévia de imagem (miniatura da grade) pela origem do app, numa URL estável: o navegador guarda em cache e não
- * baixa a foto de novo a cada visita, como acontecia com a URL assinada, que muda a cada pedido. Só imagens que não
- * são SVG (o SVG tem o caminho próprio, com CSP sandbox); null para os demais tipos.
+ * Prévia de imagem (miniatura da grade) pela origem do app, numa URL estável que o navegador guarda em cache.
+ * É uma versão reduzida (480 px, WebP) gerada na primeira visualização e guardada no storage; as seguintes, de
+ * qualquer pessoa, só a leem. Se não der para reduzir (formato que o sharp não lê, imagem enorme), vai o original.
+ * Só imagens que não são SVG (o SVG tem o caminho próprio, com CSP sandbox); null para os demais tipos.
  */
 export async function imagemParaPrevia(s: SessaoAuthz, projetoId: string, id: string) {
   await acesso(s, projetoId, 'documentos:ver')
   const arquivo = await prisma.arquivoProjeto.findFirst({ where: { id, projetoId, tenantId: s.tenantId, deletedAt: null }, select: { tipo: true, chave: true } })
   if (!arquivo) throw new ArquivoProjetoError('Arquivo não encontrado', 404)
   if (!arquivo.tipo.startsWith('image/') || arquivo.tipo === SVG) return null
-  const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: arquivo.chave }))
-  if (!obj.Body) return null
-  return { corpo: obj.Body.transformToWebStream(), tipo: arquivo.tipo, tamanho: obj.ContentLength ?? null, etag: obj.ETag ?? null }
+
+  const guardada = await lerObjeto(chaveDaPrevia(arquivo.chave))
+  if (guardada) return { corpo: guardada, tipo: 'image/webp', etag: `"p${LARGURA_PREVIA}-${id}"` }
+
+  const original = await lerObjeto(arquivo.chave)
+  if (!original) return null
+  try {
+    const { default: sharp } = await import('sharp')
+    const reduzida = await sharp(original, { limitInputPixels: LIMITE_PIXELS })
+      .rotate() // respeita a orientação da câmera (EXIF) antes de descartar os metadados
+      .resize({ width: LARGURA_PREVIA, withoutEnlargement: true })
+      .webp({ quality: 78 })
+      .toBuffer()
+    // Guardar é otimização: se falhar, a próxima visualização gera de novo.
+    await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: chaveDaPrevia(arquivo.chave), Body: reduzida, ContentType: 'image/webp' })).catch(() => {})
+    return { corpo: reduzida, tipo: 'image/webp', etag: `"p${LARGURA_PREVIA}-${id}"` }
+  } catch (e) {
+    console.warn('[arquivos] miniatura não gerada, enviando o original:', e instanceof Error ? e.message : e)
+    return { corpo: original, tipo: arquivo.tipo, etag: null }
+  }
 }
 
 /** Conteúdo do SVG para exibir pela origem do app (com CSP sandbox); null se o arquivo não for SVG. */
@@ -173,5 +208,6 @@ export async function excluirArquivo(s: SessaoAuthz, projetoId: string, id: stri
   if (!arquivo) throw new ArquivoProjetoError('Arquivo não encontrado', 404)
   await prisma.arquivoProjeto.update({ where: { id }, data: { deletedAt: new Date() } })
   await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: arquivo.chave })).catch(() => {})
+  await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: chaveDaPrevia(arquivo.chave) })).catch(() => {})
   await registrarAcao({ tenantId: s.tenantId, userId: s.userId, action: 'ARQUIVO_PROJETO_EXCLUIR', entity: 'ArquivoProjeto', entityId: id, details: { projetoId, categoria: arquivo.categoria, nome: arquivo.nome } })
 }

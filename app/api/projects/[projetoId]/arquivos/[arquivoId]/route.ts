@@ -26,14 +26,14 @@ export async function GET(req: Request, { params }: Ctx) {
       // só troca o nome). Sem isso, a URL assinada nova a cada visita fazia baixar todas as fotos de novo.
       const imagem = await imagemParaPrevia({ tenantId, role, userId }, projetoId, arquivoId)
       if (imagem) {
-        if (imagem.etag && req.headers.get('if-none-match') === imagem.etag) { void imagem.corpo.cancel(); return new Response(null, { status: 304, headers: { ETag: imagem.etag } }) }
-        return new Response(imagem.corpo, {
+        if (imagem.etag && req.headers.get('if-none-match') === imagem.etag) return new Response(null, { status: 304, headers: { ETag: imagem.etag } })
+        return new Response(new Uint8Array(imagem.corpo), {
           headers: {
             'Content-Type': imagem.tipo,
             'Cache-Control': 'private, max-age=86400',
             'X-Content-Type-Options': 'nosniff',
             'Content-Disposition': 'inline',
-            ...(imagem.tamanho ? { 'Content-Length': String(imagem.tamanho) } : {}),
+            'Content-Length': String(imagem.corpo.length),
             ...(imagem.etag ? { ETag: imagem.etag } : {}),
           },
         })

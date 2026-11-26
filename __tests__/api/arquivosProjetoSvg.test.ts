@@ -36,7 +36,7 @@ describe('GET arquivo do projeto', () => {
     expect(urlDeAcesso).toHaveBeenLastCalledWith(expect.anything(), 'p1', 'a1', true)
   })
   it('prévia de imagem: URL estável, servida pela origem com cache privado no navegador', async () => {
-    vi.mocked(imagemParaPrevia).mockResolvedValue({ corpo: new Blob(['png']).stream(), tipo: 'image/png', tamanho: 3, etag: '"e1"' })
+    vi.mocked(imagemParaPrevia).mockResolvedValue({ corpo: Buffer.from('png'), tipo: 'image/png', etag: '"e1"' })
     const res = await GET(new Request('http://app/api/projects/p1/arquivos/a1?previa=1'), ctx)
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('image/png')
